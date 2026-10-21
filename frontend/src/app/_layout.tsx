@@ -6,7 +6,7 @@ import { queryClient } from '@/api/query-client';
 export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Stack />
+      <Stack screenOptions={{ headerShown: false }} />
     </QueryClientProvider>
   );
 }

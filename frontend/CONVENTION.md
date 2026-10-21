@@ -27,7 +27,7 @@ frontend/
 ```
 
 - `src/app/`의 라우트 파일은 `features/*/screens`의 화면을 불러와 내보내기만 한다. 탭 구성이 바뀌어도 라우트 파일만 옮기면 된다.
-- 기능 폴더 이름은 PRD 기능 묶음에 맞춘다: `auth` `trip` `camper` `photo` `preference` `course` `driver` `map` `family` `chat` `wrap` `settings` `notification`.
+- 기능 폴더 이름은 PRD 기능 묶음에 맞춘다: `auth` `home` `trip` `camper` `photo` `preference` `course` `driver` `map` `family` `chat` `wrap` `settings` `notification`.
 - 한 기능에서만 쓰는 코드는 그 기능 폴더에 둔다. 두 기능 이상에서 쓰게 되면 `components/ui`, `hooks`, `lib`로 옮긴다.
 - 다른 기능 폴더의 내부 파일을 직접 불러오지 않는다. 필요하면 공통 폴더로 옮긴다.
 
