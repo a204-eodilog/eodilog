@@ -1,11 +1,12 @@
 # 이어행 프론트엔드
 
-Expo SDK 58 · React Native · TypeScript · Expo Router
+Expo SDK 58 · React Native · TypeScript · Expo Router · TanStack Query · Zustand
 
 ## 시작하기
 
 ```bash
 npm ci
+cp .env.example .env
 npm start
 ```
 
@@ -13,6 +14,7 @@ npm start
   - Android: `npm run build:android`
   - iOS: `npx eas-cli@latest build --profile development --platform ios`
 - 레포는 `C:\dev\EODI`처럼 **짧은 영문 경로**에 클론한다. 경로에 한글이 있거나 길면 Android 빌드가 실패한다.
+- `.env`에는 비밀 키를 넣지 않는다. `EXPO_PUBLIC_` 값은 앱에 그대로 들어간다.
 
 ## 스크립트
 
