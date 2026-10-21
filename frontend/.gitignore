@@ -26,9 +26,34 @@ npm-debug.*
 yarn-debug.*
 yarn-error.*
 
-# macOS
+# app build outputs
+*.apk
+*.aab
+*.ipa
+*.app
+*.dSYM.zip
+
+# EAS and store credentials
+credentials.json
+credentials/
+*.keystore
+!debug.keystore
+google-services.json
+GoogleService-Info.plist
+
+# OS
 .DS_Store
+Thumbs.db
 *.pem
+
+# IDE
+.idea/
+*.iml
+
+# logs and caches
+*.log
+.eslintcache
+coverage/
 
 # local env files
 .env
@@ -36,8 +61,6 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
-
-example
 
 # generated native folders
 /ios
