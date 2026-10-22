@@ -1,6 +1,7 @@
 ---
 title: "이어행 사용자 흐름"
-status: draft
+status: obsolete
+replaced_by_prd: "../../_bmad-output/planning-artifacts/prds/prd-EODI-2026-10-22/prd.md"
 jira: EODI-46
 parent: EODI-44
 created: 2026-10-21
@@ -8,6 +9,8 @@ source: "_bmad-output/planning-artifacts/prds/prd-EODI-2026-10-21/prd.md (v0.3)"
 ---
 
 # 이어행 사용자 흐름
+
+> **폐기된 PRD의 파생 문서 — 2026-10-22.** [새 어디로그 PRD](../../_bmad-output/planning-artifacts/prds/prd-EODI-2026-10-22/prd.md)를 기준으로 다시 작성해야 한다. 아래 화면 흐름·담당자 제안·기존 Jira 연결은 새 기획의 확정 설계가 아니다.
 
 > 이어행 PRD v0.3의 핵심 사용자 흐름(§서비스 한눈에 보기, §6 UJ-1~4)과 기능 요구사항(IE-FR-01~22)을 화면 단위 흐름으로 정리한다.
 > 화면 목록 확정(EODI-47)의 입력으로 쓴다.
