@@ -65,3 +65,9 @@ coverage/
 # generated native folders
 /ios
 /android
+
+# spec-kit: per-person current feature pointer
+.specify/feature.json
+
+# Claude Code personal settings
+.claude/settings.local.json
