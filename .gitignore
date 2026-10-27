@@ -2,3 +2,6 @@
 # .omc/skills/ is the intentional committable exception
 .omc/*
 !.omc/skills/
+
+# Local environment secrets
+/.env
