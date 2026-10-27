@@ -1,5 +1,5 @@
-// 어디로그 논리 ERD v0.3 / 2026-10-26 / 설계 제안
-// 기준: 현행 PRD v0.5 및 hwang/screens, 멤버별 별도 게시·공개 친구 선택 확정
+// 어디로그 논리 ERD v0.4 / 2026-10-27 / 설계 제안
+// 기준: PRD v0.6·2026-10-27 사용자 요청·open-decisions와 최신 user-flow. C-1~C-51 원문 미확보.
 // API 계약·D-N 제안·미정 Q-N은 docs/api-spec.md에 함께 관리한다.
 // DB 엔진은 미선정. uuid/json/timestamp는 논리 타입이며 엔진 확정 후 물리 타입을 매핑한다.
 // 이 파일은 실행용 DDL이나 완료된 마이그레이션이 아니다.
@@ -7,24 +7,23 @@
 
 Project eodilogue {
   Note: '''
-  여행마다 새 그룹: trips 자체가 그룹 경계이고 trip_members가 멤버십이다.
-  trips.owner_user_id가 유일한 방장 기준이다. API role은 이 값으로 계산한다.
-  피드는 여행/작성자별 별도 소유(D-4: 조합당 하나 재사용 제안), 기본 DRAFT 비공개다.
-  게시물별 feed_audiences와 현재 상호 친구 관계를 모든 조회·파일 경로에서 검사한다.
-  타인 사진은 현재 공개 범위에 동의한 것만 표시하며 별도 게시물 권한을 합치지 않는다.
-  이탈 멤버십과 경비는 보존하고 방장 이탈 시 가장 빠른 join_order의 ACTIVE 멤버에게 양도한다.
-  등록자만 경비 수정·삭제. 결제자와 등록자를 분리한다.
-  지역·장소 복수 선택. 시각/전원 종료·단독 최다 자동 확정, 동률/0표 권한은 D-13 제안/Q-6.
-  편집안·불변 확정 revision·승인 요청을 분리한다. 적용/승인 시 현재 권한·기준 버전 검사.
-  논리 관계에 물리 cascade 삭제를 일괄 적용하지 않는다. 보존 기간과 마지막 멤버 처리 등은 Q-11.
-  모든 UUID는 서버 발급, 모든 timestamp는 UTC. 생성/수정 시각은 서버가 기록한다.
-  미표기 nullable 필드는 DBML 규칙상 NULL 허용. 핵심 FK의 not null을 명시했다.
+  여행은 그룹 경계. trips.owner_user_id가 방장 기준이며 이탈 시 가입 순서로 양도한다.
+  단방향 follows: PUBLIC 즉시 ACCEPTED, PRIVATE 요청 수락 후 ACCEPTED. 반대 방향 독립.
+  공동 피드는 명시적 게시 때 여행당 하나 생성, 멤버 누구나 삭제. 특정 친구 본인 경로 숨김은 별도 저장한다.
+  게시 후 기본 전체 공개, 직접 공동 피드 경로는 특정 친구 숨김으로 차단하지 않는다. 비공개 계정 결합 Q-3.
+  개인별 피드·사진 공개 동의·코스 승인·정산 완료·1:1 채팅은 제거한다.
+  투표는 시각 마감 자동 확정, 동률 최다 모두. 진행 중 후보 추가. 0표는 확정 없이 마감.
+  단일 코스·구간별 수단·모든 멤버 AI 적용. 버전 검사, 실시간 전송/알림 묶음 Q-15·16.
+  KRW 정수·1인 부담액 10원 올림. 적용 시점/차액 귀속 Q-10. 송금액 자체의 재올림 없음.
+  이탈 멤버십·공동 피드·경비 보존, 경비는 등록자만 수정/삭제. 삭제/익명화 Q-11.
+  논리 타입이며 DB 엔진 미선정. cascade 삭제 일괄 적용 금지, timestamp UTC.
   '''
 }
 
 Table users {
   id uuid [pk]
   nickname varchar(50) [not null]
+  account_visibility varchar(16) [not null, default: 'PRIVATE', note: 'PUBLIC/PRIVATE, 기본값 제안 Q-2·3']
   profile_asset_id uuid
   age_band varchar(32) [note: '형태·필수 여부 Q-1, 공개 프로필 직렬화 금지']
   age_use_consent boolean [not null, default: false]
@@ -39,7 +38,7 @@ Table users {
 Table oauth_accounts {
   id uuid [pk]
   user_id uuid [not null, ref: > users.id]
-  provider varchar(16) [not null, note: 'KAKAO/GOOGLE']
+  provider varchar(16) [not null, note: 'KAKAO/NAVER']
   provider_user_id varchar(255) [not null]
   created_at timestamp [not null]
   indexes {
@@ -62,7 +61,7 @@ Table sessions {
 
 Table oauth_attempts {
   id uuid [pk]
-  provider varchar(16) [not null, note: 'KAKAO/GOOGLE']
+  provider varchar(16) [not null, note: 'KAKAO/NAVER']
   state_hash varchar(255) [not null, unique]
   initiator_context_hash varchar(255) [not null, note: '로그인 시작 컨텍스트 바인딩, 구체 전송/저장 방식 Q-1']
   redirect_uri varchar(500) [not null]
@@ -73,17 +72,15 @@ Table oauth_attempts {
   Note: 'OAuthAuthorization 시작 요청과 코드 교환 연결. provider/state/redirect/만료/컨텍스트 검증과 일회성 소비를 원자적으로 처리. 공급자별 PKCE 지원과 앱/웹 인증 흐름은 Q-1·12에서 확정.'
 }
 
-Table friendships {
+Table follows {
   id uuid [pk]
-  requester_user_id uuid [not null, ref: > users.id]
-  recipient_user_id uuid [not null, ref: > users.id]
-  user_low_id uuid [not null, ref: > users.id]
-  user_high_id uuid [not null, ref: > users.id]
+  follower_user_id uuid [not null, ref: > users.id]
+  followee_user_id uuid [not null, ref: > users.id]
   status varchar(16) [not null, note: 'REQUESTED/ACCEPTED']
   requested_at timestamp [not null]
   accepted_at timestamp
-  indexes { (user_low_id, user_high_id) [unique] }
-  Note: '정렬한 서로 다른 사용자 쌍당 한 행. requester/recipient는 이 쌍과 일치. 양방향 자동 수락 금지. 해제 시 행 제거 및 서로의 feed_audiences 삭제·동의 무효화. 공동 여행 유지.'
+  indexes { (follower_user_id, followee_user_id) [unique] }
+  Note: '자기 자신 금지. 대상 PUBLIC이면 즉시 ACCEPTED, PRIVATE면 REQUESTED 후 대상자 수락. 반대 방향 독립. 언팔로우/취소/거절은 해당 방향만 제거. 계정 공개 범위 변경의 대기 요청 처리 Q-2.'
 }
 
 Table suggestion_dismissals {
@@ -91,6 +88,7 @@ Table suggestion_dismissals {
   candidate_user_id uuid [not null, ref: > users.id]
   created_at timestamp [not null]
   indexes { (user_id, candidate_user_id) [pk] }
+  Note: '추천 숨김은 영구 유지하며 다시 추천하지 않음. 검색/팔로우 자체 차단과 별개.'
 }
 
 Table user_preferences {
@@ -110,14 +108,14 @@ Table trips {
   start_date date
   end_date date
   status varchar(16) [not null, default: 'PLANNING', note: 'PLANNING/ONGOING/COMPLETED']
-  currency varchar(3) [note: '생성 때 선택, 미지정 NULL. 첫 경비 등록의 통화로 원자 설정 제안. D-7 단일 통화']
+  currency varchar(3) [not null, default: 'KRW', note: 'KRW만, 통화 변경 불가']
   version bigint [not null, default: 1]
   expense_version bigint [not null, default: 0]
   current_settlement_id uuid [ref: > settlements.id]
   created_at timestamp [not null]
   updated_at timestamp [not null]
   deleted_at timestamp
-  Note: 'owner는 반드시 같은 여행 ACTIVE 멤버여야 함. 생성 시 trip·owner 멤버십·여행 채팅방·빈 DRAFT 일정(version=1)을 한 트랜잭션으로 생성. 마지막 멤버 단독 이탈 처리 Q-4·11. 지출이 한 번이라도 등록되면 통화 변경 금지 제안.'
+  Note: 'owner는 반드시 같은 여행 ACTIVE 멤버여야 함. 생성 시 trip·owner 멤버십·여행 채팅방·빈 단일 코스(version=1)을 한 트랜잭션으로 생성. 마지막 방장 이탈은 여행 삭제와 동일. 피드는 게시 때만 생성. 상태는 기간으로 자동 전환, 시간대/경계 Q-4. 통화는 KRW 고정.'
 }
 
 Table trip_members {
@@ -143,12 +141,11 @@ Table trip_invitations {
   trip_id uuid [not null, ref: > trips.id]
   created_by_member_id uuid [not null, ref: > trip_members.id]
   token_hash varchar(255) [not null, unique]
-  code_hash varchar(255) [not null, unique]
   expires_at timestamp [not null]
   revoked_at timestamp
   created_at timestamp [not null]
   indexes { trip_id }
-  Note: '토큰/코드 원문은 생성 응답에서만 반환. 코드 lookup은 시도 제한. 신규 참여 시 초대자와 상호 친구 필수. 만료·정원·코드 형식 Q-4.'
+  Note: '토큰 원문은 생성 응답에서만 반환. 초대 코드 없음. 친구/팔로우 관계 없이 유효 링크로 참여. 현재 ACTIVE 초대자·만료·정원 검사. 만료/정원 Q-4.'
 }
 
 Table regions {
@@ -185,7 +182,7 @@ Table trip_destinations {
   region_id uuid [not null, ref: > regions.id]
   source_candidate_id uuid [ref: > poll_candidates.id]
   indexes { (trip_id, region_id) [pk] }
-  Note: '여러 지역 표현 가능. 복수 지역 투표 결과를 일정 목적지에 반영하는 규칙은 Q-6.'
+  Note: '여러 지역 표현 가능. 확정한 여러 지역을 날짜별로 코스에 배분할 수 있음. 날짜 배분은 itinerary_items의 day와 place 지역으로 표현.'
 }
 
 Table personal_bookmarks {
@@ -196,7 +193,10 @@ Table personal_bookmarks {
   created_at timestamp [not null]
   updated_at timestamp [not null]
   indexes { (user_id, place_id) [pk] }
-  Note: '본인만 접근. source feed의 일반 장소 참조는 해당 사진·피드 내부 자료의 열람 권한을 부여하지 않음.'
+  retained_place_name varchar(255) [not null]
+  retained_latitude decimal(10,7) [not null]
+  retained_longitude decimal(10,7) [not null]
+  Note: '본인만 접근. source feed의 일반 장소 참조는 해당 사진·피드 내부 자료의 열람 권한을 부여하지 않음. 원본 소실/권한 상실 시 API는 보존한 이름·좌표·내 메모만 반환하고 source_feed_id는 노출하지 않음.'
 }
 
 Table trip_place_saves {
@@ -215,6 +215,7 @@ Table trip_place_saves {
 
 Table assets {
   id uuid [pk]
+  upload_batch_id uuid [ref: > photo_upload_batches.id]
   owner_user_id uuid [not null, ref: > users.id]
   trip_id uuid [ref: > trips.id]
   purpose varchar(16) [not null, note: 'PROFILE/CAPTURE/TRIP_PHOTO']
@@ -225,7 +226,7 @@ Table assets {
   status varchar(16) [not null, default: 'PENDING', note: 'PENDING/READY/DELETING/DELETED/CANCELLED']
   created_at timestamp [not null]
   deleted_at timestamp
-  Note: '영구 공개 URL 대신 객체 식별자 보관. CAPTURE 본인, TRIP_PHOTO 내부 멤버/게시된 사진 경로를 별도 검증. 파일 수명·삭제 복구 Q-7·11.'
+  Note: 'TRIP_PHOTO는 JPG/PNG/HEIC 및 같은 배치 필수. CAPTURE는 JPG/PNG, extraction당 최대 10장 검사. 영구 공개 URL 대신 객체 식별자 보관. CAPTURE 본인, TRIP_PHOTO 내부 멤버/게시된 사진 경로를 별도 검증. 파일 수명·삭제 복구 Q-7·11.'
 }
 
 Ref: users.profile_asset_id > assets.id
@@ -248,7 +249,7 @@ Table jobs {
   finished_at timestamp
   deleted_at timestamp
   indexes { (trip_id, kind, created_at) }
-  Note: '일반 AI 작업은 생성/진행/완료/열람/적용 시 현재 멤버십·동의를 확인. 삭제 작업은 승인 당시 cleanup_scope로 계속 수행하고 요청자에게만 최소 상태 제공, 이탈 후 ACTIVE 검사로 중단하지 않음. ACCOUNT_DELETE는 사용자 폴링 없음. applied는 itinerary proposal에만 사용. WEATHER 제안은 input_json에 원본 작업/선택 대안 ID와 같은 여행·기준 버전 검증 결과 기록. 실패가 기존 확정본을 지우지 않음.'
+  Note: '일반 AI 작업은 생성/진행/완료/열람/적용 시 현재 멤버십·자료 사용 동의를 확인. 코스 변경안은 별도 확인 화면 없이 서버 base_version 검사 제안, 경합/재계산 Q-15. 삭제 작업은 승인 당시 cleanup_scope로 계속 수행하고 요청자에게만 최소 상태 제공, 이탈 후 ACTIVE 검사로 중단하지 않음. ACCOUNT_DELETE는 사용자 폴링 없음. applied는 itinerary proposal에만 사용. WEATHER 제안은 input_json에 원본 작업/선택 대안 ID와 같은 여행·기준 버전 검증 결과 기록. 실패가 현재 코스를 지우지 않음.'
 }
 
 Table extraction_candidates {
@@ -271,10 +272,9 @@ Table polls {
   status varchar(16) [not null, default: 'OPEN', note: 'OPEN/CLOSED/FINALIZED']
   version bigint [not null, default: 1]
   closes_at timestamp [not null]
-  closed_reason varchar(16) [note: 'DEADLINE/ALL_VOTED/MANUAL']
+  closed_reason varchar(16) [note: 'DEADLINE/NO_VOTES; 0표 확정 없이 마감']
   closed_at timestamp
   finalized_at timestamp
-  finalized_by_member_id uuid [ref: > trip_members.id]
   created_at timestamp [not null]
   indexes { (trip_id, created_at) }
 }
@@ -284,11 +284,12 @@ Table poll_candidates {
   poll_id uuid [not null, ref: > polls.id]
   region_id uuid [ref: > regions.id]
   place_id uuid [ref: > places.id]
+  created_at timestamp [not null]
   indexes {
     (poll_id, region_id) [unique]
     (poll_id, place_id) [unique]
   }
-  Note: 'region_id XOR place_id, polls.type과 일치. 후보 등록 권한과 삭제/추가 시점 Q-6. 같은 투표 중복 후보 금지.'
+  Note: 'region_id XOR place_id, polls.type과 일치. ACTIVE 멤버가 OPEN·마감 전 추가, version/마감 동시 검사. 후보 삭제 Q-6. 같은 투표 중복 후보 금지.'
 }
 
 Table poll_votes {
@@ -302,19 +303,26 @@ Table poll_votes {
 Table poll_results {
   candidate_id uuid [pk, ref: > poll_candidates.id]
   selected_at timestamp [not null]
-  Note: '선택한 확정 후보마다 한 행. FINALIZED에만 존재. 단독 최다는 서버 자동, 동률/0표는 결정권자 검사(D-13/Q-6). finalized_by NULL은 자동 확정. 후보별 투표수는 원본 집계이며 별도 저장하지 않음.'
+  Note: '시각 마감의 최다 득표 후보 모두에 한 행씩 저장. FINALIZED에만 존재. 서버 자동 확정이며 0표는 CLOSED/NO_VOTES·결과 행 없음으로 마감. 후보 추가/투표/마감 상태·버전 검사와 결과 저장을 원자 처리. 기본 closes_at=화면 서버시각+24h, 마감 1h 전 미투표자 알림. 정책 자체와 전송 job/outbox 구현은 구분.'
 }
 
 Table itineraries {
   id uuid [pk]
   trip_id uuid [not null, unique, ref: > trips.id]
-  status varchar(16) [not null, default: 'DRAFT', note: 'DRAFT/CONFIRMED']
   version bigint [not null, default: 1]
-  transport_mode varchar(16) [note: 'WALK/CAR/TRANSIT 제안. 새 빈 일정만 NULL, 작성/확정 시 선택 필수. Q-6']
-  confirmed_revision_id uuid [ref: > itinerary_revisions.id]
   updated_by_member_id uuid [not null, ref: > trip_members.id]
   updated_at timestamp [not null]
-  Note: '여행별 편집안 하나. version은 편집·확정·적용마다 증가, 편집 시 confirmed_revision_id는 유지. 확정본은 불변 revision 스냅샷으로 조회. 편집안은 DRAFT로 전환하며 승인 대상을 변경하면 요청 STALE. 같은 itinerary의 확정 revision인지 서비스 검증.'
+  Note: '여행별 단일 코스. 구간 수단 WALK/CAR/TRANSIT 확정, AI 적용 직후 1단계 undo는 itinerary_undo_states. 모든 ACTIVE 멤버 편집/AI 적용. 편집안·확정본·승인 포인터 없음. 변경/AI 적용/경로 반영은 기준 version 검사 후 증가. 구간 수단은 route_legs. 실시간 전송/재접속 Q-15, 알림 묶음 Q-16.'
+}
+
+Table itinerary_undo_states {
+  itinerary_id uuid [pk, ref: > itineraries.id]
+  applied_job_id uuid [not null, ref: > jobs.id]
+  applied_version bigint [not null]
+  before_content_json json [not null]
+  applied_by_member_id uuid [not null, ref: > trip_members.id]
+  created_at timestamp [not null]
+  Note: '직전 AI 적용 이전 코스 한 개만 보관하는 제안. 적용/스냅샷/버전 증가 원자 처리. 다른 코스 쓰기·undo 후 토큰 제거/무효화, 복원도 새 version. 임의 과거 revision이나 승인 모델 아님. 직후 시간/동시 경합 Q-15.'
 }
 
 Table itinerary_items {
@@ -341,7 +349,7 @@ Table route_legs {
   status varchar(16) [not null, note: 'AVAILABLE/UNAVAILABLE']
   queried_at timestamp [not null]
   indexes { (itinerary_id, from_item_id, to_item_id) [unique] }
-  Note: '두 지점이 같은 itinerary에 속하고 동일 날짜 인접 순서인지 검증. 실패값 NULL. 계획 거리이며 실제 이동거리로 집계하지 않음.'
+  Note: 'transport_mode는 WALK/CAR/TRANSIT. 두 지점이 같은 itinerary에 속하고 동일 날짜 인접 순서인지 검증. 실패값 NULL. 계획 거리이며 실제 이동거리로 집계하지 않음.'
 }
 
 Table checklist_items {
@@ -358,7 +366,9 @@ Table checklist_items {
   created_at timestamp [not null]
   deleted_at timestamp
   indexes { trip_id }
-  Note: '공동 목록 제안(D-9). 재추천은 jobs 결과로 제안만 제공, 수동 변경/체크/삭제를 덮어쓰지 않음.'
+  checked_by_member_id uuid [ref: > trip_members.id]
+  checked_at timestamp
+  Note: '여행당 공동 목록 확정, 모든 멤버 수정/체크. checked=true이면 같은 여행의 체크한 멤버/시각 필수, 해제하면 둘 다 NULL. 재추천은 jobs 결과로 제안만 제공, 수동 변경/체크/삭제를 덮어쓰지 않음.'
 }
 
 Table visits {
@@ -382,8 +392,19 @@ Table photo_groups {
   Note: '유사 사진 묶음. 대표 사진은 보관 사진 중 결정적 순서로 선택하는 제안. AI로 원본 자동 삭제하지 않음.'
 }
 
+Table photo_upload_batches {
+  id uuid [pk]
+  trip_id uuid [not null, ref: > trips.id]
+  created_by_member_id uuid [not null, ref: > trip_members.id]
+  file_count integer [not null, note: '1~50, 한 번 업로드 장수']
+  registered_count integer [not null, default: 0]
+  created_at timestamp [not null]
+  Note: '업로드 intent의 assets.upload_batch_id와 photos.batch_id가 같은 배치/사용자/여행인지 검사. 등록 수 증가·사진 생성 원자 처리, 재시도 중복 증가 금지. 여행 전체 사진 한도 아님. 배치 만료/미완료 정리 Q-7·11.'
+}
+
 Table photos {
   id uuid [pk]
+  batch_id uuid [not null, ref: > photo_upload_batches.id, note: '업로드 출처, 등록 시 동일 여행 검사. 여행 이동 후 원래 배치를 유지']
   trip_id uuid [not null, ref: > trips.id]
   uploader_member_id uuid [not null, ref: > trip_members.id]
   asset_id uuid [not null, unique, ref: > assets.id]
@@ -408,7 +429,7 @@ Table photo_topics {
 Table reviews {
   id uuid [pk]
   visit_id uuid [not null, unique, ref: > visits.id]
-  score integer [not null, note: '1~5 정수 제안 D-12, 확정 척도 Q-7']
+  score integer [not null, note: '1~5 정수 확정, 반 점 없음']
   body text [not null]
   version bigint [not null, default: 1]
   created_at timestamp [not null]
@@ -423,8 +444,8 @@ Table expenses {
   payer_member_id uuid [not null, ref: > trip_members.id]
   title varchar(200) [not null]
   memo text
-  amount_minor bigint [not null, note: '양수 최소 통화 단위 정수, 부동소수점 금지']
-  currency varchar(3) [not null]
+  amount_minor bigint [not null, note: '양수 원화 정수, 부동소수점 금지']
+  currency varchar(3) [not null, default: 'KRW', note: 'KRW만 허용']
   spent_at timestamp [not null]
   version bigint [not null, default: 1]
   created_at timestamp [not null]
@@ -439,32 +460,24 @@ Table expense_shares {
   member_id uuid [not null, ref: > trip_members.id]
   amount_minor bigint [not null]
   indexes { (expense_id, member_id) [pk] }
-  Note: '선택 분담자별 행. 최소 1명, 중복 금지, 합계=expenses.amount_minor. 균등 분담의 나머지 처리 D-7. 합계/동일 여행은 트랜잭션 검증 또는 물리 복합 FK로 보강. 실제 송금 기록은 없음. 수동 완료는 settlement_transfers에서 별도 관리.'
+  Note: '선택 분담자별 행. 최소 1명, 중복 금지, 합계=expenses.amount_minor. 균등 분담의 나머지 처리 D-7. 합계/동일 여행은 트랜잭션 검증 또는 물리 복합 FK로 보강. 원금 분담 합계를 보존한다. 정산 10원 올림과 차액은 Q-10. 완료 상태 없음.'
 }
 
 Table feeds {
   id uuid [pk]
-  trip_id uuid [not null, ref: > trips.id]
-  author_user_id uuid [not null, ref: > users.id]
+  trip_id uuid [not null, unique, ref: > trips.id]
+  published_by_member_id uuid [not null, ref: > trip_members.id]
   title varchar(200) [not null]
   body text [not null]
-  status varchar(16) [not null, default: 'DRAFT', note: 'DRAFT/PUBLISHED/UNPUBLISHED']
-  include_photos boolean [not null, default: false]
-  include_route boolean [not null, default: false]
-  include_reviews boolean [not null, default: false]
-  include_expenses boolean [not null, default: false]
   cover_photo_id uuid [ref: > photos.id]
   public_itinerary_json json
-  public_itinerary_revision_id uuid [ref: > itinerary_revisions.id]
-  public_expense_summary_json json [note: 'D-14 총액·통화·비용버전만. 지출/정산 상대 미공개']
-  scope_hash varchar(255) [not null, note: '게시 내용·사진 버전·허용 친구 집합 hash, D-18 동의 범위 비교']
+  public_itinerary_version bigint
+  public_expense_summary_json json
   version bigint [not null, default: 1]
-  created_at timestamp [not null]
-  published_at timestamp
+  published_at timestamp [not null]
   updated_at timestamp [not null]
   deleted_at timestamp
-  indexes { (trip_id, author_user_id) [unique] }
-  Note: '작성자만 게시/수정/철회. ACTIVE 멤버가 생성하며 작성자는 세션 사용자. 여행/작성자당 한 행 재사용 D-4. 외부 열람은 PUBLISHED+상호 친구+audience 모두 검사. 이탈 시 본인 게시만 철회. 피드 삭제가 원본 경비 삭제를 뜻하지 않음. 공개 스냅샷은 include 설정과 일치.'
+  Note: '명시적 게시 때만 생성, 여행 생성 때 자동 생성 금지. 여행당 공동 피드 하나·게시 후 기본 전체 공개. published_by는 감사용이며 독점 작성권 아님. 모든 ACTIVE 멤버 게시/삭제, 제목/본문 공동 편집은 제안. deleted_at tombstone이면 모든 노출/파일 접근 차단·다른 멤버 삭제 알림. 게시 알림 없음. 원본 여행/사진/경비 삭제 아님. 재게시/ID 재사용·공통 공개 내용·비공개 계정 결합 Q-3. 항목별 include 플래그·사진 동의 없음.'
 }
 
 Table feed_photos {
@@ -472,12 +485,11 @@ Table feed_photos {
   photo_id uuid [not null, ref: > photos.id]
   sequence integer [not null]
   caption text
-  enabled boolean [not null, default: false]
   indexes {
     (feed_id, photo_id) [pk]
     (feed_id, sequence) [unique]
   }
-  Note: '선택 후보는 동의 대기라도 보관. enabled이며 현재 범위에 동의한 사진만 외부 표시. 대기/거절은 enabled=false. enabled 단독 변경은 동의 hash 유지. 같은 여행/미삭제/원본 버전 검사. 표지도 같은 허용 사진만.'
+  Note: '공통 공개 정책에 포함된 공동 피드 사진. 같은 여행·미삭제 원본 검사. 사진 공개 동의 상태 없음. 사진 이동/삭제 시 참조·표지 표시와 파일 접근을 즉시 제외.'
 }
 
 Table feed_places {
@@ -488,12 +500,22 @@ Table feed_places {
   Note: '공개 장소 표현. 사진/경로/경비 등 내부 원본 전체를 피드에 자동 노출하지 않음.'
 }
 
-Table feed_audiences {
+Table feed_member_visibilities {
   feed_id uuid [not null, ref: > feeds.id]
+  member_id uuid [not null, ref: > trip_members.id]
+  version bigint [not null, default: 1]
+  updated_at timestamp [not null]
+  indexes { (feed_id, member_id) [pk] }
+  Note: '같은 여행 멤버 본인 경로 설정. hidden 뷰어 집합은 feed_hidden_viewers, version은 집합 전체 교체용. 새 멤버/설정 미존재는 빈 집합·version=1로 보충 생성 제안. 이탈자 경로는 멤버십으로 제외.'
+}
+
+Table feed_hidden_viewers {
+  feed_id uuid [not null, ref: > feeds.id]
+  member_id uuid [not null, ref: > trip_members.id]
   viewer_user_id uuid [not null, ref: > users.id]
   created_at timestamp [not null]
-  indexes { (feed_id, viewer_user_id) [pk] }
-  Note: '작성자가 선택한 현재 상호 친구만. 직접 링크·지도·파일·요약도 이 ACL 검사. 친구 해제 시 삭제, 재친구여도 자동 복구 금지 제안. 작성자 본인은 별도 허용.'
+  indexes { (feed_id, member_id, viewer_user_id) [pk] }
+  Note: '본인 프로필/피드/지도 경로에서만 특정 친구 숨김. 설정은 같은 feed/member의 visibility 행에 속함을 복합 FK 또는 트랜잭션으로 보장. 직접 공동 피드·타 멤버 경로는 차단하지 않음. 전체 교체와 visibility version 증가를 원자 처리. 자기 자신 제외 제안.'
 }
 
 Table feed_likes {
@@ -501,19 +523,15 @@ Table feed_likes {
   user_id uuid [not null, ref: > users.id]
   created_at timestamp [not null]
   indexes { (feed_id, user_id) [pk] }
-  Note: '좋아요 대상을 개인별 게시 피드로 잡은 D-12 제안. 좋아요는 방문·평점과 별개 신호.'
+  Note: '좋아요 대상을 공동 피드로 잡은 D-12 제안. 좋아요는 방문·평점과 별개 신호.'
 }
 
 Table chat_rooms {
   id uuid [pk]
-  type varchar(16) [not null, note: 'DIRECT/TRIP']
-  trip_id uuid [unique, ref: > trips.id]
-  direct_user_low_id uuid [ref: > users.id]
-  direct_user_high_id uuid [ref: > users.id]
+  trip_id uuid [not null, unique, ref: > trips.id]
   next_sequence bigint [not null, default: 1]
   created_at timestamp [not null]
-  indexes { (direct_user_low_id, direct_user_high_id) [unique] }
-  Note: 'TRIP이면 trip_id 필수 및 두 direct 필드 NULL. DIRECT면 trip_id NULL, 정렬한 서로 다른 두 사용자 ID 필수. DIRECT 참여자는 이 두 사용자와 일치. 방 생성 조건 D-11·Q-13.'
+  Note: '여행당 그룹 채팅방 하나. DIRECT 및 사용자 쌍 필드 없음. 참여 권한은 현재 여행 멤버십. API type은 TRIP 상수.'
 }
 
 Table chat_participants {
@@ -570,7 +588,7 @@ Table notifications {
     (recipient_user_id, event_id) [unique]
     (recipient_user_id, read_at, created_at)
   }
-  Note: '앱 내 목록·팝업 공통 원본. 권한 검사 후 본인에게만 반환. 이동 시 현재 권한 재검사. 푸시·실제 송금 확인 이벤트 없음. 수동 정산 완료/사진 동의/코스 승인 포함. event_receipts와 같은 읽음 상태로 동기화.'
+  Note: '앱 내 목록·팝업 공통 원본. 권한 검사 후 본인에게만 반환. 이동 시 현재 권한 재검사. 푸시·실제 송금 확인 이벤트 없음. 팔로우·투표·참여·코스 변경 포함, 정산 완료/사진 동의/코스 승인 이벤트 없음. 코스 변경 묶음 Q-16. event_receipts와 같은 읽음 상태로 동기화.'
 }
 
 Table idempotency_records {
@@ -597,14 +615,14 @@ Table idempotency_records {
 // 5. 경비·분담액·trip.expense_version은 함께 변경한다. 계산은 한 스냅샷에서 읽는다.
 // 6. 이탈 때 membership/room 참여 해제·owner 양도·삭제 job과 고정 대상 scope 생성을 원자적으로 기록한다.
 //    재가입하여 같은 membership ID를 사용하더라도 과거 정리 job은 신규 사진·메시지를 삭제하지 않는다.
-// 7. feed 사진/장소와 cover는 같은 여행 및 승인된 공개 표현이어야 한다.
+// 7. feed 사진/장소와 cover는 같은 여행 및 허용된 공개 표현이어야 한다.
 // 8. 실제 방문 집계·타임라인·정산·추천·트렌드는 원본에서 계산한다.
 //    실제 이동거리 수집·집계 기준은 Q-8이며 현재 계획 경로를 실제 거리로 저장하지 않는다.
 // 9. 지역 통계·날씨·시설 응답은 공급자 조회/캐시로 제안, 영속 테이블 확정은 Q-8·9·12.
 // 10. 본문/사진/이벤트 삭제·계정 탈퇴·공동자료 보존의 물리 삭제/익명화는 Q-11 합의 후 DDL에 반영한다.
 
 
-// v0.3 화면 기준으로 추가한 관계. JSON 스냅샷은 과거 표시 재현 목적이며 쓰기 FK를 대체하지 않는다.
+// v0.4 최신 요약 기준으로 유지한 관계. JSON 스냅샷은 과거 표시 재현 목적이며 쓰기 FK를 대체하지 않는다.
 Table user_settings {
   user_id uuid [pk, ref: > users.id]
   photo_classification_mode varchar(16) [not null, default: 'CONFIRM']
@@ -612,13 +630,12 @@ Table user_settings {
   extraction_mode varchar(16) [not null, default: 'CONFIRM']
   checklist_mode varchar(16) [not null, default: 'CONFIRM']
   weather_mode varchar(16) [not null, default: 'SUGGEST_ONLY']
-  friend_requests_enabled boolean [not null, default: true]
-  vote_course_settlement_enabled boolean [not null, default: true]
-  photo_consents_enabled boolean [not null, default: true]
-  friend_trips_enabled boolean [not null, default: true]
+  follow_requests_enabled boolean [not null, default: true]
+  vote_course_enabled boolean [not null, default: true]
+  trip_changes_enabled boolean [not null, default: true]
   version bigint [not null, default: 1]
   updated_at timestamp [not null]
-  Note: '초기값은 제안. AI 네 기능 AUTO/CONFIRM/OFF, 날씨 SUGGEST_ONLY/OFF. 원자 PATCH. OFF는 신규 작업 중단, 진행 작업 영향 Q-11. 모드로 확정/동의/접근 권한 우회 금지.'
+  Note: '초기값은 제안. AI 네 기능 AUTO/CONFIRM/OFF, 날씨 SUGGEST_ONLY/OFF. 원자 PATCH. OFF는 신규 작업 중단, 진행 작업 영향 Q-11. 모드로 멤버십/버전/자료 접근 검사 우회 금지.'
 }
 
 Table preference_rejections {
@@ -633,35 +650,7 @@ Table poll_participants {
   poll_id uuid [not null, ref: > polls.id]
   member_id uuid [not null, ref: > trip_members.id]
   indexes { (poll_id, member_id) [pk] }
-  Note: 'D-13 생성 시 참여 대상 스냅샷. 같은 여행 검사. 신규/이탈 멤버 포함과 전원 기준 Q-6. 고유 투표 인원은 poll_votes를 이 집합으로 필터·중복 제거해 계산.'
-}
-
-Table itinerary_revisions {
-  id uuid [pk]
-  itinerary_id uuid [not null, ref: > itineraries.id]
-  source_version bigint [not null]
-  content_json json [not null, note: 'CourseContent 전체 불변 스냅샷, items/legs와 장소 표현 포함']
-  source_job_id uuid [ref: > jobs.id]
-  restored_from_revision_id uuid [ref: > itinerary_revisions.id]
-  confirmed_by_member_id uuid [ref: > trip_members.id]
-  confirmed_at timestamp
-  created_at timestamp [not null]
-  Note: '승인 요청 revision은 confirmed_at NULL. 승인 후 확정 메타데이터만 기록하며 content 수정 금지. 직접 적용/승인/되돌리기마다 새 revision. 모든 item 참조와 source job의 같은 여행·기준 버전 검사.'
-}
-
-Table course_approvals {
-  id uuid [pk]
-  itinerary_id uuid [not null, ref: > itineraries.id]
-  target_revision_id uuid [not null, ref: > itinerary_revisions.id]
-  requested_by_member_id uuid [not null, ref: > trip_members.id]
-  base_version bigint [not null]
-  status varchar(16) [not null, default: 'PENDING', note: 'PENDING/APPROVED/REJECTED/CANCELLED/EXPIRED/STALE']
-  version bigint [not null, default: 1]
-  expires_at timestamp [not null]
-  decided_by_member_id uuid [ref: > trip_members.id]
-  decided_at timestamp
-  created_at timestamp [not null]
-  Note: '승인 시 현재 역할·대상 revision·만료·기준 version 확인 후 확정 포인터 교체까지 원자 처리. 편집/다른 적용은 이전 요청 STALE. 승인·거절·취소 재시도 멱등, 재요청은 새 행. 권한 D-13/Q-6.'
+  Note: 'D-13 생성 시 참여 대상 스냅샷. 같은 여행 검사. 신규/이탈 멤버의 참여 대상 포함 Q-6. 전원 참여만으로 조기 종료하지 않음. 고유 투표 인원은 poll_votes를 이 집합으로 필터·중복 제거해 계산.'
 }
 
 Table visit_candidates {
@@ -689,22 +678,24 @@ Table settlements {
   trip_id uuid [not null, ref: > trips.id]
   calculated_by_member_id uuid [not null, ref: > trip_members.id]
   expense_version bigint [not null]
-  currency varchar(3) [not null]
-  total_amount_minor bigint [not null]
+  currency varchar(3) [not null, default: 'KRW', note: 'KRW만 허용']
+  total_amount_minor bigint [not null, note: '원금 총액']
+  rounding_policy varchar(64) [not null, note: 'Q-10 합의한 규칙 식별자']
+  rounding_adjustment_minor bigint [not null, note: '원금 대비 총 차액, 귀속 규칙 Q-10']
   expense_snapshot_json json [not null, note: '비용 ID/버전·등록값·선택 분담자/분담액 포함, 과거 계산 재현용']
   version bigint [not null, default: 1]
   calculated_at timestamp [not null]
-  completed_at timestamp
-  completed_by_member_id uuid [ref: > trip_members.id]
   indexes { (trip_id, calculated_at) }
-  Note: '현재 계산은 trips.current_settlement_id로 참조하고 같은 여행인지 검사. 새 계산 시 포인터를 원자 교체. 비용 버전 불일치 또는 현재 계산이 아니면 stale/완료 변경 차단. POST 계산은 일관된 비용 스냅샷·동시 버전 검사. 새 계산은 완료 초기화 제안. 실제 송금 증빙 아님, 완료 권한/보관 Q-10.'
+  Note: '현재 계산은 trips.current_settlement_id, 같은 여행 검사. 원금 스냅샷·차액·계산 규칙 저장 및 포인터 교체 원자 처리. 비용 버전/현재 포인터 불일치면 stale. 완료 상태/이벤트 없음. Q-10 1인 부담액 올림 시점·차액 귀속 합의 전 계산 생성 차단 제안. 보관/삭제 영향 Q-10·11.'
 }
 
 Table settlement_members {
   settlement_id uuid [not null, ref: > settlements.id]
   member_id uuid [not null, ref: > trip_members.id]
   paid_minor bigint [not null]
-  owed_minor bigint [not null]
+  base_owed_minor bigint [not null, note: '원금 부담액 표현 제안, 소수 처리/올림 시점 Q-10']
+  owed_minor bigint [not null, note: '1인 올림 부담액, 10원 배수']
+  rounding_adjustment_minor bigint [not null]
   balance_minor bigint [not null]
   indexes { (settlement_id, member_id) [pk] }
 }
@@ -715,33 +706,7 @@ Table settlement_transfers {
   from_member_id uuid [not null, ref: > trip_members.id]
   to_member_id uuid [not null, ref: > trip_members.id]
   amount_minor bigint [not null]
-  completed boolean [not null, default: false]
-  marked_by_member_id uuid [ref: > trip_members.id]
-  marked_at timestamp
-  Note: '같은 여행·서로 다른 멤버·양수 검사. 수동 완료/미완료만. 전체 완료 후 항목 미완료로 바꾸면 settlements 완료 메타데이터도 제거. 실제 은행 연동 없음.'
-}
-
-Table photo_consents {
-  id uuid [pk]
-  feed_id uuid [not null, ref: > feeds.id]
-  owner_user_id uuid [not null, ref: > users.id]
-  scope_hash varchar(255) [not null]
-  audience_snapshot_json json [not null]
-  publication_preview_json json [not null]
-  status varchar(16) [not null, default: 'PENDING', note: 'PENDING/ACCEPTED/DECLINED/REVOKED/STALE/EXPIRED']
-  version bigint [not null, default: 1]
-  expires_at timestamp
-  decided_at timestamp
-  created_at timestamp [not null]
-  Note: '수신자=사진 소유 사용자. 응답 시 scope/hash·사진 버전·현재 게시 범위 검사. 동의 대상 내용 변경은 STALE·관련 사진/표지 제외(D-18). enabled 단독 변경은 hash 유지. 수락 후 작성자 enabled PATCH로 표시. 수락 자체는 게시 안 함. 철회/친구 해제/원본 삭제는 즉시 읽기 차단.'
-}
-
-Table photo_consent_items {
-  consent_id uuid [not null, ref: > photo_consents.id]
-  photo_id uuid [not null, ref: > photos.id]
-  photo_version bigint [not null]
-  indexes { (consent_id, photo_id) [pk] }
-  Note: '모든 사진은 같은 여행이며 owner_user_id의 자료. 응답/파일 접근 때도 확인.'
+  Note: '같은 여행·서로 다른 멤버·양수 검증. 송금 제안액이며 이 금액을 다시 10원 단위로 올리지 않음. 1인 부담액 올림 차액 귀속 Q-10 확정 뒤 계산. 완료/은행 상태 없음.'
 }
 
 Table feed_reviews {
@@ -752,7 +717,7 @@ Table feed_reviews {
   body text [not null]
   written_at timestamp [not null]
   indexes { (feed_id, review_id) [pk] }
-  Note: '피드 작성자 본인 평가만 게시 시 스냅샷. 원본 삭제 시 공개 표시도 제외. include_reviews=false면 반환 안 함.'
+  Note: '같은 여행의 공통 공개 정책에 따른 평가를 게시 시 스냅샷. 원본 삭제 시 공개 표시도 제외. 공통 공개 콘텐츠 정책 Q-3, 사용자별 include 설정 없음.'
 }
 
 Table event_receipts {
@@ -763,7 +728,7 @@ Table event_receipts {
   Note: '허용된 수신자만 생성, 알림과 시스템 카드 읽음의 단일 기준. notifications.read_at은 같은 트랜잭션으로 동기화하는 캐시. 일반 대화 읽음과 별개.'
 }
 
-// 추가 불변식: feed author는 해당 여행 사용자, audience는 현재 상호 친구, consent 사진은 같은 여행/소유자/버전.
-// 게시 철회·관계 해제·동의 철회·원본 삭제는 목록/파일/요약 접근에서 즉시 검사한다.
-// itinerary revision/approval·visit candidate·settlement 관련 멤버/자료 모두 같은 여행인지 보강한다.
-// 완료 항목 변경과 전체 완료·알림 이벤트는 같은 트랜잭션. stale 계산과 최신 비용 버전 잠금 검사.
+// 추가 불변식: feed visibility 멤버·공개 사진/평가/코스는 모두 같은 여행이어야 한다.
+// 공개 범위/팔로우 해제·멤버 숨김/이탈·원본 삭제는 목록/파일/요약 접근에서 즉시 검사한다.
+// 방문 후보·정산 관련 멤버/자료의 동일 여행을 보강한다. 정산 원금과 올림 차액은 구분한다.
+// 실시간 편집·코스 알림 묶음은 Q-15·16 합의 전 전송/집계용 테이블을 임의 확정하지 않는다.
