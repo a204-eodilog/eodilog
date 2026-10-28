@@ -1,0 +1,19 @@
+# 로컬 개발 DB. bootRun 시 spring-boot-docker-compose가 자동으로 띄우고 접속 정보를 연결한다
+# 비밀번호는 .env에 둔다(.env.example 참고, .env는 커밋하지 않는다)
+services:
+  postgres:
+    image: postgis/postgis:17-3.5
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-eodilog}
+      POSTGRES_USER: ${POSTGRES_USER:-eodilog}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?EodiLog/.env에 POSTGRES_PASSWORD를 설정하세요}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    labels:
+      # postgis 이미지를 PostgreSQL 연결로 인식시킨다
+      org.springframework.boot.service-connection: postgres
+
+volumes:
+  postgres-data:

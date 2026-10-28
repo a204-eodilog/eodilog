@@ -7,6 +7,8 @@
 - Java 25, Spring Boot 4.1.2, Gradle 9.8.2 (Wrapper 사용)
 - Spring Security, OAuth2 Client, Validation, Web MVC, Lombok
 - springdoc-openapi 3.2.0 (Swagger UI)
+- PostgreSQL 17 + PostGIS 3.5 ([ADR-0001](../docs/decisions/0001-database.md)), Spring Data JPA(Hibernate 7), Flyway
+- 로컬 DB는 Docker Compose(`compose.yaml`, `spring-boot-docker-compose`), 테스트 DB는 Testcontainers 2.x
 
 ## Spring Boot 4는 바뀌었다 — 기억에 의존하지 않는다
 
@@ -25,6 +27,18 @@ cd EodiLog
 ```
 
 작업을 완료로 보고하기 전에 `build`를 통과시킨다.
+
+- **Docker Desktop을 먼저 실행한다.** `build`의 스프링 테스트는 Testcontainers로 PostGIS 컨테이너를 띄우고, `bootRun`은 `compose.yaml`의 DB를 자동으로 띄워 연결한다.
+- `bootRun` 전에 `.env.example`을 `.env`로 복사하고 `POSTGRES_PASSWORD`를 채운다. `.env`는 커밋하지 않는다.
+- compose 없이 다른 DB에 붙일 때는 `SPRING_DATASOURCE_URL`·`SPRING_DATASOURCE_USERNAME`·`SPRING_DATASOURCE_PASSWORD` 환경 변수를 쓴다. `application*.yaml`에 접속 정보를 적지 않는다.
+
+## DB·마이그레이션
+
+- 스키마는 Flyway로만 바꾼다(`ddl-auto=validate`). 파일 위치는 `src/main/resources/db/migration`.
+- 파일명은 `V<yyyyMMddHHmm>__<동사>_<대상>.sql`(예: `V202610281400__create_trips.sql`). 참조되는 테이블이 더 이른 번호를 쓴다.
+- 병합된 마이그레이션 파일은 고치지 않는다. 병합 직전 `origin/dev`에 내 번호보다 늦은 마이그레이션이 이미 있으면 내 파일 번호를 늦춘다. `outOfOrder`는 켜지 않는다.
+- ERD 논리 타입은 `uuid`→`uuid`, `timestamp`→`timestamptz`(UTC), `json`→`jsonb`로 옮긴다. FK에 `ON DELETE CASCADE`를 일괄로 걸지 않는다.
+- 스프링 컨텍스트를 띄우는 테스트는 `@Import(TestcontainersConfiguration.class)`를 붙인다.
 
 ## 패키지
 
@@ -109,8 +123,9 @@ public record TripResponse(
 1. `.\gradlew.bat build` 통과
 2. `bootRun` 후 Swagger UI에서 새 API의 태그·요약·DTO 설명·자물쇠 표시가 의도대로 나오는지 확인한다. 실행할 수 없는 환경이면 `/v3/api-docs`를 검사하는 테스트로 대신하고, 그렇게 했다고 보고한다.
 
-## 진행 중인 기반 작업 (2026-10-27 기준)
+## 진행 중인 기반 작업 (2026-10-28 기준)
 
+- DB 연결(PostgreSQL + PostGIS): EODI-62. 공간 열 매핑(hibernate-spatial)은 실제 공간 열이 생길 때 추가한다.
 - 공통 응답·예외 처리: EODI-63
 - 환경별 설정 분리·Security 기본 설정: EODI-64. 운영 환경에서 Swagger를 끄는 설정(`springdoc.api-docs.enabled=false`, `springdoc.swagger-ui.enabled=false`)도 여기서 다룬다.
 
