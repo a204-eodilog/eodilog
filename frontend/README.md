@@ -28,3 +28,4 @@ npm start
 ## 문서
 
 - 폴더 구조와 코드 규칙: [CONVENTION.md](./CONVENTION.md)
+- 화면 목록·흐름·디자인 결정: [screen-list.md](../docs/flow/screen-list.md), [user-flow.md](../docs/flow/user-flow.md), [design-decisions.md](../docs/design/design-decisions.md)
