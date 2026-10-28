@@ -51,8 +51,8 @@ public ResponseEntity<DataResponse<TripResponse>> createTrip(
 
 | 질문 | B의 기대 |
 | --- | --- |
-| 비활성(`DEACTIVATED`) 사용자의 토큰 | 필터에서 401로 거부. 여행 쪽은 사용자 상태를 다시 검사하지 않는다 |
-| 프로필 미완성(`MyProfile.profileCompleted=false`) 사용자의 여행 생성 | 명세상 제한이 없어 B는 허용한다. 막아야 하면 A가 공통 방식(필터 또는 별도 검사기)을 제공한다 |
+| 비활성(`DEACTIVATED`) 사용자의 토큰 | **A 확정(10/28):** 필터에서 `401 UNAUTHENTICATED`로 거부. 여행 쪽은 사용자 상태를 다시 검사하지 않는다 |
+| 프로필 미완성(`MyProfile.profileCompleted=false`) 사용자의 여행 생성 | **A 확정(10/28): 허용하지 않는다.** 미완성 토큰은 `GET/PATCH /api/v1/me`만 쓸 수 있고 나머지 보호 API는 A의 인증 필터가 `403 PROFILE_INCOMPLETE`로 막는다. 닉네임 입력을 마치면 같은 토큰으로 접근할 수 있다. 여행 서비스는 다시 검사하지 않는다 |
 | `authorities` | 이번에는 역할 구분이 없으므로 빈 목록이어도 된다. 방장/멤버 권한은 Security 역할이 아니라 여행 서비스가 판단한다 |
 
 ### B 테스트에서 쓰는 방식
@@ -236,6 +236,7 @@ public enum AuthErrorCode implements ErrorCode { ... }                          
 | 5 | `PATCH /trips/{id}`(이름·기간) | 200, `version` 2 |
 | 6 | 계정 2 토큰으로 상세·수정 | 둘 다 `404 TRIP_NOT_FOUND` |
 | 7 | 토큰 없이·만료 토큰으로 여행 API | `401`, 공통 오류 형식 |
+| 8 | 닉네임 입력 전(프로필 미완성) 토큰으로 `POST /trips` | `403 PROFILE_INCOMPLETE`. 테스트 계정은 1~7단계 전에 닉네임 입력을 마친다 |
 
 결과는 양쪽 MR이나 Jira에 "실제 카카오 연동으로 확인함 / 테스트 대체로만 확인함"을 구분해 남긴다.
 
