@@ -4,7 +4,7 @@ status: draft
 jira: EODI-82, EODI-83
 parent: EODI-79
 created: 2026-10-22
-updated: 2026-10-27
+updated: 2026-10-28
 source:
   - "_bmad-output/planning-artifacts/prds/prd-EODI-2026-10-22/prd.md (v0.4)"
   - "docs/design/open-decisions-2026-10-27.md (미정 Q·제안 F 결정)"
@@ -534,7 +534,8 @@ flowchart TD
     APP(["앱 실행·복귀"]) --> UN{"행동이 필요한 미확인 알림?"}
     UN -- "있음" --> S48["S48 알림 팝업<br/>투표 시작·마감 전·팔로우 요청·AI 변경안"]
     UN -- "없음" --> HOME["S05 홈"]
-    S48 -- "바로 가기" --> AC{"지금도 권한?"}
+    S48 -- "알림 선택" --> AC{"지금도 권한?"}
+    S48 -- "알림 모두 보기" --> S49
     S49 --> AC
     SYS -- "이동" --> AC
     AC -- "예" --> TG["해당 화면 → 읽음"]
