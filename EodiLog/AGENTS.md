@@ -31,6 +31,10 @@ cd EodiLog
 - 루트 패키지: `com.eodilog`
 - 공통 설정: `global.config` (`SwaggerConfig`, `SecurityConfig`)
 
+## 백엔드 문서
+
+- 작업 계획과 담당 간 계약은 [docs/plan](docs/plan/)에 둔다. 구현 전에 해당 담당의 계획과 [A·B 계약](docs/plan/backend-a-b-contract.md)을 확인한다.
+
 ## API 문서화 (Swagger)
 
 - Swagger UI: `http://localhost:8080/swagger-ui.html`
