@@ -1,0 +1,39 @@
+package com.eodilog.chat.domain;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.IdClass;
+import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.UUID;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+// 참여·이탈은 여행 멤버십 변경과 같은 트랜잭션에서 맞춘다. 과거 대화 범위(visible_from_sequence)는 Q-13 이후 다룬다
+@Entity
+@Table(name = "chat_participants")
+@IdClass(ChatParticipantId.class)
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class ChatParticipant {
+
+	@Id
+	private UUID roomId;
+
+	@Id
+	private UUID userId;
+
+	private Instant joinedAt;
+
+	private Instant leftAt;
+
+	public static ChatParticipant join(UUID roomId, UUID userId, Instant now) {
+		ChatParticipant participant = new ChatParticipant();
+		participant.roomId = roomId;
+		participant.userId = userId;
+		participant.joinedAt = now;
+		return participant;
+	}
+
+}

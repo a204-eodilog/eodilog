@@ -1,0 +1,69 @@
+package com.eodilog.trip.domain;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.UUID;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import org.hibernate.annotations.UuidGenerator;
+
+// version은 여행 정보의 expectedVersion 비교용이다. JPA @Version을 쓰면 expense_version 변경에도 올라가 거짓 충돌이 나므로
+// 서비스가 행 잠금 후 직접 비교·증가한다
+@Entity
+@Table(name = "trips")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class Trip {
+
+	public static final String CURRENCY_KRW = "KRW";
+
+	@Id
+	@UuidGenerator(style = UuidGenerator.Style.VERSION_7)
+	private UUID id;
+
+	private UUID ownerUserId;
+
+	private String title;
+
+	private LocalDate startDate;
+
+	private LocalDate endDate;
+
+	@Enumerated(EnumType.STRING)
+	private TripStatus status;
+
+	private String currency;
+
+	private long version;
+
+	private long expenseVersion;
+
+	private Instant createdAt;
+
+	private Instant updatedAt;
+
+	private Instant deletedAt;
+
+	public static Trip create(UUID ownerUserId, String title, LocalDate startDate, LocalDate endDate,
+			TripStatus status, Instant now) {
+		Trip trip = new Trip();
+		trip.ownerUserId = ownerUserId;
+		trip.title = title;
+		trip.startDate = startDate;
+		trip.endDate = endDate;
+		trip.status = status;
+		trip.currency = CURRENCY_KRW;
+		trip.version = 1;
+		trip.expenseVersion = 0;
+		trip.createdAt = now;
+		trip.updatedAt = now;
+		return trip;
+	}
+
+}

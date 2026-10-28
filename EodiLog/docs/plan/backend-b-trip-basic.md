@@ -95,10 +95,10 @@ B-1·B-2는 A와 무관하게 바로 시작할 수 있다. B-4~B-6은 하나의 
 | `regions` | 공통 자료지만 이번엔 B가 관리. 코드 체계 Q-8 미정이므로 **운영 마이그레이션에 시드 자료를 넣지 않고** 테스트·로컬용 자료만 별도 경로에 둔다 |
 | `trips` | `current_settlement_id`는 컬럼만 만들고 FK는 `settlements` 생성 때 추가. `version` 기본 1, `expense_version` 기본 0, `currency` 기본 `'KRW'` + `CHECK` |
 | `trip_members` | `(trip_id,user_id)`·`(trip_id,join_order)` 고유, `(user_id,status)`·`(trip_id,status,join_order)` 인덱스 |
-| `trip_destinations` | PK `(trip_id,region_id)`. `source_candidate_id`는 컬럼만, FK는 투표 작업에서 추가 |
+| `trip_destinations` | PK `(trip_id,region_id)`. `source_candidate_id`는 컬럼만, FK는 투표 작업에서 추가. 입력한 여행지 순서를 응답에서 유지하려고 ERD에 없는 `display_order`를 추가했다(B-3) |
 | `chat_rooms` / `chat_participants` | `trip_id` 고유, PK `(room_id,user_id)` |
 | `itineraries` | `trip_id` 고유, `updated_by_member_id`는 방장 멤버십 |
-| `idempotency_records` | PK `(user_id,request_scope,idempotency_key)`, `expires_at` 인덱스 |
+| `idempotency_records` | PK `(user_id,request_scope,idempotency_key)`, `expires_at` 인덱스. B-3은 테이블만 만들고, 선점 삽입 방식에 맞춘 접근 코드는 B-4에서 만든다 |
 
 ERD 논리 타입은 `uuid`→`uuid`, `timestamp`→`timestamptz`, `json`→`jsonb`로 옮긴다. FK에 `ON DELETE CASCADE`를 일괄로 걸지 않는다(ERD 메모). "방장은 같은 여행 ACTIVE 멤버" 불변식은 이번엔 서비스에서 보장하고, 복합 FK(지연 제약)는 방장 양도 작업 때 검토한다.
 
