@@ -1,0 +1,53 @@
+package com.eodilog.trip.domain;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.UUID;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import org.hibernate.annotations.UuidGenerator;
+
+// 역할(OWNER/MEMBER)은 저장하지 않고 trips.owner_user_id와 비교해 계산한다
+@Entity
+@Table(name = "trip_members")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class TripMember {
+
+	@Id
+	@UuidGenerator(style = UuidGenerator.Style.VERSION_7)
+	private UUID id;
+
+	private UUID tripId;
+
+	private UUID userId;
+
+	@Enumerated(EnumType.STRING)
+	private TripMemberStatus status;
+
+	private long joinOrder;
+
+	private Instant joinedAt;
+
+	private Instant leftAt;
+
+	public static TripMember join(UUID tripId, UUID userId, long joinOrder, Instant now) {
+		TripMember member = new TripMember();
+		member.tripId = tripId;
+		member.userId = userId;
+		member.status = TripMemberStatus.ACTIVE;
+		member.joinOrder = joinOrder;
+		member.joinedAt = now;
+		return member;
+	}
+
+	public boolean isActive() {
+		return status == TripMemberStatus.ACTIVE;
+	}
+
+}
