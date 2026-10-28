@@ -1,0 +1,129 @@
+package com.eodilog.trip.service;
+
+import com.eodilog.chat.service.ChatRoomInitializer;
+import com.eodilog.global.common.error.BusinessException;
+import com.eodilog.global.common.error.CommonErrorCode;
+import com.eodilog.global.common.error.ErrorResponse.ErrorField;
+import com.eodilog.global.idempotency.IdempotencyService;
+import com.eodilog.itinerary.service.ItineraryInitializer;
+import com.eodilog.region.repository.RegionRepository;
+import com.eodilog.trip.domain.Trip;
+import com.eodilog.trip.domain.TripDestination;
+import com.eodilog.trip.domain.TripMember;
+import com.eodilog.trip.domain.TripStatus;
+import com.eodilog.trip.domain.TripStatusPolicy;
+import com.eodilog.trip.dto.CreateTripRequest;
+import com.eodilog.trip.dto.TripMemberResponse;
+import com.eodilog.trip.dto.TripResponse;
+import com.eodilog.trip.repository.TripDestinationRepository;
+import com.eodilog.trip.repository.TripMemberRepository;
+import com.eodilog.trip.repository.TripRepository;
+import com.eodilog.user.dto.UserCard;
+import com.eodilog.user.service.UserCardReader;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+public class TripService {
+
+	static final String CREATE_SCOPE = "POST /api/v1/trips";
+
+	private static final int TITLE_MAX_LENGTH = 200;
+	private static final long OWNER_JOIN_ORDER = 1;
+
+	private final IdempotencyService idempotencyService;
+	private final TripRepository tripRepository;
+	private final TripMemberRepository tripMemberRepository;
+	private final TripDestinationRepository tripDestinationRepository;
+	private final RegionRepository regionRepository;
+	private final ChatRoomInitializer chatRoomInitializer;
+	private final ItineraryInitializer itineraryInitializer;
+	private final UserCardReader userCardReader;
+	private final Clock clock;
+
+	// 여행·방장 멤버십·여행지·그룹 채팅방·빈 단일 코스를 한 트랜잭션으로 만든다. 공동 피드는 게시 때 만든다(D-4)
+	@Transactional
+	public TripResponse createTrip(UUID userId, String idempotencyKey, CreateTripRequest request) {
+		NewTrip newTrip = validate(request);
+		return idempotencyService.execute(userId, CREATE_SCOPE, idempotencyKey, request, TripResponse.class,
+				HttpStatus.CREATED, () -> create(userId, newTrip));
+	}
+
+	private TripResponse create(UUID userId, NewTrip newTrip) {
+		// DB(timestamptz)는 마이크로초까지 저장하므로 생성 응답과 이후 조회 값이 같도록 맞춘다
+		Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
+		TripStatus status = TripStatusPolicy.resolve(newTrip.startDate(), newTrip.endDate(),
+				TripStatusPolicy.today(clock));
+
+		Trip trip = tripRepository.save(
+				Trip.create(userId, newTrip.title(), newTrip.startDate(), newTrip.endDate(), status, now));
+		TripMember owner = tripMemberRepository.save(TripMember.join(trip.getId(), userId, OWNER_JOIN_ORDER, now));
+		for (int order = 0; order < newTrip.destinationRegionIds().size(); order++) {
+			tripDestinationRepository.save(
+					TripDestination.of(trip.getId(), newTrip.destinationRegionIds().get(order), order));
+		}
+		chatRoomInitializer.openTripRoom(trip.getId(), userId, now);
+		itineraryInitializer.createEmpty(trip.getId(), owner.getId(), now);
+		tripRepository.flush();
+
+		UserCard ownerCard = userCardReader.findCards(userId, List.of(userId)).get(userId);
+		if (ownerCard == null) {
+			throw new IllegalStateException("Trip owner has no user record: " + userId);
+		}
+		return TripResponse.of(trip, newTrip.destinationRegionIds(), owner.getId(),
+				List.of(TripMemberResponse.of(owner, ownerCard, userId)));
+	}
+
+	// 모든 입력 오류를 한 번에 알린다(P-1·P-5·P-6)
+	private NewTrip validate(CreateTripRequest request) {
+		List<ErrorField> errors = new ArrayList<>();
+
+		String title = request.title() == null ? "" : request.title().strip();
+		if (title.isEmpty()) {
+			errors.add(new ErrorField("title", "여행 이름을 입력해 주세요."));
+		} else if (title.length() > TITLE_MAX_LENGTH) {
+			errors.add(new ErrorField("title", "여행 이름은 " + TITLE_MAX_LENGTH + "자 이하로 입력해 주세요."));
+		}
+
+		LocalDate startDate = request.startDate();
+		LocalDate endDate = request.endDate();
+		if (startDate == null && endDate != null) {
+			errors.add(new ErrorField("startDate", "시작일과 종료일을 함께 입력해 주세요."));
+		} else if (startDate != null && endDate == null) {
+			errors.add(new ErrorField("endDate", "시작일과 종료일을 함께 입력해 주세요."));
+		} else if (startDate != null && startDate.isAfter(endDate)) {
+			errors.add(new ErrorField("endDate", "종료일은 시작일과 같거나 이후여야 합니다."));
+		}
+
+		List<UUID> regionIds = request.destinationRegionIds() == null ? List.of() : request.destinationRegionIds();
+		if (regionIds.stream().anyMatch(Objects::isNull)) {
+			errors.add(new ErrorField("destinationRegionIds", "여행지 ID가 비어 있습니다."));
+		} else if (new HashSet<>(regionIds).size() != regionIds.size()) {
+			errors.add(new ErrorField("destinationRegionIds", "같은 여행지를 두 번 넣을 수 없습니다."));
+		} else if (!regionIds.isEmpty() && regionRepository.findAllById(regionIds).size() != regionIds.size()) {
+			errors.add(new ErrorField("destinationRegionIds", "존재하지 않는 여행지가 있습니다."));
+		}
+
+		if (!errors.isEmpty()) {
+			throw new BusinessException(CommonErrorCode.VALIDATION_ERROR, CommonErrorCode.VALIDATION_ERROR.message(),
+					errors);
+		}
+		return new NewTrip(title, startDate, endDate, List.copyOf(regionIds));
+	}
+
+	private record NewTrip(String title, LocalDate startDate, LocalDate endDate, List<UUID> destinationRegionIds) {
+	}
+
+}
