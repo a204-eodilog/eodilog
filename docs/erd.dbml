@@ -1,7 +1,7 @@
 // 어디로그 논리 ERD v0.4 / 2026-10-27 / 설계 제안
 // 기준: PRD v0.6·2026-10-27 사용자 요청·open-decisions와 최신 user-flow. C-1~C-51 원문 미확보.
 // API 계약·D-N 제안·미정 Q-N은 docs/api-spec.md에 함께 관리한다.
-// DB 엔진은 미선정. uuid/json/timestamp는 논리 타입이며 엔진 확정 후 물리 타입을 매핑한다.
+// DB 엔진: PostgreSQL + PostGIS (docs/design/adr/0001-database.md). uuid/json/timestamp는 논리 타입이며 물리 설계 때 uuid/jsonb/timestamptz로 매핑한다.
 // 이 파일은 실행용 DDL이나 완료된 마이그레이션이 아니다.
 // DBML 문법: https://dbml.dbdiagram.io/docs/
 
@@ -16,7 +16,7 @@ Project eodilogue {
   단일 코스·구간별 수단·모든 멤버 AI 적용. 버전 검사, 실시간 전송/알림 묶음 Q-15·16.
   KRW 정수·1인 부담액 10원 올림. 적용 시점/차액 귀속 Q-10. 송금액 자체의 재올림 없음.
   이탈 멤버십·공동 피드·경비 보존, 경비는 등록자만 수정/삭제. 삭제/익명화 Q-11.
-  논리 타입이며 DB 엔진 미선정. cascade 삭제 일괄 적용 금지, timestamp UTC.
+  논리 타입이며 DB 엔진은 PostgreSQL(ADR-0001). cascade 삭제 일괄 적용 금지, timestamp UTC.
   '''
 }
 
