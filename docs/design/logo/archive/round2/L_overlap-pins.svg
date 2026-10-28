@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="512" height="512">
+<defs><clipPath id="cpL"><path d="M40 14C27.8 14 18 23.6 18 35.6C18 52 40 76 40 76S62 52 62 35.6C62 23.6 52.2 14 40 14Z"/></clipPath></defs>
+<path d="M40 14C27.8 14 18 23.6 18 35.6C18 52 40 76 40 76S62 52 62 35.6C62 23.6 52.2 14 40 14Z" fill="#2F6BFF"/>
+<path d="M60 24C47.8 24 38 33.6 38 45.6C38 62 60 86 60 86S82 62 82 45.6C82 33.6 72.2 24 60 24Z" fill="#3CCFB4"/>
+<path clip-path="url(#cpL)" d="M60 24C47.8 24 38 33.6 38 45.6C38 62 60 86 60 86S82 62 82 45.6C82 33.6 72.2 24 60 24Z" fill="#1A4FB8"/>
+<circle cx="35" cy="33" r="6" fill="#FFFFFF"/>
+<circle cx="65" cy="49" r="6" fill="#FFFFFF"/>
+</svg>

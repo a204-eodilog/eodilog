@@ -11,6 +11,7 @@ source:
 # 어디로그 로고 후보
 
 > 서비스명은 **임시로 "어디로그"**로 두고 만든 로고 후보다. 확정안이 아니며, 팀이 하나를 고르면 이 문서에 `확정(날짜)`을 적는다.
+> **최종 선택 대상은 2차 수정본 8종**이다. 1차·2차 후보는 피드백을 반영해 수정본으로 발전시켰고, 참고용으로 [archive/](archive)에 보관한다.
 > 원본 작업과 앱 아이콘·소형 크기 미리보기는 캔버스에서 볼 수 있다. 이 저장소에는 심볼만 SVG로 둔다.
 
 ## 진행 경과
@@ -45,6 +46,29 @@ source:
 | 볼터치 | `#FFB3C4` |
 
 검정에 가까운 색은 쓰지 않고, 같은 파랑 계열의 진하기 차이로 대비를 만든다.
+
+## 이전 시안 보관 (참고용)
+
+수정 전 색(진한 파랑 `#2F6BFF`·네이비 `#14213D` 등) 그대로 보관한다. 1차 후보는 배경이 포함된 앱 아이콘 형태, 2차 후보는 배경 없는 심볼이다.
+
+| 단계 | 파일 | 피드백 |
+| --- | --- | --- |
+| 1차 | [A_log-pin.svg](archive/round1/A_log-pin.svg) | 1순위 |
+| 1차 | [B_question-pin.svg](archive/round1/B_question-pin.svg) | 코랄 색감이 별로 |
+| 1차 | [C_footprint-path.svg](archive/round1/C_footprint-path.svg) | 2순위 |
+| 1차 | [D_jamo-blocks.svg](archive/round1/D_jamo-blocks.svg) | 참신하지만 어떤 서비스인지 안 보임 |
+| 1차 | [E_friend-pins.svg](archive/round1/E_friend-pins.svg) | 3순위 |
+| 1차 | [F_travel-stamp.svg](archive/round1/F_travel-stamp.svg) | 전체적으로 촌스러움 (텍스트에 IBM Plex Sans KR 사용, 미설치 시 대체 글꼴) |
+| 1차 | [G_photo-bubble-pin.svg](archive/round1/G_photo-bubble-pin.svg) | 카톡 느낌 |
+| 1차 | [H_outline-pin.svg](archive/round1/H_outline-pin.svg) | 기본 탑재 앱 같은 느낌 |
+| 2차 | [I_contour-pin.svg](archive/round2/I_contour-pin.svg) | 등고선이 읽히지 않음 |
+| 2차 | [J_mountain-pin.svg](archive/round2/J_mountain-pin.svg) | 새마을금고 느낌 |
+| 2차 | [K_block-pin.svg](archive/round2/K_block-pin.svg) | 돛단배처럼 보임 |
+| 2차 | [L_overlap-pins.svg](archive/round2/L_overlap-pins.svg) | 아이디어 좋음, 색감·구도 별로 → L-1~3 |
+| 2차 | [M_road-pin.svg](archive/round2/M_road-pin.svg) | 2차 중 최고, 핀과 ㄹ 조합 → M-1·M-2 |
+| 2차 | [N_folded-map-pin.svg](archive/round2/N_folded-map-pin.svg) | 접힌 지도로 안 읽힘 |
+| 2차 | [O_walking-pin.svg](archive/round2/O_walking-pin.svg) | 아이디어 좋음, 눈 2개·디테일 요청 → O-1·O-2 |
+| 2차 | [P_terrain-emblem.svg](archive/round2/P_terrain-emblem.svg) | 원형 엠블럼 이유 없음 |
 
 ## 남은 확인 사항
 

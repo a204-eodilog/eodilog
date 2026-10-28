@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="512" height="512">
+<defs><clipPath id="cpN"><path d="M50 8C33.4 8 20 21.2 20 37.6C20 60 50 92 50 92S80 60 80 37.6C80 21.2 66.6 8 50 8Z"/></clipPath></defs>
+<g clip-path="url(#cpN)">
+<path d="M10 0H40V100H10Z" fill="#2F6BFF"/>
+<path d="M40 0H60V100H40Z" fill="#1F4FCC"/>
+<path d="M60 0H90V100H60Z" fill="#6E9BFF"/>
+</g>
+<circle cx="50" cy="37" r="9" fill="#FFFFFF"/>
+</svg>
