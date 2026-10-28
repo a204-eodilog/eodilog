@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="1024" height="1024">
+<defs>
+<clipPath id="ck"><rect width="100" height="100" rx="23"/></clipPath>
+<radialGradient id="gEye" cx="0.4" cy="0.35" r="0.7"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#DCE6F5"/></radialGradient>
+<radialGradient id="gShade" cx="0.75" cy="0.85" r="0.7"><stop offset="0" stop-color="#3F7FE0" stop-opacity="0.35"/><stop offset="1" stop-color="#3F7FE0" stop-opacity="0"/></radialGradient>
+<filter id="fs" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.6"/></filter>
+<filter id="fb" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4"/></filter>
+<linearGradient id="gBg" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0" stop-color="#5B8FDE"/><stop offset="1" stop-color="#2C4F93"/></linearGradient><radialGradient id="gBody" cx="0.35" cy="0.28" r="0.85"><stop offset="0" stop-color="#EEF5FF"/><stop offset="0.5" stop-color="#B9D3F7"/><stop offset="1" stop-color="#7299DA"/></radialGradient><radialGradient id="gHat" cx="0.4" cy="0.3" r="0.9"><stop offset="0" stop-color="#F1DDB4"/><stop offset="1" stop-color="#C59A5C"/></radialGradient>
+</defs>
+<g clip-path="url(#ck)">
+<rect width="100" height="100" fill="url(#gBg)"/>
+<path d="M24 10A12 12 0 1 0 34 28A9.5 9.5 0 1 1 24 10Z" fill="#FFD9A8"/>
+<circle cx="58" cy="12" r="1.2" fill="#FFE9B0"/><circle cx="88" cy="40" r="1.4" fill="#FFE9B0"/><circle cx="10" cy="44" r="1.1" fill="#FFE9B0"/><path d="M8 50Q34 30 70 22" fill="none" stroke="#FFFFFF" stroke-width="1.6" stroke-linecap="round" stroke-dasharray="2.5 3.5" opacity="0.85"/>
+<g transform="translate(79 19) rotate(-14) scale(1.15)"><path d="M-7 -1H5Q8 0 5 1H-7Z M-1.5 -0.8H1.5L-2.5 -7H-4.5Z M-1.5 0.8H1.5L-2.5 7H-4.5Z M-7 0L-5 -0.5L-6.6 -3.6H-8Z" fill="#FFFFFF"/><circle cx="-2.5" cy="7" r="1.1" fill="#FFB38A"/></g>
+<path d="M58 34C40.34 34 26 48.34 26 66C26 90 48.4 117.8 58 140C67.6 117.8 90 90 90 66C90 48.34 75.66 34 58 34Z" fill="url(#gBody)"/>
+<path d="M58 34C40.34 34 26 48.34 26 66C26 90 48.4 117.8 58 140C67.6 117.8 90 90 90 66C90 48.34 75.66 34 58 34Z" fill="url(#gShade)"/>
+<ellipse cx="44.56" cy="49.36" rx="9.6" ry="5.12" transform="rotate(-35 44.56 49.36)" fill="#FFFFFF" opacity="0.75" filter="url(#fs)"/>
+<g transform="rotate(-9 58 36)">
+<ellipse cx="58" cy="37" rx="30" ry="6.5" fill="url(#gHat)"/>
+<path d="M43 37Q43.5 21 58 20Q72.5 21 73 37Z" fill="url(#gHat)"/>
+<path d="M43.3 31.5Q58 35 72.7 31.5L73 36.5Q58 40 43 36.5Z" fill="#FFB38A"/>
+<ellipse cx="51" cy="25" rx="5" ry="2.2" fill="#FFFFFF" opacity="0.5" filter="url(#fs)"/>
+</g>
+<ellipse cx="47" cy="63.6" rx="8" ry="9" fill="#2F5FA8" opacity="0.18"/>
+<ellipse cx="47" cy="62" rx="8" ry="9" fill="url(#gEye)"/>
+<circle cx="44.5" cy="58.5" r="4.8" fill="#22304D"/>
+<circle cx="46.18" cy="56.58" r="1.54" fill="#FFFFFF"/>
+<ellipse cx="68" cy="63.6" rx="8" ry="9" fill="#2F5FA8" opacity="0.18"/>
+<ellipse cx="68" cy="62" rx="8" ry="9" fill="url(#gEye)"/>
+<circle cx="65.5" cy="58.5" r="4.8" fill="#22304D"/>
+<circle cx="67.18" cy="56.58" r="1.54" fill="#FFFFFF"/>
+<ellipse cx="38" cy="74" rx="5" ry="3" fill="#FFB38A" opacity="0.65" filter="url(#fs)"/><ellipse cx="78" cy="74" rx="5" ry="3" fill="#FFB38A" opacity="0.65" filter="url(#fs)"/>
+</g>
+</svg>
