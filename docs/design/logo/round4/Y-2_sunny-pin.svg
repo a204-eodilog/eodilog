@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="1024" height="1024">
+<defs>
+<clipPath id="ck"><rect width="100" height="100" rx="23"/></clipPath>
+<radialGradient id="gEye" cx="0.4" cy="0.35" r="0.7"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#DCE6F5"/></radialGradient>
+<radialGradient id="gShade" cx="0.75" cy="0.85" r="0.7"><stop offset="0" stop-color="#3F7FE0" stop-opacity="0.35"/><stop offset="1" stop-color="#3F7FE0" stop-opacity="0"/></radialGradient>
+<filter id="fs" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.6"/></filter>
+<filter id="fb" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4"/></filter>
+<linearGradient id="gBg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFF1B8"/><stop offset="1" stop-color="#FFC9A3"/></linearGradient><radialGradient id="gBody" cx="0.35" cy="0.28" r="0.85"><stop offset="0" stop-color="#F4F9FF"/><stop offset="0.5" stop-color="#CFE3FF"/><stop offset="1" stop-color="#86B5F8"/></radialGradient><radialGradient id="gSun" cx="0.4" cy="0.4" r="0.7"><stop offset="0" stop-color="#FFE58A"/><stop offset="1" stop-color="#FFC24D"/></radialGradient>
+</defs>
+<g clip-path="url(#ck)">
+<rect width="100" height="100" fill="url(#gBg)"/>
+<circle cx="24" cy="24" r="22" fill="#FFE07A" opacity="0.55" filter="url(#fb)"/>
+<circle cx="24" cy="24" r="14" fill="url(#gSun)"/>
+<path d="M58 34C40.34 34 26 48.34 26 66C26 90 48.4 117.8 58 140C67.6 117.8 90 90 90 66C90 48.34 75.66 34 58 34Z" fill="url(#gBody)"/>
+<path d="M58 34C40.34 34 26 48.34 26 66C26 90 48.4 117.8 58 140C67.6 117.8 90 90 90 66C90 48.34 75.66 34 58 34Z" fill="url(#gShade)"/>
+<ellipse cx="44.56" cy="49.36" rx="9.6" ry="5.12" transform="rotate(-35 44.56 49.36)" fill="#FFFFFF" opacity="0.75" filter="url(#fs)"/>
+<ellipse cx="47" cy="63.6" rx="8" ry="9" fill="#2F5FA8" opacity="0.18"/>
+<ellipse cx="47" cy="62" rx="8" ry="9" fill="url(#gEye)"/>
+<circle cx="44" cy="61" r="4.8" fill="#22304D"/>
+<circle cx="45.68" cy="59.08" r="1.54" fill="#FFFFFF"/>
+<ellipse cx="68" cy="63.6" rx="8" ry="9" fill="#2F5FA8" opacity="0.18"/>
+<ellipse cx="68" cy="62" rx="8" ry="9" fill="url(#gEye)"/>
+<circle cx="65" cy="61" r="4.8" fill="#22304D"/>
+<circle cx="66.68" cy="59.08" r="1.54" fill="#FFFFFF"/>
+<ellipse cx="38" cy="74" rx="5" ry="3" fill="#FFB38A" opacity="0.65" filter="url(#fs)"/><ellipse cx="78" cy="74" rx="5" ry="3" fill="#FFB38A" opacity="0.65" filter="url(#fs)"/>
+</g>
+</svg>
