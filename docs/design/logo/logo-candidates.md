@@ -11,7 +11,7 @@ source:
 # 어디로그 로고 후보
 
 > 서비스명은 **임시로 "어디로그"**로 두고 만든 로고 후보다. 확정안이 아니며, 팀이 하나를 고르면 이 문서에 `확정(날짜)`을 적는다.
-> **최종 선택 대상은 2차 수정본 8종**이다. 1차·2차 후보는 피드백을 반영해 수정본으로 발전시켰고, 참고용으로 [archive/](archive)에 보관한다.
+> 모든 라운드 시안은 [archive/](archive)에 라운드별 폴더로 보관한다. `round1`·`round2`(1·2차 후보), `round3`(이미지 시안), `round4`(2차 수정본), `round5`(3D 핀 캐릭터, [README](archive/round5/README.md)).
 > 원본 작업과 앱 아이콘·소형 크기 미리보기는 캔버스에서 볼 수 있다. 이 저장소에는 심볼만 SVG로 둔다.
 
 ## 진행 경과
@@ -21,19 +21,20 @@ source:
 | 1차 후보 (A~H) | 핀·스탬프·말풍선 등 앱 아이콘형 8종 | A·C·E가 상위. 채도 높은 코랄, 말풍선(카톡 느낌), 레트로, 시스템 앱 같은 미니멀은 제외 |
 | 2차 후보 (I~P) | 심볼 중심, 핀·지형 모티프 8종 | M(핀 + ㄹ 길), L(겹친 친구 핀), O(걷는 핀)의 아이디어만 유지 |
 | 2차 수정본 | M·L·O 발전형 8종 | 진한 파랑과 네이비 조합이 눈이 아프다는 의견으로 **스카이 + 살구** 색으로 변경 |
+| 4차 (round5) | 말랑한 3D 핀 캐릭터 Y-1~Y-6, 낮·밤 수정본 Z-1·Z-2 | 생동감 요청 반영. Z-1(낮)·Z-2(밤)를 다크 모드 아이콘 한 쌍으로 쓰는 안 |
 
 ## 후보 (2차 수정본)
 
 | 코드 | 이름 | 파일 | 컨셉 |
 | --- | --- | --- | --- |
-| M-1 | ㄹ 길 직선형 | [M-1_road-straight.svg](candidates/M-1_road-straight.svg) | 연하늘 ㄹ 길의 출발점에 하늘색 핀 |
-| M-2 | ㄹ 길 곡선형 | [M-2_road-curve.svg](candidates/M-2_road-curve.svg) | 굽은 ㄹ 길 + 살구색 핀 |
-| L-1 | 나란히 두 핀 | [L-1_two-pins.svg](candidates/L-1_two-pins.svg) | 같은 크기 두 핀이 겹치고 교집합만 진하게 |
-| L-2 | 기울어 만난 두 핀 | [L-2_tilted-pins.svg](candidates/L-2_tilted-pins.svg) | 끝이 만나는 두 핀, V·하트 실루엣 |
-| L-3 | 세 핀 무리 | [L-3_three-pins.svg](candidates/L-3_three-pins.svg) | 큰 핀 양옆에 작은 핀, 친구 무리 |
-| O-1 | 배낭 멘 걷는 핀 | [O-1_backpack-walker.svg](candidates/O-1_backpack-walker.svg) | 두 눈·볼터치·살구색 배낭을 단 캐릭터 |
-| O-2 | 신나서 뛰는 핀 | [O-2_running-pin.svg](candidates/O-2_running-pin.svg) | 기울어진 몸, 웃는 눈, 속도선 |
-| O+M | ㄹ 길 위의 핀 | [OM_pin-on-road.svg](candidates/OM_pin-on-road.svg) | O-1 캐릭터가 ㄹ 길 출발점에 선 조합 |
+| M-1 | ㄹ 길 직선형 | [M-1_road-straight.svg](archive/round4/M-1_road-straight.svg) | 연하늘 ㄹ 길의 출발점에 하늘색 핀 |
+| M-2 | ㄹ 길 곡선형 | [M-2_road-curve.svg](archive/round4/M-2_road-curve.svg) | 굽은 ㄹ 길 + 살구색 핀 |
+| L-1 | 나란히 두 핀 | [L-1_two-pins.svg](archive/round4/L-1_two-pins.svg) | 같은 크기 두 핀이 겹치고 교집합만 진하게 |
+| L-2 | 기울어 만난 두 핀 | [L-2_tilted-pins.svg](archive/round4/L-2_tilted-pins.svg) | 끝이 만나는 두 핀, V·하트 실루엣 |
+| L-3 | 세 핀 무리 | [L-3_three-pins.svg](archive/round4/L-3_three-pins.svg) | 큰 핀 양옆에 작은 핀, 친구 무리 |
+| O-1 | 배낭 멘 걷는 핀 | [O-1_backpack-walker.svg](archive/round4/O-1_backpack-walker.svg) | 두 눈·볼터치·살구색 배낭을 단 캐릭터 |
+| O-2 | 신나서 뛰는 핀 | [O-2_running-pin.svg](archive/round4/O-2_running-pin.svg) | 기울어진 몸, 웃는 눈, 속도선 |
+| O+M | ㄹ 길 위의 핀 | [OM_pin-on-road.svg](archive/round4/OM_pin-on-road.svg) | O-1 캐릭터가 ㄹ 길 출발점에 선 조합 |
 
 ## 색상 (스카이 + 살구)
 
