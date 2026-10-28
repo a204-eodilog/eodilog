@@ -67,7 +67,7 @@ springdoc은 컨트롤러를 읽어 경로·파라미터·DTO 구조를 자동�
 4. **인증 표시**: 전역 Bearer 인증이 기본으로 걸려 있다. 명세에서 **공개**인 API에만 `@SecurityRequirements`를 붙여 Swagger의 인증 표시를 해제한다.
    - 이것은 문서 표시만 바꾼다. 실제로 토큰 없이 접근을 허용하려면 `SecurityConfig`도 수정해야 한다.
 5. **응답 코드**: 성공 코드와 명세 표에 적힌 업무 실패(예: `409 VERSION_CONFLICT`, `410 INVITATION_EXPIRED`)를 `@ApiResponse`로 적는다.
-   - 모든 API에 공통인 실패(400·401·403·404·500)는 개별 API에 반복해 적지 않는다. 공통 응답·예외 처리(EODI-63)가 정해지면 공통 방식으로 문서화한다.
+   - 모든 API에 공통인 실패(400·401·403·404·500)는 개별 API에 반복해 적지 않는다. `SwaggerConfig`의 `commonErrorResponsesCustomizer`가 모든 API에 `ErrorResponse` 형식으로 자동 추가한다(공개 API는 401·403 제외). 같은 상태 코드를 업무 오류로 따로 적으면 그 설명이 유지된다.
 6. **경로와 이름**: 경로는 `/api/v1`으로 시작하고, 명세 표의 경로·필드 이름을 그대로 쓴다. 명세와 다르게 구현해야 하면 임의로 바꾸지 말고 사용자에게 확인한다.
 7. **Swagger 공개 경로 유지**: `SecurityConfig`의 `SWAGGER_PATHS`를 지우거나 좁히지 않는다.
 
@@ -82,7 +82,7 @@ public class TripController {
 	@Operation(summary = "여행 상세 조회", description = "ACTIVE 멤버만 조회할 수 있다")
 	@ApiResponse(responseCode = "200", description = "조회 성공")
 	@GetMapping("/{tripId}")
-	public ResponseEntity<TripResponse> getTrip(
+	public ResponseEntity<DataResponse<TripResponse>> getTrip(
 			@Parameter(description = "여행 ID(UUID)") @PathVariable String tripId) {
 		...
 	}
@@ -99,7 +99,7 @@ public class InvitationController {
 	@ApiResponse(responseCode = "200", description = "조회 성공")
 	@ApiResponse(responseCode = "410", description = "INVITATION_EXPIRED: 만료된 초대")
 	@GetMapping("/{token}")
-	public ResponseEntity<InvitationPreviewResponse> getInvitation(@PathVariable String token) {
+	public ResponseEntity<DataResponse<InvitationPreviewResponse>> getInvitation(@PathVariable String token) {
 		...
 	}
 
@@ -116,17 +116,34 @@ public record TripResponse(
 }
 ```
 
-공통 응답 형식(`{ "data": ... }`)이 정해지기 전까지는 위처럼 DTO를 바로 반환한다. 정해지면 이 문서를 함께 갱신한다.
+성공 응답은 아래 "응답·예외" 규칙대로 `DataResponse`·`PageResponse`로 감싼다.
 
 ### 완료 전 확인
 
 1. `.\gradlew.bat build` 통과
 2. `bootRun` 후 Swagger UI에서 새 API의 태그·요약·DTO 설명·자물쇠 표시가 의도대로 나오는지 확인한다. 실행할 수 없는 환경이면 `/v3/api-docs`를 검사하는 테스트로 대신하고, 그렇게 했다고 보고한다.
 
+## 응답·예외
+
+API 명세 §2의 공통 계약을 `global.common`이 구현한다. 같은 역할의 클래스를 새로 만들지 않는다.
+
+| 상황 | 쓰는 것 |
+| --- | --- |
+| 단건 성공 `{ "data": ... }` | `DataResponse.of(dto)` |
+| 목록 성공 `{ "data": [...], "page": {...} }` | `PageResponse.of(items, nextCursor, hasNext)` |
+| 업무 실패 | `throw new BusinessException(XxxErrorCode.CODE)`. 문구·필드를 바꿀 때만 다른 생성자를 쓴다 |
+| 컨트롤러 밖(Security 필터·진입점·접근 거부 처리기) 실패 | `ErrorResponseWriter.write(response, CommonErrorCode.UNAUTHENTICATED)` |
+
+- 실패 응답은 `{"error":{"code","message","fields":[],"traceId"}}`이다. `GlobalExceptionHandler`가 Bean Validation·요청 파라미터 검증·JSON 형식 오류·알 수 없는 필드·404/405/415·권한 거부를 모두 이 형식으로 바꾼다. 컨트롤러에서 `try/catch`로 응답을 직접 만들지 않는다.
+- **오류 코드는 도메인별 enum**으로 `ErrorCode`를 구현해 만든다(예: `trip.TripErrorCode`, `auth.AuthErrorCode`). `code()`는 명세의 오류 이름(`TRIP_NOT_FOUND`, `VERSION_CONFLICT`)을 그대로, `message()`는 사용자에게 보여도 되는 문구를 쓴다. 공통 실패는 `CommonErrorCode`에만 둔다.
+- 요청 DTO에 없는 필드가 오면 400이다(`spring.jackson.deserialization.fail-on-unknown-properties=true`). 명세 §2 "표에 명시된 필드만 허용" 규칙이다.
+- 예상하지 못한 예외는 500 `INTERNAL_ERROR`로 응답하고 내부 문구를 싣지 않는다. 로그에 요청 본문·`Authorization` 헤더·토큰·인가 코드를 남기지 않는다.
+- `TraceIdFilter`가 요청마다 `traceId`를 만들어 로그 줄(`[traceId]`)·`X-Trace-Id` 응답 헤더·오류 응답에 같은 값을 쓴다. 문의가 오면 이 값으로 로그를 찾는다.
+
 ## 진행 중인 기반 작업 (2026-10-28 기준)
 
-- DB 연결(PostgreSQL + PostGIS): EODI-62. 공간 열 매핑(hibernate-spatial)은 실제 공간 열이 생길 때 추가한다.
-- 공통 응답·예외 처리: EODI-63
+- DB 연결(PostgreSQL + PostGIS): EODI-62 완료. 공간 열 매핑(hibernate-spatial)은 실제 공간 열이 생길 때 추가한다.
+- 공통 응답·예외 처리: EODI-63. Security 단계의 401/403 JSON 응답 연결은 -64에서 `ErrorResponseWriter`로 한다.
 - 환경별 설정 분리·Security 기본 설정: EODI-64. 운영 환경에서 Swagger를 끄는 설정(`springdoc.api-docs.enabled=false`, `springdoc.swagger-ui.enabled=false`)도 여기서 다룬다.
 
 ## Git

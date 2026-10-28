@@ -78,7 +78,7 @@ B-1·B-2는 A와 무관하게 바로 시작할 수 있다. B-4~B-6은 하나의 
 
 여행 API에 필요한 만큼만 만든다. 클래스 이름은 A와 공유해 한 벌만 둔다.
 
-- `ApiResponse<T>(T data)`, `PageResponse<T>(List<T> data, PageInfo page)`, `PageInfo(String nextCursor, boolean hasNext)`
+- `DataResponse<T>(T data)`, `PageResponse<T>(List<T> data, PageInfo page)`, `PageInfo(String nextCursor, boolean hasNext)`. Swagger `@ApiResponse`와 이름이 겹치지 않도록 `ApiResponse` 대신 `DataResponse`로 했다.
 - `ErrorResponse`: `{"error":{"code","message","fields":[],"traceId"}}`. `traceId`는 요청마다 생성해 MDC·응답 헤더에 넣는다.
 - `ErrorCode` 인터페이스(상태 코드·코드 문자열·기본 문구)와 `BusinessException`. 오류 코드는 도메인별 enum으로 나눠 A와 같은 파일을 동시에 고치지 않는다: `CommonErrorCode`(`VALIDATION_ERROR`, `UNAUTHENTICATED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `INTERNAL_ERROR`), `TripErrorCode`(`TRIP_NOT_FOUND`, `VERSION_CONFLICT`), 멱등 코드(P-4), A의 `AuthErrorCode`.
 - Security 필터 단계에서도 같은 JSON을 쓰도록 `ErrorResponseWriter`를 두고, A가 -64의 진입점·접근 거부 처리기에서 쓴다.

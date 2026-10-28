@@ -38,7 +38,7 @@ public record AuthUser(UUID userId) {
 
 ```java
 @PostMapping
-public ResponseEntity<ApiResponse<TripResponse>> createTrip(
+public ResponseEntity<DataResponse<TripResponse>> createTrip(
 		@AuthenticationPrincipal AuthUser authUser, ...) {
 	UUID userId = authUser.userId();
 	...
@@ -156,13 +156,16 @@ B는 `src/test`에 `FakeUserCardReader`(메모리 맵)를 두고 테스트 설�
 
 ## 5. 공통 응답·예외 -63 (B 작성, A 사용)
 
-B가 여행 API에 먼저 필요해서 최소본을 만든다. A는 새로 만들지 말고 아래를 쓴다. 이름·형태에 의견이 있으면 B-2 MR 리뷰에서 바꾼다.
+B가 여행 API에 먼저 필요해서 만들었다(B-2). A는 새로 만들지 말고 아래를 쓴다. 이름·형태에 의견이 있으면 B-2 MR 리뷰에서 바꾼다. 사용 규칙은 [AGENTS.md "응답·예외"](../../AGENTS.md)에 있다.
 
 ```
-global/common/response   ApiResponse<T>, PageResponse<T>, PageInfo
+global/common/response   DataResponse<T>, PageResponse<T>, PageInfo
 global/common/error      ErrorCode(인터페이스), CommonErrorCode, BusinessException,
                          ErrorResponse, GlobalExceptionHandler, ErrorResponseWriter
+global/common/trace      TraceIdFilter
 ```
+
+성공 응답 타입 이름은 Swagger `@ApiResponse` 어노테이션과 겹치지 않도록 `ApiResponse`가 아니라 `DataResponse`로 했다.
 
 - **오류 코드는 도메인별 enum으로 나눈다.** 한 enum 파일을 둘이 동시에 고치면 충돌이 잦다.
 
@@ -181,7 +184,8 @@ public enum AuthErrorCode implements ErrorCode { ... }                          
 - `throw new BusinessException(AuthErrorCode.XXX)`를 던지면 `GlobalExceptionHandler`가 공통 형식으로 바꾼다.
 - `ErrorResponseWriter`는 Security 필터 단계(컨트롤러 밖)에서 같은 JSON을 쓰기 위한 도우미다. A의 진입점·접근 거부 처리기와 토큰 필터가 쓴다.
 - `traceId`는 요청마다 만들어 MDC와 `X-Trace-Id` 응답 헤더에 넣는다. A의 로그에도 같은 값이 찍힌다.
-- 성공 응답은 `ApiResponse.of(data)`로 감싼다(`{ "data": ... }`). `Session`·`MyProfile`도 같은 규칙.
+- 성공 응답은 `DataResponse.of(data)`로 감싼다(`{ "data": ... }`). `Session`·`MyProfile`도 같은 규칙.
+- A가 -64에서 할 일: `AuthenticationEntryPoint`는 `errorResponseWriter.write(response, CommonErrorCode.UNAUTHENTICATED)`, `AccessDeniedHandler`는 `CommonErrorCode.FORBIDDEN`으로 연결한다. 토큰 필터에서 만료 등을 따로 알리려면 `AuthErrorCode`를 만들어 같은 메서드에 넘긴다.
 - 요청 DTO의 알 수 없는 필드는 400으로 거부한다(명세 §2 "표에 명시된 필드만 허용"). 전역 설정으로 넣으므로 A의 요청 DTO에도 적용된다. Boot 4는 Jackson 3(`tools.jackson`)이다.
 - **로그 금지:** 예외 처리기는 요청 본문·`Authorization` 헤더·인가 코드·토큰을 로그에 남기지 않는다. A가 확인해 주길 바라는 부분이다.
 
