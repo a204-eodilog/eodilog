@@ -9,7 +9,7 @@
 
 | ID | 제안 | 관련 미정 |
 | --- | --- | --- |
-| D-1 | `/api/v1`, JSON REST, Bearer 인증, UUID 문자열 ID, UTC 날짜시각. DB는 PostgreSQL + PostGIS, 필요하면 Redis([ADR-0001](design/adr/0001-database.md)) | Q-12 |
+| D-1 | `/api/v1`, JSON REST, Bearer 인증, UUID 문자열 ID, UTC 날짜시각. DB는 PostgreSQL + PostGIS, 필요하면 Redis([ADR-0001](decisions/0001-database.md)) | Q-12 |
 | D-2 | 계정 생성·소셜 연결은 provider 사용자 ID 기준. 이메일만 같다고 자동 병합하지 않음. OAuth 교환 방식은 별도 확정 | Q-1 |
 | D-3 | 여행이 그룹의 경계다. 별도 재사용 그룹 테이블 없이 `trips`·`trip_members` 사용 | 여행별 그룹 확정 |
 | D-4 | 공동 피드는 멤버 게시 시 여행당 하나 생성. 모든 멤버 게시/삭제 확정, 공동 제목/본문 편집은 ACTIVE 멤버 제안. 본인 경로의 특정 친구 숨김은 viewer ID별로 저장 | Q-3 |

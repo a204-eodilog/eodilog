@@ -17,11 +17,11 @@ parent: EODI-48
 | PostgreSQL | 모든 서비스 데이터, `jobs` 작업 큐, 멱등 기록 | 처음부터 |
 | PostGIS 확장 | 지도 범위 마커, 주변 장소 거리 검색 | 처음부터(확장 설치) |
 | Redis | 실시간 공동 편집의 접속 표시·여러 서버 간 메시지 전달 | Q-15 실시간 방식 확정 후, 필요할 때 |
-| pgvector 확장 | 임베딩 기반 추천 | 추천 품질 비교를 시작할 때([AI plan](../../../ai/docs/plan.md) §1.1) |
+| pgvector 확장 | 임베딩 기반 추천 | 추천 품질 비교를 시작할 때([AI plan](../../ai/docs/plan.md) §1.1) |
 
 ## 배경
 
-- [ERD](../../erd.dbml)와 [API 명세](../../api-spec.md) D-1이 "DB 엔진 미선정"으로 남아 있었다. 백엔드(`EodiLog`)에도 아직 DB 의존성이 없다.
+- [ERD](../erd.dbml)와 [API 명세](../api-spec.md) D-1이 "DB 엔진 미선정"으로 남아 있었다. 백엔드(`EodiLog`)에도 아직 DB 의존성이 없다.
 - 후보: PostgreSQL, MySQL. 문서형 DB(MongoDB)와 Redis 단독 저장도 검토했다.
 
 ## 이유
