@@ -191,7 +191,7 @@ public enum AuthErrorCode implements ErrorCode { ... }                          
 | --- | --- | --- |
 | `build.gradle` DB·Flyway·Testcontainers 의존성 | B(-62) | — |
 | `build.gradle` JWT·OAuth 관련 의존성 | A | — |
-| `application*.yaml` 프로필 구조(local/test/prod) | A(-64) | B는 -62에서 `application-local.yaml`에 DB 설정만 먼저 넣는다. -64가 나중이면 그 구조로 옮긴다 |
+| `application*.yaml` 프로필 구조(local/test/prod) | A(-64) | -62는 프로필 파일을 만들지 않았다. 로컬 DB는 Docker Compose 지원, 그 외 환경은 `SPRING_DATASOURCE_*` 환경 변수로 연결한다. 운영 프로필에서 compose 지원을 끌 필요는 없다(developmentOnly라 bootJar에 포함되지 않음) |
 | `application*.yaml`의 `spring.datasource`·`jpa`·`flyway` | B | — |
 | `application*.yaml`의 OAuth·토큰 설정 | A | 비밀값은 환경 변수, 커밋 금지 |
 | `SecurityConfig` | A | B는 요청만 한다 |

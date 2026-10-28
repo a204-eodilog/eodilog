@@ -68,7 +68,7 @@ B-1·B-2는 A와 무관하게 바로 시작할 수 있다. B-4~B-6은 하나의 
 ## 4. B-1 DB 연결 (EODI-62)
 
 - 의존성: `spring-boot-starter-data-jpa`, PostgreSQL 드라이버, Flyway(+`flyway-database-postgresql`), 테스트용 Testcontainers PostgreSQL. **Boot 4 스타터·모듈 이름은 BOM과 Gradle 캐시에서 확인한다**(Boot 4는 Flyway·테스트 지원 모듈이 분리됐다). `build.gradle`은 공통 파일이므로 변경 전에 A에게 알린다.
-- 로컬 DB: 저장소 루트 또는 `EodiLog/`에 `compose.yaml`로 `postgis/postgis` 이미지를 **버전 고정**해 둔다. 접속 정보는 `application-local.yaml`과 환경 변수로 받고 비밀번호를 커밋하지 않는다. 프로필 구조는 -64와 맞춘다.
+- 로컬 DB: `EodiLog/compose.yaml`에 `postgis/postgis:17-3.5`를 고정했다. `spring-boot-docker-compose`(developmentOnly)가 `bootRun` 때 컨테이너를 띄우고 접속 정보를 연결하므로 `application*.yaml`에 접속 정보를 두지 않는다. 비밀번호는 커밋하지 않는 `.env`에 둔다(`.env.example` 제공). 프로필 구조는 -64에서 정한다.
 - 첫 마이그레이션: `CREATE EXTENSION IF NOT EXISTS postgis;`
 - JPA: `ddl-auto=validate`(스키마는 Flyway만 변경), `open-in-view=false`, 시각은 UTC(`hibernate.jdbc.time_zone=UTC`).
 - 테스트: Testcontainers 공용 설정 클래스 하나(`@ServiceConnection`)를 두고 통합 테스트가 같이 쓴다. **PC에 Docker가 없으면** 로컬 PostgreSQL 프로필로 대체하고 그 사실을 MR에 적는다.
