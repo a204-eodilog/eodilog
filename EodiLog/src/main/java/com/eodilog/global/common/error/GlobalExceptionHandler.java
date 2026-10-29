@@ -5,6 +5,7 @@ import com.eodilog.global.common.trace.TraceIdFilter;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.TypeMismatchException;
 import org.springframework.context.MessageSourceResolvable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
@@ -89,6 +90,17 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 				fields.add(new ErrorField(parameterName, error.getDefaultMessage()));
 			}
 		}
+		return handleExceptionInternal(ex, validationError(CommonErrorCode.VALIDATION_ERROR.message(), fields),
+				headers, status, request);
+	}
+
+	// 경로·쿼리 값의 형식 오류(예: UUID가 아닌 tripId, 없는 status 값)를 필드 단위로 알린다
+	@Override
+	protected ResponseEntity<Object> handleTypeMismatch(TypeMismatchException ex, HttpHeaders headers,
+			HttpStatusCode status, WebRequest request) {
+		List<ErrorField> fields = ex.getPropertyName() == null
+				? List.of()
+				: List.of(new ErrorField(ex.getPropertyName(), INVALID_FORMAT_MESSAGE));
 		return handleExceptionInternal(ex, validationError(CommonErrorCode.VALIDATION_ERROR.message(), fields),
 				headers, status, request);
 	}

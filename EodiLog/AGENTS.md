@@ -141,6 +141,7 @@ API 명세 §2의 공통 계약을 `global.common`이 구현한다. 같은 역�
 - 요청 DTO에 없는 필드가 오면 400이다(`spring.jackson.deserialization.fail-on-unknown-properties=true`). 명세 §2 "표에 명시된 필드만 허용" 규칙이다.
 - 예상하지 못한 예외는 500 `INTERNAL_ERROR`로 응답하고 내부 문구를 싣지 않는다. 로그에 요청 본문·`Authorization` 헤더·토큰·인가 코드를 남기지 않는다.
 - `TraceIdFilter`가 요청마다 `traceId`를 만들어 로그 줄(`[traceId]`)·`X-Trace-Id` 응답 헤더·오류 응답에 같은 값을 쓴다. 문의가 오면 이 값으로 로그를 찾는다.
+- 여행 내부 자료(투표·코스·채팅·경비 등) API는 먼저 `TripAccessChecker.requireActiveMember(tripId, userId)`로 ACTIVE 멤버인지 확인한다. 없는·삭제된·비참여·이탈 여행은 모두 `404 TRIP_NOT_FOUND`로 같게 응답한다. 여행 응답은 `TripResponseAssembler`로 만든다.
 
 ## 진행 중인 기반 작업 (2026-10-28 기준)
 

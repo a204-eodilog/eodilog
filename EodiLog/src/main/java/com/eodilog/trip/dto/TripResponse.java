@@ -48,10 +48,11 @@ public record TripResponse(
 		long expenseVersion
 ) {
 
-	public static TripResponse of(Trip trip, List<UUID> destinationRegionIds, UUID ownerMemberId,
+	// status는 저장 값이 아니라 조회 시점에 계산한 값을 받는다
+	public static TripResponse of(Trip trip, TripStatus status, List<UUID> destinationRegionIds, UUID ownerMemberId,
 			List<TripMemberResponse> members) {
 		return new TripResponse(trip.getId(), trip.getTitle(), trip.getStartDate(), trip.getEndDate(),
-				destinationRegionIds, trip.getStatus(), trip.getCurrency(), ownerMemberId, members,
+				destinationRegionIds, status, trip.getCurrency(), ownerMemberId, members,
 				trip.getVersion(), trip.getExpenseVersion());
 	}
 

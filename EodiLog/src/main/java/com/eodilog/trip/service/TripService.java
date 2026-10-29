@@ -13,13 +13,10 @@ import com.eodilog.trip.domain.TripMember;
 import com.eodilog.trip.domain.TripStatus;
 import com.eodilog.trip.domain.TripStatusPolicy;
 import com.eodilog.trip.dto.CreateTripRequest;
-import com.eodilog.trip.dto.TripMemberResponse;
 import com.eodilog.trip.dto.TripResponse;
 import com.eodilog.trip.repository.TripDestinationRepository;
 import com.eodilog.trip.repository.TripMemberRepository;
 import com.eodilog.trip.repository.TripRepository;
-import com.eodilog.user.dto.UserCard;
-import com.eodilog.user.service.UserCardReader;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -50,7 +47,7 @@ public class TripService {
 	private final RegionRepository regionRepository;
 	private final ChatRoomInitializer chatRoomInitializer;
 	private final ItineraryInitializer itineraryInitializer;
-	private final UserCardReader userCardReader;
+	private final TripResponseAssembler tripResponseAssembler;
 	private final Clock clock;
 
 	// 여행·방장 멤버십·여행지·그룹 채팅방·빈 단일 코스를 한 트랜잭션으로 만든다. 공동 피드는 게시 때 만든다(D-4)
@@ -77,13 +74,8 @@ public class TripService {
 		chatRoomInitializer.openTripRoom(trip.getId(), userId, now);
 		itineraryInitializer.createEmpty(trip.getId(), owner.getId(), now);
 		tripRepository.flush();
-
-		UserCard ownerCard = userCardReader.findCards(userId, List.of(userId)).get(userId);
-		if (ownerCard == null) {
-			throw new IllegalStateException("Trip owner has no user record: " + userId);
-		}
-		return TripResponse.of(trip, newTrip.destinationRegionIds(), owner.getId(),
-				List.of(TripMemberResponse.of(owner, ownerCard, userId)));
+		// 생성 응답도 조회와 같은 조립을 거쳐 두 응답이 항상 같은 모양이 되게 한다
+		return tripResponseAssembler.assemble(userId, trip);
 	}
 
 	// 모든 입력 오류를 한 번에 알린다(P-1·P-5·P-6)
