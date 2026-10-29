@@ -1,13 +1,12 @@
 package com.eodilog.trip.controller;
 
-import com.eodilog.global.common.error.BusinessException;
-import com.eodilog.global.common.error.CommonErrorCode;
 import com.eodilog.global.common.error.ErrorResponse;
 import com.eodilog.global.common.response.DataResponse;
 import com.eodilog.global.idempotency.IdempotencyService;
 import com.eodilog.global.security.AuthUser;
 import com.eodilog.trip.dto.CreateTripRequest;
 import com.eodilog.trip.dto.TripResponse;
+import com.eodilog.trip.service.TripQueryService;
 import com.eodilog.trip.service.TripService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -21,6 +20,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -34,6 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class TripController {
 
 	private final TripService tripService;
+	private final TripQueryService tripQueryService;
 
 	@Operation(summary = "여행 생성", description = """
 			로그인한 사용자가 여행을 만들고 방장이 된다. 이름만 필수이며 기간·여행지는 아는 경우만 보낸다.
@@ -51,16 +53,24 @@ public class TripController {
 					example = "6d0f7c2e-1b7a-4f0e-9a51-7f3c1e2d4b8a")
 			@RequestHeader(name = IdempotencyService.HEADER_NAME, required = false) String idempotencyKey,
 			@RequestBody CreateTripRequest request) {
-		TripResponse trip = tripService.createTrip(requireUserId(authUser), idempotencyKey, request);
+		TripResponse trip = tripService.createTrip(CurrentUser.requireUserId(authUser), idempotencyKey, request);
 		return ResponseEntity.status(HttpStatus.CREATED).body(DataResponse.of(trip));
 	}
 
-	// 서비스 토큰 인증(A)이 연결되기 전에는 principal이 AuthUser가 아닐 수 있다
-	private UUID requireUserId(AuthUser authUser) {
-		if (authUser == null) {
-			throw new BusinessException(CommonErrorCode.UNAUTHENTICATED);
-		}
-		return authUser.userId();
+	@Operation(summary = "여행 상세 조회", description = """
+			여행의 ACTIVE 멤버만 조회한다. 공개 피드와 별개인 여행 내부 정보다.
+			없는 여행·삭제된 여행·참여하지 않았거나 나간 여행은 구분하지 않고 404로 응답한다.
+			상태는 조회 시점의 날짜(Asia/Seoul)로 계산한다.""")
+	@ApiResponse(responseCode = "200", description = "조회 성공")
+	@ApiResponse(responseCode = "404", description = "TRIP_NOT_FOUND: 없거나 볼 수 없는 여행",
+			content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+	@GetMapping("/{tripId}")
+	public ResponseEntity<DataResponse<TripResponse>> getTrip(
+			@Parameter(hidden = true) @AuthenticationPrincipal AuthUser authUser,
+			@Parameter(description = "여행 ID(UUID)", example = "0193c2a1-7e2b-7c4d-9a1e-2f3b4c5d6e70")
+			@PathVariable UUID tripId) {
+		TripResponse trip = tripQueryService.getTrip(CurrentUser.requireUserId(authUser), tripId);
+		return ResponseEntity.ok(DataResponse.of(trip));
 	}
 
 }
