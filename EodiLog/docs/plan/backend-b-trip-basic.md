@@ -1,12 +1,12 @@
 # 백엔드 B 구현 계획 — 여행 생성·조회·기본 수정
 
-작성일: 2026-10-28 · 상태: 구현 계획 초안(A와 계약 합의 전)
+작성일: 2026-10-28 · 상태: A 합의 반영(10/28), B-1~B-6 구현 완료·B-7 통합 검증 대기(2026-10-29)
 
 범위는 [백엔드 2인 첫 작업 분담안](../../../docs/plan/backend-first-work-split.md) §3 그대로다. 이 문서는 그 범위를 **어떤 순서로, 어떤 구조로 만들지**를 정한다. 기준 문서: [API 명세](../../../docs/api-spec.md) §2·§4·§10, [논리 ERD](../../../docs/erd.dbml), [ADR-0001](../../../docs/decisions/0001-database.md), [백엔드 규칙](../../AGENTS.md).
 
 ## 0. 현재 상태와 막힌 지점
 
-2026-10-28 기준 `EodiLog`에는 Swagger·기본 Security 설정만 있다. B가 구현하려면 아래가 먼저 필요하다.
+작성 당시(2026-10-28)의 상태다. 지금 진행 상황은 §3 표를 본다. 당시 `EodiLog`에는 Swagger·기본 Security 설정만 있었고, B가 구현하려면 아래가 먼저 필요했다.
 
 | 필요한 것 | 현재 | Jira | 영향 |
 | --- | --- | --- | --- |
@@ -31,17 +31,17 @@ B가 A를 기다리지 않으려면 **A가 작은 계약 MR을 먼저 올리는 
 
 운영 코드에 가짜 `UserCardReader`나 사용자 ID 헤더를 두지 않는다. 계약 MR이 늦어지면 B는 테스트 대체 구현으로 진행하되, **여행 API MR은 계약 MR 병합 뒤에 병합**한다.
 
-## 2. 구현 전에 정할 정책 (공유 후 확정)
+## 2. 구현 정책 (A 확정, 2026-10-28)
 
-분담안 §3이 "구현 전에 공유해 맞춘다"고 한 항목과 명세가 비워 둔 값이다. 오른쪽은 B의 제안이다.
+분담안 §3이 "구현 전에 공유해 맞춘다"고 한 항목과 명세가 비워 둔 값이다. B가 제안하고 **A가 10/28 P-1~P-10 모두 동의**했다. 아래는 확정 내용이며 B-3~B-6에 반영했다.
 
-| # | 질문 | 제안 | 근거 |
+| # | 질문 | 확정 | 근거 |
 | --- | --- | --- | --- |
 | P-1 | 기간을 한쪽만 입력할 수 있나 | 시작·종료 **둘 다 있거나 둘 다 null**. 한쪽만이면 400 | S16 기간은 달력 범위 선택(당일·1박 2일·2박 3일) |
 | P-2 | 상태 판정 기준 시각 | `Asia/Seoul` 날짜 기준. 오늘 < 시작 → PLANNING, 시작 ≤ 오늘 ≤ 종료 → ONGOING, 오늘 > 종료 → COMPLETED, 기간 없음 → PLANNING | Q-4 미정. `Clock` 빈으로 주입해 바꾸기 쉽게 둔다 |
-| P-3 | UUID 버전 | UUIDv7(앱 생성) | ADR-0001 권장. Hibernate 7.4 지원 여부를 jar에서 확인하고 없으면 직접 생성 |
-| P-4 | `Idempotency-Key` | 여행 생성에 필수, 누락 400. 보관 24시간. 같은 키·다른 본문은 `409 IDEMPOTENCY_KEY_REUSED`, 처리 중 재요청은 `409 REQUEST_IN_PROGRESS` | 명세 §2는 "필수 제안", 유효기간 Q-12, 오류 코드 미정 |
-| P-5 | 여행지 입력 | 중복 ID·없는 지역 ID는 400 `VALIDATION_ERROR`(fields에 `destinationRegionIds`). 상한은 정해지면 적용 | 명세 미정 |
+| P-3 | UUID 버전 | UUIDv7. Hibernate 7.4 기본 기능 `@UuidGenerator(style = VERSION_7)`로 만들고 별도 생성기는 두지 않는다 | ADR-0001 권장. A의 회원 엔티티도 같은 어노테이션으로 맞춘다 |
+| P-4 | `Idempotency-Key` | 여행 생성에 필수, 누락 400. 보관 24시간. 같은 키·다른 본문은 `409 IDEMPOTENCY_KEY_REUSED`, 처리 중 재요청은 `409 REQUEST_IN_PROGRESS` | 명세 §2는 "필수 제안", 유효기간 Q-12 |
+| P-5 | 여행지 입력 | **개수 제한 없음**. 중복 ID·없는 지역 ID는 400 `VALIDATION_ERROR`(fields에 `destinationRegionIds`) | A 확정 |
 | P-6 | 제목 | 앞뒤 공백 제거 후 1~200자 | ERD `varchar(200)` |
 | P-7 | 목록 정렬 | 명세 기본 `trips.created_at DESC, id DESC`. 참여 시각 기준으로 바꾸려면 명세 변경 필요 | 명세 §2 |
 | P-8 | 바뀐 값이 없는 PATCH | `expectedVersion`은 검사하되 version 증가·이벤트 발행 없이 현재 값 반환 | 불필요한 충돌·알림 방지 |
@@ -52,18 +52,18 @@ B가 A를 기다리지 않으려면 **A가 작은 계약 MR을 먼저 올리는 
 
 각 MR은 `.\gradlew.bat build` 통과 후 `dev`로 올린다. 브랜치는 Jira 키를 받아 `feature/<키>-<작업명>`으로 만든다(키를 임의로 만들지 않는다).
 
-| 단계 | 내용 | 선행 | 산출물 |
-| --- | --- | --- | --- |
-| B-0 | A와 §1 계약, §2 정책 합의 | — | Jira 댓글 또는 분담안 문서 갱신 |
-| B-1 | DB 연결 (EODI-62) | — | §4 |
-| B-2 | 공통 응답·예외 최소본 (EODI-63) | — | §5 |
-| B-3 | 여행 스키마·엔티티·저장소 | B-1, A의 `users` 마이그레이션 | §6 |
-| B-4 | `POST /trips` (원자 생성 + 멱등) | B-2, B-3 | §7.1 |
-| B-5 | `GET /me/trips`, `GET /trips/{tripId}`, 멤버 권한 검사 | B-4 | §7.2·7.3 |
-| B-6 | `PATCH /trips/{tripId}` (버전 검사 + 변경 이벤트) | B-5 | §7.4 |
-| B-7 | Swagger 검증, A와 첫 통합 검증 | A 로그인 완료 | 분담안 §5 절차 결과 |
+| 단계 | 내용 | 선행 | 산출물 | 진행(10/29) |
+| --- | --- | --- | --- | --- |
+| B-0 | A와 §1 계약, §2 정책 합의 | — | [A·B 계약](backend-a-b-contract.md) | 완료(EODI-103) |
+| B-1 | DB 연결 (EODI-62) | — | §4 | 완료(MR !40) |
+| B-2 | 공통 응답·예외 최소본 (EODI-63) | — | §5 | 완료(MR !41) |
+| B-3 | 여행 스키마·엔티티·저장소 | B-1, A의 `users` 마이그레이션 | §6 | 완료(EODI-106, MR !45) |
+| B-4 | `POST /trips` (원자 생성 + 멱등) | B-2, B-3 | §7.1 | 완료(EODI-107, MR !46) |
+| B-5 | `GET /me/trips`, `GET /trips/{tripId}`, 멤버 권한 검사 | B-4 | §7.2·7.3 | 완료(EODI-108, MR !47) |
+| B-6 | `PATCH /trips/{tripId}` (버전 검사 + 변경 이벤트) | B-5 | §7.4 | EODI-109 |
+| B-7 | Swagger 검증, A와 첫 통합 검증 | A 로그인 완료 | 분담안 §5 절차 결과 | A 로그인 MR 대기 |
 
-B-1·B-2는 A와 무관하게 바로 시작할 수 있다. B-4~B-6은 하나의 MR로 묶어도 되지만, 리뷰 부담을 줄이려면 나눈다.
+B-1·B-2는 A와 무관하게 바로 시작할 수 있다. MR은 리뷰할 수 있는 기능 단위(API 하나 + 테스트 + 관련 문서)로 보내고, 문서만 고치는 작은 변경은 따로 MR을 만들지 않고 관련 기능 MR에 함께 넣는다.
 
 ## 4. B-1 DB 연결 (EODI-62)
 
@@ -155,7 +155,7 @@ com.eodilog
 
 ### 7.4 `PATCH /trips/{tripId}` — 200 `Trip`
 
-1. 요청 필드: `expectedVersion` 필수, `title?`, `startDate?|null`, `endDate?|null`, `destinationRegionIds?`. **생략과 명시적 null을 구분**해야 하므로 기간 필드는 `Optional` 등 3상태 표현으로 받고, 생략·null·값 세 경우를 테스트한다. `title`·`destinationRegionIds`는 null 불가(`[]`는 여행지 비우기).
+1. 요청 필드: `expectedVersion` 필수, `title?`, `startDate?|null`, `endDate?|null`, `destinationRegionIds?`. **생략과 명시적 null을 구분**해야 한다. record의 `Optional`은 Jackson이 생략도 빈 값으로 채울 수 있어 쓰지 않고, `UpdateTripRequest`의 setter가 불렸는지로 보낸 필드를 기록한다. 생략·null·값 세 경우를 테스트한다. `title`·`destinationRegionIds`는 null 불가(`[]`는 여행지 비우기).
 2. 트랜잭션: 여행 행을 `PESSIMISTIC_WRITE`로 잠금 → ACTIVE 멤버 확인 → `version != expectedVersion`이면 `409 VERSION_CONFLICT` → 변경 적용·기간 재검증(기존 값과 합친 결과로 P-1 검사) → 상태 재계산 → `version + 1`.
 3. 여행지는 전체 교체한다.
 4. 값이 실제로 바뀐 경우에만 `TripInfoChangedEvent(tripId, actorUserId, changedFields, newVersion)`를 `ApplicationEventPublisher`로 발행한다. 이번에는 수신자(알림 저장·전달)를 만들지 않으며, **알림 기능은 미완료로 표시**한다. 이후 `events` outbox 저장 시 `@TransactionalEventListener`로 연결한다.

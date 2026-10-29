@@ -9,6 +9,7 @@ import com.eodilog.trip.repository.TripRepository;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 // 여행 내부 자료(상세·수정·투표·코스·채팅 등)에 들어가기 전 ACTIVE 멤버인지 확인한다(명세 §2 "멤버")
@@ -23,6 +24,17 @@ public class TripAccessChecker {
 	@Transactional(readOnly = true)
 	public TripAccess requireActiveMember(UUID tripId, UUID userId) {
 		Trip trip = tripRepository.findByIdAndDeletedAtIsNull(tripId)
+				.orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
+		TripMember member = tripMemberRepository.findByTripIdAndUserId(tripId, userId)
+				.filter(TripMember::isActive)
+				.orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
+		return new TripAccess(trip, member);
+	}
+
+	// 여행 행을 잠근 뒤 같은 기준으로 확인한다. 호출한 쓰기 트랜잭션이 끝날 때까지 잠금이 유지된다
+	@Transactional(propagation = Propagation.MANDATORY)
+	public TripAccess requireActiveMemberForUpdate(UUID tripId, UUID userId) {
+		Trip trip = tripRepository.findActiveByIdForUpdate(tripId)
 				.orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
 		TripMember member = tripMemberRepository.findByTripIdAndUserId(tripId, userId)
 				.filter(TripMember::isActive)
