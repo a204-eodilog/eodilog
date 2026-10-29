@@ -6,6 +6,7 @@ import com.eodilog.global.idempotency.IdempotencyService;
 import com.eodilog.global.security.AuthUser;
 import com.eodilog.trip.dto.CreateTripRequest;
 import com.eodilog.trip.dto.TripResponse;
+import com.eodilog.trip.dto.UpdateTripRequest;
 import com.eodilog.trip.service.TripQueryService;
 import com.eodilog.trip.service.TripService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -21,6 +22,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -70,6 +72,26 @@ public class TripController {
 			@Parameter(description = "여행 ID(UUID)", example = "0193c2a1-7e2b-7c4d-9a1e-2f3b4c5d6e70")
 			@PathVariable UUID tripId) {
 		TripResponse trip = tripQueryService.getTrip(CurrentUser.requireUserId(authUser), tripId);
+		return ResponseEntity.ok(DataResponse.of(trip));
+	}
+
+	@Operation(summary = "여행 정보 수정", description = """
+			여행의 ACTIVE 멤버라면 누구나 이름·기간·여행지를 고칠 수 있다. status·currency는 바꿀 수 없다.
+			생략한 필드는 그대로 두고, 기간은 null로 비울 수 있으며(시작일·종료일은 함께 있거나 함께 비어야 한다), 여행지는 보낸 목록으로 전체 교체한다.
+			expectedVersion이 현재 version과 다르면 다른 멤버의 수정을 덮어쓰지 않고 409로 거부한다.
+			바뀐 값이 없으면 version을 올리지 않고 현재 정보를 반환한다.""")
+	@ApiResponse(responseCode = "200", description = "수정 성공(또는 바뀐 값 없음)")
+	@ApiResponse(responseCode = "404", description = "TRIP_NOT_FOUND: 없거나 볼 수 없는 여행",
+			content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+	@ApiResponse(responseCode = "409", description = "VERSION_CONFLICT: 다른 멤버가 먼저 수정함. 다시 조회 후 시도",
+			content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+	@PatchMapping("/{tripId}")
+	public ResponseEntity<DataResponse<TripResponse>> updateTrip(
+			@Parameter(hidden = true) @AuthenticationPrincipal AuthUser authUser,
+			@Parameter(description = "여행 ID(UUID)", example = "0193c2a1-7e2b-7c4d-9a1e-2f3b4c5d6e70")
+			@PathVariable UUID tripId,
+			@RequestBody UpdateTripRequest request) {
+		TripResponse trip = tripService.updateTrip(CurrentUser.requireUserId(authUser), tripId, request);
 		return ResponseEntity.ok(DataResponse.of(trip));
 	}
 

@@ -66,4 +66,14 @@ public class Trip {
 		return trip;
 	}
 
+	// 바뀐 값이 있을 때만 호출한다. 여행 정보 버전을 하나 올린다
+	public void updateInfo(String title, LocalDate startDate, LocalDate endDate, TripStatus status, Instant now) {
+		this.title = title;
+		this.startDate = startDate;
+		this.endDate = endDate;
+		this.status = status;
+		this.version++;
+		this.updatedAt = now;
+	}
+
 }

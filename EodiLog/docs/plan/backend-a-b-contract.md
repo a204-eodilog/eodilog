@@ -1,6 +1,6 @@
 # A 참고 — B(여행) 작업과 맞물리는 계약·요청 사항
 
-작성일: 2026-10-28 · 작성: B · 상태: **A 확인 전 제안**
+작성일: 2026-10-28 · 작성: B · 상태: **A 답변 반영(10/28), A-0(EODI-105) dev 병합 완료.** 답변은 §9에 정리했다
 
 B(여행 생성·조회·기본 수정)가 A(카카오 로그인·회원 기본)를 기다리지 않고 진행하려면 A 쪽 코드와 닿는 지점을 먼저 고정해야 한다. 이 문서는 그 지점을 **B가 무엇을 쓰고, A에게 무엇을 요청하며, 누가 어떤 파일을 고치는지** 기준으로 정리한다. 이름·패키지는 제안이며 A가 바꿔도 된다. 바꾸면 이 문서를 같이 고친다.
 
@@ -107,7 +107,7 @@ public interface UserCardReader {
 | 여러 ID를 한 번에 조회(`IN` 한 번) | 여행 목록 한 페이지에서 멤버 수만큼 호출하면 N+1 |
 | `viewerId`를 받는다 | 지금은 쓰지 않지만 팔로우가 생기면 `followingStatus`·`followedByStatus`를 보는 사람 기준으로 계산해야 한다 |
 | 읽기 전용 트랜잭션, 호출한 쪽 트랜잭션 안에서도 동작 | 여행 생성 트랜잭션 끝에서 응답을 만들 때 호출한다 |
-| 비활성 사용자도 결과에 포함 | 이탈·탈퇴 멤버 표시 방식은 Q-11 미정. 지금은 그대로 반환하고, 정해지면 A가 이 구현에서 가린다 |
+| 비활성 사용자도 결과에 포함 | **A 확정:** 탈퇴 회원도 UUID는 포함하고 닉네임은 "탈퇴한 사용자"로 반환한다. DB 원본 이름은 바꾸지 않는다. 과거 채팅처럼 이름을 따로 저장하는 곳도 같은 표시 정책을 따른다 |
 | 없는 ID가 빠지면 B는 서버 오류로 처리 | FK가 있으므로 정상 상황에서는 발생하지 않는다 |
 
 ### `UserCard` 타입
@@ -201,7 +201,7 @@ public enum AuthErrorCode implements ErrorCode { ... }                          
 | `SecurityConfig` | A | B는 요청만 한다 |
 | `global/common/**` | B(-63) | A는 도메인 오류 enum만 따로 추가 |
 | `Clock` 빈 | B(`global.config.TimeConfig`, `Clock.systemUTC()`) | A도 토큰 만료 계산에 주입받아 쓰면 테스트에서 시간을 고정할 수 있다 |
-| UUID 생성 | 공동 결정(UUIDv7 제안). 방식이 정해지면 하나의 생성기를 같이 쓴다 | — |
+| UUID 생성 | 공동 결정: UUIDv7. Hibernate 7.4 기본 기능 `@UuidGenerator(style = UuidGenerator.Style.VERSION_7)`로 통일하고 별도 생성기는 두지 않는다. B 엔티티는 적용 완료, A 회원 엔티티는 v4에서 전환 예정 | — |
 | 로컬 DB `compose.yaml` | B(-62) | A도 같은 DB로 실행 |
 
 공통 파일을 바꿀 때는 MR 올리기 전에 상대에게 알리고, 상대 MR이 열려 있으면 병합 순서를 정한다.
@@ -240,14 +240,16 @@ public enum AuthErrorCode implements ErrorCode { ... }                          
 
 결과는 양쪽 MR이나 Jira에 "실제 카카오 연동으로 확인함 / 테스트 대체로만 확인함"을 구분해 남긴다.
 
-## 9. A에게 답을 받을 질문
+## 9. A에게 받은 답 (2026-10-28)
 
-1. 인증 주체 이름·패키지(`global.security.AuthUser`) 그대로 갈지, 커스텀 어노테이션을 둘지
-2. 회원 패키지 루트를 `user`로 할지
-3. `UserCardReader` 시그니처에 동의하는지, A-0 MR 예정일
-4. 비활성 사용자 토큰을 필터에서 401로 막을지, 프로필 미완성 사용자의 여행 생성을 막을지
-5. 토큰 만료를 `UNAUTHENTICATED`와 다른 코드로 줄지
-6. -64 시작 시점과 `application*.yaml` 프로필 구조(-62와 순서)
-7. Flyway 파일명 규칙(§2)과 UUIDv7 사용에 동의하는지
+| # | 질문 | A 답변 |
+| --- | --- | --- |
+| 1 | 인증 주체 이름·위치, 커스텀 어노테이션 여부 | `global.security.AuthUser(UUID userId)` 그대로. 컨트롤러는 Spring 기본 `@AuthenticationPrincipal AuthUser`, 커스텀 어노테이션 없음 |
+| 2 | 회원 패키지 루트 | `user` |
+| 3 | `UserCardReader` 시그니처, A-0 일정 | 시그니처 동의. A-0는 EODI-105로 dev 병합 완료. `users`에 ERD에 없던 `profile_completed` 컬럼이 추가됨(가입 완료 회원은 `true`와 1~50자 닉네임 필요) |
+| 4 | 비활성 사용자 토큰, 프로필 미완성 사용자의 여행 생성 | 비활성 회원·누락·만료·위조·폐기 토큰은 모두 `401 UNAUTHENTICATED`. **프로필 미완성 사용자는 여행 생성 불가**: 미완성 토큰은 `GET/PATCH /api/v1/me`만 허용하고 나머지는 `403 PROFILE_INCOMPLETE`(§1) |
+| 5 | 토큰 만료 전용 코드 | 두지 않음. 만료도 `401 UNAUTHENTICATED`. 토큰 수명은 access 1시간, refresh 14일 |
+| 6 | -64 시점과 프로필 구조 | A의 로그인 변경에 포함. Bearer 무상태 인증, formLogin·httpBasic 제거, CSRF 해제 적용. DB·카카오·JWT 설정은 `EodiLog/.env` 하나로 모으고 `--spring.profiles.active=local`로 실행(A의 로그인 MR에서 AGENTS.md 실행 안내도 함께 고친다) |
+| 7 | Flyway 파일명 규칙, UUIDv7 | 둘 다 동의. UUIDv7은 §6처럼 Hibernate 어노테이션으로 통일 |
 
-답이 정해지면 이 문서와 [B 구현 계획](backend-b-trip-basic.md)을 함께 고친다.
+그 밖에 A가 B의 P-1~P-10에 모두 동의했다([B 구현 계획](backend-b-trip-basic.md) §2). 아직 남은 것은 A의 로그인 MR 병합과 그 뒤의 첫 통합 검증(§8)이다.
