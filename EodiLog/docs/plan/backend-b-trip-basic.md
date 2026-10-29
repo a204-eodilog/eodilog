@@ -60,7 +60,7 @@ B가 A를 기다리지 않으려면 **A가 작은 계약 MR을 먼저 올리는 
 | B-3 | 여행 스키마·엔티티·저장소 | B-1, A의 `users` 마이그레이션 | §6 | 완료(EODI-106, MR !45) |
 | B-4 | `POST /trips` (원자 생성 + 멱등) | B-2, B-3 | §7.1 | 완료(EODI-107, MR !46) |
 | B-5 | `GET /me/trips`, `GET /trips/{tripId}`, 멤버 권한 검사 | B-4 | §7.2·7.3 | 완료(EODI-108, MR !47) |
-| B-6 | `PATCH /trips/{tripId}` (버전 검사 + 변경 이벤트) | B-5 | §7.4 | EODI-109 |
+| B-6 | `PATCH /trips/{tripId}` (버전 검사 + 변경 이벤트) | B-5 | §7.4 | 완료(EODI-109, MR !48) |
 | B-7 | Swagger 검증, A와 첫 통합 검증 | A 로그인 완료 | 분담안 §5 절차 결과 | A 로그인 MR 대기 |
 
 B-1·B-2는 A와 무관하게 바로 시작할 수 있다. MR은 리뷰할 수 있는 기능 단위(API 하나 + 테스트 + 관련 문서)로 보내고, 문서만 고치는 작은 변경은 따로 MR을 만들지 않고 관련 기능 MR에 함께 넣는다.
@@ -108,7 +108,7 @@ ERD 논리 타입은 `uuid`→`uuid`, `timestamp`→`timestamptz`, `json`→`jso
 com.eodilog
 ├─ global/common      응답·예외 (B-2)
 ├─ global/idempotency 멱등 기록 (B-4, 다른 POST도 재사용)
-├─ region             Region 엔티티·저장소, RegionValidator(존재 확인)
+├─ region             Region 엔티티·저장소(여행지 존재 확인은 TripService가 이 저장소로 한다)
 ├─ trip               controller / service / domain / repository / dto
 ├─ chat               ChatRoom·ChatParticipant 엔티티, ChatRoomInitializer
 └─ itinerary          Itinerary 엔티티, ItineraryInitializer
@@ -150,7 +150,7 @@ com.eodilog
 
 ### 7.3 `GET /trips/{tripId}` — 200 `Trip`
 
-- `TripAccessChecker.requireActiveMember(tripId, userId)`가 멤버십을 반환하거나 `TRIP_NOT_FOUND`를 던진다(P-10). 삭제된 여행도 404. 이후 투표·코스·채팅 작업이 이 검사기를 재사용한다.
+- `TripAccessChecker.requireActiveMember(tripId, userId)`가 여행과 멤버십(`TripAccess`)을 반환하거나 `TRIP_NOT_FOUND`를 던진다(P-10). 삭제된 여행도 404. 수정용으로 여행 행을 잠그고 확인하는 `requireActiveMemberForUpdate`도 둔다(§7.4). 이후 투표·코스·채팅 작업이 이 검사기를 재사용한다.
 - `Trip` DTO 조립: `members`는 ACTIVE 멤버만 `joinOrder` 순, `role`은 `owner_user_id` 비교로 계산, `ownerMemberId`는 방장 멤버십 ID, `expenseVersion`은 0.
 
 ### 7.4 `PATCH /trips/{tripId}` — 200 `Trip`
@@ -158,19 +158,19 @@ com.eodilog
 1. 요청 필드: `expectedVersion` 필수, `title?`, `startDate?|null`, `endDate?|null`, `destinationRegionIds?`. **생략과 명시적 null을 구분**해야 한다. record의 `Optional`은 Jackson이 생략도 빈 값으로 채울 수 있어 쓰지 않고, `UpdateTripRequest`의 setter가 불렸는지로 보낸 필드를 기록한다. 생략·null·값 세 경우를 테스트한다. `title`·`destinationRegionIds`는 null 불가(`[]`는 여행지 비우기).
 2. 트랜잭션: 여행 행을 `PESSIMISTIC_WRITE`로 잠금 → ACTIVE 멤버 확인 → `version != expectedVersion`이면 `409 VERSION_CONFLICT` → 변경 적용·기간 재검증(기존 값과 합친 결과로 P-1 검사) → 상태 재계산 → `version + 1`.
 3. 여행지는 전체 교체한다.
-4. 값이 실제로 바뀐 경우에만 `TripInfoChangedEvent(tripId, actorUserId, changedFields, newVersion)`를 `ApplicationEventPublisher`로 발행한다. 이번에는 수신자(알림 저장·전달)를 만들지 않으며, **알림 기능은 미완료로 표시**한다. 이후 `events` outbox 저장 시 `@TransactionalEventListener`로 연결한다.
+4. 값이 실제로 바뀐 경우에만 `TripInfoChangedEvent(tripId, actorUserId, changedFields, version, occurredAt)`를 `ApplicationEventPublisher`로 발행한다. 이번에는 수신자(알림 저장·전달)를 만들지 않으며, **알림 기능은 미완료로 표시**한다. 이후 `events` outbox 저장 시 `@TransactionalEventListener`로 연결한다.
 
 ## 8. 테스트 계획
 
 | 종류 | 대상 |
 | --- | --- |
 | 단위 | `TripStatusPolicy` 경계(시작일 당일·종료일 당일·다음 날·기간 없음), 커서 인코딩·오류, 기간·제목 검증 |
-| 웹(MockMvc) | 인증 없음 401, 알 수 없는 필드·`status`·`currency` 400, `Idempotency-Key` 누락 400, 응답 형식 `{data}`·`page`, 회원 정보에 이메일·연령 없음 |
+| 웹(MockMvc) | 알 수 없는 필드·`status`·`currency` 400, `Idempotency-Key` 누락 400, 응답 형식 `{data}`·`page`, 회원 정보에 이메일·연령 없음 |
 | 통합(Testcontainers) | 생성 후 방장 멤버십·채팅방/참여자·빈 코스 존재, 공동 피드 없음 / 채팅방 초기화를 `@MockitoSpyBean`으로 실패시켜 **전체 롤백** / 같은 키 재요청 시 여행 1건·같은 응답, 다른 본문 409 / 목록의 ACTIVE 필터·상태 필터·정렬·커서 연속 조회 / 비참여자 상세·수정 404 / 오래된 버전 409 후 다른 사람 수정 내용 유지 / 여행지 교체·비우기 |
 | 동시성 | 같은 `expectedVersion` PATCH 2건 동시 → 200 1건·409 1건 / 같은 `Idempotency-Key` POST 2건 동시 → 여행 1건 |
 | 문서 | `/v3/api-docs`에 4개 경로·태그·DTO·`Idempotency-Key` 헤더·`409` 응답·자물쇠 표시 검사(기존 `SwaggerConfigTest` 방식) |
 
-테스트의 인증 사용자는 §1의 principal을 요청 후처리기로 넣고, `UserCardReader`는 테스트 대체 구현을 쓴다. 현재 Security 설정은 CSRF가 켜져 있으므로 -64 반영 전까지 POST/PATCH 테스트에 `csrf()`를 붙인다.
+테스트의 인증 사용자는 §1의 principal을 요청 후처리기로 넣는다. `UserCardReader`는 A-0이 먼저 병합되어 대체 구현을 만들지 않았고, A의 실제 구현(`JdbcUserCardReader`)을 테스트 DB에서 그대로 쓴다. 현재 Security 설정은 CSRF가 켜져 있으므로 -64 반영 전까지 POST/PATCH 테스트에 `csrf()`를 붙인다. 토큰 없는 요청이 401인지는 지금 `formLogin` 때문에 302가 나와 확인할 수 없으므로, -64(A) 반영 뒤 B-7 통합 검증(계약 §8 7단계)에서 확인한다.
 
 ## 9. 완료 판단
 
@@ -189,4 +189,4 @@ com.eodilog
 | Boot 4·Jackson 3·Hibernate 7 API 차이 | 기억한 예제 대신 Gradle 캐시의 jar로 클래스 위치를 확인한다(`AGENTS.md`) |
 | 공통 파일(`build.gradle`, `application*.yaml`, `SecurityConfig`) 동시 수정 | 파일별 한 명만 반영(분담안 §4). B는 `build.gradle`·`application*.yaml`의 DB 부분, A는 `SecurityConfig` |
 | Docker 미설치로 Testcontainers 불가 | 로컬 PostgreSQL 프로필로 대체하고 MR에 기록 |
-| Q-4·Q-12 결정이 바뀜 | 상태 정책은 `Clock`·순수 함수로, 멱등 보관 기간은 설정값으로 분리해 코드 변경을 줄인다 |
+| Q-4·Q-12 결정이 바뀜 | 상태 정책은 `Clock`·순수 함수로, 멱등 보관 기간은 `IdempotencyService.RETENTION` 상수 한 곳에 둬 코드 변경을 줄인다 |

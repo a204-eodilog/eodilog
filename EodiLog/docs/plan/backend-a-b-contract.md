@@ -135,9 +135,9 @@ public enum FollowStatus { NONE, REQUESTED, ACCEPTED }
 - `MyProfile`은 "UserCard + 본인 전용 필드"이므로 A가 `UserCard`를 재사용하면 필드 이름이 어긋나지 않는다.
 - 패키지 루트 이름은 `user`를 제안한다. `member`는 여행의 `trip_members`와 헷갈린다(여행 쪽 `Member` DTO는 멤버십이다).
 
-### B 테스트의 대체 구현
+### B 테스트의 회원 조회
 
-B는 `src/test`에 `FakeUserCardReader`(메모리 맵)를 두고 테스트 설정에서만 등록한다. 운영 빈은 A의 구현 하나뿐이다.
+A-0(EODI-105)이 B 여행 API보다 먼저 병합되어 테스트 대체 구현은 만들지 않았다. B 테스트도 A의 실제 구현(`JdbcUserCardReader`)을 Testcontainers DB에서 그대로 쓰고, 회원은 `users`에 SQL로 넣는다. 운영 빈은 A의 구현 하나뿐이다.
 
 ## 4. Security 설정 -64에서 B가 기대하는 것 (R-5)
 
