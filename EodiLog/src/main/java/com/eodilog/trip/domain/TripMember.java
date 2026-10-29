@@ -50,4 +50,10 @@ public class TripMember {
 		return status == TripMemberStatus.ACTIVE;
 	}
 
+	// 경비 FK 때문에 행은 지우지 않는다(ERD). 재참여는 이 행을 다시 쓴다
+	public void remove(Instant now) {
+		this.status = TripMemberStatus.REMOVED;
+		this.leftAt = now;
+	}
+
 }

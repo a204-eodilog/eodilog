@@ -100,7 +100,7 @@ B-1·B-2는 A와 무관하게 바로 시작할 수 있다. MR은 리뷰할 수 �
 | `itineraries` | `trip_id` 고유, `updated_by_member_id`는 방장 멤버십 |
 | `idempotency_records` | PK `(user_id,request_scope,idempotency_key)`, `expires_at` 인덱스. B-3은 테이블만 만들고, 선점 삽입 방식에 맞춘 접근 코드는 B-4에서 만든다 |
 
-ERD 논리 타입은 `uuid`→`uuid`, `timestamp`→`timestamptz`, `json`→`jsonb`로 옮긴다. FK에 `ON DELETE CASCADE`를 일괄로 걸지 않는다(ERD 메모). "방장은 같은 여행 ACTIVE 멤버" 불변식은 이번엔 서비스에서 보장하고, 복합 FK(지연 제약)는 방장 양도 작업 때 검토한다.
+ERD 논리 타입은 `uuid`→`uuid`, `timestamp`→`timestamptz`, `json`→`jsonb`로 옮긴다. FK에 `ON DELETE CASCADE`를 일괄로 걸지 않는다(ERD 메모). "방장은 같은 여행 ACTIVE 멤버" 불변식은 서비스에서 보장한다. 복합 FK(지연 제약)는 방장 양도 작업 때 검토했고 두지 않기로 했다([B 후속 작업](backend-b-followup.md) M-11).
 
 ### 패키지
 

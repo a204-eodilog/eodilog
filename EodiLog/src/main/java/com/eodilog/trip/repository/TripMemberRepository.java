@@ -14,4 +14,6 @@ public interface TripMemberRepository extends JpaRepository<TripMember, UUID> {
 
 	List<TripMember> findAllByTripIdInAndStatusOrderByJoinOrder(Collection<UUID> tripIds, TripMemberStatus status);
 
+	List<TripMember> findAllByTripIdOrderByJoinOrder(UUID tripId);
+
 }

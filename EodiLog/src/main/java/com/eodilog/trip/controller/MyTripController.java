@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "여행", description = "여행 생성·조회·수정")
+@Tag(name = "여행", description = "여행 생성·조회·수정과 멤버 관리")
 @RestController
 @RequestMapping("/api/v1/me/trips")
 @RequiredArgsConstructor

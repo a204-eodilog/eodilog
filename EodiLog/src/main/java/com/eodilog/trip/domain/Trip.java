@@ -76,4 +76,17 @@ public class Trip {
 		this.updatedAt = now;
 	}
 
+	// 새 방장은 같은 여행의 ACTIVE 멤버여야 한다(서비스가 확인). 응답의 ownerMemberId·role이 바뀌므로 버전을 올린다
+	public void transferOwner(UUID newOwnerUserId, Instant now) {
+		this.ownerUserId = newOwnerUserId;
+		this.version++;
+		this.updatedAt = now;
+	}
+
+	// 멤버가 빠지면 응답의 members가 바뀌므로 버전을 올려 이전 화면 기준의 요청을 409로 막는다
+	public void markMembersChanged(Instant now) {
+		this.version++;
+		this.updatedAt = now;
+	}
+
 }

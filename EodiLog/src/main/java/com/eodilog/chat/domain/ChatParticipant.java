@@ -36,4 +36,9 @@ public class ChatParticipant {
 		return participant;
 	}
 
+	// 행은 남기고 이탈 시각만 기록한다. 재참여 때의 과거 대화 범위는 Q-13에서 정한다
+	public void leave(Instant now) {
+		this.leftAt = now;
+	}
+
 }
