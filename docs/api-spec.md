@@ -107,7 +107,7 @@
 | GET | `/trips/{tripId}` | 멤버 | 없음 | `Trip` / 200 | 공개 피드와 별도 내부 조회 |
 | PATCH | `/trips/{tripId}` | 멤버 | `{expectedVersion:integer,title?:string,startDate?:date\|null,endDate?:date\|null,destinationRegionIds?:id[]}` | `Trip` / 200 | 모든 멤버 수정·변경 알림, 직접 목적지로 지역 투표 생략. status/currency 쓰기 없음 |
 | DELETE | `/trips/{tripId}` | 방장 | `expectedVersion:integer`(query) | `JobRef` / 202 | 전체 삭제 범위 Q-11, 즉시 접근 차단·후속 정리 작업 제안 |
-| GET | `/trips/{tripId}/members` | 멤버 | 없음 | `{members:Member[]}` / 200 | 기본 ACTIVE만 joinOrder 순. 정산에 남는 이탈 멤버는 별도 `includeInactive?:boolean` |
+| GET | `/trips/{tripId}/members` | 멤버 | `includeInactive?:boolean`(query, 기본 false) | `{members:Member[]}` / 200 | 기본 ACTIVE만 joinOrder 순. `includeInactive=true`면 정산에 남는 이탈(LEFT·REMOVED) 멤버도 포함 |
 | POST | `/trips/{tripId}/invitations` | 멤버 | 없음 | `InvitationSecret` / 201 | 서버 생성 만료·정원 정책 Q-4. 토큰 원문 1회 반환 |
 | GET | `/invitations/{token}` | 공개(D-1) | 없음 | `InvitationPreview` / 200 | 여행명·기간·초대한 사람만, 내부 명단/경비 반환 안 함 |
 | POST | `/invitations/{token}/accept` | 로그인 | 없음 | `Trip` / 200 | 유효 링크로 관계 없이 참여. ACTIVE 초대자·만료/정원 검사, 이미 멤버면 같은 여행 반환 |
@@ -115,7 +115,7 @@
 | POST | `/trips/{tripId}/leave` | 멤버 | `{deleteOwnPhotos:boolean,deleteOwnMessages:boolean,expectedVersion:integer}` | `LeaveResult` / 202 | 일반 이탈은 경비 유지·방장 자동 양도. 마지막 방장은 여행 삭제로 접수하며 tripDeleted=true, 같은 TRIP_DELETE 작업 사용 |
 | DELETE | `/trips/{tripId}/members/{memberId}` | 방장 | `expectedVersion:integer`(query) | 204 | 본인·방장 내보내기 금지(400). 없거나 이탈한 대상 404 `MEMBER_NOT_FOUND`. 멤버십 REMOVED·채팅 참여 해제를 한 트랜잭션으로. 강제 이탈 시 타인 자료 삭제 여부는 Q-11 |
 
-방장 양도·멤버 내보내기의 `expectedVersion`은 여행의 `version`(`Trip.version`)이다(이탈·여행 삭제도 같은 version을 쓰는 제안). 입력 형식 400을 먼저 검사한 뒤 비참여자 404, 방장 전용 동작을 멤버가 요청하면 403, 버전이 다르면 409 순으로 판정한다. 양도·내보내기가 성공하면 `Trip`의 `ownerMemberId`·`members`가 바뀌므로 여행 version을 올리고, 그 전 version으로 보낸 여행 정보 수정(PATCH)은 409가 된다.
+방장 양도·멤버 내보내기의 `expectedVersion`은 여행의 `version`(`Trip.version`)이다(이탈·여행 삭제도 같은 version을 쓰는 제안). 입력 형식 400을 먼저 검사한 뒤 비참여자 404, 방장 전용 동작을 멤버가 요청하면 403, 버전이 다르면 409, 끝으로 대상(양도 대상이 동행이 아니거나 이미 방장이면 400, 내보낼 멤버가 없거나 이탈했으면 404 `MEMBER_NOT_FOUND`, 방장 자신이면 400) 순으로 판정한다. 양도·내보내기가 성공하면 `Trip`의 `ownerMemberId`·`members`가 바뀌므로 여행 version을 올리고, 그 전 version으로 보낸 여행 정보 수정(PATCH)은 409가 된다.
 
 `leave`에서 방장 다음 순서는 ACTIVE 멤버의 joinOrder 오름차순이다. 양도·멤버 비활성화·본인 노출 경로 제외·채팅 참여 해제를 한 트랜잭션으로 처리한다. 마지막 방장의 이탈은 여행 삭제와 같은 처리이며 삭제 확인 안내 후 같은 TRIP_DELETE 작업을 생성한다. 일반 이탈의 경비 유지 규칙을 전체 여행 삭제의 영구 보존 규칙으로 해석하지 않는다. 이탈자의 공동 피드 표시 경로만 제거하고 공동 피드·그룹 저장·경비는 유지한다. 사진 삭제 선택은 공동 피드의 사진·표지·파일 접근에 즉시 반영한다.
 
@@ -183,7 +183,7 @@
 | GET | `/trips/{tripId}/weather` | 멤버 | `date:date,placeId:id` | `Weather` / 200 | 관측/예보 구분, 조회 시점·유효성 |
 | POST | `/trips/{tripId}/weather-alternatives` | 멤버 | `{date:date,placeId:id,expectedVersion:integer}` | `JobRef` / 202 | 실제 공급자 날씨 데이터로 생성 |
 | GET | `/places/{placeId}/facilities` | 로그인 | `type:string,radiusMeters:integer` + 페이지 | `Facility[]` / 200 | 시설 종류·반경 Q-8, 장애와 빈 결과 구분 |
-| GET | `/trips/{tripId}/checklist` | 멤버 | 없음 | `{items:ChecklistItem[]}` / 200 | 여행 공동 목록 하나, checkedByMemberId 포함 |
+| GET | `/trips/{tripId}/checklist` | 멤버 | 없음 | `{items:ChecklistItem[]}` / 200 | 여행 공동 목록 하나, checkedByMemberId 포함. 페이지 없이 추가한 순(createdAt ASC, id ASC) |
 | POST | `/trips/{tripId}/checklist` | 멤버 | `{label:string,sourceJobId?:id,suggestionIndex?:integer}` | `ChecklistItem` / 201 | sourceJobId/index 동시 지정 시 같은 여행 성공 결과 검증·이유 보존, 없으면 직접 작성. AI 준비물 제안 연동 전에는 sourceJobId/index를 400으로 거부 |
 | PATCH | `/trips/{tripId}/checklist/{itemId}` | 멤버 | `{label?:string,checked?:boolean,expectedVersion:integer}` | `ChecklistItem` / 200 | 체크 시 서버가 checkedByMemberId/checkedAt 기록, 해제 시 둘 다 null. 타인 ID 입력 금지 |
 | DELETE | `/trips/{tripId}/checklist/{itemId}` | 멤버 | 없음 | 204 | 행을 남기는 논리 삭제. AI 재생성 시 삭제한 항목 강제 부활 금지 |
@@ -350,8 +350,8 @@
 | PhotoUploadBatch | `id,tripId:id,fileCount:integer,registeredCount:integer,createdAt:datetime`. fileCount 1~50, 소유자/여행별 등록 예약 상한으로 중복 재시도 방지 |
 | Photo | `id,assetId,tripId,batchId:id,uploaderMemberId:id,placeId:id\|null,capturedAt:datetime\|null,topics:string[],groupId:id\|null,version:integer` |
 | Review | `id,visitId,authorMemberId:id,score:integer,body:string,version:integer,createdAt:datetime,updatedAt:datetime` |
-| ExpenseWrite | `title:string,memo?:string,amountMinor:integer,currency:KRW,payerMemberId:id,participantMemberIds:id[],spentAt:datetime`. 양수 원화 정수, 균등 원금 분담. 정산 올림과 구분 |
-| ExpensePatch | ExpenseWrite의 변경 필드 + 필수 `expectedVersion:integer`. 분담자 변경은 전체 배열 교체 |
+| ExpenseWrite | `title:string,memo?:string\|null,amountMinor:integer,currency:KRW,payerMemberId:id,participantMemberIds:id[],spentAt:datetime`. 양수 원화 정수, 균등 원금 분담. 정산 올림과 구분. 빈 memo는 null로 저장하고 응답 memo도 null일 수 있다 |
+| ExpensePatch | ExpenseWrite의 변경 필드 + 필수 `expectedVersion:integer`. 분담자 변경은 전체 배열 교체. `memo:null`은 메모 삭제, 생략은 유지 |
 | Expense | ExpenseWrite + `id,registeredByMemberId:id,shares:{memberId:id,amountMinor:integer}[],version:integer` |
 | Settlement | `id,tripId,currency:KRW,expenseVersion:integer,version:integer,stale:boolean,totalAmountMinor:integer,includedExpenses:{expenseId:id,expenseVersion:integer,title:string,amountMinor:integer,payerMemberId:id,shares:{memberId:id,amountMinor:integer}[]}[],members:{memberId:id,paidMinor:integer,baseOwedMinor:integer,owedMinor:integer,roundingAdjustmentMinor:integer,balanceMinor:integer}[],transfers:{id,fromMemberId:id,toMemberId:id,amountMinor:integer}[],roundingPolicy:string,roundingAdjustmentMinor:integer,calculatedAt:datetime`. owedMinor=1인 올림 부담액·10원 배수, base 원금/차액 구분. 송금액 재올림 없음. Q-10 합의 전 계산 차단 제안, 완료 상태 없음 |
 | FeedCard | `id,tripId,title:string,coverPhotoId:id\|null,regions:Region[],startDate:date\|null,endDate:date\|null,publishedAt:datetime,likedByMe:boolean,likeCount:integer`. 여행당 하나·단일 author 없음 |

@@ -114,6 +114,21 @@ class ChecklistApiTest {
 	}
 
 	@Test
+	void keepsFirstCheckerWhenAnotherMemberChecksAgain() throws Exception {
+		// C-4: 이미 체크된 항목을 다시 체크하면 처음 체크한 멤버·시각과 version을 그대로 둔다
+		UUID friendId = insertUser("동행");
+		insertMember(tripId, friendId, 2, "ACTIVE");
+		UUID itemId = id(addItem(ownerId, tripId, "{\"label\":\"우산\"}"));
+		JsonNode checked = data(updateItem(ownerId, tripId, itemId, "{\"expectedVersion\":1,\"checked\":true}"));
+
+		updateItem(friendId, tripId, itemId, "{\"expectedVersion\":2,\"checked\":true}")
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.checkedByMemberId").value(memberId(tripId, ownerId).toString()))
+				.andExpect(jsonPath("$.data.checkedAt").value(checked.get("checkedAt").asString()))
+				.andExpect(jsonPath("$.data.version").value(2));
+	}
+
+	@Test
 	void renamesItemAndKeepsOmittedFields() throws Exception {
 		UUID itemId = id(addItem(ownerId, tripId, "{\"label\":\"우산\"}"));
 		JsonNode checked = data(updateItem(ownerId, tripId, itemId, "{\"expectedVersion\":1,\"checked\":true}"));

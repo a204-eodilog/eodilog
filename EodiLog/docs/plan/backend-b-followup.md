@@ -1,6 +1,6 @@
 # 백엔드 B 후속 작업 — 준비물 체크리스트·멤버 관리·경비
 
-작성일: 2026-10-29 · 상태: 체크리스트·멤버 관리 병합 완료(MR !49·!50), 경비·정산 상태 구현(EODI-122, 2026-10-30)
+작성일: 2026-10-29 · 상태: 체크리스트·멤버 관리 병합 완료(MR !49·!50), 경비·정산 상태 병합 완료(MR !56, 2026-10-30)
 
 [B 첫 작업](backend-b-trip-basic.md)(여행 생성·조회·수정)이 끝난 뒤 A의 카카오 로그인을 기다리는 동안 진행한 B 작업이다. [분담안](../../../docs/plan/backend-first-work-split.md) §6은 이 기능들을 "첫 통합 뒤 배분"으로 두었지만, 로그인 없이 개발할 수 있고 여행 패키지 안에서 끝나는 것부터 B가 먼저 맡았다. A와 겹치는 파일(`user`·`auth` 패키지, `SecurityConfig`)은 건드리지 않는다.
 
@@ -12,7 +12,7 @@
 | --- | --- | --- | --- |
 | 준비물 체크리스트 | `GET/POST /trips/{tripId}/checklist`, `PATCH/DELETE /trips/{tripId}/checklist/{itemId}` | EODI-110 | 병합(MR !49) |
 | 멤버 관리 | `GET /trips/{tripId}/members`, `POST /trips/{tripId}/owner-transfer`, `DELETE /trips/{tripId}/members/{memberId}` | EODI-111 | 병합(MR !50) |
-| 경비·정산 상태 | `GET/POST /trips/{tripId}/expenses`, `PATCH/DELETE /trips/{tripId}/expenses/{expenseId}`, `GET /trips/{tripId}/settlement`, `POST /trips/{tripId}/settlements`(409) | EODI-122 | 구현(§8) |
+| 경비·정산 상태 | `GET/POST /trips/{tripId}/expenses`, `PATCH/DELETE /trips/{tripId}/expenses/{expenseId}`, `GET /trips/{tripId}/settlement`, `POST /trips/{tripId}/settlements`(409) | EODI-122 | 병합(MR !56, §8) |
 
 검증은 B 첫 작업과 같이 테스트에서 `AuthUser` principal을 넣어 했다. A 로그인 병합 뒤 실제 카카오 계정 2개로 여행 API 통합 검증(B-7)을 마쳤다([계약 §8](backend-a-b-contract.md)).
 
@@ -23,7 +23,7 @@ B 첫 작업의 규칙을 그대로 따른다.
 - 여행 내부 자료는 먼저 `TripAccessChecker`로 ACTIVE 멤버인지 확인한다. 없는·삭제된·비참여·이탈 여행은 모두 `404 TRIP_NOT_FOUND`(P-10).
 - 동시 수정은 대상 행을 `PESSIMISTIC_WRITE`로 잠근 뒤 `expectedVersion`을 비교하고, 다르면 `409 VERSION_CONFLICT`로 덮어쓰지 않는다.
 - 바뀐 값이 없는 수정은 version을 올리지 않고 현재 값을 반환한다(P-8).
-- 입력 오류는 `400 VALIDATION_ERROR`의 `fields`에 한 번에 담고, 권한·버전 검사보다 먼저 한다. 저장된 값과 합쳐야 판단할 수 있는 검사(여행 정보 수정에서 기간 한쪽만 바꾼 경우)만 잠금·version 확인 뒤에 한다(B 첫 작업 §7.4). 요청 본문에서 다른 자원을 가리키는 ID가 잘못되면 404가 아니라 400으로 알린다(여행지 ID P-5와 같은 방식). 경로의 ID가 가리키는 자원이 없으면 404다.
+- 입력 오류는 `400 VALIDATION_ERROR`의 `fields`에 한 번에 담고, 권한·버전 검사보다 먼저 한다. 저장된 값과 합쳐야 판단할 수 있는 검사만 잠금·version 확인 뒤에 한다: 여행 정보 수정에서 기간 한쪽만 바꾼 경우(B 첫 작업 §7.4), 방장 양도·내보내기의 대상 검사(M-3), 경비 결제자·분담자의 ACTIVE 검사(E-3). 요청 본문에서 다른 자원을 가리키는 ID가 잘못되면 404가 아니라 400으로 알린다(여행지 ID P-5와 같은 방식). 경로의 ID가 가리키는 자원이 없으면 404다.
 
 ## 3. 준비물 체크리스트 정책
 
@@ -114,7 +114,7 @@ AI 준비물 제안(`POST /trips/{tripId}/checklist-suggestions`)은 `jobs`, 날
 | E-2 | 균등 분담의 1원 잔여 | 원금을 분담자 수로 나누고, 나머지 1원은 **참여 순(joinOrder)이 빠른 분담자부터** 1원씩. 분담액 합계는 항상 원금과 같다. 금액이 분담자 수보다 작으면 0원 분담자가 생긴다 | D-7 "1원 잔여 배분은 제안". 요청 순서와 무관하게 같은 결과가 나오게 참여 순을 쓴다. 정산 10원 올림은 분담액에 넣지 않는다(Q-10) |
 | E-3 | 결제자·분담자 | 이 여행의 ACTIVE 멤버만 **새로** 넣을 수 있다. 수정할 때 이미 들어 있던 나간 멤버는 그대로 둘 수 있다. 어기면 `422 INVALID_PARTICIPANTS`(필드 `payerMemberId`·`participantMemberIds`) | 명세 "신규 분담자 추가는 ACTIVE 멤버만", "이탈자도 과거 분담자로 표시" |
 | E-4 | 입력 검증 | 이름 공백 제거 후 1~200자, 원금 1 이상 JSON 안전 정수 이하, 분담자 1명 이상·중복 없음, 통화·결제자·지출 시각 필수 → 400. 통화가 KRW가 아니면 `422 CURRENCY_MISMATCH`. 메모는 공백만이면 null | ERD `varchar(200)`, 명세 §2 정수 상한, §7 "외화 422" |
-| E-5 | 수정·삭제 권한과 판정 순서 | 입력 400 → 비참여 404 → 경비 없음 `404 EXPENSE_NOT_FOUND` → 등록자 아님 `403 FORBIDDEN` → 경비 version 불일치 409. 등록자가 여행에서 나가면 404 | 명세 "활성 멤버인 등록자", "방장·결제자라도 등록자가 아니면 403". 멤버 관리 M-3과 같은 순서 |
+| E-5 | 수정·삭제 권한과 판정 순서 | 입력 400 → 통화 `422 CURRENCY_MISMATCH`(입력 단계라 비참여자도 422) → 비참여 404 → 경비 없음 `404 EXPENSE_NOT_FOUND` → 등록자 아님 `403 FORBIDDEN` → 경비 version 불일치 409 → 결제자·분담자 `422 INVALID_PARTICIPANTS`(E-3). 등록자가 여행에서 나가면 404 | 명세 "활성 멤버인 등록자", "방장·결제자라도 등록자가 아니면 403". 멤버 관리 M-3과 같은 순서 |
 | E-6 | 버전 | 경비마다 `version`(수정 시 `expectedVersion`), 여행에는 `expense_version`. 등록·수정·삭제마다 여행 행을 잠그고 `expense_version`을 1 올린다. 여행 정보 `version`과는 따로 움직인다 | ERD 불변식 5. 경비 변경이 여행 정보 수정을 409로 만들지 않는다(JPA `@Version`을 쓰지 않은 이유, B 첫 작업 §6) |
 | E-7 | 수정 방식 | 생략 필드 유지, `memo`만 null로 비움. 원금이나 분담자 집합이 바뀌면 분담액을 다시 계산한다. 바뀐 값이 없으면 version·`expense_version` 그대로(P-8) | 명세 ExpensePatch "분담자 변경은 전체 배열 교체" |
 | E-8 | 삭제 방식 | `deleted_at` 논리 삭제, 분담액 행은 남긴다. 목록·수정·재삭제에서 제외(404) | 이전 정산 스냅샷·비용 버전 이력을 깨지 않는다 |
