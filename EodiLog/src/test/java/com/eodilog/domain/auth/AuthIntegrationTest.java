@@ -1,0 +1,272 @@
+package com.eodilog.domain.auth;
+
+import com.eodilog.global.common.error.*;
+import com.eodilog.global.security.AuthUser;
+import com.eodilog.user.service.UserCardReader;
+import com.eodilog.user.dto.UserCard;
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.util.*;
+import java.util.concurrent.*;
+import java.net.URI;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import com.nimbusds.jose.*;
+import com.nimbusds.jose.crypto.MACSigner;
+import com.nimbusds.jwt.*;
+import org.junit.jupiter.api.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.context.annotation.Import;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.OutputCaptureExtension;
+import org.springframework.boot.test.system.CapturedOutput;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
+import tools.jackson.databind.ObjectMapper;
+import com.eodilog.user.*;
+import static com.eodilog.domain.auth.AuthDtos.*;
+
+@SpringBootTest @AutoConfigureMockMvc
+@Import({AuthIntegrationTest.ContractController.class, AuthIntegrationTest.AuthDatabase.class})
+class AuthIntegrationTest {
+    @org.springframework.boot.test.context.TestConfiguration(proxyBeanMethods=false)
+    static class AuthDatabase {
+        @org.springframework.context.annotation.Bean
+        @org.springframework.boot.testcontainers.service.connection.ServiceConnection
+        org.testcontainers.postgresql.PostgreSQLContainer postgresContainer() {
+            return new org.testcontainers.postgresql.PostgreSQLContainer(
+                org.testcontainers.utility.DockerImageName.parse("postgis/postgis:17-3.5").asCompatibleSubstituteFor("postgres"));
+        }
+    }
+    @Test void allFailureLayersShareTraceHeaderAndBody() throws Exception {
+        String bearer="Bearer "+login().accessToken();
+        var requests=List.of(
+            get("/api/v1/me"),
+            get("/api/v1/me").header("Authorization","Bearer forged"),
+            patch("/api/v1/me").header("Authorization",bearer).contentType("application/json").content("{\"nickname\":42,\"unknown\":true}"),
+            get("/api/v1/test/failure").header("Authorization",bearer));
+        for(var request:requests) {
+            var response=mvc.perform(request).andReturn().getResponse();
+            assertThat(response.getStatus()).isGreaterThanOrEqualTo(400);
+            String trace=mapper.readTree(response.getContentAsString()).at("/error/traceId").asText();
+            assertThat(trace).matches("[0-9a-f]{32}");
+            assertThat(response.getHeader("X-Trace-Id")).isEqualTo(trace);
+        }
+        when(gateway.exchange(anyString(),anyString(),anyString())).thenReturn(new KakaoGateway.KakaoUser("pending-trace",null));
+        var pending=mvc.perform(get("/api/v1/trips").header("Authorization","Bearer "+login().accessToken()))
+            .andExpect(status().isForbidden()).andExpect(jsonPath("$.error.code").value("PROFILE_INCOMPLETE")).andReturn().getResponse();
+        assertThat(pending.getHeader("X-Trace-Id")).isEqualTo(mapper.readTree(pending.getContentAsString()).at("/error/traceId").asText());
+    }
+    @RestController
+    static class ContractController {
+        private final UserCardReader lookup;
+        ContractController(UserCardReader lookup) { this.lookup=lookup; }
+        @GetMapping("/api/v1/test/contract")
+        UserCard contract(@AuthenticationPrincipal AuthUser user) { return lookup.findCards(user.userId(),List.of(user.userId())).get(user.userId()); }
+        @GetMapping("/api/v1/test/failure")
+        void failure() { throw new IllegalStateException("private-token-and-PII-must-not-leak"); }
+    }
+    static final String REDIRECT="https://app.example.com/oauth/kakao";
+    static final String VERIFIER="dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk";
+    static final String BASE="/api/v1/auth/oauth/KAKAO";
+    @Autowired AuthService service;
+    @Autowired JdbcTemplate jdbc;
+    @Autowired MockMvc mvc;
+    @Autowired ObjectMapper mapper;
+    @Autowired Tokens tokens;
+    @Autowired AuthProperties properties;
+    @Autowired UserCardReader lookup;
+    @MockitoBean KakaoGateway gateway;
+    @BeforeEach void clean() {
+        jdbc.update("DELETE FROM sessions"); jdbc.update("DELETE FROM oauth_accounts"); jdbc.update("DELETE FROM oauth_attempts"); jdbc.update("DELETE FROM users");
+        when(gateway.exchange(anyString(),anyString(),anyString())).thenReturn(new KakaoGateway.KakaoUser("123","여행자"));
+    }
+    OAuthAuthorization start() { return service.start("KAKAO",new AuthorizationRequest(REDIRECT,Tokens.hash(VERIFIER))); }
+    OAuthExchange request(OAuthAuthorization a) { return new OAuthExchange(a.authorizationId(),"code",REDIRECT,a.state(),VERIFIER); }
+    Session login() { return service.exchange("KAKAO",request(start())); }
+    long count(String table) { return jdbc.queryForObject("SELECT COUNT(*) FROM "+table,Long.class); }
+    @Test void startIsPublicAndRequiresPkceAndAllowlistedRedirect() throws Exception {
+        mvc.perform(post(BASE+"/authorization-requests").contentType("application/json").content(mapper.writeValueAsString(new AuthorizationRequest(REDIRECT,Tokens.hash(VERIFIER)))))
+            .andExpect(status().isCreated()).andExpect(jsonPath("$.data.authorizationUrl").value(org.hamcrest.Matchers.containsString("code_challenge_method=S256")));
+        mvc.perform(post(BASE+"/authorization-requests").contentType("application/json").content("{\"redirectUri\":\"https://app.example.com/oauth/kakao\"}")) .andExpect(status().isBadRequest());
+        assertThatThrownBy(()->service.start("KAKAO",new AuthorizationRequest("https://evil.example",Tokens.hash(VERIFIER)))).isInstanceOf(BusinessException.class);
+        assertThatThrownBy(()->service.start("NAVER",new AuthorizationRequest(REDIRECT,Tokens.hash(VERIFIER)))).isInstanceOf(BusinessException.class);
+    }
+    @Test void repeatLoginKeepsUuidAndNicknameAndStoresOnlyHash() {
+        Instant issuedAfter=Instant.now();
+        var first=login(); when(gateway.exchange(anyString(),anyString(),anyString())).thenReturn(new KakaoGateway.KakaoUser("123","바뀐 이름"));
+        Instant issuedBefore=Instant.now();
+        assertThat(properties.refreshSeconds()).isEqualTo(1209600);
+        assertThat(first.expiresIn()).isEqualTo(3600);
+        Instant storedExpiry=jdbc.queryForObject("SELECT expires_at FROM sessions WHERE refresh_token_hash=?",Timestamp.class,Tokens.hash(first.refreshToken())).toInstant();
+        assertThat(storedExpiry).isBetween(issuedAfter.plusSeconds(1209600),issuedBefore.plusSeconds(1209600));
+        var second=login(); assertThat(second.user().id()).isEqualTo(first.user().id()); assertThat(second.user().nickname()).isEqualTo("여행자");
+        assertThat(first.isNewUser()).isTrue(); assertThat(second.isNewUser()).isFalse(); assertThat(count("users")).isEqualTo(1); assertThat(count("oauth_accounts")).isEqualTo(1);
+        assertThat(jdbc.queryForList("SELECT refresh_token_hash FROM sessions",String.class)).contains(Tokens.hash(first.refreshToken())).doesNotContain(first.refreshToken());
+        assertThat(lookup.findCards(first.user().id(),List.of(first.user().id())).get(first.user().id()).nickname()).isEqualTo("여행자");
+    }
+    @Test void contextRejectsWrongStateRedirectVerifierExpiredAndReplay() {
+        var a=start(); var good=request(a);
+        assertThatThrownBy(()->service.exchange("KAKAO",new OAuthExchange(a.authorizationId(),"code",REDIRECT,"wrong",VERIFIER))).isInstanceOf(BusinessException.class);
+        assertThatThrownBy(()->service.exchange("KAKAO",new OAuthExchange(a.authorizationId(),"code","wrong",a.state(),VERIFIER))).isInstanceOf(BusinessException.class);
+        assertThatThrownBy(()->service.exchange("KAKAO",new OAuthExchange(a.authorizationId(),"code",REDIRECT,a.state(),"x".repeat(43)))).isInstanceOf(BusinessException.class);
+        service.exchange("KAKAO",good); assertThatThrownBy(()->service.exchange("KAKAO",good)).isInstanceOf(BusinessException.class);
+        var expired=start(); jdbc.update("UPDATE oauth_attempts SET expires_at=? WHERE id=?",Timestamp.from(Instant.now().minusSeconds(1)),expired.authorizationId());
+        assertThatThrownBy(()->service.exchange("KAKAO",request(expired))).isInstanceOf(BusinessException.class);
+        verify(gateway,times(1)).exchange(anyString(),anyString(),anyString());
+    }
+    @Test void providerFailureConsumesContextWithoutCreatingUserOrSession() {
+        when(gateway.exchange(anyString(),anyString(),anyString())).thenThrow(new BusinessException(AuthErrorCode.PROVIDER_UNAVAILABLE));
+        var req=request(start()); assertThatThrownBy(()->service.exchange("KAKAO",req)).isInstanceOf(BusinessException.class);
+        assertThat(count("users")).isZero(); assertThat(count("sessions")).isZero(); assertThatThrownBy(()->service.exchange("KAKAO",req)).isInstanceOf(BusinessException.class);
+    }
+    @Test void pendingUserCanCompleteWithSameTokenAndUnknownFieldsRejected() throws Exception {
+        when(gateway.exchange(anyString(),anyString(),anyString())).thenReturn(new KakaoGateway.KakaoUser("123",null));
+        var session=login(); String bearer="Bearer "+session.accessToken(); assertThat(session.user().profileCompleted()).isFalse(); assertThat(session.user().nickname()).isEmpty();
+        mvc.perform(get("/api/v1/me").header("Authorization",bearer)).andExpect(status().isOk()).andExpect(jsonPath("$.data.profileCompleted").value(false));
+        mvc.perform(get("/api/v1/trips").header("Authorization",bearer)).andExpect(status().isForbidden()).andExpect(jsonPath("$.error.code").value("PROFILE_INCOMPLETE"));
+        for(String body:List.of("{\"nickname\":\" \"}","{\"nickname\":\"ok\",\"ageBand\":\"20\"}","{\"nickname\":\""+"x".repeat(51)+"\"}"))
+            mvc.perform(patch("/api/v1/me").header("Authorization",bearer).contentType("application/json").content(body)).andExpect(status().isBadRequest());
+        mvc.perform(patch("/api/v1/me").header("Authorization",bearer).contentType("application/json").content("{\"nickname\":\"  새 이름  \"}")).andExpect(status().isOk()).andExpect(jsonPath("$.data.nickname").value("새 이름")).andExpect(jsonPath("$.data.profileCompleted").value(true));
+        mvc.perform(get("/api/v1/me").header("Authorization",bearer)).andExpect(status().isOk()).andExpect(jsonPath("$.data.profileCompleted").value(true));
+        assertThat(service.authenticate(tokens.verify(session.accessToken())).profileCompleted()).isTrue();
+    }
+    @Test void blankDefaultAndOversizeNicknameRemainPending() {
+        for(String nickname:List.of(" ","기본 닉네임","x".repeat(51),"bad\0nickname")) {
+            when(gateway.exchange(anyString(),anyString(),anyString())).thenReturn(new KakaoGateway.KakaoUser(UUID.randomUUID().toString(),nickname));
+            assertThat(login().user().profileCompleted()).isFalse();
+        }
+    }
+    @Test void missingForgedExpiredRevokedAndInactiveTokensDenied() throws Exception {
+        mvc.perform(get("/api/v1/me")).andExpect(status().isUnauthorized()).andExpect(jsonPath("$.error.code").value("UNAUTHENTICATED"));
+        mvc.perform(get("/api/v1/me").header("Authorization","Bearer forged")).andExpect(status().isUnauthorized());
+        var session=login(); var c=tokens.verify(session.accessToken());
+        var expired=new SignedJWT(new JWSHeader(JWSAlgorithm.HS256),new JWTClaimsSet.Builder().issuer(properties.issuer()).subject(c.userId().toString()).jwtID(c.sessionId().toString()).expirationTime(Date.from(Instant.now().minusSeconds(5))).build());
+        expired.sign(new MACSigner(properties.jwtSecret()));
+        mvc.perform(get("/api/v1/me").header("Authorization","Bearer "+expired.serialize())).andExpect(status().isUnauthorized());
+        var wrongKey=new SignedJWT(new JWSHeader(JWSAlgorithm.HS256),new JWTClaimsSet.Builder().issuer(properties.issuer()).subject(c.userId().toString()).jwtID(c.sessionId().toString()).expirationTime(Date.from(Instant.now().plusSeconds(3600))).build());
+        wrongKey.sign(new MACSigner("another-test-signing-key-at-least-32-bytes"));
+        mvc.perform(get("/api/v1/me").header("Authorization","Bearer "+wrongKey.serialize())).andExpect(status().isUnauthorized());
+        jdbc.update("UPDATE sessions SET revoked_at=CURRENT_TIMESTAMP WHERE id=?",c.sessionId());
+        mvc.perform(get("/api/v1/me").header("Authorization","Bearer "+session.accessToken())).andExpect(status().isUnauthorized());
+        var next=login(); jdbc.update("UPDATE users SET status='DEACTIVATED' WHERE id=?",next.user().id());
+        mvc.perform(get("/api/v1/me").header("Authorization","Bearer "+next.accessToken())).andExpect(status().isUnauthorized());
+        assertThatThrownBy(()->service.authenticate(tokens.verify(next.accessToken()))).isInstanceOf(BusinessException.class);
+    }
+    @Test void concurrentFirstLoginCreatesOneUserAndNoOrphan() throws Exception {
+        var barrier=new CyclicBarrier(2);
+        when(gateway.exchange(anyString(),anyString(),anyString())).thenAnswer(invocation->{barrier.await(5,TimeUnit.SECONDS); return new KakaoGateway.KakaoUser("same","동시");});
+        var a=request(start()); var b=request(start());
+        try(var executor=Executors.newFixedThreadPool(2)) {
+            var one=executor.submit(()->service.exchange("KAKAO",a)); var two=executor.submit(()->service.exchange("KAKAO",b));
+            assertThat(one.get(10,TimeUnit.SECONDS).user().id()).isEqualTo(two.get(10,TimeUnit.SECONDS).user().id());
+        }
+        assertThat(count("users")).isEqualTo(1); assertThat(count("oauth_accounts")).isEqualTo(1); assertThat(count("sessions")).isEqualTo(2);
+    }
+    @Test void openApiDescribesPublicAndProtectedOperations() throws Exception {
+        var json=mapper.readTree(mvc.perform(get("/v3/api-docs")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        for(String operation:List.of("authorization-requests","sessions")) {
+            var security=json.at("/paths/~1api~1v1~1auth~1oauth~1{provider}~1"+operation+"/post/security");
+            assertThat(security.isArray()).isTrue(); assertThat(security.size()).isZero();
+        }
+        for(String method:List.of("get","patch")) {
+            var operation=json.at("/paths/~1api~1v1~1me/"+method);
+            var security=operation.has("security") ? operation.get("security") : json.get("security");
+            assertThat(security.toString()).contains("bearerAuth"); assertThat(security.size()).isGreaterThan(0);
+        }
+        assertThat(json.at("/paths/~1api~1v1~1me/get/summary").asText()).isNotEmpty();
+        assertThat(json.at("/paths/~1api~1v1~1me/patch/summary").asText()).isNotEmpty();
+        assertThat(json.at("/components/schemas/OAuthExchange/required").toString()).contains("codeVerifier");
+        assertThat(json.at("/components/schemas/MyProfile/properties/profileCompleted").isMissingNode()).isFalse();
+        assertThat(json.at("/components/schemas/OAuthAuthorization/required").toString()).contains("authorizationId","authorizationUrl","state","expiresAt");
+        assertThat(json.at("/components/schemas/Session/required").toString()).contains("accessToken","refreshToken","expiresIn","user","isNewUser");
+        assertThat(json.at("/components/schemas/MyProfile/required").toString()).contains("id","nickname","profileImageUrl","accountVisibility","followingStatus","followedByStatus","ageBand","ageUseConsent","profileCompleted","profileUrl");
+        assertThat(json.at("/components/schemas/MyProfile/properties/profileImageUrl").toString()).contains("null");
+        assertThat(json.at("/components/schemas/MyProfile/properties/ageBand").toString()).contains("null");
+    }
+    @Test void anonymousSessionEndpointReturnsEnvelopeAndTokenWorksForMe() throws Exception {
+        var response=mvc.perform(post(BASE+"/sessions").contentType("application/json").content(mapper.writeValueAsString(request(start()))))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.data.accessToken").isString())
+            .andExpect(jsonPath("$.data.refreshToken").isString()).andExpect(jsonPath("$.data.expiresIn").value(3600))
+            .andExpect(jsonPath("$.data.isNewUser").value(true)).andExpect(jsonPath("$.data.user.profileCompleted").value(true))
+            .andReturn().getResponse().getContentAsString();
+        var data=mapper.readTree(response).get("data");
+        mvc.perform(get("/api/v1/me").header("Authorization","Bearer "+data.get("accessToken").asText())).andExpect(status().isOk()).andExpect(jsonPath("$.data.id").value(data.get("user").get("id").asText()));
+    }
+    @Test void publicLoginAndSwaggerIgnoreStaleOrPendingAuthorization() throws Exception {
+        when(gateway.exchange(anyString(),anyString(),anyString())).thenReturn(new KakaoGateway.KakaoUser("123",null));
+        String pending=login().accessToken();
+        var claims=tokens.verify(pending);
+        var expired=new SignedJWT(new JWSHeader(JWSAlgorithm.HS256),new JWTClaimsSet.Builder().issuer(properties.issuer()).subject(claims.userId().toString()).jwtID(claims.sessionId().toString()).expirationTime(Date.from(Instant.now().minusSeconds(5))).build());
+        expired.sign(new MACSigner(properties.jwtSecret()));
+        for(String token:List.of(pending,expired.serialize())) {
+            mvc.perform(post(BASE+"/authorization-requests").header("Authorization","Bearer "+token).contentType("application/json").content(mapper.writeValueAsString(new AuthorizationRequest(REDIRECT,Tokens.hash(VERIFIER))))).andExpect(status().isCreated());
+            mvc.perform(post(BASE+"/sessions").header("Authorization","Bearer "+token).contentType("application/json").content(mapper.writeValueAsString(request(start())))).andExpect(status().isOk());
+            mvc.perform(get("/v3/api-docs").header("Authorization","Bearer "+token)).andExpect(status().isOk());
+            mvc.perform(get("/swagger-ui/index.html").header("Authorization","Bearer "+token)).andExpect(status().isOk());
+        }
+    }
+    @Test void bearerSchemeIsCaseInsensitiveAndNulNicknameRejectedBeforePersistence() throws Exception {
+        var session=login();
+        for(String scheme:List.of("bearer ","bEaReR "))
+            mvc.perform(get("/api/v1/me").header("Authorization",scheme+session.accessToken())).andExpect(status().isOk());
+        mvc.perform(patch("/api/v1/me").header("Authorization","Bearer "+session.accessToken()).contentType("application/json").content(mapper.writeValueAsString(new NicknamePatch("bad\0name")))).andExpect(status().isBadRequest()).andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
+        assertThat(lookup.findCards(session.user().id(),List.of(session.user().id())).get(session.user().id()).nickname()).isEqualTo("여행자");
+    }
+    @Test void authorizationRedirectPlusRoundTripsThroughFormStyleQueryDecoding() {
+        String redirect="https://app.example.com/oauth/callback+expo?channel=app+test";
+        var configured=new AuthProperties(properties.kakaoClientId(),properties.kakaoClientSecret(),List.of(redirect),properties.jwtSecret(),properties.issuer(),properties.accessSeconds(),properties.refreshSeconds(),properties.attemptSeconds());
+        var localService=new AuthService(jdbc,new org.springframework.jdbc.support.JdbcTransactionManager(jdbc.getDataSource()),configured,tokens,gateway,new MemberStore(jdbc));
+        String url=localService.start("KAKAO",new AuthorizationRequest(redirect,Tokens.hash(VERIFIER))).authorizationUrl();
+        var query=Arrays.stream(URI.create(url).getRawQuery().split("&")).map(entry->entry.split("=",2)).filter(pair->pair[0].equals("redirect_uri")).findFirst().orElseThrow();
+        assertThat(URLDecoder.decode(query[1],StandardCharsets.UTF_8)).isEqualTo(redirect);
+    }
+    @Test void sameContextConcurrentExchangeCallsProviderAndCreatesSessionOnce() throws Exception {
+        var req=request(start()); var ready=new CountDownLatch(2); var go=new CountDownLatch(1);
+        Callable<Boolean> exchange=()-> { ready.countDown(); go.await(5,TimeUnit.SECONDS); try { service.exchange("KAKAO",req); return true; } catch(BusinessException e) { assertThat(e.getErrorCode().status().value()).isEqualTo(400); return false; } };
+        try(var executor=Executors.newFixedThreadPool(2)) {
+            var one=executor.submit(exchange); var two=executor.submit(exchange); assertThat(ready.await(5,TimeUnit.SECONDS)).isTrue(); go.countDown();
+            assertThat(List.of(one.get(10,TimeUnit.SECONDS),two.get(10,TimeUnit.SECONDS))).containsExactlyInAnyOrder(true,false);
+        }
+        verify(gateway,times(1)).exchange(anyString(),anyString(),anyString()); assertThat(count("sessions")).isEqualTo(1);
+    }
+    @Test void bControllerUsesTestAuthenticationPrincipalAndPublicLookupWithoutBearer() throws Exception {
+        var member=login().user();
+        var principal=new AuthUser(member.id());
+        var authentication=new UsernamePasswordAuthenticationToken(principal,null,List.of());
+        var response=mvc.perform(get("/api/v1/test/contract").with(authentication(authentication)))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.id").value(member.id().toString()))
+            .andExpect(jsonPath("$.nickname").value(member.nickname())).andExpect(jsonPath("$.ageBand").doesNotExist())
+            .andReturn().getResponse();
+        var card=mapper.readTree(response.getContentAsString());
+        assertThat(card.propertyNames()).containsExactlyInAnyOrder("id","nickname","profileImageUrl",
+            "accountVisibility","followingStatus","followedByStatus");
+        assertThat(card.has("profileImageUrl")).isTrue();
+        assertThat(card.get("profileImageUrl").isNull()).isTrue();
+    }
+    @Test @ExtendWith(OutputCaptureExtension.class)
+    void methodMediaAndUnexpectedErrorsUseSafeEnvelope(CapturedOutput output) throws Exception {
+        String bearer="Bearer "+login().accessToken();
+        mvc.perform(post("/api/v1/me").header("Authorization",bearer)).andExpect(status().isMethodNotAllowed()).andExpect(jsonPath("$.error.code").value("METHOD_NOT_ALLOWED")).andExpect(jsonPath("$.error.traceId").isNotEmpty());
+        mvc.perform(patch("/api/v1/me").header("Authorization",bearer).contentType("text/plain").content("private request"))
+            .andExpect(status().isUnsupportedMediaType()).andExpect(jsonPath("$.error.code").value("UNSUPPORTED_MEDIA_TYPE")).andExpect(jsonPath("$.error.traceId").isNotEmpty());
+        var result=mvc.perform(get("/api/v1/test/failure").header("Authorization",bearer))
+            .andExpect(status().isInternalServerError()).andExpect(jsonPath("$.error.code").value("INTERNAL_ERROR")).andExpect(jsonPath("$.error.traceId").isNotEmpty()).andExpect(jsonPath("$.error.fields").isArray()).andReturn();
+        assertThat(result.getResponse().getContentAsString()).doesNotContain("private-token-and-PII-must-not-leak","IllegalStateException");
+        String traceId=mapper.readTree(result.getResponse().getContentAsString()).at("/error/traceId").asText();
+        assertThat(output.getOut()).contains("traceId="+traceId,"code=INTERNAL_ERROR","exceptionType=java.lang.IllegalStateException");
+        assertThat(output.getOut()).doesNotContain("private-token-and-PII-must-not-leak");
+    }
+}
