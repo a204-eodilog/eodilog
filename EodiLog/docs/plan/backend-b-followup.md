@@ -1,6 +1,6 @@
 # 백엔드 B 후속 작업 — 준비물 체크리스트·멤버 관리·경비·초대
 
-작성일: 2026-10-29 · 상태: 체크리스트·멤버 관리 병합 완료(MR !49·!50), 경비·정산 상태 병합 완료(MR !56, 2026-10-30), 초대 링크 구현(EODI-125)
+작성일: 2026-10-29 · 상태: 체크리스트·멤버 관리 병합 완료(MR !49·!50), 경비·정산 상태 병합 완료(MR !56, 2026-10-30), 초대 링크 병합 완료(MR !58)
 
 [B 첫 작업](backend-b-trip-basic.md)(여행 생성·조회·수정)이 끝난 뒤 A의 카카오 로그인을 기다리는 동안 진행한 B 작업이다. [분담안](../../../docs/plan/backend-first-work-split.md) §6은 이 기능들을 "첫 통합 뒤 배분"으로 두었지만, 로그인 없이 개발할 수 있고 여행 패키지 안에서 끝나는 것부터 B가 먼저 맡았다. A와 겹치는 파일(`user`·`auth` 패키지, `SecurityConfig`)은 건드리지 않는다.
 
@@ -12,7 +12,7 @@
 | --- | --- | --- | --- |
 | 준비물 체크리스트 | `GET/POST /trips/{tripId}/checklist`, `PATCH/DELETE /trips/{tripId}/checklist/{itemId}` | EODI-110 | 병합(MR !49) |
 | 멤버 관리 | `GET /trips/{tripId}/members`, `POST /trips/{tripId}/owner-transfer`, `DELETE /trips/{tripId}/members/{memberId}` | EODI-111 | 병합(MR !50) |
-| 초대 링크 | `POST /trips/{tripId}/invitations`, `GET /invitations/{token}`(공개), `POST /invitations/{token}/accept` | EODI-125 | 구현(§9) |
+| 초대 링크 | `POST /trips/{tripId}/invitations`, `GET /invitations/{token}`(공개), `POST /invitations/{token}/accept` | EODI-125, -128 | 병합(MR !58), 이전 링크 무효화 구현(§9) |
 | 경비·정산 상태 | `GET/POST /trips/{tripId}/expenses`, `PATCH/DELETE /trips/{tripId}/expenses/{expenseId}`, `GET /trips/{tripId}/settlement`, `POST /trips/{tripId}/settlements`(409) | EODI-122 | 병합(MR !56, §8) |
 
 검증은 B 첫 작업과 같이 테스트에서 `AuthUser` principal을 넣어 했다. A 로그인 병합 뒤 실제 카카오 계정 2개로 여행 API 통합 검증(B-7)을 마쳤다([계약 §8](backend-a-b-contract.md)).
@@ -129,14 +129,15 @@ Q-4 기본값은 2026-10-30에 정했다(만료 7일, 정원 20명). 나머지�
 
 | # | 질문 | 결정 | 근거 |
 | --- | --- | --- | --- |
-| I-1 | 만료 | 링크를 만든 시각부터 7일. 만료 시각이 지나면 미리보기·수락 모두 410 | Q-4 결정 |
+| I-1 | 만료 | 링크를 만든 시각부터 7일. 만료 시각**부터** 미리보기·수락 모두 410 `INVITATION_EXPIRED`(이미 동행인 사람은 I-10) | Q-4 결정. 경계는 `TripInvitationTest`로 확인 |
 | I-2 | 정원 | 링크별 사용 횟수가 아니라 **여행의 ACTIVE 멤버 수(방장 포함) 20명**. 수락할 때 20명이면 `409 TRIP_FULL`. 이미 ACTIVE인 사람의 수락은 정원과 상관없이 200 | Q-4 결정. ERD `trip_invitations`에 사용 횟수 열이 없다. 명세 409 목록에 `TRIP_FULL` 추가 |
-| I-3 | 링크 만들기 | 여행의 ACTIVE 멤버 누구나. 여러 개를 만들 수 있고 각각 만료까지 여러 명이 쓴다. `Idempotency-Key` 없음(명세 §2 목록에 없음) | 명세 §4 권한 "멤버", 사용자 흐름 "초대 링크 공유는 동행 누구나" |
+| I-3 | 링크 만들기 | 여행의 ACTIVE 멤버 누구나. **새로 만들면 같은 여행의 이전 링크를 모두 무효화**(`revoked_at`)해서 쓸 수 있는 링크는 여행당 하나다. 여행 행을 잠가 동시에 발급해도 하나만 남는다. 프론트는 화면을 열 때마다가 아니라 [새 링크 만들기]를 눌렀을 때만 호출한다. `Idempotency-Key` 없음(명세 §2 목록에 없음) | 10/30 사용자 확정(A 인수인계 [to-B-backend-decisions-2026-10-30](to-B-backend-decisions-2026-10-30.md) §4와 같음), EODI-128. 유출되거나 잘못 보낸 링크를 새 발급으로 막을 수 있다. 토큰 원문을 보관하지 않으므로 같은 링크를 다시 보여 주는 조회 API는 없다 |
 | I-4 | 토큰 | 32바이트 난수의 base64url(43자). DB에는 SHA-256 해시(16진수)만 저장하고 원문은 생성 응답에서만 준다. `url`은 `app.invitation.link-base-url`(기본 `ieohaeng://invitations/`) + 토큰 | 명세 "토큰 원문 1회 반환". 프론트 초대 화면 경로가 정해지면 설정만 바꾼다 |
-| I-5 | 검증 실패 응답 | 형식이 틀린 토큰은 `404 NOT_FOUND`. 형식이 맞으면 없는 토큰·만료·취소·삭제된 여행·초대한 사람이 나간 링크를 구분하지 않고 `410 INVITATION_EXPIRED` | 명세 §2 "유효 형식의 초대 토큰 검증 결과는 410", S04의 "무효·만료" 한 상태 |
-| I-6 | 수락 판정 순서 | 형식 404 → 링크 검사 410(여행 행 잠금 포함) → 이미 ACTIVE면 그대로 200 → 정원 409 → 참여. 만료된 링크는 이미 멤버여도 410 | 정원 검사와 순번 발급이 겹치지 않도록 여행 행을 잠근다 |
+| I-5 | 검증 실패 응답 | 형식이 틀린 토큰은 `404 NOT_FOUND`. 형식이 맞으면 새 발급으로 무효가 된 링크만 `410 INVITATION_REVOKED`, 없는 토큰·기간 지남·삭제된 여행·초대한 사람이 나간 링크는 `410 INVITATION_EXPIRED`. 무효화는 만료 전 링크에만 하므로, 무효가 된 링크는 나중에 기간이 지나도 `INVITATION_REVOKED`로 알린다 | 명세 §2. 사용자 흐름의 "이유 안내"에 맞춰 가장 흔한 두 사유(기간 지남·새 링크로 바뀜)만 나누고 나머지는 묶었다(10/30 결정) |
+| I-6 | 수락 판정 순서 | 형식 404 → 없는 토큰·삭제된 여행 410(여행 행 잠금) → **이미 ACTIVE면 링크 상태와 상관없이 그대로 200** → 링크 검사 410(잠금 뒤 무효화 여부를 DB에서 다시 확인) → 정원 409 → 참여 | 링크 만료·재발급은 기존 참여자에게 영향이 없다(A 인수인계 §4, 사용자 흐름 "이미 참여 → 여행 상세") |
 | I-7 | 재참여 | 나간(LEFT)·내보낸(REMOVED) 사람도 유효 링크로 돌아올 수 있다. 기존 멤버십 행을 ACTIVE로 되돌리고 `joinOrder`는 지금까지의 최댓값 + 1. 채팅 참여 행도 같은 행의 `left_at`을 지운다(과거 대화 범위는 Q-13) | ERD `trip_members` 노트 "재참여는 기존 멤버십 ID 유지, join_order 새로 부여" |
 | I-8 | 수락의 부수 효과 | 멤버십·채팅 참여를 한 트랜잭션에서 만들고 여행 `version`을 1 올린다. 참여 알림은 아직 없다 | 응답 `members`가 바뀌므로 M-2와 같은 규칙. 알림 테이블이 없다 |
 | I-9 | 미리보기 인증 | 공개 경로(`SecurityConfig`의 `GET /api/v1/invitations/*`). `BearerFilter`는 그대로 거쳐서, 토큰을 보내면 `inviterUser` 회원 카드를 주고 안 보내면 null. 잘못된 토큰을 보내면 401, 가입 대기 토큰은 403 `PROFILE_INCOMPLETE` | 명세 InvitationPreview "익명 inviterUser=null". `shouldNotFilter`에 넣으면 로그인 사용자를 알 수 없다 |
+| I-10 | 이미 참여 표시 | 미리보기 응답 `alreadyMember`: 로그인한 사람이 그 여행의 ACTIVE 멤버면 true, 익명·비멤버는 false. true면 링크가 만료·무효여도 410 대신 200으로 미리보기를 준다. 앱은 true일 때 [참여하기] 대신 "이미 참여 중"을 보여 주고 수락 API로 여행을 받아 이동한다 | PRD WD-FR-04 검증 "무효/만료/이미 참여 구분", S04 상태 "이미 참여". 미리보기는 여행 ID를 숨기므로 앱이 스스로 판단할 수 없다 |
 
-남은 것: 링크 취소 API(`revoked_at` 열만 있음), 참여 알림, 프론트 초대 화면 경로가 정해진 뒤의 `url` 설정.
+남은 것: 새 발급 없이 링크만 끊는 취소 API, 참여 알림, 프론트 초대 화면 경로가 정해진 뒤의 `url` 설정.

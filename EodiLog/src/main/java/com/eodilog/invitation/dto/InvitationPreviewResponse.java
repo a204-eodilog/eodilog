@@ -27,7 +27,12 @@ public record InvitationPreviewResponse(
 
 		@Schema(description = "링크 만료 시각(UTC)", example = "2026-11-06T05:30:00Z",
 				requiredMode = Schema.RequiredMode.REQUIRED)
-		Instant expiresAt
+		Instant expiresAt,
+
+		@Schema(description = "보는 사람이 이미 이 여행의 동행인지. 로그인하지 않았으면 false. "
+				+ "true면 링크가 만료·무효여도 조회되며, 수락하면 같은 여행을 반환한다",
+				example = "false", requiredMode = Schema.RequiredMode.REQUIRED)
+		boolean alreadyMember
 ) {
 
 	public record Inviter(

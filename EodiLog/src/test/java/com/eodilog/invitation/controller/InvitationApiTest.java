@@ -89,6 +89,74 @@ class InvitationApiTest {
 	}
 
 	@Test
+	void newLinkRevokesEarlierLinksOfSameTrip() throws Exception {
+		UUID friendId = insertUser("동행");
+		insertMember(friendId, 2, "ACTIVE");
+		String first = token(createInvitation(ownerId));
+		UUID joinedId = insertUser("먼저 참여한 손님");
+		acceptInvitation(joinedId, first).andExpect(status().isOk());
+		// 다른 멤버가 새로 발급해도 여행 단위로 이전 링크가 무효가 된다
+		String second = token(createInvitation(friendId));
+		UUID guestId = insertUser("손님");
+
+		expectGone(mockMvc.perform(get("/api/v1/invitations/{token}", first)), "INVITATION_REVOKED");
+		expectGone(acceptInvitation(guestId, first), "INVITATION_REVOKED");
+		// 재발급은 기존 참여자에게 영향이 없다. 옛 링크로 들어와도 이미 참여 중으로 보여 주고 같은 여행을 준다
+		mockMvc.perform(get("/api/v1/invitations/{token}", first).with(authUser(joinedId)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.alreadyMember").value(true));
+		acceptInvitation(joinedId, first)
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.version").value(2));
+		assertThat(count("select count(*) from trip_members where trip_id = ? and user_id = ? and status = 'ACTIVE'",
+				tripId, joinedId)).isEqualTo(1);
+		mockMvc.perform(get("/api/v1/invitations/{token}", second))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.inviter.nickname").value("동행"));
+		acceptInvitation(guestId, second).andExpect(status().isOk());
+		assertThat(count("select count(*) from trip_invitations where trip_id = ? and revoked_at is null", tripId))
+				.isEqualTo(1);
+	}
+
+	@Test
+	void keepsOneUsableLinkWhenIssuedConcurrently() throws Exception {
+		List<UUID> issuers = List.of(ownerId, insertUser("동행1"), insertUser("동행2"));
+		for (int i = 1; i < issuers.size(); i++) {
+			insertMember(issuers.get(i), i + 1, "ACTIVE");
+		}
+		CountDownLatch ready = new CountDownLatch(1);
+		ExecutorService executor = Executors.newFixedThreadPool(issuers.size());
+		List<Future<MockHttpServletResponse>> futures = new ArrayList<>();
+		try {
+			for (UUID issuerId : issuers) {
+				futures.add(executor.submit(() -> {
+					ready.await();
+					return createInvitation(issuerId).andReturn().getResponse();
+				}));
+			}
+			ready.countDown();
+
+			List<String> tokens = new ArrayList<>();
+			for (Future<MockHttpServletResponse> future : futures) {
+				MockHttpServletResponse response = future.get();
+				assertThat(response.getStatus()).isEqualTo(201);
+				tokens.add(jsonMapper.readTree(response.getContentAsString()).get("data").get("token").asString());
+			}
+			assertThat(count("select count(*) from trip_invitations where trip_id = ? and revoked_at is null", tripId))
+					.isEqualTo(1);
+			long usable = 0;
+			for (String token : tokens) {
+				if (mockMvc.perform(get("/api/v1/invitations/{token}", token)).andReturn().getResponse().getStatus() == 200) {
+					usable++;
+				}
+			}
+			assertThat(usable).isEqualTo(1);
+		} finally {
+			executor.shutdownNow();
+		}
+	}
+
+	@Test
 	void showsPreviewWithoutLoginAndCardWhenLoggedIn() throws Exception {
 		String token = token(createInvitation(ownerId));
 
@@ -99,15 +167,20 @@ class InvitationApiTest {
 				.andExpect(jsonPath("$.data.endDate").value("2026-11-04"))
 				.andExpect(jsonPath("$.data.inviter.nickname").value("방장"))
 				.andExpect(jsonPath("$.data.inviterUser").isEmpty())
-				.andExpect(jsonPath("$.data.expiresAt").isNotEmpty())).get("data");
+				.andExpect(jsonPath("$.data.expiresAt").isNotEmpty())
+				.andExpect(jsonPath("$.data.alreadyMember").value(false))).get("data");
 		// 공개 응답에 동행 명단·여행 ID 같은 내부 자료를 싣지 않는다
 		assertThat(preview.propertyNames()).containsExactlyInAnyOrder(
-				"tripTitle", "startDate", "endDate", "inviter", "inviterUser", "expiresAt");
+				"tripTitle", "startDate", "endDate", "inviter", "inviterUser", "expiresAt", "alreadyMember");
 
 		mockMvc.perform(get("/api/v1/invitations/{token}", token).with(authUser(insertUser("손님"))))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.data.inviterUser.id").value(ownerId.toString()))
-				.andExpect(jsonPath("$.data.inviterUser.nickname").value("방장"));
+				.andExpect(jsonPath("$.data.inviterUser.nickname").value("방장"))
+				.andExpect(jsonPath("$.data.alreadyMember").value(false));
+		mockMvc.perform(get("/api/v1/invitations/{token}", token).with(authUser(ownerId)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.alreadyMember").value(true));
 	}
 
 	@Test
@@ -180,12 +253,20 @@ class InvitationApiTest {
 				where token_hash = ?""", InvitationToken.hash(expired));
 		expectExpired(mockMvc.perform(get("/api/v1/invitations/{token}", expired)));
 		expectExpired(acceptInvitation(guestId, expired));
+		// 이미 동행인 사람은 기간이 지난 링크로도 이미 참여 중으로 보고 같은 여행을 받는다
+		mockMvc.perform(get("/api/v1/invitations/{token}", expired).with(authUser(ownerId)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.alreadyMember").value(true));
+		acceptInvitation(ownerId, expired).andExpect(status().isOk()).andExpect(jsonPath("$.data.version").value(1));
 
 		// 초대한 사람이 여행을 나가면 그 사람의 링크는 더 쓸 수 없다
 		UUID friendId = insertUser("동행");
 		UUID friendMemberId = insertMember(friendId, 2, "ACTIVE");
 		String friendLink = token(createInvitation(friendId));
+		// 이미 만료된 링크는 새 발급으로 무효화하지 않고 만료 사유를 유지한다
+		expectExpired(mockMvc.perform(get("/api/v1/invitations/{token}", expired)));
 		jdbcTemplate.update("update trip_members set status = 'LEFT', left_at = now() where id = ?", friendMemberId);
+		expectExpired(mockMvc.perform(get("/api/v1/invitations/{token}", friendLink)));
 		expectExpired(acceptInvitation(guestId, friendLink));
 
 		String deletedTripLink = token(createInvitation(ownerId));
@@ -252,16 +333,24 @@ class InvitationApiTest {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.paths['/api/v1/trips/{tripId}/invitations'].post.tags[0]").value("초대"))
 				.andExpect(jsonPath("$.paths['/api/v1/invitations/{token}'].get.security", hasSize(0)))
-				.andExpect(jsonPath("$.paths['/api/v1/invitations/{token}'].get.responses['401']").doesNotExist())
+				// 공개 API지만 Authorization 헤더를 보내면 검증하므로 401·403을 직접 적는다
+				.andExpect(jsonPath("$.paths['/api/v1/invitations/{token}'].get.responses['401'].description")
+						.value(containsString("UNAUTHENTICATED")))
+				.andExpect(jsonPath("$.paths['/api/v1/invitations/{token}'].get.responses['403'].description")
+						.value(containsString("PROFILE_INCOMPLETE")))
 				.andExpect(jsonPath("$.paths['/api/v1/invitations/{token}'].get.responses['410'].description")
-						.value(containsString("INVITATION_EXPIRED")))
+						.value(containsString("INVITATION_REVOKED")))
 				.andExpect(jsonPath("$.paths['/api/v1/invitations/{token}/accept'].post.responses['409'].description")
 						.value(containsString("TRIP_FULL")));
 	}
 
 	private void expectExpired(ResultActions result) throws Exception {
+		expectGone(result, "INVITATION_EXPIRED");
+	}
+
+	private void expectGone(ResultActions result, String code) throws Exception {
 		result.andExpect(status().isGone())
-				.andExpect(jsonPath("$.error.code").value("INVITATION_EXPIRED"));
+				.andExpect(jsonPath("$.error.code").value(code));
 	}
 
 	private ResultActions createInvitation(UUID userId) throws Exception {

@@ -52,7 +52,7 @@
 | --- | --- |
 | 404 | `TRIP_NOT_FOUND`, `FEED_NOT_FOUND`, `JOB_NOT_FOUND` — 존재를 공개할 수 없는 자료도 같은 응답. 여행 안의 하위 자료는 `MEMBER_NOT_FOUND`(없거나 이탈한 멤버십), `CHECKLIST_ITEM_NOT_FOUND`(없거나 삭제된 준비물), `EXPENSE_NOT_FOUND`(없거나 삭제된 경비) |
 | 409 | `VERSION_CONFLICT`, `POLL_CLOSED`, `ALREADY_MEMBER`, `ALREADY_APPLIED`, `SETTLEMENT_POLICY_PENDING`, `TRIP_FULL`(여행 ACTIVE 멤버 정원 초과) |
-| 410 | `INVITATION_EXPIRED` — 사용자가 제시한 유효 형식의 초대 토큰 검증 결과 |
+| 410 | `INVITATION_EXPIRED`·`INVITATION_REVOKED` — 사용자가 제시한 유효 형식의 초대 토큰 검증 결과. 새 링크 발급으로 무효가 된 링크만 `INVITATION_REVOKED`, 없는 토큰·기간 지남·삭제된 여행·초대자 이탈은 `INVITATION_EXPIRED` |
 | 422 | `INSUFFICIENT_DATA`, `CURRENCY_MISMATCH`, `INVALID_PARTICIPANTS`, `UNSUPPORTED_INPUT` |
 | 503 | `PROVIDER_UNAVAILABLE` — 지도·날씨·장소 공급자 장애. 결과 없음과 구분 |
 
@@ -108,14 +108,14 @@
 | PATCH | `/trips/{tripId}` | 멤버 | `{expectedVersion:integer,title?:string,startDate?:date\|null,endDate?:date\|null,destinationRegionIds?:id[]}` | `Trip` / 200 | 모든 멤버 수정·변경 알림, 직접 목적지로 지역 투표 생략. status/currency 쓰기 없음 |
 | DELETE | `/trips/{tripId}` | 방장 | `expectedVersion:integer`(query) | `JobRef` / 202 | 전체 삭제 범위 Q-11, 즉시 접근 차단·후속 정리 작업 제안 |
 | GET | `/trips/{tripId}/members` | 멤버 | `includeInactive?:boolean`(query, 기본 false) | `{members:Member[]}` / 200 | 기본 ACTIVE만 joinOrder 순. `includeInactive=true`면 정산에 남는 이탈(LEFT·REMOVED) 멤버도 포함 |
-| POST | `/trips/{tripId}/invitations` | 멤버 | 없음 | `InvitationSecret` / 201 | 만료는 생성 후 7일(Q-4, 2026-10-30 결정). 링크별 사용 횟수 없음. 토큰 원문 1회 반환, 서버는 해시만 보관 |
-| GET | `/invitations/{token}` | 공개(D-1) | 없음 | `InvitationPreview` / 200 | 여행명·기간·초대한 사람만, 내부 명단/경비 반환 안 함. 형식이 틀린 토큰 404, 없거나 만료·삭제된 여행·초대자 이탈은 410 `INVITATION_EXPIRED` |
-| POST | `/invitations/{token}/accept` | 로그인 | 없음 | `Trip` / 200 | 유효 링크로 관계 없이 참여. ACTIVE 초대자·만료 검사(410), 정원은 여행당 ACTIVE 멤버 20명(방장 포함, Q-4)으로 넘으면 409 `TRIP_FULL`. 이미 멤버면 같은 여행 반환. 이탈 멤버는 기존 멤버십으로 재참여하고 joinOrder를 새로 받음. 채팅 참여와 함께 처리하고 여행 version 증가 |
+| POST | `/trips/{tripId}/invitations` | 멤버 | 없음 | `InvitationSecret` / 201 | 만료는 생성 후 7일(Q-4, 2026-10-30 결정). 링크별 사용 횟수 없음. 새로 만들면 같은 여행의 이전 링크는 모두 무효(여행당 쓸 수 있는 링크 하나), 화면 진입마다 호출하지 않음. 토큰 원문 1회 반환, 서버는 해시만 보관 |
+| GET | `/invitations/{token}` | 공개(D-1) | 없음 | `InvitationPreview` / 200 | 여행명·기간·초대한 사람만, 내부 명단/경비 반환 안 함. 형식이 틀린 토큰 404, 링크가 쓸 수 없으면 410(사유는 §2). 로그인한 사람이 이미 ACTIVE 멤버면 링크가 만료·무효여도 200, `alreadyMember=true`. Authorization 헤더를 보내면 검증(잘못된 토큰 401, 가입 대기 403) |
+| POST | `/invitations/{token}/accept` | 로그인 | 없음 | `Trip` / 200 | 유효 링크로 관계 없이 참여. 이미 ACTIVE 멤버면 링크가 만료·무효여도 바뀌는 것 없이 같은 여행 반환. 그 밖에는 새 발급으로 무효(410 `INVITATION_REVOKED`)·만료·초대자 이탈(410 `INVITATION_EXPIRED`) 검사 후, 정원은 여행당 ACTIVE 멤버 20명(방장 포함, Q-4)으로 넘으면 409 `TRIP_FULL`. 이탈 멤버는 기존 멤버십으로 재참여하고 joinOrder를 새로 받음. 채팅 참여와 함께 처리하고 여행 version 증가 |
 | POST | `/trips/{tripId}/owner-transfer` | 방장 | `{targetMemberId:id,expectedVersion:integer}` | `Trip` / 200 | 같은 여행의 다른 ACTIVE 멤버만, 아니면 400. 방장 아닌 멤버 403. 알림 없음 |
 | POST | `/trips/{tripId}/leave` | 멤버 | `{deleteOwnPhotos:boolean,deleteOwnMessages:boolean,expectedVersion:integer}` | `LeaveResult` / 202 | 일반 이탈은 경비 유지·방장 자동 양도. 마지막 방장은 여행 삭제로 접수하며 tripDeleted=true, 같은 TRIP_DELETE 작업 사용 |
 | DELETE | `/trips/{tripId}/members/{memberId}` | 방장 | `expectedVersion:integer`(query) | 204 | 본인·방장 내보내기 금지(400). 없거나 이탈한 대상 404 `MEMBER_NOT_FOUND`. 멤버십 REMOVED·채팅 참여 해제를 한 트랜잭션으로. 강제 이탈 시 타인 자료 삭제 여부는 Q-11 |
 
-2026-10-30 사용자 확정: 여행 정원은 방장 포함 ACTIVE 멤버 최대 20명이다. 이탈·내보내기로 빈자리가 생기면 다시 참여할 수 있다. 초대 링크는 발급 시각부터 7일(168시간) 유효하며, 만료 시각부터 참여할 수 없다. ACTIVE 멤버 누구나 재발급할 수 있고 재발급하면 이전 링크는 즉시 무효화한다. 링크 만료·재발급은 기존 참여자에게 영향을 주지 않는다. 수락 시 정원 확인과 참여 반영을 원자적으로 처리해 동시 수락으로 20명을 초과하지 않게 한다. 만료는 410 INVITATION_EXPIRED, 정원 초과는 409 TRIP_FULL이다. 현재 초대 구현은 링크별 독립 만료 방식이므로 재발급 시 이전 링크 무효화는 추가 반영이 필요하다.
+2026-10-30 사용자 확정: 여행 정원은 방장 포함 ACTIVE 멤버 최대 20명이다. 이탈·내보내기로 빈자리가 생기면 다시 참여할 수 있다. 초대 링크는 발급 시각부터 7일(168시간) 유효하며, 만료 시각부터 참여할 수 없다. ACTIVE 멤버 누구나 재발급할 수 있고 재발급하면 이전 링크는 즉시 무효화한다. 링크 만료·재발급은 기존 참여자에게 영향을 주지 않는다. 수락 시 정원 확인과 참여 반영을 원자적으로 처리해 동시 수락으로 20명을 초과하지 않게 한다. 만료는 410 INVITATION_EXPIRED, 정원 초과는 409 TRIP_FULL이다. 재발급 시 이전 링크 무효화는 EODI-128에서 반영했다(여행 행 잠금으로 동시 발급에도 쓸 수 있는 링크는 하나, 무효가 된 링크는 410 INVITATION_REVOKED). 기존 ACTIVE 멤버는 만료·무효 링크로 열어도 미리보기 `alreadyMember=true`, 수락은 같은 여행을 받는다.
 
 방장 양도·멤버 내보내기의 `expectedVersion`은 여행의 `version`(`Trip.version`)이다(이탈·여행 삭제도 같은 version을 쓰는 제안). 입력 형식 400을 먼저 검사한 뒤 비참여자 404, 방장 전용 동작을 멤버가 요청하면 403, 버전이 다르면 409, 끝으로 대상(양도 대상이 동행이 아니거나 이미 방장이면 400, 내보낼 멤버가 없거나 이탈했으면 404 `MEMBER_NOT_FOUND`, 방장 자신이면 400) 순으로 판정한다. 양도·내보내기가 성공하면 `Trip`의 `ownerMemberId`·`members`가 바뀌므로 여행 version을 올리고, 그 전 version으로 보낸 여행 정보 수정(PATCH)은 409가 된다.
 
@@ -323,7 +323,7 @@
 | Trip | `id,title,startDate:date\|null,endDate:date\|null,destinationRegionIds:id[],status:TripStatus,currency:KRW,ownerMemberId:id,members:Member[],version:integer,expenseVersion:integer` |
 | Member | `id,user:UserCard,role:OWNER\|MEMBER,status:ACTIVE\|LEFT\|REMOVED,joinOrder:integer,joinedAt:datetime,leftAt:datetime\|null` — role은 owner FK로 계산 |
 | InvitationSecret | `id,token:string,url:string,expiresAt:datetime`. 원문 토큰은 생성 시만 반환, 코드 없음 |
-| InvitationPreview | `tripTitle:string,startDate:date\|null,endDate:date\|null,inviter:{nickname:string},inviterUser:UserCard\|null,expiresAt:datetime`. 익명 inviterUser=null, 로그인 시만 본인 기준 관계 상태 포함 |
+| InvitationPreview | `tripTitle:string,startDate:date\|null,endDate:date\|null,inviter:{nickname:string},inviterUser:UserCard\|null,expiresAt:datetime,alreadyMember:boolean`. 익명 inviterUser=null, 로그인 시만 본인 기준 관계 상태 포함. alreadyMember는 로그인한 사람이 이미 ACTIVE 멤버일 때만 true |
 | LeaveResult | `tripId:id,tripDeleted:boolean,newOwnerMemberId:id\|null,cleanupJobId:id\|null,status:LEFT\|TRIP_DELETED`. 마지막 방장 이탈은 TRIP_DELETED·삭제 job 반환 |
 | Region | `id,code:string,name:string,parentId:id\|null,latitude:number\|null,longitude:number\|null` |
 | Place | `id,name,address:string\|null,latitude:number,longitude:number,regionId:id\|null,provider:string\|null,providerPlaceId:string\|null,source:PROVIDER\|MANUAL` |
