@@ -127,6 +127,35 @@ class ExpenseApiTest {
 	}
 
 	@Test
+	void checksTitleAndAmountBoundariesAndClearsBlankMemo() throws Exception {
+		// E-4: 이름 200자, 원금 JSON 안전 정수(2^53-1)까지 받는다
+		createExpense(ownerId, UUID.randomUUID().toString(), simpleExpense(1000).replace("저녁", "가".repeat(201)))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.error.fields[0].field").value("title"));
+		createExpense(ownerId, UUID.randomUUID().toString(), simpleExpense(9_007_199_254_740_992L))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.error.fields[0].field").value("amountMinor"));
+		assertThat(expenseVersion()).isZero();
+
+		createExpense(ownerId, UUID.randomUUID().toString(), simpleExpense(9_007_199_254_740_991L)
+				.replace("저녁", "가".repeat(200)).replace("\"currency\"", "\"memo\":\"   \",\"currency\""))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.data.amountMinor").value(9_007_199_254_740_991L))
+				.andExpect(jsonPath("$.data.memo").isEmpty());
+	}
+
+	@Test
+	void requiresIdempotencyKey() throws Exception {
+		// E-12: 키 없이 보낸 등록은 경비를 만들지 않는다
+		mockMvc.perform(post("/api/v1/trips/{tripId}/expenses", tripId).with(authUser(ownerId))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(simpleExpense(1000)))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.error.fields[0].field").value(IdempotencyService.HEADER_NAME));
+		assertThat(count("select count(*) from expenses where trip_id = ?", tripId)).isZero();
+	}
+
+	@Test
 	void rejectsForeignCurrencyAndInvalidParticipants() throws Exception {
 		createExpense(ownerId, UUID.randomUUID().toString(), simpleExpense(1000).replace("\"KRW\"", "\"USD\""))
 				.andExpect(status().isUnprocessableContent())
@@ -275,6 +304,35 @@ class ExpenseApiTest {
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.error.code").value("EXPENSE_NOT_FOUND"));
 		settlementState(ownerId).andExpect(jsonPath("$.data.currentExpenseVersion").value(2));
+	}
+
+	@Test
+	void rejectsListLimitOutOfRange() throws Exception {
+		// E-11: limit은 1~100
+		listExpenses(ownerId, "limit=0")
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.error.fields[0].field").value("limit"));
+		listExpenses(ownerId, "limit=101")
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.error.fields[0].field").value("limit"));
+		listExpenses(ownerId, "limit=100").andExpect(status().isOk());
+	}
+
+	@Test
+	void keepsTripVersionWhenExpensesChange() throws Exception {
+		// E-6: 경비 변경은 expense_version만 올리고 여행 정보 version은 그대로라 여행 수정이 409가 되지 않는다
+		UUID expenseId = id(createExpense(ownerId, UUID.randomUUID().toString(), simpleExpense(1000)));
+		updateExpense(ownerId, expenseId, "{\"expectedVersion\":1,\"amountMinor\":2000}").andExpect(status().isOk());
+		deleteExpense(ownerId, expenseId, 2).andExpect(status().isNoContent());
+
+		assertThat(expenseVersion()).isEqualTo(3);
+		assertThat(count("select version from trips where id = ?", tripId)).isEqualTo(1);
+		mockMvc.perform(patch("/api/v1/trips/{tripId}", tripId).with(authUser(ownerId))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"expectedVersion\":1,\"title\":\"제주 3박\"}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.version").value(2))
+				.andExpect(jsonPath("$.data.expenseVersion").value(3));
 	}
 
 	@Test
