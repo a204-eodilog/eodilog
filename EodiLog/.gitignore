@@ -38,3 +38,6 @@ out/
 
 ### Local env ###
 .env
+
+# Local command runtime files
+.local-dev/

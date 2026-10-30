@@ -41,6 +41,10 @@ import static com.eodilog.domain.auth.AuthDtos.*;
 @SpringBootTest @AutoConfigureMockMvc
 @Import({AuthIntegrationTest.ContractController.class, AuthIntegrationTest.AuthDatabase.class})
 class AuthIntegrationTest {
+    @Test void localDiagnosticHtmlIsNotExposedWithoutLocalProfile() throws Exception {
+        for(String path:List.of("/dev/kakao-login","/oauth/kakao/callback","/local-dev/kakao-login.html"))
+            mvc.perform(get(path)).andExpect(status().isUnauthorized()).andExpect(content().contentTypeCompatibleWith("application/json"));
+    }
     @org.springframework.boot.test.context.TestConfiguration(proxyBeanMethods=false)
     static class AuthDatabase {
         @org.springframework.context.annotation.Bean

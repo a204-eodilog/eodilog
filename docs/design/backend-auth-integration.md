@@ -4,6 +4,10 @@
 
 ## 로컬 실행
 
+Windows 로컬 실행은 `EodiLog`에서 `.\dev-up`, DB만 실행은 `.\docker-compose-up`, 종료는 `.\dev-down`을 사용한다. DB 볼륨은 보존하며 PID·시작 시각·실행 파일·정확한 jar 명령줄로 소유한 서버만 정지한다. [명령·로그·복구 절차](../../EodiLog/docs/plan/local-development.md)를 따른다.
+
+local 프로필에서는 [카카오 실연동 점검 화면](http://localhost:8080/dev/kakao-login)을 제공한다. Kakao Developers와 `KAKAO_ALLOWED_REDIRECTS`에 `http://localhost:8080/oauth/kakao/callback`을 등록하고 사용자가 직접 로그인·2차 인증·동의를 처리한다. 페이지 준비 상태는 인증 성공이 아니며 기존 PKCE/state 검증과 세션 API 교환 후 `/me` 성공이 확인되어야 성공으로 표시한다. verifier·인가 시도는 sessionStorage에서 교환 전에 정리하며 JWT는 메모리에서 `/me`에만 사용한다. 화면과 callback은 local 프로필에만 존재하고 Expo 앱용 redirect 브리지는 후속이다.
+
 `EodiLog/.env.example`을 참고해 `EodiLog/.env`에 DB 비밀번호, 카카오 REST API 키·클라이언트 시크릿, 허용 redirect 목록, 무작위 JWT 서명키를 채운다. 이미 `.env`가 있으면 덮어쓰지 않고 필요한 키만 추가한다. `.env`는 Java properties 문법이며 값에 따옴표를 붙이지 않는다. JWT_SECRET은 최소 32바이트 이상 무작위 값이다. 실제 `.env`는 저장소에 올리지 않는다.
 
 ```powershell
@@ -15,7 +19,7 @@ cd EodiLog
 
 외부 DB를 사용하면 `SPRING_DOCKER_COMPOSE_ENABLED=false`와 `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`를 설정한다. 기존 `DB_URL/DB_USERNAME/DB_PASSWORD` 키는 사용하지 않는다. Flyway는 `V202610281000__create_postgis_extension.sql`, `V202610281100__create_users.sql`, `V202610301000__create_auth.sql` 순서로 적용한다. 구버전 `1100 create_auth_member`가 로컬 DB에 적용된 이력이 있으면 새 1100의 이름·체크섬이 다르므로 검증 오류가 발생할 수 있다. 이력을 확인하고 폐기 가능한 로컬 DB만 명시적으로 재생성하거나 별도 전환 절차를 검토한다. 자동 repair·baseline은 하지 않는다.
 
-Kakao Developers에서 카카오 로그인과 `profile_nickname` 동의 항목을 설정한다. 서버는 `kakao_account.profile.nickname`을 읽으며 `is_default_nickname=true`는 사용하지 않는다. KAKAO_ALLOWED_REDIRECTS는 정확히 일치하는 URI의 쉼표 구분 목록이다. 예시는 `https://app.example.com/oauth/kakao`이며 실제로 소유·운영하는 HTTPS 주소로 바꿔 카카오 앱에도 동일하게 등록한다. 카카오 REST 웹 redirect 설정은 custom scheme을 허용하지 않는다([카카오 공식 안내](https://devtalk.kakao.com/t/redirect-uri/143619)). Expo에서는 해당 HTTPS 주소의 universal link/app link 수신 설정 또는 별도 HTTPS-to-deep-link 브리지가 필요하다. 브리지는 code/state를 보존하고 로그에 남기지 않아야 한다. 이 MR은 local 점검용 callback을 포함하지 않는다. 점검 페이지와 callback은 후속 로컬 도구 MR이며 Expo 브리지·앱 링크 설정도 별도다. 앱 연결 완료를 주장하지 않는다. Swagger UI 자체를 OAuth callback으로 쓰지 않는다. 공식 API 참고: [카카오 로그인 REST API](https://developers.kakao.com/docs/latest/ko/kakaologin/rest-api).
+Kakao Developers에서 카카오 로그인과 `profile_nickname` 동의 항목을 설정한다. 서버는 `kakao_account.profile.nickname`을 읽으며 `is_default_nickname=true`는 사용하지 않는다. KAKAO_ALLOWED_REDIRECTS는 정확히 일치하는 URI의 쉼표 구분 목록이다. 예시는 `https://app.example.com/oauth/kakao`이며 실제로 소유·운영하는 HTTPS 주소로 바꿔 카카오 앱에도 동일하게 등록한다. 카카오 REST 웹 redirect 설정은 custom scheme을 허용하지 않는다([카카오 공식 안내](https://devtalk.kakao.com/t/redirect-uri/143619)). Expo에서는 해당 HTTPS 주소의 universal link/app link 수신 설정 또는 별도 HTTPS-to-deep-link 브리지가 필요하다. 브리지는 code/state를 보존하고 로그에 남기지 않아야 한다. local 점검용 callback만 제공하며 Expo용 callback 브리지·앱 링크 설정은 포함하지 않는다. 앱 연결 완료를 주장하지 않는다. Swagger UI 자체를 OAuth callback으로 쓰지 않는다. 공식 API 참고: [카카오 로그인 REST API](https://developers.kakao.com/docs/latest/ko/kakaologin/rest-api).
 
 ## Swagger에서 실제 호출
 
@@ -63,6 +67,4 @@ B 테스트에서는 `new AuthUser(uuid)`를 principal로 둔 `UsernamePasswordA
 
 2026-10-30 추가 검증: 사용자가 PC 로컬 점검 페이지에서 실제 카카오 인증 후 성공 화면을 확인했다. 카카오 코드 교환→서비스 토큰 발급→`/api/v1/me` 성공까지 실제 설정으로 확인된 결과다. 계정 정보·토큰은 기록하지 않았다. Expo redirect 및 B 여행 API와의 계정 2개 통합 검증은 아직 별도다.
 
-로그인 MR은 로컬 점검 화면·개발 명령·JaCoCo를 포함하지 않는다. 사용자 실제 PC 로그인 확인은 이 API와 후속 local 점검 화면을 함께 실행한 결과다. 최신 B 기능과의 분리 build 결과는 MR 설명을 따른다.
-
-주의: 기존 개인 DB에 이전 V202610281101__create_auth.sql 이력이 있다면 새 V202610301000 파일과 자동 호환되지 않는다. 실제 DB를 초기화·repair하지 않았으며 별도 이력 전환이 필요하다. B 신규 마이그레이션 이후 순서를 지키기 위한 번호 변경이며 이번 분리 검증은 새 Testcontainers DB에서 수행했다.
+배포 분리: Jira EODI-119의 로컬 개발 도구 MR은 로그인 MR !52 위에 쌓인 변경이다. 로그인 브랜치 병합 후 이 MR의 대상을 dev로 변경한다. 실제 .env와 런타임 파일은 포함하지 않는다.
