@@ -23,9 +23,12 @@ public final class AuthDtos {
         @NotBlank @Size(max=500) @Schema(description="시작과 동일한 redirect URI",example="https://app.example.com/oauth/kakao",requiredMode=Schema.RequiredMode.REQUIRED) String redirectUri,
         @NotBlank @Size(max=256) @Schema(description="redirect의 state",requiredMode=Schema.RequiredMode.REQUIRED) String state,
         @NotBlank @Pattern(regexp="[A-Za-z0-9._~-]{43,128}") @Schema(description="앱에 보관한 PKCE verifier",example="dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",requiredMode=Schema.RequiredMode.REQUIRED) String codeVerifier) { }
+    @Schema(description="리프레시 토큰만으로 인증하는 갱신 요청")
+    public record RefreshRequest(
+        @NotBlank @Size(max=256) @Schema(description="현재 리프레시 토큰. 한 번만 사용한다",example="opaque-refresh-token",requiredMode=Schema.RequiredMode.REQUIRED) String refreshToken) { }
     public record Session(
         @Schema(description="서비스 Bearer JWT",requiredMode=Schema.RequiredMode.REQUIRED) String accessToken,
-        @Schema(description="갱신 토큰. 갱신 endpoint는 미제공",requiredMode=Schema.RequiredMode.REQUIRED) String refreshToken,
+        @Schema(description="일회용 갱신 토큰. 갱신 성공 시 두 토큰을 함께 교체하며 새로 14일 유효하다",requiredMode=Schema.RequiredMode.REQUIRED) String refreshToken,
         @Schema(description="access token 유효기간(초)",example="3600",requiredMode=Schema.RequiredMode.REQUIRED) long expiresIn,
         @Schema(description="내 정보",requiredMode=Schema.RequiredMode.REQUIRED) MyProfile user,
         @Schema(description="최초 사용자 생성 여부",example="true",requiredMode=Schema.RequiredMode.REQUIRED) boolean isNewUser) { }

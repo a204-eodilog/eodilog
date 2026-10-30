@@ -64,4 +64,68 @@ public class AuthService {
         if(count==null || count!=1) throw new BusinessException(CommonErrorCode.UNAUTHENTICATED);
         return members.profile(claims.userId());
     }
+
+    public Session refresh(RefreshRequest request) {
+        String hash=Tokens.hash(request.refreshToken());
+        Session result=tx.execute(status->{
+            var owners=jdbc.query("SELECT user_id FROM sessions WHERE refresh_token_hash=?",(rs,n)->rs.getObject(1,UUID.class),hash);
+            if(owners.isEmpty()) return null;
+            UUID userId=owners.getFirst();
+            lockMember(userId);
+            var profile=members.profile(userId);
+            var rows=jdbc.query("SELECT id,expires_at,revoked_at FROM sessions WHERE refresh_token_hash=? AND user_id=?",
+                (rs,n)->new StoredSession(rs.getObject("id",UUID.class),rs.getTimestamp("expires_at").toInstant(),rs.getTimestamp("revoked_at")!=null),hash,userId);
+            if(rows.isEmpty()) return null;
+            var previous=rows.getFirst();
+            if(previous.revoked()) {
+                revokeDescendants(userId,previous.id());
+                return null;
+            }
+            Instant now=Instant.now();
+            if(!previous.expiresAt().isAfter(now)) return null;
+            UUID sessionId=UuidV7.generate();
+            String refresh=tokens.random(),access=tokens.issue(userId,sessionId);
+            jdbc.update("UPDATE sessions SET revoked_at=? WHERE id=?",Timestamp.from(now),previous.id());
+            jdbc.update("INSERT INTO sessions(id,user_id,refresh_token_hash,rotated_from_id,expires_at,created_at) VALUES(?,?,?,?,?,?)",
+                sessionId,userId,Tokens.hash(refresh),previous.id(),Timestamp.from(now.plusSeconds(properties.refreshSeconds())),Timestamp.from(now));
+            return new Session(access,refresh,properties.accessSeconds(),profile,false);
+        });
+        // Replay revocation must commit before the authentication error is raised.
+        if(result==null) throw new BusinessException(CommonErrorCode.UNAUTHENTICATED);
+        return result;
+    }
+
+    public void logout(Tokens.Claims claims) {
+        Boolean valid=tx.execute(status->{
+            lockMember(claims.userId());
+            members.profile(claims.userId());
+            var rows=jdbc.query("SELECT id,expires_at,revoked_at FROM sessions WHERE id=? AND user_id=?",
+                (rs,n)->new StoredSession(rs.getObject("id",UUID.class),rs.getTimestamp("expires_at").toInstant(),rs.getTimestamp("revoked_at")!=null),claims.sessionId(),claims.userId());
+            if(rows.isEmpty()) return false;
+            var session=rows.getFirst();
+            // A rotation can commit after Bearer authentication but before this lock.
+            // Revoke its descendants too so the concurrent logout cannot leave it alive.
+            revokeDescendants(claims.userId(),claims.sessionId());
+            return !session.revoked() && session.expiresAt().isAfter(Instant.now());
+        });
+        if(!Boolean.TRUE.equals(valid)) throw new BusinessException(CommonErrorCode.UNAUTHENTICATED);
+    }
+
+    private void lockMember(UUID userId) {
+        if(jdbc.query("SELECT id FROM users WHERE id=? FOR UPDATE",(rs,n)->rs.getObject(1,UUID.class),userId).isEmpty())
+            throw new BusinessException(CommonErrorCode.UNAUTHENTICATED);
+    }
+
+    private void revokeDescendants(UUID userId,UUID sessionId) {
+        jdbc.update("""
+            WITH RECURSIVE family(id) AS (
+                SELECT id FROM sessions WHERE id=? AND user_id=?
+                UNION ALL
+                SELECT s.id FROM sessions s JOIN family f ON s.rotated_from_id=f.id WHERE s.user_id=?
+            )
+            UPDATE sessions SET revoked_at=COALESCE(revoked_at,?) WHERE id IN (SELECT id FROM family)
+            """,sessionId,userId,userId,Timestamp.from(Instant.now()));
+    }
+
+    private record StoredSession(UUID id,Instant expiresAt,boolean revoked) { }
 }

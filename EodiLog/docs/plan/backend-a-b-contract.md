@@ -52,7 +52,7 @@ public ResponseEntity<DataResponse<TripResponse>> createTrip(
 | 질문 | B의 기대 |
 | --- | --- |
 | 비활성(`DEACTIVATED`) 사용자의 토큰 | **A 확정(10/28):** 필터에서 `401 UNAUTHENTICATED`로 거부. 여행 쪽은 사용자 상태를 다시 검사하지 않는다 |
-| 프로필 미완성(`MyProfile.profileCompleted=false`) 사용자의 여행 생성 | **A 확정(10/28): 허용하지 않는다.** 미완성 토큰은 `GET/PATCH /api/v1/me`만 쓸 수 있고 나머지 보호 API는 A의 인증 필터가 `403 PROFILE_INCOMPLETE`로 막는다. 닉네임 입력을 마치면 같은 토큰으로 접근할 수 있다. 여행 서비스는 다시 검사하지 않는다 |
+| 프로필 미완성(`MyProfile.profileCompleted=false`) 사용자의 여행 생성 | **A 확정(10/28): 허용하지 않는다.** 미완성 토큰은 `GET/PATCH /api/v1/me`를 쓸 수 있고, 10/30 추가 확정으로 갱신·현재 세션 로그아웃도 허용한다. 나머지 보호 API는 A의 인증 필터가 `403 PROFILE_INCOMPLETE`로 막는다. 닉네임 입력을 마치면 같은 토큰으로 접근할 수 있다. 여행 서비스는 다시 검사하지 않는다 |
 | `authorities` | 이번에는 역할 구분이 없으므로 빈 목록이어도 된다. 방장/멤버 권한은 Security 역할이 아니라 여행 서비스가 판단한다 |
 
 ### B 테스트에서 쓰는 방식
@@ -258,8 +258,8 @@ public enum AuthErrorCode implements ErrorCode { ... }                          
 | 1 | 인증 주체 이름·위치, 커스텀 어노테이션 여부 | `global.security.AuthUser(UUID userId)` 그대로. 컨트롤러는 Spring 기본 `@AuthenticationPrincipal AuthUser`, 커스텀 어노테이션 없음 |
 | 2 | 회원 패키지 루트 | `user` |
 | 3 | `UserCardReader` 시그니처, A-0 일정 | 시그니처 동의. A-0는 EODI-105로 dev 병합 완료. `users`에 ERD에 없던 `profile_completed` 컬럼이 추가됨(가입 완료 회원은 `true`와 1~50자 닉네임 필요) |
-| 4 | 비활성 사용자 토큰, 프로필 미완성 사용자의 여행 생성 | 비활성 회원·누락·만료·위조·폐기 토큰은 모두 `401 UNAUTHENTICATED`. **프로필 미완성 사용자는 여행 생성 불가**: 미완성 토큰은 `GET/PATCH /api/v1/me`만 허용하고 나머지는 `403 PROFILE_INCOMPLETE`(§1) |
-| 5 | 토큰 만료 전용 코드 | 두지 않음. 만료도 `401 UNAUTHENTICATED`. 토큰 수명은 access 1시간, refresh 14일 |
+| 4 | 비활성 사용자 토큰, 프로필 미완성 사용자의 여행 생성 | 비활성 회원·누락·만료·위조·폐기 토큰은 모두 `401 UNAUTHENTICATED`. **프로필 미완성 사용자는 여행 생성 불가**: `GET/PATCH /api/v1/me`와 갱신·현재 세션 로그아웃을 허용하고 다른 서비스는 `403 PROFILE_INCOMPLETE`(§1) |
+| 5 | 토큰 만료 전용 코드 | 두지 않음. 만료도 `401 UNAUTHENTICATED`. access 1시간, refresh는 매 갱신부터 14일. 회전 시 이전 두 토큰을 폐기하고 refresh 재사용은 해당 로그인 후속 계열까지 폐기. 다른 기기는 유지 |
 | 6 | -64 시점과 프로필 구조 | A의 로그인 변경에 포함. Bearer 무상태 인증, formLogin·httpBasic 제거, CSRF 해제 적용. DB·카카오·JWT 설정은 `EodiLog/.env` 하나로 모으고 `--spring.profiles.active=local`로 실행(A의 로그인 MR에서 AGENTS.md 실행 안내도 함께 고친다) |
 | 7 | Flyway 파일명 규칙, UUIDv7 | 둘 다 동의. UUIDv7은 §6처럼 Hibernate의 동일 생성 전략을 JPA·JDBC에서 재사용 |
 
