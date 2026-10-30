@@ -1,6 +1,7 @@
 package com.eodilog.domain.auth;
 
 import com.eodilog.global.common.error.*;
+import com.eodilog.global.id.UuidV7;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.*;
@@ -28,7 +29,7 @@ public class AuthService {
     public OAuthAuthorization start(String provider,AuthorizationRequest request) {
         provider(provider);
         if(!properties.allowedRedirects().contains(request.redirectUri())) throw new BusinessException(CommonErrorCode.VALIDATION_ERROR);
-        UUID id=UUID.randomUUID(); String state=tokens.random(); Instant now=Instant.now(),expiry=now.plusSeconds(properties.attemptSeconds());
+        UUID id=UuidV7.generate(); String state=tokens.random(); Instant now=Instant.now(),expiry=now.plusSeconds(properties.attemptSeconds());
         jdbc.update("INSERT INTO oauth_attempts(id,provider,state_hash,initiator_context_hash,redirect_uri,code_challenge,expires_at,created_at) VALUES(?,?,?,?,?,?,?,?)",id,provider,Tokens.hash(state),request.codeChallenge(),request.redirectUri(),request.codeChallenge(),Timestamp.from(expiry),Timestamp.from(now));
         String url=UriComponentsBuilder.fromUriString("https://kauth.kakao.com/oauth/authorize").queryParam("response_type","code").queryParam("client_id",properties.kakaoClientId()).queryParam("redirect_uri","{redirectUri}").queryParam("state",state).queryParam("code_challenge",request.codeChallenge()).queryParam("code_challenge_method","S256").encode().buildAndExpand(request.redirectUri()).toUriString();
         return new OAuthAuthorization(id,url,state,expiry);
@@ -46,15 +47,15 @@ public class AuthService {
     }
     private Session save(String provider,KakaoGateway.KakaoUser kakao) {
         var ids=jdbc.query("SELECT user_id FROM oauth_accounts WHERE provider=? AND provider_user_id=?",(rs,n)->rs.getObject(1,UUID.class),provider,kakao.providerUserId());
-        boolean isNew=ids.isEmpty(); UUID userId=isNew ? UUID.randomUUID() : ids.getFirst();
+        boolean isNew=ids.isEmpty(); UUID userId=isNew ? UuidV7.generate() : ids.getFirst();
         if(isNew) {
             String name=kakao.nickname()==null ? "" : kakao.nickname().strip();
             if(name.indexOf('\0')>=0 || name.codePointCount(0,name.length())>50 || name.equals("기본 닉네임")) name="";
             jdbc.update("INSERT INTO users(id,nickname,profile_completed,created_at,updated_at) VALUES(?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",userId,name,!name.isEmpty());
-            jdbc.update("INSERT INTO oauth_accounts(id,user_id,provider,provider_user_id,created_at) VALUES(?,?,?,?,CURRENT_TIMESTAMP)",UUID.randomUUID(),userId,provider,kakao.providerUserId());
+            jdbc.update("INSERT INTO oauth_accounts(id,user_id,provider,provider_user_id,created_at) VALUES(?,?,?,?,CURRENT_TIMESTAMP)",UuidV7.generate(),userId,provider,kakao.providerUserId());
         }
         var profile=members.profile(userId);
-        UUID sessionId=UUID.randomUUID(); String refresh=tokens.random(); String access=tokens.issue(userId,sessionId);
+        UUID sessionId=UuidV7.generate(); String refresh=tokens.random(); String access=tokens.issue(userId,sessionId);
         jdbc.update("INSERT INTO sessions(id,user_id,refresh_token_hash,expires_at,created_at) VALUES(?,?,?,?,CURRENT_TIMESTAMP)",sessionId,userId,Tokens.hash(refresh),Timestamp.from(Instant.now().plusSeconds(properties.refreshSeconds())));
         return new Session(access,refresh,properties.accessSeconds(),profile,isNew);
     }

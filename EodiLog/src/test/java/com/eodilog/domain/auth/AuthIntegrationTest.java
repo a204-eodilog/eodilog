@@ -101,6 +101,57 @@ class AuthIntegrationTest {
     OAuthExchange request(OAuthAuthorization a) { return new OAuthExchange(a.authorizationId(),"code",REDIRECT,a.state(),VERIFIER); }
     Session login() { return service.exchange("KAKAO",request(start())); }
     long count(String table) { return jdbc.queryForObject("SELECT COUNT(*) FROM "+table,Long.class); }
+    @Test void newLoginPersistsVersion7IdsAndMatchingTokenClaims() throws Exception {
+        var authorization=start();
+        var session=service.exchange("KAKAO",request(authorization));
+        var claims=tokens.verify(session.accessToken());
+        for(String table:List.of("oauth_attempts","users","oauth_accounts","sessions")) {
+            var id=jdbc.queryForObject("SELECT id FROM "+table,UUID.class);
+            assertThat(id.version()).as(table).isEqualTo(7);
+            assertThat(id.variant()).as(table).isEqualTo(2);
+        }
+        assertThat(jdbc.queryForObject("SELECT id FROM oauth_attempts",UUID.class)).isEqualTo(authorization.authorizationId());
+        assertThat(claims.userId()).isEqualTo(session.user().id());
+        assertThat(jdbc.queryForObject("SELECT id FROM sessions",UUID.class)).isEqualTo(claims.sessionId());
+        assertThat(jdbc.queryForObject("SELECT user_id FROM oauth_accounts",UUID.class)).isEqualTo(session.user().id());
+        assertThat(jdbc.queryForObject("SELECT user_id FROM sessions",UUID.class)).isEqualTo(session.user().id());
+        mvc.perform(get("/api/v1/me").header("Authorization","Bearer "+session.accessToken()))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.data.id").value(session.user().id().toString()));
+    }
+    @Test void legacyVersion4UserAccountAndSessionRemainUsable() throws Exception {
+        UUID userId=UUID.randomUUID(),accountId=UUID.randomUUID(),sessionId=UUID.randomUUID();
+        jdbc.update("INSERT INTO users(id,nickname,profile_completed,created_at,updated_at) VALUES(?,?,true,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",userId,"기존 회원");
+        jdbc.update("INSERT INTO oauth_accounts(id,user_id,provider,provider_user_id,created_at) VALUES(?,?,'KAKAO','123',CURRENT_TIMESTAMP)",accountId,userId);
+        Timestamp legacyExpiry=Timestamp.from(Instant.now().plusSeconds(1209600).truncatedTo(java.time.temporal.ChronoUnit.SECONDS));
+        jdbc.update("INSERT INTO sessions(id,user_id,refresh_token_hash,expires_at,created_at) VALUES(?,?,?,?,CURRENT_TIMESTAMP)",sessionId,userId,Tokens.hash("legacy-refresh"),legacyExpiry);
+        String legacyAccess=tokens.issue(userId,sessionId);
+        mvc.perform(get("/api/v1/me").header("Authorization","Bearer "+legacyAccess))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.data.id").value(userId.toString()));
+        var next=login();
+        assertThat(next.isNewUser()).isFalse();
+        assertThat(next.user().id()).isEqualTo(userId);
+        assertThat(next.user().nickname()).isEqualTo("기존 회원");
+        assertThat(tokens.verify(next.accessToken()).sessionId().version()).isEqualTo(7);
+        assertThat(jdbc.queryForObject("SELECT id FROM oauth_accounts",UUID.class)).isEqualTo(accountId);
+        assertThat(count("users")).isEqualTo(1);
+        assertThat(count("sessions")).isEqualTo(2);
+        var stored=jdbc.queryForMap("SELECT user_id,refresh_token_hash,expires_at,revoked_at FROM sessions WHERE id=?",sessionId);
+        assertThat(stored.get("user_id")).isEqualTo(userId);
+        assertThat(stored.get("refresh_token_hash")).isEqualTo(Tokens.hash("legacy-refresh"));
+        assertThat(stored.get("expires_at")).isEqualTo(legacyExpiry);
+        assertThat(stored.get("revoked_at")).isNull();
+        for(String access:List.of(legacyAccess,next.accessToken()))
+            mvc.perform(get("/api/v1/me").header("Authorization","Bearer "+access)).andExpect(status().isOk());
+    }
+    @Test void outstandingVersion4AuthorizationAttemptCanStillBeExchanged() {
+        var original=start();
+        UUID legacyId=UUID.randomUUID();
+        jdbc.update("UPDATE oauth_attempts SET id=? WHERE id=?",legacyId,original.authorizationId());
+        var session=service.exchange("KAKAO",new OAuthExchange(legacyId,"code",REDIRECT,original.state(),VERIFIER));
+        assertThat(tokens.verify(session.accessToken()).sessionId().version()).isEqualTo(7);
+        assertThat(jdbc.queryForObject("SELECT consumed_at FROM oauth_attempts WHERE id=?",Timestamp.class,legacyId)).isNotNull();
+        assertThat(service.authenticate(tokens.verify(session.accessToken())).id()).isEqualTo(session.user().id());
+    }
     @Test void startIsPublicAndRequiresPkceAndAllowlistedRedirect() throws Exception {
         mvc.perform(post(BASE+"/authorization-requests").contentType("application/json").content(mapper.writeValueAsString(new AuthorizationRequest(REDIRECT,Tokens.hash(VERIFIER)))))
             .andExpect(status().isCreated()).andExpect(jsonPath("$.data.authorizationUrl").value(org.hamcrest.Matchers.containsString("code_challenge_method=S256")));
