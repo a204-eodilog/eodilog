@@ -1,6 +1,6 @@
-# 백엔드 B 후속 작업 — 준비물 체크리스트·멤버 관리
+# 백엔드 B 후속 작업 — 준비물 체크리스트·멤버 관리·경비
 
-작성일: 2026-10-29 · 상태: 체크리스트·멤버 관리 병합 완료(MR !49·!50)
+작성일: 2026-10-29 · 상태: 체크리스트·멤버 관리 병합 완료(MR !49·!50), 경비·정산 상태 구현(EODI-122, 2026-10-30)
 
 [B 첫 작업](backend-b-trip-basic.md)(여행 생성·조회·수정)이 끝난 뒤 A의 카카오 로그인을 기다리는 동안 진행한 B 작업이다. [분담안](../../../docs/plan/backend-first-work-split.md) §6은 이 기능들을 "첫 통합 뒤 배분"으로 두었지만, 로그인 없이 개발할 수 있고 여행 패키지 안에서 끝나는 것부터 B가 먼저 맡았다. A와 겹치는 파일(`user`·`auth` 패키지, `SecurityConfig`)은 건드리지 않는다.
 
@@ -12,8 +12,9 @@
 | --- | --- | --- | --- |
 | 준비물 체크리스트 | `GET/POST /trips/{tripId}/checklist`, `PATCH/DELETE /trips/{tripId}/checklist/{itemId}` | EODI-110 | 병합(MR !49) |
 | 멤버 관리 | `GET /trips/{tripId}/members`, `POST /trips/{tripId}/owner-transfer`, `DELETE /trips/{tripId}/members/{memberId}` | EODI-111 | 병합(MR !50) |
+| 경비·정산 상태 | `GET/POST /trips/{tripId}/expenses`, `PATCH/DELETE /trips/{tripId}/expenses/{expenseId}`, `GET /trips/{tripId}/settlement`, `POST /trips/{tripId}/settlements`(409) | EODI-122 | 구현(§8) |
 
-검증은 B 첫 작업과 같이 테스트에서 `AuthUser` principal을 넣어 했다. 실제 카카오 토큰으로 호출하는 확인은 A 로그인 병합 뒤 통합 검증에 포함한다.
+검증은 B 첫 작업과 같이 테스트에서 `AuthUser` principal을 넣어 했다. A 로그인 병합 뒤 실제 카카오 계정 2개로 여행 API 통합 검증(B-7)을 마쳤다([계약 §8](backend-a-b-contract.md)).
 
 ## 2. 공통 원칙
 
@@ -67,6 +68,8 @@ AI 준비물 제안(`POST /trips/{tripId}/checklist-suggestions`)은 `jobs`, 날
 | §4 멤버 목록·양도·내보내기 행 | 기본 ACTIVE·참여 순, 양도 대상 400·비방장 403·알림 없음, 내보내기 대상 404·채팅 참여 해제 |
 | §4 표 아래 | 양도·내보내기 `expectedVersion`은 여행 version, 404→403→409 판정 순서, 성공 후 이전 version의 여행 정보 수정 409(M-1~M-3) |
 | §6 준비물 추가·삭제 행 | AI 연동 전 `sourceJobId`·`suggestionIndex` 400(C-1), 논리 삭제(C-2) |
+| §2 404 표 | `EXPENSE_NOT_FOUND`(경비, EODI-122) |
+| §7 경비 표 아래 | 원금 1원 잔여 배분 순서(E-2), 정산 정책 합의 전 `GET /settlement`의 `current`는 null(E-9) |
 
 새 오류 코드:
 
@@ -74,8 +77,9 @@ AI 준비물 제안(`POST /trips/{tripId}/checklist-suggestions`)은 `jobs`, 날
 | --- | --- | --- |
 | `CHECKLIST_ITEM_NOT_FOUND` | 404 | 준비물 수정·삭제 |
 | `MEMBER_NOT_FOUND` | 404 | 동행 내보내기 |
+| `EXPENSE_NOT_FOUND` | 404 | 경비 수정·삭제 |
 
-`VERSION_CONFLICT`는 도메인별 enum(`TripErrorCode`, `ChecklistErrorCode`)에 같은 코드 이름으로 둔다.
+`VERSION_CONFLICT`는 도메인별 enum(`TripErrorCode`, `ChecklistErrorCode`, `ExpenseErrorCode`)에 같은 코드 이름으로 둔다. 명세에 이미 있던 `CURRENCY_MISMATCH`·`INVALID_PARTICIPANTS`(422)와 `SETTLEMENT_POLICY_PENDING`(409)은 `ExpenseErrorCode`에 둔다.
 
 ## 6. A에게 알릴 것
 
@@ -83,11 +87,38 @@ AI 준비물 제안(`POST /trips/{tripId}/checklist-suggestions`)은 `jobs`, 날
 - 이 작업들은 분담안 §6의 후속 배분 대상이었다. 다음 배분 때 B가 먼저 가져간 범위로 반영한다.
 - §5의 명세 반영 내용을 멤버 관리 MR에서 리뷰한다. 특히 양도·내보내기 뒤 여행 정보 수정이 409가 되는 점(M-2)은 프론트에도 공유한다.
 
+### A 답변 (2026-10-30)
+
+- M-2(양도·내보내기로 여행 version 증가 → 이전 version 수정 409)에 동의하고 프론트에 재조회 처리를 공유한다. **§5 명세 변경과 코드의 대조 리뷰는 아직이며, A가 결과를 주면 위 리뷰 문구를 정리한다.**
+- 문자열 제한(여행 이름 1~200자, 준비물 255자, 닉네임 1~50자)에 동의. 새로 만드는 ID는 모두 UUIDv7(기존 v4는 유지). A가 인증 코드의 v4 생성을 바꾸고 명세 §10의 미정 문구를 정리한다.
+- A 담당: 인증 UUIDv7 전환, 토큰 갱신·로그아웃, 운영 프로필·Swagger 끄기, CORS(허용 헤더 `Authorization`·`Content-Type`·`Idempotency-Key`, 노출 `X-Trace-Id`, 허용 origin은 프론트 주소 확인 후). 오류 로그는 메시지를 빼고 우리 코드 위치까지의 제한된 스택과 cause 예외 타입을 남기는 방향으로 A가 바꾼다.
+- B 담당: 경비·정산 조회(§8)를 먼저 하고, 다음으로 초대 링크를 제안받았다(B 확인 후 확정). 초대를 B가 하면 `SecurityConfig` 공개 경로·`BearerFilter.shouldNotFilter` 수정은 A와 범위를 공유하고 진행한다. 만료·정원 기본값(Q-4)은 구현 전에 합의한다.
+- 새 도메인 패키지는 루트 아래에 둔다(`domain.auth` 이동은 별도 작업). 테스트 설정은 `application-test.yaml`+test 프로필로 나누는 방향(별도 변경).
+
 ## 7. 다음 후보
 
 | 기능 | 막힌 점 |
 | --- | --- |
-| 경비 CRUD·정산 상태 조회 | 없음. 정산 계산 `POST /settlements`는 Q-10 전까지 `409 SETTLEMENT_POLICY_PENDING` |
+| 정산 계산·이전 계산 조회 | Q-10(1인 부담액 10원 올림 시점·차액 귀속) 합의 후 `settlements` 테이블과 함께 |
 | 채팅 메시지 조회·전송(REST) | `messages` 테이블 필요. 실시간 전송은 Q-13 |
 | 초대 링크 | 만료·정원 Q-4 기본값 합의, 미리보기 공개 경로는 A의 `SecurityConfig` 변경 필요. 수락 시 채팅 참여도 함께 만든다(§4 끝) |
 | 나가기 | 일반 이탈·방장 자동 양도는 가능. 자료 삭제 선택과 마지막 방장 이탈(여행 삭제)은 `jobs`·Q-11 필요 |
+
+## 8. 경비·정산 정책
+
+명세 §7·§10을 따르고, 명세가 제안으로 남긴 값은 아래처럼 구현했다.
+
+| # | 질문 | 결정 | 근거 |
+| --- | --- | --- | --- |
+| E-1 | 등록자 | 요청자의 ACTIVE 멤버십으로 서버가 정한다. 요청의 `registeredByMemberId`는 알 수 없는 필드로 400 | 명세 "등록자 서버 지정" |
+| E-2 | 균등 분담의 1원 잔여 | 원금을 분담자 수로 나누고, 나머지 1원은 **참여 순(joinOrder)이 빠른 분담자부터** 1원씩. 분담액 합계는 항상 원금과 같다. 금액이 분담자 수보다 작으면 0원 분담자가 생긴다 | D-7 "1원 잔여 배분은 제안". 요청 순서와 무관하게 같은 결과가 나오게 참여 순을 쓴다. 정산 10원 올림은 분담액에 넣지 않는다(Q-10) |
+| E-3 | 결제자·분담자 | 이 여행의 ACTIVE 멤버만 **새로** 넣을 수 있다. 수정할 때 이미 들어 있던 나간 멤버는 그대로 둘 수 있다. 어기면 `422 INVALID_PARTICIPANTS`(필드 `payerMemberId`·`participantMemberIds`) | 명세 "신규 분담자 추가는 ACTIVE 멤버만", "이탈자도 과거 분담자로 표시" |
+| E-4 | 입력 검증 | 이름 공백 제거 후 1~200자, 원금 1 이상 JSON 안전 정수 이하, 분담자 1명 이상·중복 없음, 통화·결제자·지출 시각 필수 → 400. 통화가 KRW가 아니면 `422 CURRENCY_MISMATCH`. 메모는 공백만이면 null | ERD `varchar(200)`, 명세 §2 정수 상한, §7 "외화 422" |
+| E-5 | 수정·삭제 권한과 판정 순서 | 입력 400 → 비참여 404 → 경비 없음 `404 EXPENSE_NOT_FOUND` → 등록자 아님 `403 FORBIDDEN` → 경비 version 불일치 409. 등록자가 여행에서 나가면 404 | 명세 "활성 멤버인 등록자", "방장·결제자라도 등록자가 아니면 403". 멤버 관리 M-3과 같은 순서 |
+| E-6 | 버전 | 경비마다 `version`(수정 시 `expectedVersion`), 여행에는 `expense_version`. 등록·수정·삭제마다 여행 행을 잠그고 `expense_version`을 1 올린다. 여행 정보 `version`과는 따로 움직인다 | ERD 불변식 5. 경비 변경이 여행 정보 수정을 409로 만들지 않는다(JPA `@Version`을 쓰지 않은 이유, B 첫 작업 §6) |
+| E-7 | 수정 방식 | 생략 필드 유지, `memo`만 null로 비움. 원금이나 분담자 집합이 바뀌면 분담액을 다시 계산한다. 바뀐 값이 없으면 version·`expense_version` 그대로(P-8) | 명세 ExpensePatch "분담자 변경은 전체 배열 교체" |
+| E-8 | 삭제 방식 | `deleted_at` 논리 삭제, 분담액 행은 남긴다. 목록·수정·재삭제에서 제외(404) | 이전 정산 스냅샷·비용 버전 이력을 깨지 않는다 |
+| E-9 | 정산 상태 조회 | Q-10 전에는 계산을 만들지 않으므로 `current=null`, `recalculationRequired=false`, `currentExpenseVersion`은 여행의 `expense_version` | 명세 "GET은 계산 생성 안 함", "재계산 필요"는 이전 계산이 있을 때만 의미가 있다 |
+| E-10 | 정산 계산 | ACTIVE 멤버 확인 뒤 항상 `409 SETTLEMENT_POLICY_PENDING`. `settlements` 테이블과 이전 계산 목록·상세는 Q-10 합의 후 추가 | 명세 "정책 확정 전 계산 POST는 409 제안" |
+| E-11 | 목록 | `createdAt DESC, id DESC` 커서 페이지(기본 20, 최대 100). 여행 목록과 같은 커서(`global.common.response.CreatedAtCursor`)를 쓴다 | 명세 §2 목록 공통 |
+| E-12 | 중복 요청 | 경비 등록은 `Idempotency-Key` 필수. 범위는 실제 요청 경로(`POST /api/v1/trips/{tripId}/expenses`) | 명세 §2 "(사용자, 실제 요청 경로, 키)" |
