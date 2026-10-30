@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>어디로그 로컬 카카오 점검</title>
+<script>
+'use strict';
+// Remove provider values from the visible URL before rendering or making requests.
+const callbackParams = new URLSearchParams(location.search);
+history.replaceState(null, '', location.pathname);
+</script>
+<style>body{font:17px system-ui;max-width:680px;margin:60px auto;padding:24px;color:#172f28}button{font:inherit;padding:14px 22px;background:#fee500;border:0;border-radius:10px;cursor:pointer}p{line-height:1.7}#status{padding:20px;background:#eef5f1;border-radius:12px}</style></head>
+<body><h1>카카오 로그인 실연동 점검</h1><p>로컬 개발용 화면입니다. 카카오 비밀번호·2차 인증·동의는 카카오 화면에서 직접 처리하세요.</p>
+<p id="status" role="status">준비 완료 / 사용자 인증 대기</p><button id="login" type="button">카카오 로그인 시작</button>
+<p><a href="/dev/kakao-login">새 점검 시작</a></p>
+<script>
+(() => {
+  const redirectUri = '__LOCAL_CALLBACK_URI__';
+  const key = 'eodilog.local.kakao.attempt';
+  const status = document.getElementById('status');
+  const login = document.getElementById('login');
+  const show = text => { status.textContent = text; };
+  const clear = () => { try { sessionStorage.removeItem(key); return true; } catch (_) { return false; } };
+  const storageError = () => {
+    clear();
+    show('브라우저 저장소를 사용할 수 없습니다. 이 사이트의 sessionStorage를 허용한 뒤 새 점검을 시작하세요.');
+    login.disabled = false;
+  };
+  const base64url = bytes => btoa(String.fromCharCode(...bytes)).replaceAll('+','-').replaceAll('/','_').replaceAll('=','');
+  async function requestData(path, options) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 45000);
+    try {
+      const response = await fetch(path, {...options, credentials:'omit', signal:controller.signal});
+      if (!response.ok) throw new Error('request failed');
+      return (await response.json()).data;
+    } finally { clearTimeout(timer); }
+  }
+  function post(path, body) {
+    return requestData(path, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  }
+  login.addEventListener('click', async () => {
+    login.disabled = true;
+    try {
+      if (!clear()) { storageError(); return; }
+      if (location.origin !== 'http://localhost:8080') throw new Error('use localhost');
+      const verifier = base64url(crypto.getRandomValues(new Uint8Array(32)));
+      const challenge = base64url(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))));
+      const attempt = await post('/api/v1/auth/oauth/KAKAO/authorization-requests', {redirectUri, codeChallenge:challenge});
+      const destination = new URL(attempt.authorizationUrl);
+      if (destination.origin !== 'https://kauth.kakao.com' || destination.pathname !== '/oauth/authorize') throw new Error('invalid provider');
+      try { sessionStorage.setItem(key, JSON.stringify({verifier, authorizationId:attempt.authorizationId, state:attempt.state, expiresAt:attempt.expiresAt})); }
+      catch (_) { storageError(); return; }
+      location.assign(destination.href);
+    } catch (_) {
+      if (!clear()) storageError();
+      else show('인가 시작 실패 또는 응답 시간 초과. localhost:8080 주소와 서버 설정을 확인하고 다시 시도하세요.');
+      login.disabled = false;
+    }
+  });
+  async function callback() {
+    login.disabled = true;
+    let attempt;
+    let stored;
+    try { stored = sessionStorage.getItem(key); } catch (_) { storageError(); return; }
+    try { attempt = JSON.parse(stored); } catch (_) { /* invalid local attempt */ }
+    // Consume before any exchange, including cancellation and failed state checks.
+    if (!clear()) { storageError(); return; }
+    if (callbackParams.has('error') || !attempt || !callbackParams.get('code') || callbackParams.getAll('code').length !== 1 || callbackParams.getAll('state').length !== 1 || callbackParams.get('state') !== attempt.state || !(Date.parse(attempt.expiresAt) > Date.now())) {
+      callbackParams.delete('code'); callbackParams.delete('state');
+      show('인증 취소 또는 유효하지 않은 로그인 시도입니다. 새 점검을 시작하세요.');
+      login.disabled = false;
+      return;
+    }
+    try {
+      show('인증 결과 확인 중…');
+      const exchange = {authorizationId:attempt.authorizationId, code:callbackParams.get('code'), redirectUri, state:attempt.state, codeVerifier:attempt.verifier};
+      callbackParams.delete('code'); callbackParams.delete('state');
+      attempt = null;
+      let session = await post('/api/v1/auth/oauth/KAKAO/sessions', exchange);
+      exchange.code = ''; exchange.codeVerifier = ''; exchange.state = '';
+      const profile = await requestData('/api/v1/me', {headers:{Authorization:'Bearer ' + session.accessToken}});
+      session = null;
+      show('실제 카카오 로그인 및 /me 확인 성공 · 닉네임: ' + profile.nickname + ' · 가입 완료: ' + (profile.profileCompleted ? '예' : '아니오'));
+    } catch (_) { show('로그인 또는 /me 확인 실패 또는 응답 시간 초과. 새 점검을 시작하세요.'); }
+    finally { login.disabled = false; }
+  }
+  if (location.pathname === '/oauth/kakao/callback') callback();
+})();
+</script></body></html>
