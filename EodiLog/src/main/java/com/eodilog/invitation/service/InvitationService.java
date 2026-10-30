@@ -53,44 +53,55 @@ public class InvitationService {
 	@Value("${app.invitation.link-base-url:ieohaeng://invitations/}")
 	private String linkBaseUrl;
 
-	// ACTIVE 멤버면 누구나 만든다. 같은 여행에 여러 링크가 있어도 각자 만료까지 쓸 수 있다
+	// ACTIVE 멤버면 누구나 만든다. 새로 만들면 같은 여행의 이전 링크는 모두 무효가 되어 쓸 수 있는 링크는 늘 하나다
+	// 여행 행을 잠가 동시에 발급해도 살아 있는 링크가 둘이 되지 않게 한다
 	@Transactional
 	public InvitationSecretResponse createInvitation(UUID userId, UUID tripId) {
-		TripAccess access = tripAccessChecker.requireActiveMember(tripId, userId);
+		TripAccess access = tripAccessChecker.requireActiveMemberForUpdate(tripId, userId);
 		String token = InvitationToken.generate();
 		Instant now = now();
+		tripInvitationRepository.revokeAllByTripId(tripId, now);
 		TripInvitation invitation = tripInvitationRepository.save(TripInvitation.create(tripId,
 				access.member().getId(), InvitationToken.hash(token), now.plus(EXPIRES_AFTER), now));
 		return new InvitationSecretResponse(invitation.getId(), token, linkBaseUrl + token, invitation.getExpiresAt());
 	}
 
 	// 로그인하지 않아도 본다. 로그인했으면 viewerId 기준 관계 상태가 담긴 회원 카드를 함께 준다
+	// 이미 ACTIVE 멤버면 링크가 만료·무효여도 alreadyMember=true로 보여 준다. 링크 만료·재발급은 기존 참여자에게 영향이 없다
 	@Transactional(readOnly = true)
 	public InvitationPreviewResponse getPreview(UUID viewerId, String token) {
-		UsableInvitation usable = requireUsable(token, false);
-		UUID inviterUserId = usable.inviter().getUserId();
+		LinkedTrip linked = requireLinkedTrip(token, false);
+		Trip trip = linked.trip();
+		boolean alreadyMember = viewerId != null && tripMemberRepository.findByTripIdAndUserId(trip.getId(), viewerId)
+				.filter(TripMember::isActive).isPresent();
+		if (!alreadyMember) {
+			requireUsable(linked.invitation(), false);
+		}
+		TripMember inviter = tripMemberRepository.findById(linked.invitation().getCreatedByMemberId())
+				.orElseThrow(() -> new IllegalStateException("Invitation has no creator: " + linked.invitation().getId()));
+		UUID inviterUserId = inviter.getUserId();
 		// 익명은 관계 상태가 필요 없으므로 초대한 사람 기준으로 카드를 읽어 닉네임만 쓴다
 		UserCard card = userCardReader.findCards(viewerId != null ? viewerId : inviterUserId, List.of(inviterUserId))
 				.get(inviterUserId);
 		if (card == null) {
-			throw new IllegalStateException("Trip member has no user record: " + usable.inviter().getId());
+			throw new IllegalStateException("Trip member has no user record: " + inviter.getId());
 		}
-		Trip trip = usable.trip();
 		return new InvitationPreviewResponse(trip.getTitle(), trip.getStartDate(), trip.getEndDate(),
 				new InvitationPreviewResponse.Inviter(card.nickname()), viewerId != null ? card : null,
-				usable.invitation().getExpiresAt());
+				linked.invitation().getExpiresAt(), alreadyMember);
 	}
 
-	// 링크 검사(410) → 이미 ACTIVE면 그대로 반환 → 정원(409) → 새 참여 또는 재참여 순이다
+	// 형식 404 → 링크·여행 확인 410 → 이미 ACTIVE면 링크 상태와 상관없이 그대로 반환 → 링크 검사 410 → 정원 409 → 참여 순이다
 	// 멤버십·채팅 참여·여행 version을 한 트랜잭션에서 바꾼다. 여행 행 잠금으로 정원 검사와 순번 발급이 겹치지 않는다
 	@Transactional
 	public TripResponse acceptInvitation(UUID userId, String token) {
-		UsableInvitation usable = requireUsable(token, true);
-		Trip trip = usable.trip();
+		LinkedTrip linked = requireLinkedTrip(token, true);
+		Trip trip = linked.trip();
 		Optional<TripMember> existing = tripMemberRepository.findByTripIdAndUserId(trip.getId(), userId);
 		if (existing.filter(TripMember::isActive).isPresent()) {
 			return tripResponseAssembler.assemble(userId, trip);
 		}
+		requireUsable(linked.invitation(), true);
 		if (tripMemberRepository.countByTripIdAndStatus(trip.getId(), TripMemberStatus.ACTIVE) >= MAX_ACTIVE_MEMBERS) {
 			throw new BusinessException(InvitationErrorCode.TRIP_FULL);
 		}
@@ -106,35 +117,41 @@ public class InvitationService {
 		return tripResponseAssembler.assemble(userId, trip);
 	}
 
-	// 형식이 틀린 토큰은 404, 형식이 맞는 토큰의 검증 실패는 모두 410으로 같게 응답한다(명세 §2)
-	private UsableInvitation requireUsable(String token, boolean lockTrip) {
+	// 형식이 틀린 토큰은 404. 형식이 맞는데 없는 토큰이거나 여행이 삭제됐으면 410 INVITATION_EXPIRED(명세 §2)
+	private LinkedTrip requireLinkedTrip(String token, boolean lockTrip) {
 		if (!InvitationToken.isWellFormed(token)) {
 			throw new BusinessException(CommonErrorCode.NOT_FOUND);
 		}
 		TripInvitation invitation = tripInvitationRepository.findByTokenHash(InvitationToken.hash(token))
-				.orElseThrow(InvitationService::expired);
+				.orElseThrow(() -> new BusinessException(InvitationErrorCode.INVITATION_EXPIRED));
 		Trip trip = (lockTrip
 				? tripRepository.findActiveByIdForUpdate(invitation.getTripId())
 				: tripRepository.findByIdAndDeletedAtIsNull(invitation.getTripId()))
-				.orElseThrow(InvitationService::expired);
-		if (!invitation.isUsableAt(now())) {
-			throw expired();
-		}
-		TripMember inviter = tripMemberRepository.findById(invitation.getCreatedByMemberId())
-				.filter(TripMember::isActive)
-				.orElseThrow(InvitationService::expired);
-		return new UsableInvitation(invitation, trip, inviter);
+				.orElseThrow(() -> new BusinessException(InvitationErrorCode.INVITATION_EXPIRED));
+		return new LinkedTrip(invitation, trip);
 	}
 
-	private static BusinessException expired() {
-		return new BusinessException(InvitationErrorCode.INVITATION_EXPIRED);
+	// 새 링크로 바뀌었으면 INVITATION_REVOKED, 기간이 지났거나 초대한 사람이 나갔으면 INVITATION_EXPIRED
+	// 무효화는 만료 전 링크에만 하므로, 무효가 된 링크는 나중에 기간이 지나도 먼저 일어난 무효 사유로 알린다
+	private void requireUsable(TripInvitation invitation, boolean lockedTrip) {
+		// 잠금을 기다리는 사이 새 링크가 발급됐을 수 있어 잠근 뒤에는 DB에서 다시 확인한다
+		boolean revoked = invitation.getRevokedAt() != null
+				|| (lockedTrip && !tripInvitationRepository.existsByIdAndRevokedAtIsNull(invitation.getId()));
+		if (revoked) {
+			throw new BusinessException(InvitationErrorCode.INVITATION_REVOKED);
+		}
+		boolean inviterActive = tripMemberRepository.findById(invitation.getCreatedByMemberId())
+				.filter(TripMember::isActive).isPresent();
+		if (invitation.isExpiredAt(now()) || !inviterActive) {
+			throw new BusinessException(InvitationErrorCode.INVITATION_EXPIRED);
+		}
 	}
 
 	private Instant now() {
 		return clock.instant().truncatedTo(ChronoUnit.MICROS);
 	}
 
-	private record UsableInvitation(TripInvitation invitation, Trip trip, TripMember inviter) {
+	private record LinkedTrip(TripInvitation invitation, Trip trip) {
 	}
 
 }

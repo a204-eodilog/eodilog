@@ -36,7 +36,8 @@ public class InvitationController {
 
 	@Operation(summary = "초대 링크 생성", description = """
 			여행의 ACTIVE 멤버라면 누구나 만든다. 링크는 7일 뒤 만료되며 만료 전에는 여러 명이 쓸 수 있다.
-			토큰 원문은 이 응답에서만 반환하고 서버는 해시만 보관한다. 초대 코드는 없다.""")
+			새로 만들면 같은 여행의 이전 링크는 모두 무효가 된다. 화면을 열 때마다 호출하지 말고 새 링크가 필요할 때만 호출한다.
+			토큰 원문은 이 응답에서만 반환하고 서버는 해시만 보관하므로 같은 링크를 다시 조회할 수 없다. 초대 코드는 없다.""")
 	@ApiResponse(responseCode = "201", description = "생성 성공")
 	@ApiResponse(responseCode = "404", description = "TRIP_NOT_FOUND: 없거나 볼 수 없는 여행",
 			content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
@@ -53,13 +54,18 @@ public class InvitationController {
 	@Operation(summary = "초대 미리보기", description = """
 			토큰 없이 조회한다. 여행 이름·기간·초대한 사람·만료 시각만 반환하고 동행 명단과 경비는 담지 않는다.
 			로그인한 상태로 조회하면 inviterUser에 초대한 사람의 회원 카드를 담고, 로그인하지 않으면 null이다.
-			Authorization 헤더를 보내면 검증하므로, 만료된 토큰을 보내면 401이다.""")
+			이미 이 여행의 동행이면 alreadyMember=true이며, 링크가 만료되었거나 새 링크로 바뀌었어도 410 대신 조회된다.
+			Authorization 헤더를 보내면 검증하므로, 잘못되거나 만료된 토큰은 401, 가입 대기 토큰은 403이다.""")
 	@SecurityRequirements
 	@ApiResponse(responseCode = "200", description = "조회 성공")
+	@ApiResponse(responseCode = "401", description = "UNAUTHENTICATED: Authorization 헤더를 보냈지만 토큰이 잘못되었거나 만료됨",
+			content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+	@ApiResponse(responseCode = "403", description = "PROFILE_INCOMPLETE: 가입 대기(닉네임 미설정) 토큰으로 조회",
+			content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
 	@ApiResponse(responseCode = "404", description = "NOT_FOUND: 초대 토큰 형식이 아님",
 			content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
 	@ApiResponse(responseCode = "410",
-			description = "INVITATION_EXPIRED: 없거나 만료된 링크, 삭제된 여행, 초대한 사람이 여행을 나간 링크",
+			description = "INVITATION_REVOKED: 새 링크 발급으로 무효가 된 링크 / INVITATION_EXPIRED: 없거나 기간이 지난 링크, 삭제된 여행, 초대한 사람이 여행을 나간 링크",
 			content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
 	@GetMapping("/invitations/{token}")
 	public ResponseEntity<DataResponse<InvitationPreviewResponse>> getInvitation(
@@ -71,7 +77,7 @@ public class InvitationController {
 	}
 
 	@Operation(summary = "초대 수락", description = """
-			팔로우 관계와 상관없이 유효한 링크로 여행에 참여한다. 이미 ACTIVE 멤버면 바뀌는 것 없이 같은 여행을 반환한다.
+			팔로우 관계와 상관없이 유효한 링크로 여행에 참여한다. 이미 ACTIVE 멤버면 링크가 만료·무효여도 바뀌는 것 없이 같은 여행을 반환한다.
 			나갔거나 내보내진 사람도 다시 참여할 수 있으며, 기존 멤버십을 다시 쓰고 참여 순번은 맨 뒤로 받는다.
 			여행의 ACTIVE 멤버는 방장 포함 20명까지다. 참여하면 그룹 채팅에도 들어가고 여행 version이 하나 오른다.""")
 	@ApiResponse(responseCode = "200", description = "참여 성공 또는 이미 참여 중. 여행 정보를 반환")
@@ -80,7 +86,7 @@ public class InvitationController {
 	@ApiResponse(responseCode = "409", description = "TRIP_FULL: 여행 인원(20명)이 가득 참",
 			content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
 	@ApiResponse(responseCode = "410",
-			description = "INVITATION_EXPIRED: 없거나 만료된 링크, 삭제된 여행, 초대한 사람이 여행을 나간 링크",
+			description = "INVITATION_REVOKED: 새 링크 발급으로 무효가 된 링크 / INVITATION_EXPIRED: 없거나 기간이 지난 링크, 삭제된 여행, 초대한 사람이 여행을 나간 링크",
 			content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
 	@PostMapping("/invitations/{token}/accept")
 	public ResponseEntity<DataResponse<TripResponse>> acceptInvitation(

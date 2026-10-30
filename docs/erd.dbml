@@ -143,7 +143,7 @@ Table trip_invitations {
   created_by_member_id uuid [not null, ref: > trip_members.id]
   token_hash varchar(255) [not null, unique]
   expires_at timestamp [not null]
-  revoked_at timestamp
+  revoked_at timestamp [note: '새 링크 발급 시 같은 여행의 이전 링크에 채움. 여행당 쓸 수 있는 링크 하나']
   created_at timestamp [not null]
   indexes { trip_id }
   Note: '토큰 원문은 생성 응답에서만 반환. 초대 코드 없음. 친구/팔로우 관계 없이 유효 링크로 참여. 현재 ACTIVE 초대자·만료·정원 검사. 만료 7일, 정원은 여행당 ACTIVE 멤버 20명(Q-4, 2026-10-30).'
