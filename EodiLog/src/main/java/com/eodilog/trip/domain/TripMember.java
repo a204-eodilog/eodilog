@@ -56,4 +56,12 @@ public class TripMember {
 		this.leftAt = now;
 	}
 
+	// 나간·내보낸 멤버가 초대로 돌아오면 멤버십 ID는 유지하고 참여 순번을 새로 받는다(ERD trip_members 노트)
+	public void rejoin(long joinOrder, Instant now) {
+		this.status = TripMemberStatus.ACTIVE;
+		this.joinOrder = joinOrder;
+		this.joinedAt = now;
+		this.leftAt = null;
+	}
+
 }

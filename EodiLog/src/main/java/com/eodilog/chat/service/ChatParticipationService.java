@@ -1,5 +1,6 @@
 package com.eodilog.chat.service;
 
+import com.eodilog.chat.domain.ChatParticipant;
 import com.eodilog.chat.domain.ChatParticipantId;
 import com.eodilog.chat.domain.ChatRoom;
 import com.eodilog.chat.repository.ChatParticipantRepository;
@@ -18,6 +19,16 @@ public class ChatParticipationService {
 
 	private final ChatRoomRepository chatRoomRepository;
 	private final ChatParticipantRepository chatParticipantRepository;
+
+	// 초대 수락으로 처음 들어오면 참여 행을 만들고, 나갔다 돌아오면 같은 행의 이탈 표시를 지운다
+	@Transactional(propagation = Propagation.MANDATORY)
+	public void joinTripRoom(UUID tripId, UUID userId, Instant now) {
+		ChatRoom room = chatRoomRepository.findByTripId(tripId)
+				.orElseThrow(() -> new IllegalStateException("Trip has no chat room: " + tripId));
+		chatParticipantRepository.findById(new ChatParticipantId(room.getId(), userId))
+				.ifPresentOrElse(participant -> participant.rejoin(now),
+						() -> chatParticipantRepository.save(ChatParticipant.join(room.getId(), userId, now)));
+	}
 
 	@Transactional(propagation = Propagation.MANDATORY)
 	public void leaveTripRoom(UUID tripId, UUID userId, Instant now) {

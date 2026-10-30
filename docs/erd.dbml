@@ -146,7 +146,7 @@ Table trip_invitations {
   revoked_at timestamp
   created_at timestamp [not null]
   indexes { trip_id }
-  Note: '토큰 원문은 생성 응답에서만 반환. 초대 코드 없음. 친구/팔로우 관계 없이 유효 링크로 참여. 현재 ACTIVE 초대자·만료·정원 검사. 만료/정원 Q-4.'
+  Note: '토큰 원문은 생성 응답에서만 반환. 초대 코드 없음. 친구/팔로우 관계 없이 유효 링크로 참여. 현재 ACTIVE 초대자·만료·정원 검사. 만료 7일, 정원은 여행당 ACTIVE 멤버 20명(Q-4, 2026-10-30).'
 }
 
 Table regions {

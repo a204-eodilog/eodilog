@@ -51,7 +51,7 @@ cd EodiLog
 - 루트 패키지: `com.eodilog`
 - 공통 설정: `global.config` (`SwaggerConfig`, `SecurityConfig`, `TimeConfig`의 `Clock` 빈)
 - 공통 코드: `global.common`(응답·예외·traceId), `global.idempotency`(요청 중복 방지), `global.security`(`AuthUser`)
-- 도메인: `domain.auth`(카카오 로그인·서비스 토큰·`BearerFilter`), `user`(회원·`/me`·`UserCardReader`), `trip`, `chat`, `itinerary`, `checklist`, `expense`(경비·정산 상태), `region`. 새 도메인은 루트 아래에 둔다
+- 도메인: `domain.auth`(카카오 로그인·서비스 토큰·`BearerFilter`), `user`(회원·`/me`·`UserCardReader`), `trip`, `chat`, `itinerary`, `checklist`, `expense`(경비·정산 상태), `invitation`(초대 링크), `region`. 새 도메인은 루트 아래에 둔다
 - 공통 목록 커서: `global.common.response.CreatedAtCursor`(기본 정렬 `createdAt DESC, id DESC`)
 
 ## 백엔드 문서
@@ -156,7 +156,7 @@ API 명세 §2의 공통 계약을 `global.common`이 구현한다. 같은 역�
 
 - DB 연결(PostgreSQL + PostGIS): EODI-62 완료. 공간 열 매핑(hibernate-spatial)은 실제 공간 열이 생길 때 추가한다.
 - 공통 응답·예외 처리: EODI-63 완료.
-- 인증·Security: 카카오 로그인(EODI-118)으로 Bearer 무상태 인증, CSRF·formLogin·httpBasic 해제, 401/403 공통 JSON, 프로필 미완성 `403 PROFILE_INCOMPLETE`가 들어갔다. 공개 API를 만들면 `SecurityConfig`의 공개 경로와 `BearerFilter.shouldNotFilter`를 함께 고친다.
+- 인증·Security: 카카오 로그인(EODI-118)으로 Bearer 무상태 인증, CSRF·formLogin·httpBasic 해제, 401/403 공통 JSON, 프로필 미완성 `403 PROFILE_INCOMPLETE`가 들어갔다. 공개 API를 만들면 `SecurityConfig`의 공개 경로와 `BearerFilter.shouldNotFilter`를 함께 고친다. 로그인 여부에 따라 응답이 달라지는 공개 API(초대 미리보기)는 `SecurityConfig`만 열고 `BearerFilter`는 그대로 거치게 한다.
 - 남은 것(EODI-64 등): 운영 프로필과 그 환경의 Swagger 끄기(`springdoc.api-docs.enabled=false`, `springdoc.swagger-ui.enabled=false`), CORS(허용 헤더 `Authorization`·`Content-Type`·`Idempotency-Key`, 노출 헤더 `X-Trace-Id`), 토큰 갱신·로그아웃 API, 회원·세션 ID의 UUIDv7 전환.
 
 ## Git
