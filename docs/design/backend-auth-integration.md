@@ -57,7 +57,7 @@ public Object create(@AuthenticationPrincipal AuthUser user) {
 
 `AuthUser`는 `global.security`, `UserCardReader`는 `user.service`, `UserCard`와 enum은 `user.dto` 패키지에 있다. 회원 저장소·컨트롤러도 `user`에 있다. 공개 카드에는 UUID·닉네임·이미지 URL·공개 범위·양방향 팔로우 상태만 있다. 이메일·연령·동의·status는 노출하지 않는다. 이미지 URL은 null, 팔로우 상태는 NONE이다. 여러 ID는 중복 제거 후 한 번의 IN 조회이며 없는 ID는 생략하고 비활성 사용자는 포함한다. 인증 시 비활성 사용자를 401로 거부하는 규칙과 공개 과거 회원 표시용 카드 조회는 역할이 다르다.
 
-B 테스트에서는 `new AuthUser(uuid)`를 principal로 둔 `UsernamePasswordAuthenticationToken`과 대체 `UserCardReader`를 주입할 수 있다. 실제 Bearer 파서나 회원 저장소를 참조할 필요가 없다. 운영용 임의 사용자 헤더는 제공하지 않는다. Bearer 요청마다 DB의 세션/활성 상태/가입 완료 여부를 다시 검사하므로 가입 완료 후 기존 토큰도 즉시 사용할 수 있다. 현재 ID는 UUIDv4이며 UUIDv7은 미정이다.
+B 테스트에서는 `new AuthUser(uuid)`를 principal로 둔 `UsernamePasswordAuthenticationToken`과 대체 `UserCardReader`를 주입할 수 있다. 실제 Bearer 파서나 회원 저장소를 참조할 필요가 없다. 운영용 임의 사용자 헤더는 제공하지 않는다. Bearer 요청마다 DB의 세션/활성 상태/가입 완료 여부를 다시 검사하므로 가입 완료 후 기존 토큰도 즉시 사용할 수 있다. 기존 UUIDv4 ID와 신규 UUIDv7 ID를 모두 허용한다.
 
 성공은 B의 `DataResponse`, 오류는 `BusinessException`과 `CommonErrorCode`/`AuthErrorCode`, 필터 오류는 `ErrorResponseWriter`를 사용한다. `ApiFailure`, `ApiErrors`, 자체 Data, 대체 principal과 UserLookup은 제거했다. `TraceIdFilter`의 32자리 hex 값이 `X-Trace-Id`와 오류 본문의 traceId에 동일하게 들어간다. 예상 밖 예외 로그에는 안전한 타입·traceId 메타데이터만 남긴다. A-0 분리 파일과 독립 검증은 [A-0 인수인계](../../EodiLog/docs/plan/backend-a0-handoff.md)를 따른다.
 

@@ -201,7 +201,7 @@ public enum AuthErrorCode implements ErrorCode { ... }                          
 | `SecurityConfig` | A | B는 요청만 한다 |
 | `global/common/**` | B(-63) | A는 도메인 오류 enum만 따로 추가 |
 | `Clock` 빈 | B(`global.config.TimeConfig`, `Clock.systemUTC()`) | A도 토큰 만료 계산에 주입받아 쓰면 테스트에서 시간을 고정할 수 있다 |
-| UUID 생성 | 공동 결정: UUIDv7. Hibernate 7.4 기본 기능 `@UuidGenerator(style = UuidGenerator.Style.VERSION_7)`로 통일하고 별도 생성기는 두지 않는다. B 엔티티는 적용 완료, A 회원 엔티티는 v4에서 전환 예정 | — |
+| UUID 생성 | 공동 결정: 신규 ID는 UUIDv7. B JPA 엔티티는 Hibernate `@UuidGenerator(style = UuidGenerator.Style.VERSION_7)`, A JDBC 인증은 같은 Hibernate `UuidVersion7Strategy`를 감싼 `global.id.UuidV7`을 사용한다. 별도 UUID 알고리즘은 두지 않는다. 기존 v4 ID는 유지한다 | EODI-124 |
 | 로컬 DB `compose.yaml` | B(-62) | A도 같은 DB로 실행 |
 
 공통 파일을 바꿀 때는 MR 올리기 전에 상대에게 알리고, 상대 MR이 열려 있으면 병합 순서를 정한다.
@@ -261,6 +261,6 @@ public enum AuthErrorCode implements ErrorCode { ... }                          
 | 4 | 비활성 사용자 토큰, 프로필 미완성 사용자의 여행 생성 | 비활성 회원·누락·만료·위조·폐기 토큰은 모두 `401 UNAUTHENTICATED`. **프로필 미완성 사용자는 여행 생성 불가**: 미완성 토큰은 `GET/PATCH /api/v1/me`만 허용하고 나머지는 `403 PROFILE_INCOMPLETE`(§1) |
 | 5 | 토큰 만료 전용 코드 | 두지 않음. 만료도 `401 UNAUTHENTICATED`. 토큰 수명은 access 1시간, refresh 14일 |
 | 6 | -64 시점과 프로필 구조 | A의 로그인 변경에 포함. Bearer 무상태 인증, formLogin·httpBasic 제거, CSRF 해제 적용. DB·카카오·JWT 설정은 `EodiLog/.env` 하나로 모으고 `--spring.profiles.active=local`로 실행(A의 로그인 MR에서 AGENTS.md 실행 안내도 함께 고친다) |
-| 7 | Flyway 파일명 규칙, UUIDv7 | 둘 다 동의. UUIDv7은 §6처럼 Hibernate 어노테이션으로 통일 |
+| 7 | Flyway 파일명 규칙, UUIDv7 | 둘 다 동의. UUIDv7은 §6처럼 Hibernate의 동일 생성 전략을 JPA·JDBC에서 재사용 |
 
 그 밖에 A가 B의 P-1~P-10에 모두 동의했다([B 구현 계획](backend-b-trip-basic.md) §2). 아직 남은 것은 A의 로그인 MR 병합과 그 뒤의 첫 통합 검증(§8)이다.
