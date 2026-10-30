@@ -23,6 +23,7 @@ Project eodilogue {
 Table users {
   id uuid [pk]
   nickname varchar(50) [not null]
+  profile_completed boolean [not null, default: false, note: 'false이면 nickname은 빈 문자열. 유효 카카오 닉네임 또는 PATCH /me로 완료. 재로그인은 이름 유지']
   account_visibility varchar(16) [not null, default: 'PRIVATE', note: 'PUBLIC/PRIVATE, 기본값 제안 Q-2·3']
   profile_asset_id uuid
   age_band varchar(32) [note: '형태·필수 여부 Q-1, 공개 프로필 직렬화 금지']
@@ -63,13 +64,13 @@ Table oauth_attempts {
   id uuid [pk]
   provider varchar(16) [not null, note: 'KAKAO/NAVER']
   state_hash varchar(255) [not null, unique]
-  initiator_context_hash varchar(255) [not null, note: '로그인 시작 컨텍스트 바인딩, 구체 전송/저장 방식 Q-1']
+  initiator_context_hash varchar(255) [not null, note: 'Expo 앱 verifier의 S256 challenge. verifier 원문은 앱만 보관']
   redirect_uri varchar(500) [not null]
-  code_challenge varchar(255)
+  code_challenge varchar(43) [not null, note: 'S256, base64url without padding']
   expires_at timestamp [not null]
   consumed_at timestamp
   created_at timestamp [not null]
-  Note: 'OAuthAuthorization 시작 요청과 코드 교환 연결. provider/state/redirect/만료/컨텍스트 검증과 일회성 소비를 원자적으로 처리. 공급자별 PKCE 지원과 앱/웹 인증 흐름은 Q-1·12에서 확정.'
+  Note: '현재 KAKAO Expo 외부 브라우저 인가 코드 흐름. provider/state/redirect/만료/S256 verifier 검증과 일회성 소비를 원자적으로 처리. 실패한 외부 교환도 소비 유지. 웹 쿠키·NAVER는 후속.'
 }
 
 Table follows {

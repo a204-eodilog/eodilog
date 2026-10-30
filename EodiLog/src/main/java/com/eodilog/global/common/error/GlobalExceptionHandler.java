@@ -39,7 +39,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 	public ResponseEntity<ErrorResponse> handleBusiness(BusinessException ex) {
 		ErrorCode errorCode = ex.getErrorCode();
 		if (errorCode.status().is5xxServerError()) {
-			log.error("Business exception: {}", errorCode.code(), ex);
+			log.error("Business failure traceId={} code={} exceptionType={} location={}",
+					TraceIdFilter.currentTraceId(), errorCode.code(), ex.getClass().getName(), firstFrame(ex));
 		}
 		return toResponse(errorCode, ex.getMessage(), ex.getFields());
 	}
@@ -58,7 +59,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 	// 예상하지 못한 예외는 내부 문구를 응답에 싣지 않는다
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<ErrorResponse> handleUnexpected(Exception ex) {
-		log.error("Unhandled exception", ex);
+		log.error("API failure traceId={} code=INTERNAL_ERROR exceptionType={} location={}",
+				TraceIdFilter.currentTraceId(), ex.getClass().getName(), firstFrame(ex));
 		return toResponse(CommonErrorCode.INTERNAL_ERROR, CommonErrorCode.INTERNAL_ERROR.message(), List.of());
 	}
 
@@ -130,9 +132,19 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 				? body
 				: ErrorResponse.of(CommonErrorCode.fromStatus(statusCode), TraceIdFilter.currentTraceId());
 		if (statusCode.is5xxServerError()) {
-			log.error("Spring MVC exception", ex);
+			log.error("MVC failure traceId={} status={} exceptionType={} location={}",
+					TraceIdFilter.currentTraceId(), statusCode.value(), ex.getClass().getName(), firstFrame(ex));
 		}
 		return super.handleExceptionInternal(ex, errorBody, headers, statusCode, request);
+	}
+
+	private String firstFrame(Exception ex) {
+		StackTraceElement[] frames = ex.getStackTrace();
+		if (frames.length == 0) {
+			return "unknown";
+		}
+		StackTraceElement frame = frames[0];
+		return frame.getClassName() + "." + frame.getMethodName() + ":" + frame.getLineNumber();
 	}
 
 	private ResponseEntity<ErrorResponse> toResponse(ErrorCode errorCode, String message, List<ErrorField> fields) {

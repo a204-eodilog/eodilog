@@ -1,0 +1,4 @@
+spring:
+  config:
+    # bootRun/IDE working directory: EodiLog. Compose also reads this .env.
+    import: optional:file:./.env[.properties]

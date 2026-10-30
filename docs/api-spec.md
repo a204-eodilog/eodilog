@@ -62,14 +62,16 @@
 
 근거: WD-FR-01~03·08·35. 인증 세부는 공급자 공식 흐름에 맞춰 별도 확정하며 URL에 제공자 토큰을 싣지 않는다.
 
+2026-10-28 카카오·Expo 구현 결정: 최초의 유효 카카오 닉네임으로 가입 완료한다. 미제공·빈 값·기본 닉네임·50자 초과는 `nickname=""`, `profileCompleted=false`로 저장한다. 대기 토큰은 GET/PATCH `/me`만 허용하고 다른 요청은 `403 PROFILE_INCOMPLETE`다. PATCH 완료 뒤에는 같은 토큰에서도 DB의 현재 상태로 접근을 판단한다. 재로그인은 이름을 덮어쓰지 않는다. 웹 쿠키와 NAVER는 후속이다. [환경 설정·Swagger 수동 호출 가이드](design/backend-auth-integration.md)를 따른다. 아래 갱신/로그아웃·닉네임 외 프로필 API는 설계 계약으로 남아 있으며 이번 구현에 포함되지 않는다.
+
 | Method | URL | 권한 | 요청 | 성공 data / 상태 | 주요 규칙 |
 | --- | --- | --- | --- | --- | --- |
-| POST | `/auth/oauth/{provider}/authorization-requests` | 공개 | `{redirectUri:string,codeChallenge?:string}` | `OAuthAuthorization` / 201 | 허용된 redirect만 사용, 로그인 시작 컨텍스트에 바인딩된 state 발급 |
-| POST | `/auth/oauth/{provider}/sessions` | 공개 | `OAuthExchange` | `Session` / 200 | provider는 KAKAO 또는 NAVER. 코드 교환·state·redirect 검증 필수 |
+| POST | `/auth/oauth/{provider}/authorization-requests` | 공개 | `{redirectUri:string,codeChallenge:string}` | `OAuthAuthorization` / 201 | 현재 KAKAO만 구현. Expo 외부 브라우저 흐름, S256 challenge 필수. 허용된 redirect만 사용, verifier 소유에 바인딩된 state 발급 |
+| POST | `/auth/oauth/{provider}/sessions` | 공개 | `OAuthExchange` | `Session` / 200 | 현재 KAKAO만 구현(NAVER 거부). 코드·state·redirect·만료·verifier 검증, 인가 컨텍스트 일회 소비. 제공자 오류는 503 PROVIDER_UNAVAILABLE |
 | POST | `/auth/sessions/refresh` | 갱신 토큰 | `{refreshToken:string}` | `Session` / 200 | 회전·재사용 감지 제안. 원문 토큰 DB 저장 금지 |
 | DELETE | `/auth/session` | 로그인 | 없음 | 204 | 현재 세션 폐기 |
 | GET | `/me` | 본인 | 없음 | `MyProfile` / 200 | 비공개 연령·동의 정보는 본인에게만 |
-| PATCH | `/me` | 본인 | `{nickname?:string,profileAssetId?:id\|null,ageBand?:string\|null,ageUseConsent?:boolean,accountVisibility?:PUBLIC\|PRIVATE}` | `MyProfile` / 200 | 연령 비공개. 공개 범위 변경의 대기 요청 처리는 Q-2 합의 전 보류 |
+| PATCH | `/me` | 본인·가입 대기 허용 | `{nickname:string}` | `MyProfile` / 200 | 현재 구현은 닉네임만 지원, 다른 필드는 400. 공백 제거 후 1~50자로 가입 완료. 이미지·연령·공개 범위 수정은 후속 |
 | DELETE | `/me` | 본인 | 없음 | `{accepted:true}` / 202 | 접수 후 계정 비활성화·세션 폐기, 별도 작업 폴링 없음. 보존 정책 Q-11 확정 후 활성화 |
 | GET | `/users` | 로그인 | `query:string` + 페이지 | `UserCard[]` / 200 | 닉네임으로만 검색, 프로필 링크/ID 검색은 제공하지 않음, 노출 범위 Q-2 |
 | GET | `/users/{userId}` | 로그인 | 없음 | `UserCard` / 200 | 연령·이메일 반환 금지 |
@@ -95,6 +97,8 @@
 ## 4. 여행·멤버·초대
 
 근거: WD-FR-04·32. 그룹과 여행을 이중 생성하지 않는다.
+
+2026-10-28 사용자 확정: 여행지 개수는 서비스 정책상 상한 없이 추가할 수 있다. 중복·없는 지역 ID는 거부한다. 탈퇴한 회원의 공개 `UserCard.nickname`은 `탈퇴한 사용자`로 표시하며 원본 개인정보 삭제·보관 정책과 구분한다. 로그인 토큰 수명은 access 1시간·refresh 14일이며 새 세션에 적용한다.
 
 | Method | URL | 권한 | 요청 | 성공 data / 상태 | 주요 규칙 |
 | --- | --- | --- | --- | --- | --- |
@@ -305,8 +309,8 @@
 
 | DTO | 필드와 의미 |
 | --- | --- |
-| OAuthAuthorization | `authorizationId:id,authorizationUrl:string,state:string,expiresAt:datetime`. 시작 브라우저/앱 컨텍스트 바인딩·PKCE 지원 방식은 Q-1 인증 설계에서 확정 |
-| OAuthExchange | `authorizationId:id,code:string,redirectUri:string,state:string,codeVerifier?:string`. 일회성 요청의 provider·state·만료·redirect와 시작 컨텍스트를 검증한 뒤 소비. 검증 없이 활성화하지 않음 |
+| OAuthAuthorization | `authorizationId:id,authorizationUrl:string,state:string,expiresAt:datetime`. 앱이 보관한 verifier의 S256 challenge에 바인딩. 기본 만료 300초(환경 설정). 외부 브라우저에서 authorizationUrl을 열고 앱 redirect의 code/state를 수신 |
+| OAuthExchange | `authorizationId:id,code:string,redirectUri:string,state:string,codeVerifier:string`. verifier는 RFC 7636의 43~128자. provider·state·만료·redirect·S256 challenge 일치 후 컨텍스트 원자적 일회 소비. 제공자 실패도 재사용 불가, 인가 시작부터 재시도 |
 | Session | `accessToken:string,refreshToken:string,expiresIn:integer,user:MyProfile,isNewUser:boolean` |
 | UserCard | `id,nickname:string,profileImageUrl:string\|null,accountVisibility:PUBLIC\|PRIVATE,followingStatus:NONE\|REQUESTED\|ACCEPTED,followedByStatus:NONE\|REQUESTED\|ACCEPTED`. 양방향 독립, 연령·이메일 미반환 |
 | Follow | `id,follower:UserCard,followee:UserCard,status:REQUESTED\|ACCEPTED,requestedAt:datetime,acceptedAt:datetime\|null` |
