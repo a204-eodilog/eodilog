@@ -1,6 +1,6 @@
-# 백엔드 B 후속 작업 — 준비물 체크리스트·멤버 관리·경비
+# 백엔드 B 후속 작업 — 준비물 체크리스트·멤버 관리·경비·초대
 
-작성일: 2026-10-29 · 상태: 체크리스트·멤버 관리 병합 완료(MR !49·!50), 경비·정산 상태 병합 완료(MR !56, 2026-10-30)
+작성일: 2026-10-29 · 상태: 체크리스트·멤버 관리 병합 완료(MR !49·!50), 경비·정산 상태 병합 완료(MR !56, 2026-10-30), 초대 링크 구현(EODI-125)
 
 [B 첫 작업](backend-b-trip-basic.md)(여행 생성·조회·수정)이 끝난 뒤 A의 카카오 로그인을 기다리는 동안 진행한 B 작업이다. [분담안](../../../docs/plan/backend-first-work-split.md) §6은 이 기능들을 "첫 통합 뒤 배분"으로 두었지만, 로그인 없이 개발할 수 있고 여행 패키지 안에서 끝나는 것부터 B가 먼저 맡았다. A와 겹치는 파일(`user`·`auth` 패키지, `SecurityConfig`)은 건드리지 않는다.
 
@@ -12,6 +12,7 @@
 | --- | --- | --- | --- |
 | 준비물 체크리스트 | `GET/POST /trips/{tripId}/checklist`, `PATCH/DELETE /trips/{tripId}/checklist/{itemId}` | EODI-110 | 병합(MR !49) |
 | 멤버 관리 | `GET /trips/{tripId}/members`, `POST /trips/{tripId}/owner-transfer`, `DELETE /trips/{tripId}/members/{memberId}` | EODI-111 | 병합(MR !50) |
+| 초대 링크 | `POST /trips/{tripId}/invitations`, `GET /invitations/{token}`(공개), `POST /invitations/{token}/accept` | EODI-125 | 구현(§9) |
 | 경비·정산 상태 | `GET/POST /trips/{tripId}/expenses`, `PATCH/DELETE /trips/{tripId}/expenses/{expenseId}`, `GET /trips/{tripId}/settlement`, `POST /trips/{tripId}/settlements`(409) | EODI-122 | 병합(MR !56, §8) |
 
 검증은 B 첫 작업과 같이 테스트에서 `AuthUser` principal을 넣어 했다. A 로그인 병합 뒤 실제 카카오 계정 2개로 여행 API 통합 검증(B-7)을 마쳤다([계약 §8](backend-a-b-contract.md)).
@@ -101,7 +102,6 @@ AI 준비물 제안(`POST /trips/{tripId}/checklist-suggestions`)은 `jobs`, 날
 | --- | --- |
 | 정산 계산·이전 계산 조회 | Q-10(1인 부담액 10원 올림 시점·차액 귀속) 합의 후 `settlements` 테이블과 함께 |
 | 채팅 메시지 조회·전송(REST) | `messages` 테이블 필요. 실시간 전송은 Q-13 |
-| 초대 링크 | 만료·정원 Q-4 기본값 합의, 미리보기 공개 경로는 A의 `SecurityConfig` 변경 필요. 수락 시 채팅 참여도 함께 만든다(§4 끝) |
 | 나가기 | 일반 이탈·방장 자동 양도는 가능. 자료 삭제 선택과 마지막 방장 이탈(여행 삭제)은 `jobs`·Q-11 필요 |
 
 ## 8. 경비·정산 정책
@@ -122,3 +122,21 @@ AI 준비물 제안(`POST /trips/{tripId}/checklist-suggestions`)은 `jobs`, 날
 | E-10 | 정산 계산 | ACTIVE 멤버 확인 뒤 항상 `409 SETTLEMENT_POLICY_PENDING`. `settlements` 테이블과 이전 계산 목록·상세는 Q-10 합의 후 추가 | 명세 "정책 확정 전 계산 POST는 409 제안" |
 | E-11 | 목록 | `createdAt DESC, id DESC` 커서 페이지(기본 20, 최대 100). 여행 목록과 같은 커서(`global.common.response.CreatedAtCursor`)를 쓴다 | 명세 §2 목록 공통 |
 | E-12 | 중복 요청 | 경비 등록은 `Idempotency-Key` 필수. 범위는 실제 요청 경로(`POST /api/v1/trips/{tripId}/expenses`) | 명세 §2 "(사용자, 실제 요청 경로, 키)" |
+
+## 9. 초대 링크 정책
+
+Q-4 기본값은 2026-10-30에 정했다(만료 7일, 정원 20명). 나머지는 명세 §2·§4와 ERD를 따라 아래처럼 구현했다.
+
+| # | 질문 | 결정 | 근거 |
+| --- | --- | --- | --- |
+| I-1 | 만료 | 링크를 만든 시각부터 7일. 만료 시각이 지나면 미리보기·수락 모두 410 | Q-4 결정 |
+| I-2 | 정원 | 링크별 사용 횟수가 아니라 **여행의 ACTIVE 멤버 수(방장 포함) 20명**. 수락할 때 20명이면 `409 TRIP_FULL`. 이미 ACTIVE인 사람의 수락은 정원과 상관없이 200 | Q-4 결정. ERD `trip_invitations`에 사용 횟수 열이 없다. 명세 409 목록에 `TRIP_FULL` 추가 |
+| I-3 | 링크 만들기 | 여행의 ACTIVE 멤버 누구나. 여러 개를 만들 수 있고 각각 만료까지 여러 명이 쓴다. `Idempotency-Key` 없음(명세 §2 목록에 없음) | 명세 §4 권한 "멤버", 사용자 흐름 "초대 링크 공유는 동행 누구나" |
+| I-4 | 토큰 | 32바이트 난수의 base64url(43자). DB에는 SHA-256 해시(16진수)만 저장하고 원문은 생성 응답에서만 준다. `url`은 `app.invitation.link-base-url`(기본 `ieohaeng://invitations/`) + 토큰 | 명세 "토큰 원문 1회 반환". 프론트 초대 화면 경로가 정해지면 설정만 바꾼다 |
+| I-5 | 검증 실패 응답 | 형식이 틀린 토큰은 `404 NOT_FOUND`. 형식이 맞으면 없는 토큰·만료·취소·삭제된 여행·초대한 사람이 나간 링크를 구분하지 않고 `410 INVITATION_EXPIRED` | 명세 §2 "유효 형식의 초대 토큰 검증 결과는 410", S04의 "무효·만료" 한 상태 |
+| I-6 | 수락 판정 순서 | 형식 404 → 링크 검사 410(여행 행 잠금 포함) → 이미 ACTIVE면 그대로 200 → 정원 409 → 참여. 만료된 링크는 이미 멤버여도 410 | 정원 검사와 순번 발급이 겹치지 않도록 여행 행을 잠근다 |
+| I-7 | 재참여 | 나간(LEFT)·내보낸(REMOVED) 사람도 유효 링크로 돌아올 수 있다. 기존 멤버십 행을 ACTIVE로 되돌리고 `joinOrder`는 지금까지의 최댓값 + 1. 채팅 참여 행도 같은 행의 `left_at`을 지운다(과거 대화 범위는 Q-13) | ERD `trip_members` 노트 "재참여는 기존 멤버십 ID 유지, join_order 새로 부여" |
+| I-8 | 수락의 부수 효과 | 멤버십·채팅 참여를 한 트랜잭션에서 만들고 여행 `version`을 1 올린다. 참여 알림은 아직 없다 | 응답 `members`가 바뀌므로 M-2와 같은 규칙. 알림 테이블이 없다 |
+| I-9 | 미리보기 인증 | 공개 경로(`SecurityConfig`의 `GET /api/v1/invitations/*`). `BearerFilter`는 그대로 거쳐서, 토큰을 보내면 `inviterUser` 회원 카드를 주고 안 보내면 null. 잘못된 토큰을 보내면 401, 가입 대기 토큰은 403 `PROFILE_INCOMPLETE` | 명세 InvitationPreview "익명 inviterUser=null". `shouldNotFilter`에 넣으면 로그인 사용자를 알 수 없다 |
+
+남은 것: 링크 취소 API(`revoked_at` 열만 있음), 참여 알림, 프론트 초대 화면 경로가 정해진 뒤의 `url` 설정.

@@ -41,4 +41,10 @@ public class ChatParticipant {
 		this.leftAt = now;
 	}
 
+	// 같은 행을 다시 쓴다. 이전 대화를 볼 수 있는 범위는 Q-13 전이라 바꾸지 않는다
+	public void rejoin(Instant now) {
+		this.joinedAt = now;
+		this.leftAt = null;
+	}
+
 }

@@ -7,10 +7,18 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface TripMemberRepository extends JpaRepository<TripMember, UUID> {
 
 	Optional<TripMember> findByTripIdAndUserId(UUID tripId, UUID userId);
+
+	long countByTripIdAndStatus(UUID tripId, TripMemberStatus status);
+
+	// 나간 멤버의 순번도 포함한다. 새 참여·재참여는 여행 행 잠금 아래에서 이 값 + 1을 받는다
+	@Query("select coalesce(max(m.joinOrder), 0) from TripMember m where m.tripId = :tripId")
+	long findMaxJoinOrder(@Param("tripId") UUID tripId);
 
 	List<TripMember> findAllByTripIdInAndStatusOrderByJoinOrder(Collection<UUID> tripIds, TripMemberStatus status);
 
