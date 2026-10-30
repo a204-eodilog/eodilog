@@ -1,5 +1,6 @@
 package com.eodilog.trip.service;
 
+import com.eodilog.global.common.response.CreatedAtCursor;
 import com.eodilog.global.common.response.PageResponse;
 import com.eodilog.trip.domain.Trip;
 import com.eodilog.trip.domain.TripMemberStatus;
@@ -35,7 +36,7 @@ public class TripQueryService {
 
 	// 내가 ACTIVE 멤버인 삭제되지 않은 여행. 상태 필터는 저장 값이 아니라 오늘 날짜와 기간으로 거른다
 	public PageResponse<TripResponse> getMyTrips(UUID userId, TripStatus status, String cursor, int limit) {
-		TripCursor after = cursor == null || cursor.isBlank() ? null : TripCursor.decode(cursor);
+		CreatedAtCursor after = cursor == null || cursor.isBlank() ? null : CreatedAtCursor.decode(cursor);
 
 		StringBuilder jpql = new StringBuilder("""
 				select t from Trip t
@@ -69,7 +70,7 @@ public class TripQueryService {
 
 		boolean hasNext = found.size() > limit;
 		List<Trip> page = hasNext ? found.subList(0, limit) : found;
-		String nextCursor = hasNext ? new TripCursor(page.getLast().getCreatedAt(), page.getLast().getId()).encode() : null;
+		String nextCursor = hasNext ? new CreatedAtCursor(page.getLast().getCreatedAt(), page.getLast().getId()).encode() : null;
 		return PageResponse.of(tripResponseAssembler.assemble(userId, page), nextCursor, hasNext);
 	}
 

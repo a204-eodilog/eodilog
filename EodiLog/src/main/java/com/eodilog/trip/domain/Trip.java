@@ -89,4 +89,9 @@ public class Trip {
 		this.updatedAt = now;
 	}
 
+	// 경비 등록·수정·삭제마다 올린다(ERD 불변식 5). 여행 정보 version과는 따로 움직여 서로 충돌을 만들지 않는다
+	public void increaseExpenseVersion() {
+		this.expenseVersion++;
+	}
+
 }

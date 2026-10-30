@@ -50,7 +50,7 @@
 
 | 상태 | 대표 업무 오류 |
 | --- | --- |
-| 404 | `TRIP_NOT_FOUND`, `FEED_NOT_FOUND`, `JOB_NOT_FOUND` — 존재를 공개할 수 없는 자료도 같은 응답. 여행 안의 하위 자료는 `MEMBER_NOT_FOUND`(없거나 이탈한 멤버십), `CHECKLIST_ITEM_NOT_FOUND`(없거나 삭제된 준비물) |
+| 404 | `TRIP_NOT_FOUND`, `FEED_NOT_FOUND`, `JOB_NOT_FOUND` — 존재를 공개할 수 없는 자료도 같은 응답. 여행 안의 하위 자료는 `MEMBER_NOT_FOUND`(없거나 이탈한 멤버십), `CHECKLIST_ITEM_NOT_FOUND`(없거나 삭제된 준비물), `EXPENSE_NOT_FOUND`(없거나 삭제된 경비) |
 | 409 | `VERSION_CONFLICT`, `POLL_CLOSED`, `ALREADY_MEMBER`, `ALREADY_APPLIED`, `SETTLEMENT_POLICY_PENDING` |
 | 410 | `INVITATION_EXPIRED` — 사용자가 제시한 유효 형식의 초대 토큰 검증 결과 |
 | 422 | `INSUFFICIENT_DATA`, `CURRENCY_MISMATCH`, `INVALID_PARTICIPANTS`, `UNSUPPORTED_INPUT` |
@@ -223,7 +223,7 @@
 | DELETE | `/trips/{tripId}/expenses/{expenseId}` | 활성 멤버인 등록자 | `expectedVersion:integer`(query) | 204 | 전체 비용 버전 증가, 이전 정산 무효화 |
 | GET | `/trips/{tripId}/settlement` | 멤버 | 없음 | `SettlementState` / 200 | current 계산(없으면 null)·현재 비용 버전·재계산 필요 반환. GET은 계산 생성 안 함. 경비 미입력은 current=null |
 
-비용 원금 10,001원의 3인 균등 분담은 원금 보존 표현과 올림 부담액을 구분한다. 1인 부담액이 3,333.67원이면 10원 올림 결과는 3,340원이다. 비용 원금 잔여 배분 방식과 지출별/여행 합산 중 올림 시점은 D-7 제안/Q-10이며 최종 송금액을 다시 10원으로 올리는 규칙은 추가하지 않는다. 총 올림 차액 귀속이 미정이므로 해당 정책 확정 전 계산 POST는 409 SETTLEMENT_POLICY_PENDING 제안이다. 원금 잔액 합=0과 올림 차액을 분리해 검증한다. 이탈자의 과거 경비는 보존하며 신규 분담자 추가는 ACTIVE 멤버만 허용하는 제안이다.
+비용 원금 10,001원의 3인 균등 분담은 원금 보존 표현과 올림 부담액을 구분한다. 1인 부담액이 3,333.67원이면 10원 올림 결과는 3,340원이다. 비용 원금 잔여 배분 방식과 지출별/여행 합산 중 올림 시점은 D-7 제안/Q-10이며 최종 송금액을 다시 10원으로 올리는 규칙은 추가하지 않는다. 총 올림 차액 귀속이 미정이므로 해당 정책 확정 전 계산 POST는 409 SETTLEMENT_POLICY_PENDING 제안이다. 원금 잔액 합=0과 올림 차액을 분리해 검증한다. 이탈자의 과거 경비는 보존하며 신규 분담자 추가는 ACTIVE 멤버만 허용하는 제안이다. 구현: 원금의 1원 잔여는 참여 순이 빠른 분담자부터 1원씩 배분하고, 정산 정책 합의 전 `GET /settlement`의 `current`는 null이다.
 
 | Method | URL | 권한 | 요청 | 성공 data / 상태 | 주요 규칙 |
 | --- | --- | --- | --- | --- | --- |
