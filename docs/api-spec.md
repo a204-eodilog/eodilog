@@ -115,6 +115,8 @@
 | POST | `/trips/{tripId}/leave` | 멤버 | `{deleteOwnPhotos:boolean,deleteOwnMessages:boolean,expectedVersion:integer}` | `LeaveResult` / 202 | 일반 이탈은 경비 유지·방장 자동 양도. 마지막 방장은 여행 삭제로 접수하며 tripDeleted=true, 같은 TRIP_DELETE 작업 사용 |
 | DELETE | `/trips/{tripId}/members/{memberId}` | 방장 | `expectedVersion:integer`(query) | 204 | 본인·방장 내보내기 금지(400). 없거나 이탈한 대상 404 `MEMBER_NOT_FOUND`. 멤버십 REMOVED·채팅 참여 해제를 한 트랜잭션으로. 강제 이탈 시 타인 자료 삭제 여부는 Q-11 |
 
+2026-10-30 사용자 확정: 여행 정원은 방장 포함 ACTIVE 멤버 최대 20명이다. 이탈·내보내기로 빈자리가 생기면 다시 참여할 수 있다. 초대 링크는 발급 시각부터 7일(168시간) 유효하며, 만료 시각부터 참여할 수 없다. ACTIVE 멤버 누구나 재발급할 수 있고 재발급하면 이전 링크는 즉시 무효화한다. 링크 만료·재발급은 기존 참여자에게 영향을 주지 않는다. 수락 시 정원 확인과 참여 반영을 원자적으로 처리해 동시 수락으로 20명을 초과하지 않게 한다. 만료는 410 INVITATION_EXPIRED, 정원 초과는 409 TRIP_FULL이다. 현재 초대 구현은 링크별 독립 만료 방식이므로 재발급 시 이전 링크 무효화는 추가 반영이 필요하다.
+
 방장 양도·멤버 내보내기의 `expectedVersion`은 여행의 `version`(`Trip.version`)이다(이탈·여행 삭제도 같은 version을 쓰는 제안). 입력 형식 400을 먼저 검사한 뒤 비참여자 404, 방장 전용 동작을 멤버가 요청하면 403, 버전이 다르면 409, 끝으로 대상(양도 대상이 동행이 아니거나 이미 방장이면 400, 내보낼 멤버가 없거나 이탈했으면 404 `MEMBER_NOT_FOUND`, 방장 자신이면 400) 순으로 판정한다. 양도·내보내기가 성공하면 `Trip`의 `ownerMemberId`·`members`가 바뀌므로 여행 version을 올리고, 그 전 version으로 보낸 여행 정보 수정(PATCH)은 409가 된다.
 
 `leave`에서 방장 다음 순서는 ACTIVE 멤버의 joinOrder 오름차순이다. 양도·멤버 비활성화·본인 노출 경로 제외·채팅 참여 해제를 한 트랜잭션으로 처리한다. 마지막 방장의 이탈은 여행 삭제와 같은 처리이며 삭제 확인 안내 후 같은 TRIP_DELETE 작업을 생성한다. 일반 이탈의 경비 유지 규칙을 전체 여행 삭제의 영구 보존 규칙으로 해석하지 않는다. 이탈자의 공동 피드 표시 경로만 제거하고 공동 피드·그룹 저장·경비는 유지한다. 사진 삭제 선택은 공동 피드의 사진·표지·파일 접근에 즉시 반영한다.
