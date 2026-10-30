@@ -1,6 +1,6 @@
 # 카카오 로그인·회원 통합
 
-현재 구현은 Expo 외부 브라우저의 카카오 인가 코드 흐름이다. 네이버, 네이티브 SDK 토큰 교환, 웹 쿠키, 갱신/로그아웃 endpoint는 후속이다. `Session.refreshToken`은 반환하고 DB에는 SHA-256 해시만 저장한다. 성공은 `{data: ...}`, 오류는 `{error:{code,message,fields,traceId}}`다.
+현재 구현은 Expo 외부 브라우저의 카카오 인가 코드 흐름과 토큰 갱신·현재 세션 로그아웃이다. 네이버, 네이티브 SDK 토큰 교환, 웹 쿠키는 후속이다. `Session.refreshToken`은 반환하고 DB에는 SHA-256 해시만 저장한다. 성공은 `{data: ...}`, 오류는 `{error:{code,message,fields,traceId}}`다.
 
 ## 로컬 실행
 
@@ -23,7 +23,7 @@ Kakao Developers에서 카카오 로그인과 `profile_nickname` 동의 항목�
 
 ## Swagger에서 실제 호출
 
-1. `http://localhost:8080/swagger-ui.html`을 연다. 인증 태그의 두 POST는 자물쇠 없이 Try it out 할 수 있다. provider는 `KAKAO`다.
+1. `http://localhost:8080/swagger-ui.html`을 연다. 인증 태그의 로그인 두 POST와 갱신 POST는 자물쇠 없이 Try it out 할 수 있다. provider는 `KAKAO`다.
 2. 브라우저 개발자 콘솔에서 아래 코드로 verifier/challenge를 만든다. verifier는 로그인 시도마다 새로 만들고 앱에서는 안전한 로컬 메모리에 보관한다. 운영 값은 로그에 남기지 않는다.
 
 ```javascript
@@ -39,9 +39,19 @@ const challenge = base64url(new Uint8Array(await crypto.subtle.digest(
 4. `data.authorizationUrl`을 외부 브라우저에서 열어 카카오 로그인을 마친다. 등록한 HTTPS redirect의 query에서 `code`, `state`를 추출하고 state가 보관한 값과 같은지 확인한다. Expo 앱으로 전달하려면 위의 universal/app link 또는 브리지를 별도 설정해야 한다. Swagger는 외부 로그인이나 앱 redirect를 자동 처리하지 않는다. 수동 점검에서는 HTTPS callback을 수신하는 개발 환경에서 값을 확인해 다음 요청에 넣되 공유 로그에 남기지 않는다.
 5. `POST /api/v1/auth/oauth/KAKAO/sessions`에 `authorizationId`, `code`, 처음과 동일한 `redirectUri`, redirect에서 받은 `state`, 보관한 `codeVerifier`를 보낸다. 컨텍스트는 300초 내 한 번만 사용할 수 있다. 카카오 교환 실패도 소비되므로 새 시작 요청을 만든다.
 6. 응답 `data.accessToken`만 Swagger의 Authorize → bearerAuth에 붙인다(`Bearer ` 접두사 제외). GET `/api/v1/me`를 호출한다.
-7. `profileCompleted=false`이면 `nickname=""`이다. 같은 토큰으로 PATCH `/api/v1/me`에 `{ "nickname": "여행자" }`를 보내 가입을 완료한다. 공백 제거 후 1~50자여야 하며 다른 필드는 400이다. 이후 GET으로 완료 상태를 확인한다. 미완료 상태에서는 GET/PATCH `/me` 이외 요청이 `403 PROFILE_INCOMPLETE`다.
+7. `profileCompleted=false`이면 `nickname=""`이다. 같은 토큰으로 PATCH `/api/v1/me`에 `{ "nickname": "여행자" }`를 보내 가입을 완료한다. 공백 제거 후 1~50자여야 하며 다른 필드는 400이다. 이후 GET으로 완료 상태를 확인한다. 미완료 상태에서도 갱신·현재 세션 로그아웃은 허용하며 GET/PATCH `/me` 이외 서비스 요청이 `403 PROFILE_INCOMPLETE`다.
 
-카카오의 유효한 최초 닉네임이면 바로 가입 완료한다. 미제공·빈 값·기본 닉네임·50자 초과는 가입 대기다. 재로그인은 기존 이름을 덮어쓰지 않는다. 2026-10-28 사용자 확정으로 새 토큰·세션의 수명은 access 3600초(1시간), refresh 1209600초(14일)다. 기존 세션의 만료 이력을 일괄 수정하지 않는다. 토큰 갱신 endpoint는 아직 후속이다.
+카카오의 유효한 최초 닉네임이면 바로 가입 완료한다. 미제공·빈 값·기본 닉네임·50자 초과는 가입 대기다. 재로그인은 기존 이름을 덮어쓰지 않는다. 2026-10-28 사용자 확정으로 새 토큰·세션의 수명은 access 3600초(1시간), refresh 1209600초(14일)다. 기존 세션의 만료 이력을 일괄 수정하지 않는다.
+
+## 토큰 갱신·현재 세션 로그아웃
+
+앱은 `POST /api/v1/auth/sessions/refresh`에 `{ "refreshToken": "현재 토큰" }`을 보낸다. Bearer는 필요 없고 만료되거나 잘못된 Authorization 헤더도 갱신을 방해하지 않는다. 성공은 기존 `Session` 형식이며 `isNewUser=false`다. 새 access는 1시간, 새 refresh는 매 갱신 시점부터 14일이다. 회전 성공은 이전 access와 refresh를 즉시 폐기한다. 앱은 응답의 두 토큰을 함께 안전한 저장소에 교체한다.
+
+앱의 갱신 요청은 반드시 직렬화한다. 여러 API에서 동시에 401을 받아도 하나의 갱신 작업을 공유한 뒤 새 access로 재시도한다. 사용한 refresh를 다시 보내면 해당 로그인 계열의 모든 후속 세션을 폐기하고 `401 UNAUTHENTICATED`를 반환한다. 다른 기기의 별도 로그인은 유지한다. 네트워크 실패로 성공 여부를 알 수 없을 때 이전 refresh를 자동 반복 전송하지 않는다. 갱신 실패 시 로컬 토큰을 정리하고 다시 로그인한다.
+
+`DELETE /api/v1/auth/session`은 유효한 Bearer로 현재 세션만 폐기하며 `204` 본문 없음으로 응답한다. 앱은 갱신과 로그아웃도 직렬화한다. 서버 요청 성공·실패와 관계없이 타임아웃·오프라인에서도 로컬 두 토큰은 지워 기기에서 로그아웃한다. 로컬 토큰 삭제와 서버 세션 폐기 확인은 구분한다. 204를 받으면 서버 폐기가 확인되지만 요청 전달 실패나 타임아웃은 서버 폐기를 보장하지 않으며 서버 세션이 유효하게 남아 있을 수 있다. 서버에서 로그아웃된 세션의 access 인증과 refresh 갱신은 모두 401이며 다른 기기 로그인은 유지한다. Bearer 검증 직후 갱신과 로그아웃이 서버에서 경합하면 후속 세션도 폐기하므로 로그아웃된 계열이 다시 살아나지 않는다. 이미 회전된 세션의 로그아웃은 401일 수 있다.
+
+없는·만료·폐기 refresh와 비활성 회원은 `401 UNAUTHENTICATED`, 빈 토큰·알 수 없는 요청 필드는 공통 400이다. 가입 대기 사용자도 갱신·로그아웃은 허용하며 여행 등 서비스는 계속 `403 PROFILE_INCOMPLETE`다. 토큰 원문은 로그·DB에 남기지 않는다. 카카오 연결 해제와 계정 탈퇴는 이 API 범위에 포함하지 않는다.
 
 ## B 담당 코드 계약
 
@@ -57,13 +67,13 @@ public Object create(@AuthenticationPrincipal AuthUser user) {
 
 `AuthUser`는 `global.security`, `UserCardReader`는 `user.service`, `UserCard`와 enum은 `user.dto` 패키지에 있다. 회원 저장소·컨트롤러도 `user`에 있다. 공개 카드에는 UUID·닉네임·이미지 URL·공개 범위·양방향 팔로우 상태만 있다. 이메일·연령·동의·status는 노출하지 않는다. 이미지 URL은 null, 팔로우 상태는 NONE이다. 여러 ID는 중복 제거 후 한 번의 IN 조회이며 없는 ID는 생략하고 비활성 사용자는 포함한다. 인증 시 비활성 사용자를 401로 거부하는 규칙과 공개 과거 회원 표시용 카드 조회는 역할이 다르다.
 
-B 테스트에서는 `new AuthUser(uuid)`를 principal로 둔 `UsernamePasswordAuthenticationToken`과 대체 `UserCardReader`를 주입할 수 있다. 실제 Bearer 파서나 회원 저장소를 참조할 필요가 없다. 운영용 임의 사용자 헤더는 제공하지 않는다. Bearer 요청마다 DB의 세션/활성 상태/가입 완료 여부를 다시 검사하므로 가입 완료 후 기존 토큰도 즉시 사용할 수 있다. 기존 UUIDv4 ID와 신규 UUIDv7 ID를 모두 허용한다.
+B 테스트에서는 `new AuthUser(uuid)`를 principal로 둔 `UsernamePasswordAuthenticationToken`과 대체 `UserCardReader`를 주입할 수 있다. 실제 Bearer 파서나 회원 저장소를 참조할 필요가 없다. 운영용 임의 사용자 헤더는 제공하지 않는다. Bearer 요청마다 DB의 세션/활성 상태/가입 완료 여부를 다시 검사하므로 가입 완료 후 기존 토큰도 즉시 사용할 수 있다. 기존 UUIDv4 ID와 신규 UUIDv7 ID를 모두 허용한다. 갱신은 신규 UUIDv7 세션 ID를 발급하며 AuthUser의 userId 계약은 유지한다.
 
 성공은 B의 `DataResponse`, 오류는 `BusinessException`과 `CommonErrorCode`/`AuthErrorCode`, 필터 오류는 `ErrorResponseWriter`를 사용한다. `ApiFailure`, `ApiErrors`, 자체 Data, 대체 principal과 UserLookup은 제거했다. `TraceIdFilter`의 32자리 hex 값이 `X-Trace-Id`와 오류 본문의 traceId에 동일하게 들어간다. 예상 밖 예외 로그에는 안전한 타입·traceId 메타데이터만 남긴다. A-0 분리 파일과 독립 검증은 [A-0 인수인계](../../EodiLog/docs/plan/backend-a0-handoff.md)를 따른다.
 
 ## 검증과 한계
 
-통합 테스트는 원격 dev의 Testcontainers 설정으로 PostgreSQL 17 + PostGIS 3.5를 실행하고 카카오 통신은 대체한다. Docker Desktop 실행이 필요하다. 일회 소비·PKCE·잘못된 state/redirect/만료·제공자 실패·동시 최초 가입·재로그인 동일 UUID·가입 완료·토큰 누락/위조/만료/폐기·비활성 회원·OpenAPI 계약을 검사한다. 카카오 브라우저 로그인/Expo redirect는 별도 실연동 검증 대상이다. 실제 비밀값이 없어도 테스트는 동작하며, 운영 애플리케이션은 실제 설정 없이는 시작하지 않는다.
+통합 테스트는 원격 dev의 Testcontainers 설정으로 PostgreSQL 17 + PostGIS 3.5를 실행하고 카카오 통신은 대체한다. Docker Desktop 실행이 필요하다. 일회 소비·PKCE·잘못된 state/redirect/만료·제공자 실패·동시 최초 가입·재로그인 동일 UUID·가입 완료·토큰 누락/위조/만료/폐기·비활성 회원·갱신 회전과 다세대 재사용 폐기·동시 갱신·로그아웃 경합·기기 격리·가입 대기·토큰 로그 비노출·OpenAPI 계약을 검사한다. 카카오 브라우저 로그인/Expo redirect는 별도 실연동 검증 대상이다. 실제 비밀값이 없어도 테스트는 동작하며, 운영 애플리케이션은 실제 설정 없이는 시작하지 않는다.
 
 2026-10-30 추가 검증: 사용자가 PC 로컬 점검 페이지에서 실제 카카오 인증 후 성공 화면을 확인했다. 카카오 코드 교환→서비스 토큰 발급→`/api/v1/me` 성공까지 실제 설정으로 확인된 결과다. 계정 정보·토큰은 기록하지 않았다. Expo redirect 및 B 여행 API와의 계정 2개 통합 검증은 아직 별도다.
 

@@ -101,6 +101,133 @@ class AuthIntegrationTest {
     OAuthExchange request(OAuthAuthorization a) { return new OAuthExchange(a.authorizationId(),"code",REDIRECT,a.state(),VERIFIER); }
     Session login() { return service.exchange("KAKAO",request(start())); }
     long count(String table) { return jdbc.queryForObject("SELECT COUNT(*) FROM "+table,Long.class); }
+    static final String REFRESH="/api/v1/auth/sessions/refresh";
+    @Test void refreshRotatesHashesClaimsAndSlidingExpiryAndRejectsOldAccess() throws Exception {
+        var first=login(); var oldClaims=tokens.verify(first.accessToken());
+        jdbc.update("UPDATE sessions SET expires_at=? WHERE id=?",Timestamp.from(Instant.now().plusSeconds(60)),oldClaims.sessionId());
+        Instant before=Instant.now();
+        var response=mvc.perform(post(REFRESH).header("Authorization","Bearer expired-or-forged").contentType("application/json")
+            .content(mapper.writeValueAsString(new RefreshRequest(first.refreshToken()))))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.data.isNewUser").value(false)).andReturn().getResponse();
+        var next=mapper.readValue(mapper.readTree(response.getContentAsString()).get("data").toString(),Session.class);
+        var claims=tokens.verify(next.accessToken());
+        assertThat(claims.userId()).isEqualTo(first.user().id());
+        assertThat(claims.sessionId().version()).isEqualTo(7);
+        assertThat(next.refreshToken()).isNotEqualTo(first.refreshToken());
+        assertThat(next.expiresIn()).isEqualTo(3600);
+        assertThat(jdbc.queryForObject("SELECT rotated_from_id FROM sessions WHERE id=?",UUID.class,claims.sessionId())).isEqualTo(oldClaims.sessionId());
+        assertThat(jdbc.queryForObject("SELECT refresh_token_hash FROM sessions WHERE id=?",String.class,claims.sessionId())).isEqualTo(Tokens.hash(next.refreshToken()));
+        assertThat(jdbc.queryForObject("SELECT expires_at FROM sessions WHERE id=?",Timestamp.class,claims.sessionId()).toInstant())
+            .isBetween(before.plusSeconds(1209600),Instant.now().plusSeconds(1209600));
+        mvc.perform(get("/api/v1/me").header("Authorization","Bearer "+first.accessToken())).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/v1/me").header("Authorization","Bearer "+next.accessToken())).andExpect(status().isOk());
+    }
+    @Test void replayRevokesMultipleGenerationsButKeepsOtherDevice() throws Exception {
+        var first=login(); var device=login();
+        var second=service.refresh(new RefreshRequest(first.refreshToken()));
+        var third=service.refresh(new RefreshRequest(second.refreshToken()));
+        jdbc.update("UPDATE sessions SET expires_at=? WHERE id=?",Timestamp.from(Instant.now().minusSeconds(1)),tokens.verify(first.accessToken()).sessionId());
+        mvc.perform(post(REFRESH).contentType("application/json").content(mapper.writeValueAsString(new RefreshRequest(first.refreshToken()))))
+            .andExpect(status().isUnauthorized()).andExpect(jsonPath("$.error.code").value("UNAUTHENTICATED"));
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sessions WHERE revoked_at IS NULL",Integer.class)).isEqualTo(1);
+        mvc.perform(get("/api/v1/me").header("Authorization","Bearer "+third.accessToken())).andExpect(status().isUnauthorized());
+        assertThatThrownBy(()->service.refresh(new RefreshRequest(third.refreshToken()))).isInstanceOf(BusinessException.class);
+        mvc.perform(get("/api/v1/me").header("Authorization","Bearer "+device.accessToken())).andExpect(status().isOk());
+        assertThat(service.refresh(new RefreshRequest(device.refreshToken())).user().id()).isEqualTo(first.user().id());
+    }
+    @Test void successorInsertFailureRollsBackPredecessorRevocation() throws Exception {
+        var first=login(); var claims=tokens.verify(first.accessToken());
+        try(var generator=mockStatic(com.eodilog.global.id.UuidV7.class)) {
+            generator.when(com.eodilog.global.id.UuidV7::generate).thenReturn(claims.sessionId());
+            assertThatThrownBy(()->service.refresh(new RefreshRequest(first.refreshToken())))
+                .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+        }
+        assertThat(count("sessions")).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT revoked_at FROM sessions WHERE id=?",Timestamp.class,claims.sessionId())).isNull();
+        mvc.perform(get("/api/v1/me").header("Authorization","Bearer "+first.accessToken())).andExpect(status().isOk());
+        var next=service.refresh(new RefreshRequest(first.refreshToken()));
+        assertThat(count("sessions")).isEqualTo(2);
+        assertThat(tokens.verify(next.accessToken()).sessionId()).isNotEqualTo(claims.sessionId());
+        assertThat(jdbc.queryForObject("SELECT rotated_from_id FROM sessions WHERE id=?",UUID.class,tokens.verify(next.accessToken()).sessionId())).isEqualTo(claims.sessionId());
+        mvc.perform(get("/api/v1/me").header("Authorization","Bearer "+next.accessToken())).andExpect(status().isOk());
+    }
+    @Test void logoutRevokesOnlyCurrentDeviceAndRequiresValidatedBearer() throws Exception {
+        var first=login(); var device=login();
+        mvc.perform(delete("/api/v1/auth/session")).andExpect(status().isUnauthorized());
+        mvc.perform(delete("/api/v1/auth/session").header("Authorization","Bearer forged")).andExpect(status().isUnauthorized());
+        mvc.perform(delete("/api/v1/auth/session").header("Authorization","Bearer "+first.accessToken()))
+            .andExpect(status().isNoContent()).andExpect(content().string(""));
+        mvc.perform(get("/api/v1/me").header("Authorization","Bearer "+first.accessToken())).andExpect(status().isUnauthorized());
+        assertThatThrownBy(()->service.refresh(new RefreshRequest(first.refreshToken()))).isInstanceOf(BusinessException.class);
+        mvc.perform(get("/api/v1/me").header("Authorization","Bearer "+device.accessToken())).andExpect(status().isOk());
+        assertThat(service.refresh(new RefreshRequest(device.refreshToken())).isNewUser()).isFalse();
+    }
+    @Test void refreshValidationExpiryAndInactiveMemberUseCommonErrors() throws Exception {
+        for(String body:List.of("{}","{\"refreshToken\":\" \"}","{\"refreshToken\":\"x\",\"extra\":true}")) {
+            var response=mvc.perform(post(REFRESH).contentType("application/json").content(body)).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR")).andReturn().getResponse();
+            assertThat(mapper.readTree(response.getContentAsString()).at("/error/traceId").asText()).isEqualTo(response.getHeader("X-Trace-Id"));
+        }
+        var expired=login();
+        jdbc.update("UPDATE sessions SET expires_at=? WHERE refresh_token_hash=?",Timestamp.from(Instant.now().minusSeconds(1)),Tokens.hash(expired.refreshToken()));
+        for(String token:List.of("unknown",expired.refreshToken()))
+            mvc.perform(post(REFRESH).contentType("application/json").content(mapper.writeValueAsString(new RefreshRequest(token))))
+                .andExpect(status().isUnauthorized()).andExpect(jsonPath("$.error.code").value("UNAUTHENTICATED"));
+        var inactive=login(); jdbc.update("UPDATE users SET status='DEACTIVATED' WHERE id=?",inactive.user().id());
+        mvc.perform(post(REFRESH).contentType("application/json").content(mapper.writeValueAsString(new RefreshRequest(inactive.refreshToken())))).andExpect(status().isUnauthorized());
+        mvc.perform(delete("/api/v1/auth/session").header("Authorization","Bearer "+inactive.accessToken())).andExpect(status().isUnauthorized());
+    }
+    @Test void pendingMemberCanRefreshAndLogoutButRemainsRestricted() throws Exception {
+        when(gateway.exchange(anyString(),anyString(),anyString())).thenReturn(new KakaoGateway.KakaoUser("pending",null));
+        var session=service.refresh(new RefreshRequest(login().refreshToken()));
+        mvc.perform(get("/api/v1/me").header("Authorization","Bearer "+session.accessToken())).andExpect(status().isOk()).andExpect(jsonPath("$.data.profileCompleted").value(false));
+        mvc.perform(get("/api/v1/trips").header("Authorization","Bearer "+session.accessToken())).andExpect(status().isForbidden());
+        mvc.perform(delete("/api/v1/auth/session").header("Authorization","Bearer "+session.accessToken())).andExpect(status().isNoContent());
+    }
+    @Test void concurrentRefreshHasSingleSuccessAndReplayRevokesItsSuccessor() throws Exception {
+        var first=login(); var device=login(); var ready=new CountDownLatch(2); var go=new CountDownLatch(1);
+        Callable<Boolean> rotate=()->{ready.countDown(); go.await(5,TimeUnit.SECONDS); try {service.refresh(new RefreshRequest(first.refreshToken())); return true;} catch(BusinessException e) {assertThat(e.getErrorCode()).isEqualTo(CommonErrorCode.UNAUTHENTICATED); return false;}};
+        try(var executor=Executors.newFixedThreadPool(2)) {
+            var one=executor.submit(rotate); var two=executor.submit(rotate); assertThat(ready.await(5,TimeUnit.SECONDS)).isTrue(); go.countDown();
+            assertThat(List.of(one.get(10,TimeUnit.SECONDS),two.get(10,TimeUnit.SECONDS))).containsExactlyInAnyOrder(true,false);
+        }
+        assertThat(count("sessions")).isEqualTo(3);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sessions WHERE revoked_at IS NULL",Integer.class)).isEqualTo(1);
+        assertThat(service.authenticate(tokens.verify(device.accessToken())).id()).isEqualTo(first.user().id());
+    }
+    @Test void concurrentRefreshAndValidatedLogoutCannotLeaveSuccessorAlive() throws Exception {
+        var first=login(); var device=login(); var claims=tokens.verify(first.accessToken());
+        service.authenticate(claims);
+        var ready=new CountDownLatch(2); var go=new CountDownLatch(1);
+        try(var executor=Executors.newFixedThreadPool(2)) {
+            var refresh=executor.submit(()->{ready.countDown(); go.await(5,TimeUnit.SECONDS); try {service.refresh(new RefreshRequest(first.refreshToken()));} catch(BusinessException e) {assertThat(e.getErrorCode()).isEqualTo(CommonErrorCode.UNAUTHENTICATED);} return true;});
+            var logout=executor.submit(()->{ready.countDown(); go.await(5,TimeUnit.SECONDS); try {service.logout(claims);} catch(BusinessException e) {assertThat(e.getErrorCode()).isEqualTo(CommonErrorCode.UNAUTHENTICATED);} return true;});
+            assertThat(ready.await(5,TimeUnit.SECONDS)).isTrue(); go.countDown(); refresh.get(10,TimeUnit.SECONDS); logout.get(10,TimeUnit.SECONDS);
+        }
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sessions WHERE revoked_at IS NULL",Integer.class)).isEqualTo(1);
+        assertThat(service.authenticate(tokens.verify(device.accessToken())).id()).isEqualTo(first.user().id());
+    }
+    @Test void logoutAfterBearerValidationAndCommittedRotationRevokesSuccessor() {
+        var first=login(); var claims=tokens.verify(first.accessToken()); service.authenticate(claims);
+        var next=service.refresh(new RefreshRequest(first.refreshToken()));
+        assertThatThrownBy(()->service.logout(claims)).isInstanceOf(BusinessException.class);
+        assertThatThrownBy(()->service.authenticate(tokens.verify(next.accessToken()))).isInstanceOf(BusinessException.class);
+    }
+    @Test @ExtendWith(OutputCaptureExtension.class)
+    void refreshAndLogoutDoNotLogRawTokens(CapturedOutput output) throws Exception {
+        var first=login(); var next=service.refresh(new RefreshRequest(first.refreshToken())); var separate=login();
+        mvc.perform(post(REFRESH).contentType("application/json").content(mapper.writeValueAsString(new RefreshRequest(first.refreshToken())))).andExpect(status().isUnauthorized());
+        mvc.perform(delete("/api/v1/auth/session").header("Authorization","Bearer "+next.accessToken())).andExpect(status().isUnauthorized());
+        mvc.perform(delete("/api/v1/auth/session").header("Authorization","Bearer "+separate.accessToken())).andExpect(status().isNoContent());
+        assertThat(output.getAll()).doesNotContain(first.accessToken(),first.refreshToken(),next.accessToken(),next.refreshToken(),separate.accessToken(),separate.refreshToken());
+    }
+    @Test void legacyV4SessionCanRotateAndLogout() {
+        var first=login(); var original=tokens.verify(first.accessToken()); var legacyId=UUID.randomUUID();
+        jdbc.update("UPDATE sessions SET id=? WHERE id=?",legacyId,original.sessionId());
+        var next=service.refresh(new RefreshRequest(first.refreshToken()));
+        assertThat(jdbc.queryForObject("SELECT rotated_from_id FROM sessions WHERE id=?",UUID.class,tokens.verify(next.accessToken()).sessionId())).isEqualTo(legacyId);
+        service.logout(tokens.verify(next.accessToken()));
+    }
     @Test void newLoginPersistsVersion7IdsAndMatchingTokenClaims() throws Exception {
         var authorization=start();
         var session=service.exchange("KAKAO",request(authorization));
@@ -232,6 +359,16 @@ class AuthIntegrationTest {
     }
     @Test void openApiDescribesPublicAndProtectedOperations() throws Exception {
         var json=mapper.readTree(mvc.perform(get("/v3/api-docs")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        var refresh=json.at("/paths/~1api~1v1~1auth~1sessions~1refresh/post");
+        assertThat(refresh.at("/security").isArray()).isTrue(); assertThat(refresh.at("/security").size()).isZero();
+        assertThat(refresh.at("/responses/401").isMissingNode()).isFalse();
+        for(String status:List.of("400","401"))
+            assertThat(refresh.at("/responses/"+status+"/content/application~1json/schema/$ref").asText()).isEqualTo("#/components/schemas/ErrorResponse");
+        assertThat(json.at("/components/schemas/RefreshRequest/required").toString()).contains("refreshToken");
+        var logout=json.at("/paths/~1api~1v1~1auth~1session/delete");
+        assertThat(logout.at("/responses/204").isMissingNode()).isFalse();
+        assertThat(logout.at("/responses/401/content/application~1json/schema/$ref").asText()).isEqualTo("#/components/schemas/ErrorResponse");
+        assertThat((logout.has("security") ? logout.get("security") : json.get("security")).toString()).contains("bearerAuth");
         for(String operation:List.of("authorization-requests","sessions")) {
             var security=json.at("/paths/~1api~1v1~1auth~1oauth~1{provider}~1"+operation+"/post/security");
             assertThat(security.isArray()).isTrue(); assertThat(security.size()).isZero();
