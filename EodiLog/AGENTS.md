@@ -9,6 +9,7 @@
 - springdoc-openapi 3.2.0 (Swagger UI)
 - PostgreSQL 17 + PostGIS 3.5 ([ADR-0001](../docs/decisions/0001-database.md)), Spring Data JPA(Hibernate 7), Flyway
 - 로컬 DB는 Docker Compose(`compose.yaml`, `spring-boot-docker-compose`), 테스트 DB는 Testcontainers 2.x
+- 서비스 토큰은 HS256 JWT(`spring-security-oauth2-jose`의 Nimbus), 커버리지는 JaCoCo 0.8.16
 
 ## Spring Boot 4는 바뀌었다 — 기억에 의존하지 않는다
 
@@ -22,15 +23,19 @@ Spring Boot 4·Spring Security 7은 3.x와 모듈·패키지 위치가 다르다
 
 ```powershell
 cd EodiLog
-.\gradlew.bat build     # 컴파일 + 전체 테스트
-.\gradlew.bat bootRun   # 로컬 실행 (http://localhost:8080)
+.\gradlew.bat build     # 컴파일 + 전체 테스트(끝나면 JaCoCo 리포트도 만든다)
+.\dev-up                # 로컬 DB 준비 → 서버 백그라운드 실행 (http://localhost:8080)
+.\dev-down              # 로컬 서버와 DB 정지(DB 볼륨은 보존)
 ```
 
 작업을 완료로 보고하기 전에 `build`를 통과시킨다.
 
-- **Docker Desktop을 먼저 실행한다.** `build`의 스프링 테스트는 Testcontainers로 PostGIS 컨테이너를 띄우고, `bootRun`은 `compose.yaml`의 DB를 자동으로 띄워 연결한다.
-- `bootRun` 전에 `.env.example`을 `.env`로 복사하고 `POSTGRES_PASSWORD`를 채운다. `.env`는 커밋하지 않는다.
+- **Docker Desktop을 먼저 실행한다.** `build`의 스프링 테스트는 Testcontainers로 PostGIS 컨테이너를 띄우고, 서버 실행은 `compose.yaml`의 DB를 쓴다.
+- 서버를 띄우기 전에 `.env.example`을 `.env`로 복사해 **모든 키**를 채운다: DB 비밀번호, `KAKAO_CLIENT_ID`·`KAKAO_CLIENT_SECRET`, `KAKAO_ALLOWED_REDIRECTS`, `JWT_SECRET`(32바이트 이상). 인증 설정이 비어 있으면 서버가 시작되지 않는다. `.env`는 커밋하지 않는다.
+- `dev-up` 대신 직접 띄울 때는 `.\gradlew.bat bootRun --args="--spring.profiles.active=local"`을 쓴다. `local` 프로필이 `.env`를 읽는다. 자세한 실행·카카오 로그인 점검은 [로컬 실행 문서](docs/plan/local-development.md)를 본다.
+- 커버리지 리포트는 `build/reports/jacoco/test/html/index.html`에 생긴다([커버리지 문서](docs/plan/backend-test-coverage.md)).
 - compose 없이 다른 DB에 붙일 때는 `SPRING_DATASOURCE_URL`·`SPRING_DATASOURCE_USERNAME`·`SPRING_DATASOURCE_PASSWORD` 환경 변수를 쓴다. `application*.yaml`에 접속 정보를 적지 않는다.
+- 테스트는 실제 `.env` 없이 돈다. `src/test/resources/application.yaml`이 본 `application.yaml`을 **대신**하므로, 본 설정에 값을 추가하면 테스트 설정에도 필요한지 확인한다.
 
 ## DB·마이그레이션
 
@@ -39,16 +44,19 @@ cd EodiLog
 - 병합된 마이그레이션 파일은 고치지 않는다. 병합 직전 `origin/dev`에 내 번호보다 늦은 마이그레이션이 이미 있으면 내 파일 번호를 늦춘다. `outOfOrder`는 켜지 않는다.
 - ERD 논리 타입은 `uuid`→`uuid`, `timestamp`→`timestamptz`(UTC), `json`→`jsonb`로 옮긴다. FK에 `ON DELETE CASCADE`를 일괄로 걸지 않는다.
 - 스프링 컨텍스트를 띄우는 테스트는 `@Import(TestcontainersConfiguration.class)`를 붙인다.
-- 로그인 사용자가 필요한 API 테스트는 `AuthUserRequestPostProcessors.authUser(userId)`로 `AuthUser` principal을 넣는다. 회원은 `users`에 SQL로 넣고 `profile_completed=true`·닉네임·`created_at`·`updated_at`을 함께 채운다.
+- 로그인 사용자가 필요한 API 테스트는 `AuthUserRequestPostProcessors.authUser(userId)`로 `AuthUser` principal을 넣는다. 회원은 `users`에 SQL로 넣고 `profile_completed=true`·닉네임·`created_at`·`updated_at`을 함께 채운다. CSRF는 꺼져 있어 `csrf()`는 필요 없다.
 
 ## 패키지
 
 - 루트 패키지: `com.eodilog`
-- 공통 설정: `global.config` (`SwaggerConfig`, `SecurityConfig`)
+- 공통 설정: `global.config` (`SwaggerConfig`, `SecurityConfig`, `TimeConfig`의 `Clock` 빈)
+- 공통 코드: `global.common`(응답·예외·traceId), `global.idempotency`(요청 중복 방지), `global.security`(`AuthUser`)
+- 도메인: `domain.auth`(카카오 로그인·서비스 토큰·`BearerFilter`), `user`(회원·`/me`·`UserCardReader`), `trip`, `chat`, `itinerary`, `checklist`, `region`
 
 ## 백엔드 문서
 
 - 작업 계획과 담당 간 계약은 [docs/plan](docs/plan/)에 둔다. 구현 전에 해당 담당의 계획과 [A·B 계약](docs/plan/backend-a-b-contract.md)을 확인한다.
+- 로그인 흐름과 프론트 연결 순서는 [인증 연동 문서](../docs/design/backend-auth-integration.md)에 있다.
 
 ## API 문서화 (Swagger)
 
@@ -143,11 +151,12 @@ API 명세 §2의 공통 계약을 `global.common`이 구현한다. 같은 역�
 - `TraceIdFilter`가 요청마다 `traceId`를 만들어 로그 줄(`[traceId]`)·`X-Trace-Id` 응답 헤더·오류 응답에 같은 값을 쓴다. 문의가 오면 이 값으로 로그를 찾는다.
 - 여행 내부 자료(투표·코스·채팅·경비 등) API는 먼저 `TripAccessChecker.requireActiveMember(tripId, userId)`로 ACTIVE 멤버인지 확인한다. 없는·삭제된·비참여·이탈 여행은 모두 `404 TRIP_NOT_FOUND`로 같게 응답한다. 여행 응답은 `TripResponseAssembler`로 만든다.
 
-## 진행 중인 기반 작업 (2026-10-28 기준)
+## 기반 작업 현황 (2026-10-30 기준)
 
 - DB 연결(PostgreSQL + PostGIS): EODI-62 완료. 공간 열 매핑(hibernate-spatial)은 실제 공간 열이 생길 때 추가한다.
-- 공통 응답·예외 처리: EODI-63. Security 단계의 401/403 JSON 응답 연결은 -64에서 `ErrorResponseWriter`로 한다.
-- 환경별 설정 분리·Security 기본 설정: EODI-64. 운영 환경에서 Swagger를 끄는 설정(`springdoc.api-docs.enabled=false`, `springdoc.swagger-ui.enabled=false`)도 여기서 다룬다.
+- 공통 응답·예외 처리: EODI-63 완료.
+- 인증·Security: 카카오 로그인(EODI-118)으로 Bearer 무상태 인증, CSRF·formLogin·httpBasic 해제, 401/403 공통 JSON, 프로필 미완성 `403 PROFILE_INCOMPLETE`가 들어갔다. 공개 API를 만들면 `SecurityConfig`의 공개 경로와 `BearerFilter.shouldNotFilter`를 함께 고친다.
+- 남은 것(EODI-64 등): 운영 프로필과 그 환경의 Swagger 끄기(`springdoc.api-docs.enabled=false`, `springdoc.swagger-ui.enabled=false`), CORS(허용 헤더 `Authorization`·`Content-Type`·`Idempotency-Key`, 노출 헤더 `X-Trace-Id`), 토큰 갱신·로그아웃 API, 회원·세션 ID의 UUIDv7 전환.
 
 ## Git
 

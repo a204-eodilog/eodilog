@@ -181,8 +181,12 @@ Table places {
 Table trip_destinations {
   trip_id uuid [not null, ref: > trips.id]
   region_id uuid [not null, ref: > regions.id]
+  display_order integer [not null, note: '사용자가 입력한 여행지 순서(0부터). destinationRegionIds 응답 순서. 수정은 전체 교체']
   source_candidate_id uuid [ref: > poll_candidates.id]
-  indexes { (trip_id, region_id) [pk] }
+  indexes {
+    (trip_id, region_id) [pk]
+    (trip_id, display_order) [unique]
+  }
   Note: '여러 지역 표현 가능. 확정한 여러 지역을 날짜별로 코스에 배분할 수 있음. 날짜 배분은 itinerary_items의 day와 place 지역으로 표현.'
 }
 
