@@ -11,14 +11,19 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.http.HttpMethod;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import java.util.List;
 import com.eodilog.domain.auth.*;
 
 @Configuration
-@EnableConfigurationProperties(AuthProperties.class)
+@EnableConfigurationProperties({AuthProperties.class, CorsProperties.class})
 public class SecurityConfig {
     private static final String[] SWAGGER_PATHS={"/swagger-ui.html","/swagger-ui/**","/v3/api-docs/**"};
-    @Bean SecurityFilterChain securityFilterChain(HttpSecurity http,BearerFilter bearer,ErrorResponseWriter errors,Environment environment) throws Exception {
-        http.csrf(csrf->csrf.disable()).sessionManagement(s->s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+    @Bean SecurityFilterChain securityFilterChain(HttpSecurity http,BearerFilter bearer,ErrorResponseWriter errors,Environment environment,
+            UrlBasedCorsConfigurationSource corsConfigurationSource) throws Exception {
+        http.cors(cors->cors.configurationSource(corsConfigurationSource))
+            .csrf(csrf->csrf.disable()).sessionManagement(s->s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .requestCache(c->c.disable()).formLogin(f->f.disable()).httpBasic(b->b.disable())
             .authorizeHttpRequests(a->{
                 a.requestMatchers(SWAGGER_PATHS).permitAll()
@@ -36,5 +41,18 @@ public class SecurityConfig {
     }
     @Bean FilterRegistrationBean<BearerFilter> disableServletRegistration(BearerFilter filter) {
         var registration=new FilterRegistrationBean<>(filter); registration.setEnabled(false); return registration;
+    }
+
+    @Bean UrlBasedCorsConfigurationSource corsConfigurationSource(CorsProperties properties) {
+        var configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(properties.allowedOrigins());
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Idempotency-Key"));
+        configuration.setExposedHeaders(List.of("X-Trace-Id"));
+        configuration.setAllowCredentials(false);
+        configuration.setMaxAge(3600L);
+        var source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/api/**", configuration);
+        return source;
     }
 }
