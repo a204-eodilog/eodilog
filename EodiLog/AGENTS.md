@@ -143,7 +143,7 @@ API 명세 §2의 공통 계약을 `global.common`이 구현한다. 같은 역�
 | 목록 성공 `{ "data": [...], "page": {...} }` | `PageResponse.of(items, nextCursor, hasNext)` |
 | 업무 실패 | `throw new BusinessException(XxxErrorCode.CODE)`. 문구·필드를 바꿀 때만 다른 생성자를 쓴다 |
 | 컨트롤러 밖(Security 필터·진입점·접근 거부 처리기) 실패 | `ErrorResponseWriter.write(response, CommonErrorCode.UNAUTHENTICATED)` |
-| `Idempotency-Key`가 필요한 POST(명세 §2) | 서비스의 `@Transactional` 메서드 안에서 `idempotencyService.execute(userId, "POST /api/v1/...", key, request, ResponseType.class, HttpStatus.CREATED, () -> 생성)`. 같은 키·같은 본문은 처음 결과를 돌려주고, 다른 본문은 409 `IDEMPOTENCY_KEY_REUSED` |
+| `Idempotency-Key`가 필요한 POST(명세 §2) | 서비스의 `@Transactional` 메서드 안에서 `idempotencyService.execute(userId, "POST /api/v1/...", key, request, ResponseType.class, HttpStatus.CREATED, () -> 생성)`. 같은 키·같은 본문은 처음 결과를 돌려주고, 다른 본문은 409 `IDEMPOTENCY_KEY_REUSED`. 처음 결과를 다시 줄 때는 `action`이 실행되지 않으므로, 여행 안 자료 생성은 `validateKey` → `TripAccessChecker.requireActiveMemberForUpdate` → `execute` 순서로 권한 검사를 `execute` 앞에 둔다(`ExpenseService.createExpense`) |
 
 - 실패 응답은 `{"error":{"code","message","fields":[],"traceId"}}`이다. `GlobalExceptionHandler`가 Bean Validation·요청 파라미터 검증·JSON 형식 오류·알 수 없는 필드·404/405/415·권한 거부를 모두 이 형식으로 바꾼다. 컨트롤러에서 `try/catch`로 응답을 직접 만들지 않는다.
 - **오류 코드는 도메인별 enum**으로 `ErrorCode`를 구현해 만든다(예: `trip.TripErrorCode`, `auth.AuthErrorCode`). `code()`는 명세의 오류 이름(`TRIP_NOT_FOUND`, `VERSION_CONFLICT`)을 그대로, `message()`는 사용자에게 보여도 되는 문구를 쓴다. 공통 실패는 `CommonErrorCode`에만 둔다.

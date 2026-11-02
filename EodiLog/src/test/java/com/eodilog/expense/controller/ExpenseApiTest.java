@@ -17,6 +17,10 @@ import com.eodilog.global.idempotency.IdempotencyService;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +29,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import tools.jackson.databind.JsonNode;
@@ -94,6 +99,66 @@ class ExpenseApiTest {
 				.andExpect(jsonPath("$.data.current").isEmpty())
 				.andExpect(jsonPath("$.data.currentExpenseVersion").value(1))
 				.andExpect(jsonPath("$.data.recalculationRequired").value(false));
+	}
+
+	@Test
+	void replayChecksCurrentMembership() throws Exception {
+		// 등록한 뒤 나가거나 내보내지면, 같은 키·본문으로 다시 보내도 저장된 경비를 받을 수 없다
+		String leftKey = UUID.randomUUID().toString();
+		String leftBody = expense(1000, friendMemberId, List.of(friendMemberId));
+		createExpense(friendId, leftKey, leftBody).andExpect(status().isCreated());
+		jdbcTemplate.update("update trip_members set status = 'LEFT', left_at = now() where id = ?", friendMemberId);
+		expectTripNotFound(createExpense(friendId, leftKey, leftBody));
+
+		UUID removedId = insertUser("내보낸 동행");
+		UUID removedMemberId = insertMember(tripId, removedId, 4, "ACTIVE");
+		String removedKey = UUID.randomUUID().toString();
+		String removedBody = expense(2000, removedMemberId, List.of(removedMemberId));
+		createExpense(removedId, removedKey, removedBody).andExpect(status().isCreated());
+		jdbcTemplate.update("update trip_members set status = 'REMOVED', left_at = now() where id = ?", removedMemberId);
+		expectTripNotFound(createExpense(removedId, removedKey, removedBody));
+
+		String ownerKey = UUID.randomUUID().toString();
+		createExpense(ownerId, ownerKey, simpleExpense(3000)).andExpect(status().isCreated());
+		jdbcTemplate.update("update trips set deleted_at = now() where id = ?", tripId);
+		expectTripNotFound(createExpense(ownerId, ownerKey, simpleExpense(3000)));
+
+		assertThat(count("select count(*) from expenses where trip_id = ?", tripId)).isEqualTo(3);
+	}
+
+	@Test
+	void checksKeyFormatBeforeMembership() throws Exception {
+		// 입력 오류가 권한보다 먼저다(명세 §2). 비참여자도 키가 없으면 400
+		mockMvc.perform(post("/api/v1/trips/{tripId}/expenses", tripId).with(authUser(insertUser("모르는 사람")))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(simpleExpense(1000)))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.error.fields[0].field").value(IdempotencyService.HEADER_NAME));
+	}
+
+	@Test
+	void handlesConcurrentRetriesWithoutDeadlock() throws Exception {
+		// 같은 키 재시도와 다른 키 등록이 동시에 와도 여행 잠금 → 멱등 기록 순서라 교착 없이 키마다 경비 하나
+		List<String> keys = List.of("retry-a", "retry-a", "retry-b", "retry-b");
+		CountDownLatch ready = new CountDownLatch(1);
+		ExecutorService executor = Executors.newFixedThreadPool(keys.size());
+		List<Future<MockHttpServletResponse>> futures = new ArrayList<>();
+		try {
+			for (String key : keys) {
+				futures.add(executor.submit(() -> {
+					ready.await();
+					return createExpense(ownerId, key + "-" + tripId, simpleExpense(1000)).andReturn().getResponse();
+				}));
+			}
+			ready.countDown();
+			for (Future<MockHttpServletResponse> future : futures) {
+				assertThat(future.get().getStatus()).isEqualTo(201);
+			}
+		} finally {
+			executor.shutdownNow();
+		}
+		assertThat(count("select count(*) from expenses where trip_id = ?", tripId)).isEqualTo(2);
+		assertThat(expenseVersion()).isEqualTo(2);
 	}
 
 	@Test
@@ -364,6 +429,11 @@ class ExpenseApiTest {
 		assertThat(docs.get("components").get("schemas").get("UpdateExpenseRequest").get("properties").propertyNames())
 				.containsExactlyInAnyOrder("expectedVersion", "title", "memo", "amountMinor", "currency",
 						"payerMemberId", "participantMemberIds", "spentAt");
+	}
+
+	private void expectTripNotFound(ResultActions result) throws Exception {
+		result.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.error.code").value("TRIP_NOT_FOUND"));
 	}
 
 	private String simpleExpense(long amount) {

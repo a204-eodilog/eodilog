@@ -1,6 +1,6 @@
 # 백엔드 B 후속 작업 — 준비물 체크리스트·멤버 관리·경비·초대
 
-작성일: 2026-10-29 · 상태: 체크리스트·멤버 관리 병합 완료(MR !49·!50), 경비·정산 상태 병합 완료(MR !56, 2026-10-30), 초대 링크 병합 완료(MR !58)
+작성일: 2026-10-29 · 상태: 체크리스트·멤버 관리 병합 완료(MR !49·!50), 경비·정산 상태 병합 완료(MR !56, 2026-10-30), 초대 링크 병합 완료(MR !58·!62)
 
 [B 첫 작업](backend-b-trip-basic.md)(여행 생성·조회·수정)이 끝난 뒤 A의 카카오 로그인을 기다리는 동안 진행한 B 작업이다. [분담안](../../../docs/plan/backend-first-work-split.md) §6은 이 기능들을 "첫 통합 뒤 배분"으로 두었지만, 로그인 없이 개발할 수 있고 여행 패키지 안에서 끝나는 것부터 B가 먼저 맡았다. A와 겹치는 파일(`user`·`auth` 패키지, `SecurityConfig`)은 건드리지 않는다.
 
@@ -12,7 +12,7 @@
 | --- | --- | --- | --- |
 | 준비물 체크리스트 | `GET/POST /trips/{tripId}/checklist`, `PATCH/DELETE /trips/{tripId}/checklist/{itemId}` | EODI-110 | 병합(MR !49) |
 | 멤버 관리 | `GET /trips/{tripId}/members`, `POST /trips/{tripId}/owner-transfer`, `DELETE /trips/{tripId}/members/{memberId}` | EODI-111 | 병합(MR !50) |
-| 초대 링크 | `POST /trips/{tripId}/invitations`, `GET /invitations/{token}`(공개), `POST /invitations/{token}/accept` | EODI-125, -128 | 병합(MR !58), 이전 링크 무효화 구현(§9) |
+| 초대 링크 | `POST /trips/{tripId}/invitations`, `GET /invitations/{token}`(공개), `POST /invitations/{token}/accept` | EODI-125, -128 | 병합(MR !58·!62, §9) |
 | 경비·정산 상태 | `GET/POST /trips/{tripId}/expenses`, `PATCH/DELETE /trips/{tripId}/expenses/{expenseId}`, `GET /trips/{tripId}/settlement`, `POST /trips/{tripId}/settlements`(409) | EODI-122 | 병합(MR !56, §8) |
 
 검증은 B 첫 작업과 같이 테스트에서 `AuthUser` principal을 넣어 했다. A 로그인 병합 뒤 실제 카카오 계정 2개로 여행 API 통합 검증(B-7)을 마쳤다([계약 §8](backend-a-b-contract.md)).
@@ -121,7 +121,7 @@ AI 준비물 제안(`POST /trips/{tripId}/checklist-suggestions`)은 `jobs`, 날
 | E-9 | 정산 상태 조회 | Q-10 전에는 계산을 만들지 않으므로 `current=null`, `recalculationRequired=false`, `currentExpenseVersion`은 여행의 `expense_version` | 명세 "GET은 계산 생성 안 함", "재계산 필요"는 이전 계산이 있을 때만 의미가 있다 |
 | E-10 | 정산 계산 | ACTIVE 멤버 확인 뒤 항상 `409 SETTLEMENT_POLICY_PENDING`. `settlements` 테이블과 이전 계산 목록·상세는 Q-10 합의 후 추가 | 명세 "정책 확정 전 계산 POST는 409 제안" |
 | E-11 | 목록 | `createdAt DESC, id DESC` 커서 페이지(기본 20, 최대 100). 여행 목록과 같은 커서(`global.common.response.CreatedAtCursor`)를 쓴다 | 명세 §2 목록 공통 |
-| E-12 | 중복 요청 | 경비 등록은 `Idempotency-Key` 필수. 범위는 실제 요청 경로(`POST /api/v1/trips/{tripId}/expenses`) | 명세 §2 "(사용자, 실제 요청 경로, 키)" |
+| E-12 | 중복 요청 | 경비 등록은 `Idempotency-Key` 필수. 범위는 실제 요청 경로(`POST /api/v1/trips/{tripId}/expenses`). 판정 순서는 입력 400(키 형식 포함) → 여행 행 잠금 후 ACTIVE 멤버 확인 404 → 멱등 처리. 같은 키 재요청도 지금 ACTIVE 멤버여야 처음 결과를 받는다(이탈·내보내기·여행 삭제 뒤엔 404). 잠금은 항상 여행 행 → 멱등 기록 순서 | 명세 §2 "(사용자, 실제 요청 경로, 키)". 재요청 권한 누락은 A 리뷰(11/02)에서 발견, EODI-133에서 수정 |
 
 ## 9. 초대 링크 정책
 
