@@ -248,12 +248,22 @@ Table jobs {
   result_json json [note: 'API kind별 result. 정규 엔터티의 FK 대신 무제한 JSON 사용 금지']
   error_code varchar(64)
   base_version bigint [note: '일정 변경안 기준 itineraries.version']
+  attempt integer [not null, default: 0, note: '최초 포함 최대 3회']
+  execution_id uuid [note: '매 선점마다 교체하는 fencing 식별자']
+  execution_started_at timestamp [note: '실행 timeout 기준, heartbeat로 연장하지 않음']
+  lease_until timestamp
+  heartbeat_at timestamp
+  next_attempt_at timestamp [not null]
   applied_by_member_id uuid [ref: > trip_members.id]
   applied_at timestamp
   created_at timestamp [not null]
   finished_at timestamp
   deleted_at timestamp
-  indexes { (trip_id, kind, created_at) }
+  indexes {
+    (trip_id, kind, created_at)
+    (next_attempt_at, created_at, id) [note: '물리 partial index: QUEUED AND deleted_at IS NULL']
+    lease_until [note: '물리 partial index: RUNNING AND deleted_at IS NULL']
+  }
   Note: '일반 AI 작업은 생성/진행/완료/열람/적용 시 현재 멤버십·자료 사용 동의를 확인. 코스 변경안은 별도 확인 화면 없이 서버 base_version 검사 제안, 경합/재계산 Q-15. 삭제 작업은 승인 당시 cleanup_scope로 계속 수행하고 요청자에게만 최소 상태 제공, 이탈 후 ACTIVE 검사로 중단하지 않음. ACCOUNT_DELETE는 사용자 폴링 없음. applied는 itinerary proposal에만 사용. WEATHER 제안은 input_json에 원본 작업/선택 대안 ID와 같은 여행·기준 버전 검증 결과 기록. 실패가 현재 코스를 지우지 않음.'
 }
 
