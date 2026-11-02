@@ -53,7 +53,7 @@ sources:
 
 | HTTP | code | 언제 |
 | --- | --- | --- |
-| 400 | `VALIDATION_ERROR` | 요청 형식 오류(`fields`에 위치) |
+| 400 | `VALIDATION_ERROR` | 요청 형식 오류(`fields`는 `[{field, message}]`, 백엔드 `ErrorField`와 같음) |
 | 401 | `UNAUTHENTICATED` | 내부 토큰 불일치 |
 | 422 | `INPUT_LIMIT_EXCEEDED` | 캡처 11장 이상, 사진 51장 이상 |
 | 422 | `UNSUPPORTED_INPUT` | 지원하지 않는 파일 형식·URL |
