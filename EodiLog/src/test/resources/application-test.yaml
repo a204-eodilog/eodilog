@@ -3,6 +3,9 @@
 app:
   jobs:
     enabled: false
+  polls:
+    # 주기 마감은 끄고 테스트가 PollAutoCloser를 직접 부른다
+    auto-close-enabled: false
   auth:
     kakao-client-id: test-client
     kakao-client-secret: test-secret

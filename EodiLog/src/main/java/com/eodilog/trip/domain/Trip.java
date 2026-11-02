@@ -92,6 +92,12 @@ public class Trip {
 		this.updatedAt = now;
 	}
 
+	// 지역 투표 확정으로 여행지가 늘었다(정책 §13 V-14). 응답의 destinationRegionIds가 바뀌므로 버전을 올린다
+	public void markDestinationsChanged(Instant now) {
+		this.version++;
+		this.updatedAt = now;
+	}
+
 	// 경비 등록·수정·삭제마다 올린다(ERD 불변식 5). 여행 정보 version과는 따로 움직여 서로 충돌을 만들지 않는다
 	public void increaseExpenseVersion() {
 		this.expenseVersion++;

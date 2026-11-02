@@ -25,9 +25,11 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -75,7 +77,7 @@ public class TripService {
 		Trip trip = tripRepository.save(
 				Trip.create(userId, newTrip.title(), newTrip.startDate(), newTrip.endDate(), status, now));
 		TripMember owner = tripMemberRepository.save(TripMember.join(trip.getId(), userId, OWNER_JOIN_ORDER, now));
-		saveDestinations(trip.getId(), newTrip.destinationRegionIds());
+		saveDestinations(trip.getId(), newTrip.destinationRegionIds(), Map.of());
 		chatRoomInitializer.openTripRoom(trip.getId(), userId, now);
 		itineraryInitializer.createEmpty(trip.getId(), owner.getId(), now);
 		tripRepository.flush();
@@ -137,9 +139,13 @@ public class TripService {
 		Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
 		if (changedFields.contains("destinationRegionIds")) {
 			// 같은 지역이 다시 들어올 수 있어 기존 행 삭제를 먼저 반영한 뒤 넣는다
+			// 남는 여행지는 투표에서 왔다는 기록(sourceCandidateId)을 유지한다
+			Map<UUID, UUID> sources = new HashMap<>();
+			currentDestinations.stream().filter(destination -> destination.getSourceCandidateId() != null)
+					.forEach(destination -> sources.put(destination.getRegionId(), destination.getSourceCandidateId()));
 			tripDestinationRepository.deleteAll(currentDestinations);
 			tripDestinationRepository.flush();
-			saveDestinations(tripId, requestedRegionIds);
+			saveDestinations(tripId, requestedRegionIds, sources);
 		}
 		trip.updateInfo(title, startDate, endDate,
 				TripStatusPolicy.resolve(startDate, endDate, TripStatusPolicy.today(clock)), now);
@@ -149,9 +155,10 @@ public class TripService {
 		return tripResponseAssembler.assemble(userId, trip);
 	}
 
-	private void saveDestinations(UUID tripId, List<UUID> regionIds) {
+	private void saveDestinations(UUID tripId, List<UUID> regionIds, Map<UUID, UUID> sourceCandidateIds) {
 		for (int order = 0; order < regionIds.size(); order++) {
-			tripDestinationRepository.save(TripDestination.of(tripId, regionIds.get(order), order));
+			UUID regionId = regionIds.get(order);
+			tripDestinationRepository.save(TripDestination.of(tripId, regionId, order, sourceCandidateIds.get(regionId)));
 		}
 	}
 
