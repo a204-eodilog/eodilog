@@ -132,7 +132,7 @@
 | GET | `/places` | 로그인 | `query:string,regionId?:id` + 페이지 | `Place[]` / 200 | 공급자 결과를 provider/공급자 ID로 로컬 upsert한 뒤 로컬 UUID만 반환 |
 | GET | `/places/{placeId}` | 로그인 | 없음 | `Place` / 200 | 일반 장소 정보, 원본 비공개 자료 제외 |
 | POST | `/places` | 로그인 | `{name:string,address?:string,latitude:number,longitude:number,regionId?:id}` | `Place` / 201 | 수동 보정 장소, 공급자 장소로 임의 확정하지 않음 |
-| GET | `/regions` | 로그인 | `query:string` + 페이지 | `Region[]` / 200 | 지역 투표 후보용 식별자 |
+| GET | `/regions` | 로그인·가입 완료 | `query:string` 필수(strip 후1~200자), `cursor`, `limit` 기본20/1~100 | `Region[]` + page / 200 | 전체 지역명 문자 그대로 부분 검색(%/_ 포함). code ASC,id ASC 전용 Base64URL 커서(query 바인딩); 잘못된 입력/커서400 VALIDATION_ERROR |
 | GET | `/me/bookmarks` | 본인 | `regionId?:id` + 페이지 | `Bookmark[]` / 200 | 원본 피드 소실/권한 상실 시 이름·위치·내 메모만, sourceFeedId=null·원본 본문/사진/평가 미반환 |
 | PUT | `/me/bookmarks/{placeId}` | 본인 | `{memo?:string,sourceFeedId?:id}` | `Bookmark` / 200 | 사용자·장소 유일, 원본 피드 열람 가능 여부 확인 |
 | PATCH | `/me/bookmarks/{placeId}` | 본인 | `{memo:string}` | `Bookmark` / 200 | 장소 원본 수정 아님 |
@@ -155,7 +155,7 @@
 
 | Method | URL | 권한 | 요청 | 성공 data / 상태 | 주요 규칙 |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/regions/{regionId}` | 로그인 | 없음 | `RegionDetail` / 200 | 지역 소개·대표 장소·여행 생성 입력 |
+| GET | `/regions/{regionId}` | 로그인·가입 완료 | UUID 지역 ID | `RegionDetail` / 200 | region + introduction:null, representativePlaces:[], partialErrors:[]; 없는 지역404 REGION_NOT_FOUND, 잘못된 UUID400 |
 | GET | `/places/{placeId}/social-summary` | 로그인 | 없음 | `PlaceSocialSummary` / 200 | 허용된 게시물에서만 방문자·평점 집계, 부분 장애 표시 |
 | GET | `/places/{placeId}/public-reviews` | 로그인 | 페이지 | `PublishedReview[]` / 200 | 요청자에게 허용된 피드의 게시 평가만, 비공개 원본 reviews 직접 노출 금지 |
 
