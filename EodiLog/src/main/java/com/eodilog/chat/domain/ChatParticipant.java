@@ -10,7 +10,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-// 참여·이탈은 여행 멤버십 변경과 같은 트랜잭션에서 맞춘다. 과거 대화 범위(visible_from_sequence)는 Q-13 이후 다룬다
+// 참여·이탈은 여행 멤버십 변경과 같은 트랜잭션에서 맞춘다. ACTIVE 멤버는 신규·재참여 모두 처음부터 전체 대화를 보므로(Q-13, 2026-11-02) visible_from_sequence는 1 그대로다
 @Entity
 @Table(name = "chat_participants")
 @IdClass(ChatParticipantId.class)
@@ -36,12 +36,12 @@ public class ChatParticipant {
 		return participant;
 	}
 
-	// 행은 남기고 이탈 시각만 기록한다. 재참여 때의 과거 대화 범위는 Q-13에서 정한다
+	// 행은 남기고 이탈 시각만 기록한다
 	public void leave(Instant now) {
 		this.leftAt = now;
 	}
 
-	// 같은 행을 다시 쓴다. 이전 대화를 볼 수 있는 범위는 Q-13 전이라 바꾸지 않는다
+	// 같은 행을 다시 쓴다. 재참여해도 처음부터 전체 대화를 본다(Q-13)
 	public void rejoin(Instant now) {
 		this.joinedAt = now;
 		this.leftAt = null;

@@ -1,6 +1,6 @@
-# 백엔드 B 후속 작업 — 준비물 체크리스트·멤버 관리·경비·초대·정산
+# 백엔드 B 후속 작업 — 준비물 체크리스트·멤버 관리·경비·초대·정산·채팅
 
-작성일: 2026-10-29 · 상태: 체크리스트·멤버 관리 병합 완료(MR !49·!50), 경비·정산 상태 병합 완료(MR !56, 2026-10-30), 초대 링크 병합 완료(MR !58·!62), 정산 계산 구현(EODI-134)
+작성일: 2026-10-29 · 상태: 체크리스트·멤버 관리 병합 완료(MR !49·!50), 경비·정산 상태 병합 완료(MR !56, 2026-10-30), 초대 링크 병합 완료(MR !58·!62), 정산 계산 병합 완료(MR !69), 채팅 REST 구현(EODI-136)
 
 [B 첫 작업](backend-b-trip-basic.md)(여행 생성·조회·수정)이 끝난 뒤 A의 카카오 로그인을 기다리는 동안 진행한 B 작업이다. [분담안](../../../docs/plan/backend-first-work-split.md) §6은 이 기능들을 "첫 통합 뒤 배분"으로 두었지만, 로그인 없이 개발할 수 있고 여행 패키지 안에서 끝나는 것부터 B가 먼저 맡았다. A와 겹치는 파일(`user`·`auth` 패키지, `SecurityConfig`)은 건드리지 않는다.
 
@@ -14,7 +14,8 @@
 | 멤버 관리 | `GET /trips/{tripId}/members`, `POST /trips/{tripId}/owner-transfer`, `DELETE /trips/{tripId}/members/{memberId}` | EODI-111 | 병합(MR !50) |
 | 초대 링크 | `POST /trips/{tripId}/invitations`, `GET /invitations/{token}`(공개), `POST /invitations/{token}/accept` | EODI-125, -128 | 병합(MR !58·!62, §9) |
 | 경비·정산 상태 | `GET/POST /trips/{tripId}/expenses`, `PATCH/DELETE /trips/{tripId}/expenses/{expenseId}`, `GET /trips/{tripId}/settlement`, `POST /trips/{tripId}/settlements`(409) | EODI-122 | 병합(MR !56, §8) |
-| 정산 계산 | `POST /trips/{tripId}/settlements`, `GET /trips/{tripId}/settlements`, `GET /trips/{tripId}/settlements/{settlementId}`, `GET /trips/{tripId}/settlement` | EODI-134 | 구현(§10) |
+| 정산 계산 | `POST /trips/{tripId}/settlements`, `GET /trips/{tripId}/settlements`, `GET /trips/{tripId}/settlements/{settlementId}`, `GET /trips/{tripId}/settlement` | EODI-134 | 병합(MR !69, §10) |
+| 채팅 REST | `GET /chat/rooms`, `GET /trips/{tripId}/chat-room`, `GET/POST /chat/rooms/{roomId}/messages` | EODI-136 | 구현(§12) |
 
 검증은 B 첫 작업과 같이 테스트에서 `AuthUser` principal을 넣어 했다. A 로그인 병합 뒤 실제 카카오 계정 2개로 여행 API 통합 검증(B-7)을 마쳤다([계약 §8](backend-a-b-contract.md)).
 
@@ -101,8 +102,7 @@ AI 준비물 제안(`POST /trips/{tripId}/checklist-suggestions`)은 `jobs`, 날
 
 | 기능 | 막힌 점 |
 | --- | --- |
-| 채팅 메시지 조회·전송(REST) | `messages` 테이블 필요. 실시간 전송은 Q-13 |
-| 나가기 | 일반 이탈·방장 자동 양도는 가능. 자료 삭제 선택과 마지막 방장 이탈(여행 삭제)은 `jobs`·Q-11 필요 |
+| 나가기 | 1단계 응답 계약 확정(§11). 채팅 REST 다음에 구현 |
 
 ## 8. 경비·정산 정책
 
@@ -157,3 +157,34 @@ Q-10은 2026-11-02에 확정됐다([A 답변](to-B-backend-decisions-2026-11-02.
 | S-7 | 멤버·경비가 없을 때 | `members`는 경비에 결제자·분담자로 나온 멤버만, 계산할 때의 참여 순으로 `display_order`에 저장한다(이후 재참여로 참여 순이 바뀌어도 과거 계산의 순서는 그대로). 경비가 없어도 계산은 만들고 모든 목록이 비어 있다 | A 답변 "경비가 없으면 차액 0, 수령자 없음" |
 | S-8 | 이전 계산 | 목록은 최근 계산 순(calculatedAt DESC, id DESC) 커서 페이지(기본 20, 최대 100). 다른 여행의 계산 ID는 `404 SETTLEMENT_NOT_FOUND`. 여행이 있는 동안 모두 보관 | 명세 §7, Q-10 보관 결정. 물리 삭제 시점은 Q-11. `trips.current_settlement_id`와 `settlements.trip_id`가 서로 참조하므로 여행을 물리 삭제할 때는 포인터를 먼저 비운다 |
 | S-9 | 같은 키 재요청 응답 | 처음 저장한 응답을 그대로 준다. 그 사이 경비가 바뀌었어도 응답의 `stale`은 처음 값(false)이므로, 최신 상태는 `GET /settlement`로 확인한다 | 명세 §2 "같은 키/같은 본문은 최초 결과" |
+
+## 11. 나가기 1단계 계약
+
+A 답변(11/02) §5에 따라 사진·메시지를 남기는 **기본 나가기부터** 한다. A가 요청한 "기본 나가기 성공 응답과 미지원 요청 응답"을 2026-11-02에 아래처럼 확정했다(구현은 채팅 REST 다음).
+
+| # | 질문 | 결정 | 근거 |
+| --- | --- | --- | --- |
+| L-1 | 하는 일 | 멤버십 LEFT·`left_at`, 채팅 참여 종료를 한 트랜잭션에서 처리. 경비·사진·메시지는 그대로 둔다. 방장이 나가면 남은 ACTIVE 멤버 중 참여 순이 가장 빠른 사람에게 자동 양도 | A 답변 §5, PRD WD-FR-04 "가장 먼저 가입한 잔여 멤버에게 양도" |
+| L-2 | 성공 응답 | **200** + `LeaveResult{tripId, tripDeleted:false, newOwnerMemberId(방장이 나갔을 때만, 아니면 null), cleanupJobId:null, status:LEFT}`. 남은 작업이 없으므로 202가 아니다. 나중에 삭제 옵션을 지원하면 그 요청만 202 + 작업 ID | A 답변 "가짜 작업 ID를 반환하지 않는다". 처리가 끝났는데 202(접수)라고 하지 않는다 |
+| L-3 | 삭제 옵션 | `deleteOwnPhotos`·`deleteOwnMessages`는 명세대로 필수. 삭제 기능 전에는 `true`면 **400 `VALIDATION_ERROR`**(해당 필드). 무시하고 성공으로 응답하지 않는다 | A 답변 §5. 기능이 없는 입력을 400으로 거부하는 준비물 C-1과 같은 방식. `?` 없는 필드는 필수(명세 §2) |
+| L-4 | 혼자 남은 방장 | 여행 삭제 기능 전에는 **409 `TRIP_DELETION_PENDING`**. 멤버십·여행 상태를 바꾸지 않는다 | A 답변 §5. 정책 전 차단 409 선례(`FEED_REPUBLICATION_PENDING`) |
+| L-5 | 버전 | `expectedVersion`은 여행 version. 다르면 409 `VERSION_CONFLICT`, 성공하면 members가 바뀌므로 version 1 증가 | 명세 §4 "이탈도 같은 version", M-2 |
+| L-6 | 판정 순서 | 입력 400(누락·삭제 옵션 true) → 여행 행 잠금 후 ACTIVE 멤버 404 → version 409 → 혼자 남은 방장 409 → 처리 | M-3과 같은 순서 |
+
+프론트에 전달할 것: 성공은 200(나중에 삭제 옵션 요청은 202), 멱등키 대상이 아니라 성공 뒤 재시도는 404이므로 "이미 나감"으로 처리, 나간 사람이 만든 초대 링크는 410이 되므로 남은 멤버가 새로 발급, 새 방장은 멤버 목록의 joinOrder로 미리 표시.
+
+## 12. 채팅 REST 정책
+
+Q-13의 REST 범위는 2026-11-02에 확정됐다([A 답변](to-B-backend-decisions-2026-11-02.md) §4). 실시간 전송 방식은 REST와 분리해 이후 A와 정한다.
+
+| # | 질문 | 결정 | 근거 |
+| --- | --- | --- | --- |
+| CH-1 | 볼 수 있는 대화 | 신규·재참여 ACTIVE 멤버 모두 처음부터 전체 대화(이탈 기간 포함). `chat_participants.visible_from_sequence`는 항상 1 | Q-13 확정 |
+| CH-2 | 방 참여 권한 | 지금의 여행 ACTIVE 멤버십으로 판단(채팅 참여 행은 멤버십과 같은 트랜잭션에서 바뀐다). 삭제된 여행·비참여·LEFT·REMOVED는 모두 `404 CHAT_ROOM_NOT_FOUND`. `GET /trips/{tripId}/chat-room`은 여행 경로라 `404 TRIP_NOT_FOUND` | 여행 404 숨김 원칙(P-10). PRD "현재 여행 멤버십으로 그룹 채팅 접근 검사" |
+| CH-3 | 순번 | `chat_rooms` 행을 잠근 뒤 `next_sequence`를 1씩 발급해 방 안에서 빈틈이 없다. 동시 전송도 순서대로 1, 2, 3… | ERD `(room_id, sequence)` 유일 |
+| CH-4 | 재전송 판별 | 본문의 `clientMessageId`가 멱등 키다. 같은 보낸 사람·같은 ID·같은 방·같은 본문이면 처음 메시지를 201로, 다른 방이나 본문이면 `409 CLIENT_MESSAGE_ID_REUSED`. `Idempotency-Key` 헤더는 요구하지 않는다(보내도 쓰지 않음, 명세 §2에 예외로 적음). 같은 ID를 서로 다른 방에 동시에 보내도 500이 되지 않도록 (보낸 사람, clientMessageId) advisory 잠금을 방 행 잠금보다 먼저 잡는다 | 명세 §9 "같은 sender/clientMessageId는 최초 응답", ERD `(sender_user_id, client_message_id)` 유일 |
+| CH-5 | 판정 순서 | 입력 400 → 방 행 잠금 후 참여 확인 404 → 재전송 판별 → 저장. 재전송도 지금 참여 중이어야 처음 메시지를 받는다 | E-12·S-4와 같은 "재요청도 현재 권한" 원칙 |
+| CH-6 | 본문 | 받은 그대로 저장(앞뒤 공백·줄바꿈 유지). 공백만 있거나 NUL 문자(PostgreSQL text가 저장 못 함)가 있으면 400, 최대 1,000자(코드 포인트 기준, A의 닉네임 검사와 같은 방식) | 명세에 길이 상한이 없어 B가 정함. A 확인 필요 |
+| CH-7 | 메시지 목록 | sequence 내림차순, `beforeSequence` 미포함, limit 기본 20·최대 100. 응답은 공통 `PageResponse`가 아니라 `{data, page:{nextBeforeSequence, hasNext}}`(nextBeforeSequence는 이 페이지의 최소 sequence, 더 없으면 null). 공통 `cursor`를 함께 보내면 400 | 명세 §9 메시지 페이지 문단 |
+| CH-8 | 채팅방 목록·응답 | ACTIVE 멤버인 삭제 안 된 여행의 방만, 방 생성 역순 커서. `participants`는 지금 ACTIVE인 동행(참여 순), `lastMessage`는 가장 큰 sequence | 명세 §9 "현재 접근 가능한 방만" |
+| CH-9 | 범위 밖 | 첨부·일반 메시지 편집/삭제·읽음(`eventReadAt`)·시스템 카드(`type=SYSTEM`, `eventId`, `target`)는 만들지 않는다. 응답 필드는 명세대로 두고 값은 null. 이탈 시 본문 제거(D-10)를 할 때는 `ck_messages_text`(TEXT의 text NOT NULL)를 바꾸는 마이그레이션이 필요 | Q-13 "이번 결정으로 추가하지 않음". 시스템 카드는 events 기능과 함께 |
