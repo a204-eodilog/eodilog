@@ -37,17 +37,24 @@ public class JobStore {
     boolean active(UUID userId) {
         return Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM users WHERE id=? AND status='ACTIVE')", Boolean.class, userId));
     }
-    Optional<Row> claim(Instant now, JobProperties p) {
+    Optional<Row> claim(Instant now, JobProperties p, Set<JobKind> kinds) {
         // Expired last attempts become terminal even after a process restart.
         jdbc.update("UPDATE jobs SET status='FAILED',error_code='TIMEOUT',finished_at=?,execution_id=NULL,lease_until=NULL WHERE status='RUNNING' AND lease_until<=? AND attempt>=?", time(now), time(now), p.maxAttempts());
-        var rows = jdbc.query("SELECT * FROM jobs WHERE deleted_at IS NULL AND attempt<? AND ((status='QUEUED' AND next_attempt_at<=?) OR (status='RUNNING' AND lease_until<=?)) ORDER BY next_attempt_at,created_at,id FOR UPDATE SKIP LOCKED LIMIT 1",
-            this::map, p.maxAttempts(), time(now), time(now));
+        // Only kinds this instance can execute, so an instance without the handler never cancels them.
+        if (kinds.isEmpty()) return Optional.empty();
+        var rows = jdbc.query("SELECT * FROM jobs WHERE deleted_at IS NULL AND kind = ANY(?::varchar[]) AND attempt<? AND ((status='QUEUED' AND next_attempt_at<=?) OR (status='RUNNING' AND lease_until<=?)) ORDER BY next_attempt_at,created_at,id FOR UPDATE SKIP LOCKED LIMIT 1",
+            this::map, kinds.stream().map(Enum::name).toArray(String[]::new), p.maxAttempts(), time(now), time(now));
         if (rows.isEmpty()) return Optional.empty();
         var row = rows.getFirst();
         UUID executionId = com.eodilog.global.id.UuidV7.generate();
         jdbc.update("UPDATE jobs SET status='RUNNING',attempt=attempt+1,execution_id=?,execution_started_at=?,lease_until=?,heartbeat_at=?,error_code=NULL WHERE id=?",
             executionId, time(now), time(now.plus(p.lease())), time(now), row.context().jobId());
         return find(row.context().jobId(), false);
+    }
+    /** Returns a claim whose execution never started, without consuming the attempt. */
+    void unclaim(JobContext c) {
+        jdbc.update("UPDATE jobs SET status='QUEUED',attempt=attempt-1,execution_id=NULL,execution_started_at=NULL,lease_until=NULL,heartbeat_at=NULL WHERE id=? AND execution_id=? AND status='RUNNING'",
+            c.jobId(), c.executionId());
     }
     boolean heartbeat(JobContext c, Instant now, JobProperties p) {
         return jdbc.update("UPDATE jobs SET heartbeat_at=?,lease_until=? WHERE id=? AND execution_id=? AND status='RUNNING' AND lease_until>?",

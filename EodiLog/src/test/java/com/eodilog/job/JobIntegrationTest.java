@@ -62,7 +62,7 @@ class JobIntegrationTest {
     }
     UUID submit() { return submit(JobKind.PLACE_EXTRACTION); }
     UUID submit(JobKind kind) { return tx.execute(s -> service.submit(submission(kind))).jobId(); }
-    JobContext claim() { return tx.execute(s -> store.claim(clock.instant(), properties).orElseThrow().context()); }
+    JobContext claim() { return tx.execute(s -> store.claim(clock.instant(), properties, registry.kinds()).orElseThrow().context()); }
     String state(UUID id) { return jdbc.queryForObject("SELECT status FROM jobs WHERE id=?", String.class, id); }
     void awaitState(UUID id, String expected) {
         long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
@@ -95,7 +95,7 @@ class JobIntegrationTest {
         var id = submit();
         CountDownLatch start = new CountDownLatch(1);
         try (var pool = Executors.newFixedThreadPool(2)) {
-            Callable<Optional<JobStore.Row>> work = () -> { start.await(); return new TransactionTemplate(manager).execute(s -> store.claim(clock.instant(), properties)); };
+            Callable<Optional<JobStore.Row>> work = () -> { start.await(); return new TransactionTemplate(manager).execute(s -> store.claim(clock.instant(), properties, registry.kinds())); };
             var a = pool.submit(work); var b = pool.submit(work); start.countDown();
             assertThat(List.of(a.get(3, TimeUnit.SECONDS), b.get(3, TimeUnit.SECONDS)).stream().filter(Optional::isPresent).count()).isEqualTo(1);
         }
@@ -124,7 +124,8 @@ class JobIntegrationTest {
             var c = claim(); assertThat(c.attempt()).isEqualTo(attempt);
             worker.finish(c, JobOutcome.failed(JobFailure.TEMPORARY_FAILURE));
             assertThat(state(id)).isEqualTo(attempt < 3 ? "QUEUED" : "FAILED");
-            assertThat(tx.<Optional<JobStore.Row>>execute(s -> store.claim(clock.instant(), properties))).isEmpty();
+            if (attempt < 3) assertThat(service.get(user, id).error()).isNull();
+            assertThat(tx.<Optional<JobStore.Row>>execute(s -> store.claim(clock.instant(), properties, registry.kinds()))).isEmpty();
             clock.advance(properties.retryDelay());
         }
         assertThat(service.get(user, id).error().code()).isEqualTo("TEMPORARY_FAILURE");
@@ -133,7 +134,7 @@ class JobIntegrationTest {
         var id = submit(); worker.finish(claim(), JobOutcome.failed(JobFailure.EXECUTION_FAILED));
         assertThat(state(id)).isEqualTo("FAILED");
         clock.advance(Duration.ofDays(1));
-        assertThat(tx.<Optional<JobStore.Row>>execute(s -> store.claim(clock.instant(), properties))).isEmpty();
+        assertThat(tx.<Optional<JobStore.Row>>execute(s -> store.claim(clock.instant(), properties, registry.kinds()))).isEmpty();
     }
     @Test void expiredLeaseFencesHeartbeatAndLateCompletionBeforeHook() {
         var id = submit(); var old = claim(); clock.advance(properties.lease());
@@ -150,7 +151,7 @@ class JobIntegrationTest {
     @Test void crashedWorkersReachTerminalStateAtAttemptLimit() {
         var id = submit();
         for (int i = 0; i < 3; i++) { claim(); clock.advance(properties.lease()); }
-        assertThat(tx.<Optional<JobStore.Row>>execute(s -> store.claim(clock.instant(), properties))).isEmpty();
+        assertThat(tx.<Optional<JobStore.Row>>execute(s -> store.claim(clock.instant(), properties, registry.kinds()))).isEmpty();
         assertThat(state(id)).isEqualTo("FAILED");
     }
     @Test void heartbeatExtendsOnlyCurrentUnexpiredExecutionLease() {
@@ -213,6 +214,39 @@ class JobIntegrationTest {
             release.countDown(); bounded.close();
             assertThat(ended.await(3, TimeUnit.SECONDS)).isTrue();
         }
+    }
+    @Test void shutdownLeavesInterruptedExecutionForLeaseRecovery() throws Exception {
+        CountDownLatch started = new CountDownLatch(1);
+        fixtures.action = c -> {
+            started.countDown();
+            try { new CountDownLatch(1).await(); } catch (InterruptedException e) { throw new IllegalStateException(e); }
+            return JobOutcome.succeeded(json.readTree("{}"));
+        };
+        var closing = new JobWorker(store, registry, properties, clock, manager);
+        var id = submit();
+        assertThat(closing.pollOnce()).isTrue(); assertThat(started.await(3, TimeUnit.SECONDS)).isTrue();
+        closing.close();
+        assertThat(closing.awaitTermination(Duration.ofSeconds(3))).isTrue();
+        assertThat(state(id)).isEqualTo("RUNNING");
+        assertThat(closing.pollOnce()).isFalse();
+        clock.advance(properties.lease());
+        assertThat(claim().attempt()).isEqualTo(2);
+    }
+    @Test void unclaimReturnsAttemptOnlyForCurrentExecution() {
+        var id = submit(); var c = claim();
+        var impostor = new JobContext(c.jobId(), UUID.randomUUID(), c.attempt(), c.submission());
+        tx.executeWithoutResult(s -> store.unclaim(impostor));
+        assertThat(state(id)).isEqualTo("RUNNING");
+        tx.executeWithoutResult(s -> store.unclaim(c));
+        assertThat(state(id)).isEqualTo("QUEUED");
+        assertThat(claim().attempt()).isEqualTo(1);
+    }
+    @Test void claimSkipsKindsWithoutLocalHandler() {
+        var id = UUID.randomUUID();
+        tx.executeWithoutResult(s -> store.insert(id, submission(JobKind.TRIP_RECOMMENDATION), clock.instant()));
+        assertThat(worker.pollOnce()).isFalse();
+        assertThat(state(id)).isEqualTo("QUEUED");
+        assertThat(tx.<Optional<JobStore.Row>>execute(s -> store.claim(clock.instant(), properties, Set.of()))).isEmpty();
     }
     @Test void currentPolicyIsCheckedAtSubmissionExecutionCompletionAndRead() {
         fixtures.allowed.set(false);

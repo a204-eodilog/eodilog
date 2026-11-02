@@ -20,6 +20,10 @@ public class JobWorker {
     private final ThreadPoolExecutor executor;
     private final ScheduledExecutorService scheduler;
     private final Map<UUID, Execution> running = new ConcurrentHashMap<>();
+    // A slot is held from claim until the execution thread actually returns, so claims never outrun threads.
+    private final Semaphore slots;
+    private volatile boolean closing;
+    private static final Duration SHUTDOWN_GRACE = Duration.ofSeconds(5);
 
     private static final class Execution {
         final JobContext context;
@@ -35,20 +39,26 @@ public class JobWorker {
         tx = new TransactionTemplate(manager);
         tx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         executor = new ThreadPoolExecutor(properties.concurrency(), properties.concurrency(), 0, TimeUnit.MILLISECONDS,
-            new SynchronousQueue<>(), r -> { var t = new Thread(r, "job-execution"); t.setDaemon(true); return t; });
+            new LinkedBlockingQueue<>(), r -> { var t = new Thread(r, "job-execution"); t.setDaemon(true); return t; });
+        slots = new Semaphore(properties.concurrency());
         scheduler = Executors.newSingleThreadScheduledExecutor(r -> { var t = new Thread(r, "job-poll"); t.setDaemon(true); return t; });
     }
     @PostConstruct
     void start() {
+        // Each step is isolated so one failure cannot skip the other or silently stop the schedule.
+        // Never log payloads or database messages; the next poll retries.
         if (properties.enabled()) scheduler.scheduleWithFixedDelay(() -> {
-            try { tick(); pollOnce(); } catch (RuntimeException ignored) { /* Retry next poll; never log payloads or database messages. */ }
+            try { tick(); } catch (Throwable ignored) { }
+            try { pollOnce(); } catch (Throwable ignored) { }
         }, properties.polling().toMillis(), properties.polling().toMillis(), TimeUnit.MILLISECONDS);
     }
     /** Claims at most one job, in a transaction independent of any caller transaction. */
     public synchronized boolean pollOnce() {
-        if (executor.getActiveCount() >= properties.concurrency()) return false;
-        var row = tx.execute(s -> store.claim(clock.instant(), properties));
-        if (row == null || row.isEmpty()) return false;
+        if (closing || !slots.tryAcquire()) return false;
+        Optional<JobStore.Row> row = null;
+        try { row = tx.execute(s -> store.claim(clock.instant(), properties, registry.kinds())); }
+        finally { if (row == null || row.isEmpty()) slots.release(); }
+        if (row.isEmpty()) return false;
         var c = row.get().context();
         var execution = new Execution(c, clock.instant(), properties);
         execution.task = new FutureTask<>(() -> {
@@ -60,15 +70,19 @@ public class JobWorker {
                 finish(c, outcome);
             } catch (Exception ignored) {
                 // Exception messages may contain external payloads or credentials.
-                failSafely(c, JobFailure.EXECUTION_FAILED);
+                // An execution interrupted by shutdown is left RUNNING so lease expiry re-claims it.
+                if (!closing) failSafely(c, JobFailure.EXECUTION_FAILED);
             } finally { running.remove(c.executionId(), execution); }
             return null;
         });
         running.put(c.executionId(), execution);
-        try { executor.execute(execution.task); }
+        // The wrapper releases the slot even when the task was cancelled before it started.
+        try { executor.execute(() -> { try { execution.task.run(); } finally { slots.release(); } }); }
         catch (RejectedExecutionException ignored) {
+            // Only possible during shutdown. Nothing ran, so the claim and its attempt are returned.
             running.remove(c.executionId(), execution);
-            finish(c, JobOutcome.failed(JobFailure.TEMPORARY_FAILURE));
+            slots.release();
+            try { tx.executeWithoutResult(s -> store.unclaim(c)); } catch (RuntimeException unclaimFailed) { /* Lease recovery. */ }
         }
         return true;
     }
@@ -124,5 +138,12 @@ public class JobWorker {
         }));
     }
     @PreDestroy
-    public void close() { scheduler.shutdownNow(); executor.shutdownNow(); }
+    public void close() {
+        closing = true; scheduler.shutdownNow(); executor.shutdownNow();
+        // Let interrupted executions record a normal result before the DataSource closes.
+        try { awaitTermination(SHUTDOWN_GRACE); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+    }
+    boolean awaitTermination(Duration timeout) throws InterruptedException {
+        return executor.awaitTermination(timeout.toMillis(), TimeUnit.MILLISECONDS);
+    }
 }

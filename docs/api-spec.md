@@ -332,7 +332,7 @@ jobs 공통 기반은 PostgreSQL 등록·실행·조회만 제공한다. kind별
 | Bookmark | `place:Place\|null,retainedPlace:{name:string,latitude:number,longitude:number},memo:string\|null,sourceFeedId:id\|null,sourceUnavailable:boolean,createdAt:datetime`. 소실 시 place=null/sourceFeedId=null·retainedPlace/내 메모만 유지, 내부 원본 필드 미포함 |
 | SavedPlace | `place:Place,savedBy:{memberId:id,memo:string\|null}[],savedCount:integer` |
 | JobRef | `jobId:id,status:QUEUED,statusUrl:string` |
-| Job | `id,kind:string,status:QUEUED\|RUNNING\|SUCCEEDED\|FAILED\|CANCELLED,progress:integer,result:object\|null,error:{code:string,message:string}\|null,createdAt:datetime,finishedAt:datetime\|null` |
+| Job | `id,kind:string,status:QUEUED\|RUNNING\|SUCCEEDED\|FAILED\|CANCELLED,progress:integer,result:object\|null,error:{code:string,message:string}\|null(FAILED·CANCELLED에서만),createdAt:datetime,finishedAt:datetime\|null` |
 | ExtractionResult | `job:Job,resultStatus:SUCCESS\|MULTIPLE_CANDIDATES\|NOT_FOUND\|FAILED\|null,candidates:{candidateId:id,name:string,place:Place\|null,evidence:string,confidence:number\|null}[]`. 식별 불가는 처리 성공과 별개 |
 | RecommendationResult | `job:Job,items:{type:REGION\|PLACE,region:Region\|null,place:Place\|null,reason:string}[],basis:{sharedPlaceCount:integer,usedMemberCount:integer},insufficientData:boolean` |
 | DiscoveryItem | `type:FEED\|PLACE,feed:FeedCard\|null,place:Place\|null,reason:string` |

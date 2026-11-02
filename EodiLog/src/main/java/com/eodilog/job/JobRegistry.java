@@ -22,4 +22,5 @@ public class JobRegistry {
         return policies.get(kind);
     }
     public boolean enabled(JobKind kind) { return handlers.containsKey(kind); }
+    public Set<JobKind> kinds() { return Collections.unmodifiableSet(handlers.keySet()); }
 }

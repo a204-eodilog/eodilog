@@ -40,7 +40,8 @@ public class JobService {
         JsonNode result = row.result() == null ? null : registry.policy(kind).publicResult(viewer, c, row.result().deepCopy());
         if (result != null && kind.cleanup()) result = cleanupResult(result);
         return new Job(id, kind, row.status(), row.progress(), result,
-            row.failure() == null ? null : new Job.Failure(row.failure().name(), row.failure().message()), row.createdAt(), row.finishedAt());
+            // A QUEUED retry keeps the last error internally; only terminal failures are public.
+            row.failure() == null || !row.status().terminalFailure() ? null : new Job.Failure(row.failure().name(), row.failure().message()), row.createdAt(), row.finishedAt());
     }
     static JsonNode cleanupResult(JsonNode source) {
         var safe = JsonNodeFactory.instance.objectNode();
