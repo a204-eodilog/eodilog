@@ -1,0 +1,321 @@
+package com.eodilog.trip.controller;
+
+import static com.eodilog.global.security.AuthUserRequestPostProcessors.authUser;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.hasSize;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.eodilog.TestcontainersConfiguration;
+import com.eodilog.global.idempotency.IdempotencyService;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
+
+// 실제 커밋과 동시 나가기를 확인해야 하므로 테스트 트랜잭션을 쓰지 않는다. 테스트마다 새 사용자·여행으로 자료를 구분한다
+@SpringBootTest
+@AutoConfigureMockMvc
+@Import(TestcontainersConfiguration.class)
+class TripLeaveApiTest {
+
+	@Autowired
+	private MockMvc mockMvc;
+
+	@Autowired
+	private JdbcTemplate jdbcTemplate;
+
+	@Autowired
+	private JsonMapper jsonMapper;
+
+	private UUID ownerId;
+	private UUID friendId;
+	private UUID tripId;
+	private UUID ownerMemberId;
+	private UUID friendMemberId;
+
+	@BeforeEach
+	void setUp() throws Exception {
+		ownerId = insertUser("방장");
+		friendId = insertUser("동행");
+		tripId = UUID.fromString(data(mockMvc.perform(post("/api/v1/trips").with(authUser(ownerId))
+						.header(IdempotencyService.HEADER_NAME, UUID.randomUUID().toString())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"title\":\"제주\"}"))
+				.andExpect(status().isCreated())).get("id").asString());
+		ownerMemberId = memberId(ownerId);
+		friendMemberId = insertActiveMember(friendId, 2);
+	}
+
+	@Test
+	void memberLeavesKeepingExpensesAndMessages() throws Exception {
+		UUID roomId = jdbcTemplate.queryForObject("select id from chat_rooms where trip_id = ?", UUID.class, tripId);
+		mockMvc.perform(post("/api/v1/chat/rooms/{roomId}/messages", roomId).with(authUser(friendId))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"clientMessageId\":\"" + UUID.randomUUID() + "\",\"text\":\"먼저 갈게요\"}"))
+				.andExpect(status().isCreated());
+		mockMvc.perform(post("/api/v1/trips/{tripId}/expenses", tripId).with(authUser(friendId))
+						.header(IdempotencyService.HEADER_NAME, UUID.randomUUID().toString())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{"title":"저녁","amountMinor":20000,"currency":"KRW","payerMemberId":"%s",
+								 "participantMemberIds":["%s","%s"],"spentAt":"2026-11-01T11:30:00Z"}
+								""".formatted(friendMemberId, ownerMemberId, friendMemberId)))
+				.andExpect(status().isCreated());
+
+		leave(friendId, false, false, 1)
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.tripId").value(tripId.toString()))
+				.andExpect(jsonPath("$.data.tripDeleted").value(false))
+				.andExpect(jsonPath("$.data.newOwnerMemberId").isEmpty())
+				.andExpect(jsonPath("$.data.cleanupJobId").isEmpty())
+				.andExpect(jsonPath("$.data.status").value("LEFT"));
+
+		assertThat(count("select count(*) from trip_members where id = ? and status = 'LEFT' and left_at is not null",
+				friendMemberId)).isEqualTo(1);
+		assertThat(count("""
+				select count(*) from chat_participants p join chat_rooms r on r.id = p.room_id
+				where r.trip_id = ? and p.user_id = ? and p.left_at is not null""", tripId, friendId)).isEqualTo(1);
+		assertThat(version()).isEqualTo(2);
+		// 경비는 남고 나간 멤버는 과거 결제자로 보인다
+		assertThat(count("select count(*) from expenses where trip_id = ? and deleted_at is null", tripId)).isEqualTo(1);
+		mockMvc.perform(get("/api/v1/trips/{tripId}", tripId).with(authUser(ownerId)))
+				.andExpect(jsonPath("$.data.members", hasSize(1)))
+				.andExpect(jsonPath("$.data.ownerMemberId").value(ownerMemberId.toString()));
+		// 메시지는 남고, 남은 멤버에게 그대로 보인다
+		mockMvc.perform(get("/api/v1/chat/rooms/{roomId}/messages", roomId).with(authUser(ownerId)))
+				.andExpect(jsonPath("$.data[0].text").value("먼저 갈게요"))
+				.andExpect(jsonPath("$.data[0].senderId").value(friendId.toString()));
+		// 나간 사람은 여행·채팅에 들어갈 수 없고, 같은 요청을 다시 보내면 404
+		mockMvc.perform(get("/api/v1/trips/{tripId}", tripId).with(authUser(friendId))).andExpect(status().isNotFound());
+		mockMvc.perform(get("/api/v1/chat/rooms/{roomId}/messages", roomId).with(authUser(friendId)))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.error.code").value("CHAT_ROOM_NOT_FOUND"));
+		expectTripNotFound(leave(friendId, false, false, 2));
+	}
+
+	@Test
+	void ownerLeavesAndEarliestRemainingMemberBecomesOwner() throws Exception {
+		// 셋째(참여 순 3)를 나중에 넣고, 먼저 넣은 동행은 재참여로 참여 순이 4가 된 상황.
+		// 넣은 순서가 아니라 참여 순으로 고르면 셋째가 방장이 된다
+		UUID thirdId = insertUser("셋째");
+		UUID thirdMemberId = insertActiveMember(thirdId, 3);
+		jdbcTemplate.update("update trip_members set join_order = 4 where id = ?", friendMemberId);
+
+		leave(ownerId, false, false, 1)
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.newOwnerMemberId").value(thirdMemberId.toString()))
+				.andExpect(jsonPath("$.data.tripDeleted").value(false))
+				.andExpect(jsonPath("$.data.cleanupJobId").isEmpty())
+				.andExpect(jsonPath("$.data.status").value("LEFT"));
+
+		// 방장 양도와 멤버 변경이 겹쳐도 version은 한 번만 오른다
+		assertThat(version()).isEqualTo(2);
+		assertThat(count("select count(*) from trip_members where id = ? and status = 'LEFT' and left_at is not null",
+				ownerMemberId)).isEqualTo(1);
+		assertThat(count("""
+				select count(*) from chat_participants p join chat_rooms r on r.id = p.room_id
+				where r.trip_id = ? and p.user_id = ? and p.left_at is not null""", tripId, ownerId)).isEqualTo(1);
+		mockMvc.perform(get("/api/v1/trips/{tripId}", tripId).with(authUser(thirdId)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.ownerMemberId").value(thirdMemberId.toString()))
+				.andExpect(jsonPath("$.data.members", hasSize(2)));
+		expectTripNotFound(mockMvc.perform(get("/api/v1/trips/{tripId}", tripId).with(authUser(ownerId))));
+	}
+
+	@Test
+	void blocksLoneOwnerUntilTripDeletionExists() throws Exception {
+		jdbcTemplate.update("update trip_members set status = 'LEFT', left_at = now() where id = ?", friendMemberId);
+
+		leave(ownerId, false, false, 0)
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.error.code").value("VERSION_CONFLICT"));
+		leave(ownerId, false, false, 1)
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.error.code").value("TRIP_DELETION_PENDING"));
+		assertThat(count("select count(*) from trip_members where id = ? and status = 'ACTIVE'", ownerMemberId))
+				.isEqualTo(1);
+		assertThat(version()).isEqualTo(1);
+	}
+
+	@Test
+	void rejectsDeleteOptionsAndMissingFields() throws Exception {
+		// 삭제 기능 전이라 true는 성공으로 처리하지 않고 400
+		leave(ownerId, true, true, 1)
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"))
+				.andExpect(jsonPath("$.error.fields[*].field").value(containsInAnyOrder("deleteOwnPhotos", "deleteOwnMessages")));
+		postLeave(friendId, "{}")
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.error.fields[*].field").value(
+						containsInAnyOrder("deleteOwnPhotos", "deleteOwnMessages", "expectedVersion")));
+		leave(friendId, false, true, 1)
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.error.fields", hasSize(1)))
+				.andExpect(jsonPath("$.error.fields[0].field").value("deleteOwnMessages"));
+		postLeave(friendId, "{\"deleteOwnPhotos\":false,\"deleteOwnMessages\":false,\"expectedVersion\":1,\"reason\":\"x\"}")
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.error.fields[0].field").value("reason"));
+		mockMvc.perform(post("/api/v1/trips/{tripId}/leave", tripId).with(authUser(friendId))
+						.contentType(MediaType.APPLICATION_JSON))
+				.andExpect(status().isBadRequest());
+		// 입력 오류가 권한보다 먼저다
+		leave(insertUser("모르는 사람"), true, false, 1).andExpect(status().isBadRequest());
+		assertThat(count("select count(*) from trip_members where trip_id = ? and status = 'ACTIVE'", tripId))
+				.isEqualTo(2);
+	}
+
+	@Test
+	void rejectsStaleVersionAndNonMembers() throws Exception {
+		leave(friendId, false, false, 0)
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.error.code").value("VERSION_CONFLICT"));
+		expectTripNotFound(leave(insertUser("모르는 사람"), false, false, 1));
+		// 멤버 확인이 version 검사보다 먼저다
+		expectTripNotFound(leave(insertUser("또 모르는 사람"), false, false, 0));
+		UUID removedId = insertUser("내보낸 동행");
+		UUID removedMemberId = insertActiveMember(removedId, 3);
+		jdbcTemplate.update("update trip_members set status = 'REMOVED', left_at = now() where id = ?", removedMemberId);
+		expectTripNotFound(leave(removedId, false, false, 1));
+		assertThat(count("select count(*) from trip_members where trip_id = ? and status = 'ACTIVE'", tripId))
+				.isEqualTo(2);
+		assertThat(version()).isEqualTo(1);
+	}
+
+	@Test
+	void invalidatesInvitationOfLeaverAndAllowsRejoin() throws Exception {
+		String link = data(mockMvc.perform(post("/api/v1/trips/{tripId}/invitations", tripId).with(authUser(friendId))))
+				.get("token").asString();
+		leave(friendId, false, false, 1).andExpect(status().isOk());
+
+		// 초대한 사람이 나갔으므로 그 링크는 410
+		mockMvc.perform(post("/api/v1/invitations/{token}/accept", link).with(authUser(insertUser("손님"))))
+				.andExpect(status().isGone())
+				.andExpect(jsonPath("$.error.code").value("INVITATION_EXPIRED"));
+		// 남은 방장이 새로 발급한 링크로 돌아올 수 있다
+		String newLink = data(mockMvc.perform(post("/api/v1/trips/{tripId}/invitations", tripId).with(authUser(ownerId))))
+				.get("token").asString();
+		mockMvc.perform(post("/api/v1/invitations/{token}/accept", newLink).with(authUser(friendId)))
+				.andExpect(status().isOk());
+		assertThat(count("select count(*) from trip_members where id = ? and status = 'ACTIVE'", friendMemberId))
+				.isEqualTo(1);
+	}
+
+	@Test
+	void letsOnlyOneOfConcurrentLeavesWithSameVersionSucceed() throws Exception {
+		insertActiveMember(insertUser("셋째"), 3);
+		List<UUID> leavers = List.of(ownerId, friendId);
+		CountDownLatch ready = new CountDownLatch(1);
+		ExecutorService executor = Executors.newFixedThreadPool(leavers.size());
+		List<Future<MockHttpServletResponse>> futures = new ArrayList<>();
+		try {
+			for (UUID leaver : leavers) {
+				futures.add(executor.submit(() -> {
+					ready.await();
+					return leave(leaver, false, false, 1).andReturn().getResponse();
+				}));
+			}
+			ready.countDown();
+			List<Integer> statuses = new ArrayList<>();
+			for (Future<MockHttpServletResponse> future : futures) {
+				MockHttpServletResponse response = future.get();
+				statuses.add(response.getStatus());
+				if (response.getStatus() == 409) {
+					assertThat(response.getContentAsString()).contains("VERSION_CONFLICT");
+				}
+			}
+			assertThat(statuses).containsExactlyInAnyOrder(200, 409);
+		} finally {
+			executor.shutdownNow();
+		}
+		assertThat(count("select count(*) from trip_members where trip_id = ? and status = 'ACTIVE'", tripId))
+				.isEqualTo(2);
+		assertThat(version()).isEqualTo(2);
+	}
+
+	@Test
+	void documentsLeaveApi() throws Exception {
+		mockMvc.perform(get("/v3/api-docs"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.paths['/api/v1/trips/{tripId}/leave'].post.tags[0]").value("여행"))
+				.andExpect(jsonPath("$.paths['/api/v1/trips/{tripId}/leave'].post.responses['200']").exists())
+				.andExpect(jsonPath("$.paths['/api/v1/trips/{tripId}/leave'].post.responses['409'].description")
+						.value(containsString("TRIP_DELETION_PENDING")));
+	}
+
+	private void expectTripNotFound(ResultActions result) throws Exception {
+		result.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.error.code").value("TRIP_NOT_FOUND"));
+	}
+
+	private ResultActions leave(UUID userId, boolean deletePhotos, boolean deleteMessages, long expectedVersion)
+			throws Exception {
+		return postLeave(userId, """
+				{"deleteOwnPhotos":%s,"deleteOwnMessages":%s,"expectedVersion":%d}
+				""".formatted(deletePhotos, deleteMessages, expectedVersion));
+	}
+
+	private ResultActions postLeave(UUID userId, String body) throws Exception {
+		return mockMvc.perform(post("/api/v1/trips/{tripId}/leave", tripId).with(authUser(userId))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(body));
+	}
+
+	private JsonNode data(ResultActions result) throws Exception {
+		return jsonMapper.readTree(result.andReturn().getResponse().getContentAsString()).get("data");
+	}
+
+	private UUID memberId(UUID userId) {
+		return jdbcTemplate.queryForObject("select id from trip_members where trip_id = ? and user_id = ?",
+				UUID.class, tripId, userId);
+	}
+
+	private long version() {
+		return jdbcTemplate.queryForObject("select version from trips where id = ?", Long.class, tripId);
+	}
+
+	private long count(String sql, Object... args) {
+		return jdbcTemplate.queryForObject(sql, Long.class, args);
+	}
+
+	private UUID insertUser(String nickname) {
+		UUID id = UUID.randomUUID();
+		jdbcTemplate.update("""
+				insert into users (id, nickname, profile_completed, created_at, updated_at)
+				values (?, ?, true, now(), now())""", id, nickname);
+		return id;
+	}
+
+	// 실제 참여(초대 수락)처럼 멤버십과 채팅 참여를 함께 넣는다
+	private UUID insertActiveMember(UUID userId, long joinOrder) {
+		UUID id = UUID.randomUUID();
+		jdbcTemplate.update("""
+				insert into trip_members (id, trip_id, user_id, status, join_order, joined_at)
+				values (?, ?, ?, 'ACTIVE', ?, now())""", id, tripId, userId, joinOrder);
+		jdbcTemplate.update("""
+				insert into chat_participants (room_id, user_id, joined_at)
+				select id, ?, now() from chat_rooms where trip_id = ?""", userId, tripId);
+		return id;
+	}
+
+}

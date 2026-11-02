@@ -6,6 +6,8 @@ import com.eodilog.global.common.error.CommonErrorCode;
 import com.eodilog.global.common.error.ErrorResponse.ErrorField;
 import com.eodilog.trip.domain.Trip;
 import com.eodilog.trip.domain.TripMember;
+import com.eodilog.trip.dto.LeaveTripRequest;
+import com.eodilog.trip.dto.LeaveTripResponse;
 import com.eodilog.trip.dto.OwnerTransferRequest;
 import com.eodilog.trip.dto.TripMemberResponse;
 import com.eodilog.trip.dto.TripMembersResponse;
@@ -53,6 +55,57 @@ public class TripMemberService {
 				.map(member -> TripMemberResponse.of(member, requireCard(cards, member), trip.getOwnerUserId()))
 				.toList();
 		return new TripMembersResponse(responses);
+	}
+
+	// 기본 나가기(정책 §11). 경비·사진·메시지는 남기고 멤버십 LEFT와 채팅 참여 종료를 한 트랜잭션에서 처리한다
+	// 판정 순서: 입력 400(누락·삭제 옵션 true) → 여행 행 잠금 후 ACTIVE 멤버 404 → version 409 → 혼자 남은 방장 409
+	// 방장이 나가면 남은 ACTIVE 멤버 중 참여 순이 가장 빠른 사람이 방장이 된다. 어느 경우든 여행 version은 1만 오른다
+	@Transactional
+	public LeaveTripResponse leave(UUID userId, UUID tripId, LeaveTripRequest request) {
+		List<ErrorField> errors = new ArrayList<>();
+		requireDeleteOptionOff(request.deleteOwnPhotos(), "deleteOwnPhotos", "사진을", errors);
+		requireDeleteOptionOff(request.deleteOwnMessages(), "deleteOwnMessages", "메시지를", errors);
+		if (request.expectedVersion() == null) {
+			errors.add(new ErrorField("expectedVersion", "나가기 전에 조회한 version을 보내 주세요."));
+		}
+		throwIfInvalid(errors);
+
+		TripAccess access = tripAccessChecker.requireActiveMemberForUpdate(tripId, userId);
+		Trip trip = access.trip();
+		if (trip.getVersion() != request.expectedVersion()) {
+			throw new BusinessException(TripErrorCode.VERSION_CONFLICT);
+		}
+		List<TripMember> others = tripMemberRepository.findAllByTripIdOrderByJoinOrder(tripId).stream()
+				.filter(member -> member.isActive() && !member.getId().equals(access.member().getId()))
+				.toList();
+		// 방장은 내보낼 수 없고 나가면 자동 양도되므로 늘 ACTIVE다. 따라서 혼자 남은 사람은 방장이며,
+		// 이 불변식이 깨져도 마지막 한 명의 나가기(여행 삭제)는 막는 쪽이 안전하므로 방장 여부를 따로 보지 않는다
+		if (others.isEmpty()) {
+			throw new BusinessException(TripErrorCode.TRIP_DELETION_PENDING);
+		}
+
+		Instant now = now();
+		access.member().leave(now);
+		chatParticipationService.leaveTripRoom(tripId, userId, now);
+		TripMember newOwner = null;
+		if (access.isOwner()) {
+			newOwner = others.getFirst();
+			trip.transferOwner(newOwner.getUserId(), now);
+		} else {
+			trip.markMembersChanged(now);
+		}
+		tripRepository.flush();
+		return LeaveTripResponse.left(tripId, newOwner == null ? null : newOwner.getId());
+	}
+
+	// 삭제 기능이 생기기 전에는 false만 받는다. 무시하고 성공으로 응답하지 않는다(정책 §11 L-3, 준비물 C-1과 같은 방식)
+	private void requireDeleteOptionOff(Boolean option, String field, String targetWithParticle, List<ErrorField> errors) {
+		if (option == null) {
+			errors.add(new ErrorField(field, "내 " + targetWithParticle + " 지울지 true/false로 보내 주세요."));
+		} else if (option) {
+			errors.add(new ErrorField(field,
+					"나갈 때 내 " + targetWithParticle + " 지우는 기능은 아직 지원하지 않습니다. false로 보내 주세요."));
+		}
 	}
 
 	// 방장 알림은 만들지 않는다(명세 §9, 결정 F-21)
