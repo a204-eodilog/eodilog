@@ -554,9 +554,9 @@ Table chat_participants {
   user_id uuid [not null, ref: > users.id]
   joined_at timestamp [not null]
   left_at timestamp
-  visible_from_sequence bigint [not null, default: 1, note: '과거 대화 범위 Q-13 확정 후 적용']
+  visible_from_sequence bigint [not null, default: 1, note: 'Q-13(11/02): 신규·재참여 모두 처음부터 전체 대화를 보므로 항상 1']
   indexes { (room_id, user_id) [pk] }
-  Note: 'TRIP 멤버십과 입장/이탈을 트랜잭션으로 동기화. 재참여 시 과거 메시지 정책 Q-13. 그룹 비참여자는 수신·조회 불가.'
+  Note: 'TRIP 멤버십과 입장/이탈을 트랜잭션으로 동기화. 재참여해도 처음부터 전체 대화를 본다(Q-13, 11/02). 그룹 비참여자는 수신·조회 불가.'
 }
 
 Table events {
@@ -589,7 +589,7 @@ Table messages {
     (sender_user_id, client_message_id) [unique]
     (room_id, event_id) [unique]
   }
-  Note: 'TEXT는 sender/client_message_id 필수, SYSTEM은 event_id 필수·sender NULL. 같은 클라이언트 ID 재전송은 본문까지 일치해야 멱등. 이탈 시 본인 채팅 삭제는 본문 제거 제안, 메시지 일반 수정/삭제 API는 Q-13 미정.'
+  Note: 'TEXT는 sender/client_message_id 필수, SYSTEM은 event_id 필수·sender NULL. 같은 클라이언트 ID 재전송은 본문까지 일치해야 멱등. 이탈 시 본인 채팅 삭제는 본문 제거 제안, 메시지 일반 수정/삭제·첨부·읽음은 추가하지 않음(Q-13, 11/02). 본문 최대 1,000자, sequence는 chat_rooms 행 잠금으로 발급. event_id FK는 events 테이블이 생길 때 건다. 이탈 시 본문 제거(D-10)를 구현하려면 TEXT의 text NOT NULL 제약(ck_messages_text)을 바꾸는 마이그레이션이 필요.'
 }
 
 Table notifications {

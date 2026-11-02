@@ -51,7 +51,7 @@ cd EodiLog
 - 루트 패키지: `com.eodilog`
 - 공통 설정: `global.config` (`SwaggerConfig`, `SecurityConfig`, `TimeConfig`의 `Clock` 빈)
 - 공통 코드: `global.common`(응답·예외·traceId), `global.idempotency`(요청 중복 방지), `global.security`(`AuthUser`)
-- 도메인: `domain.auth`(카카오 로그인·서비스 토큰·`BearerFilter`), `user`(회원·`/me`·`UserCardReader`), `trip`, `chat`, `itinerary`, `checklist`, `expense`(경비·정산), `invitation`(초대 링크), `region`. 새 도메인은 루트 아래에 둔다
+- 도메인: `domain.auth`(카카오 로그인·서비스 토큰·`BearerFilter`), `user`(회원·`/me`·`UserCardReader`), `trip`, `chat`(그룹 채팅방·메시지), `itinerary`, `checklist`, `expense`(경비·정산), `invitation`(초대 링크), `region`. 새 도메인은 루트 아래에 둔다
 - 공통 목록 커서: `global.common.response.CreatedAtCursor`(기본 정렬 `createdAt DESC, id DESC`)
 
 ## 백엔드 문서
@@ -150,7 +150,7 @@ API 명세 §2의 공통 계약을 `global.common`이 구현한다. 같은 역�
 - 요청 DTO에 없는 필드가 오면 400이다(`spring.jackson.deserialization.fail-on-unknown-properties=true`). 명세 §2 "표에 명시된 필드만 허용" 규칙이다.
 - 예상하지 못한 예외는 500 `INTERNAL_ERROR`로 응답하고 내부 문구를 싣지 않는다. 로그에 요청 본문·`Authorization` 헤더·토큰·인가 코드를 남기지 않는다.
 - `TraceIdFilter`가 요청마다 `traceId`를 만들어 로그 줄(`[traceId]`)·`X-Trace-Id` 응답 헤더·오류 응답에 같은 값을 쓴다. 문의가 오면 이 값으로 로그를 찾는다.
-- 여행 내부 자료(투표·코스·채팅·경비 등) API는 먼저 `TripAccessChecker.requireActiveMember(tripId, userId)`로 ACTIVE 멤버인지 확인한다. 없는·삭제된·비참여·이탈 여행은 모두 `404 TRIP_NOT_FOUND`로 같게 응답한다. 여행 응답은 `TripResponseAssembler`로 만든다.
+- 여행 내부 자료(투표·코스·채팅·경비 등) API는 먼저 `TripAccessChecker.requireActiveMember(tripId, userId)`로 ACTIVE 멤버인지 확인한다. 없는·삭제된·비참여·이탈 여행은 모두 `404 TRIP_NOT_FOUND`로 같게 응답한다. 여행 응답은 `TripResponseAssembler`로 만든다. 경로에 tripId가 없는 채팅방 API(`/chat/rooms/{roomId}/**`)는 방의 여행으로 같은 기준(삭제 안 된 여행의 ACTIVE 멤버)을 확인하고 `404 CHAT_ROOM_NOT_FOUND`로 같게 응답한다.
 
 ## 기반 작업 현황 (2026-10-30 기준)
 

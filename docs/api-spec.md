@@ -50,13 +50,13 @@
 
 | 상태 | 대표 업무 오류 |
 | --- | --- |
-| 404 | `TRIP_NOT_FOUND`, `FEED_NOT_FOUND`, `JOB_NOT_FOUND` — 존재를 공개할 수 없는 자료도 같은 응답. 여행 안의 하위 자료는 `MEMBER_NOT_FOUND`(없거나 이탈한 멤버십), `CHECKLIST_ITEM_NOT_FOUND`(없거나 삭제된 준비물), `EXPENSE_NOT_FOUND`(없거나 삭제된 경비), `SETTLEMENT_NOT_FOUND`(없거나 다른 여행의 정산 계산) |
-| 409 | `VERSION_CONFLICT`, `POLL_CLOSED`, `ALREADY_MEMBER`, `ALREADY_APPLIED`, `TRIP_FULL`(여행 ACTIVE 멤버 정원 초과) |
+| 404 | `TRIP_NOT_FOUND`, `FEED_NOT_FOUND`, `JOB_NOT_FOUND` — 존재를 공개할 수 없는 자료도 같은 응답. 여행 안의 하위 자료는 `MEMBER_NOT_FOUND`(없거나 이탈한 멤버십), `CHECKLIST_ITEM_NOT_FOUND`(없거나 삭제된 준비물), `EXPENSE_NOT_FOUND`(없거나 삭제된 경비), `SETTLEMENT_NOT_FOUND`(없거나 다른 여행의 정산 계산), `CHAT_ROOM_NOT_FOUND`(없거나 삭제된 여행·참여하지 않았거나 나간 채팅방) |
+| 409 | `VERSION_CONFLICT`, `POLL_CLOSED`, `ALREADY_MEMBER`, `ALREADY_APPLIED`, `TRIP_DELETION_PENDING`(여행 삭제 기능 전 혼자 남은 방장의 나가기), `TRIP_FULL`(여행 ACTIVE 멤버 정원 초과), `CLIENT_MESSAGE_ID_REUSED`(같은 clientMessageId를 다른 방·본문에 재사용) |
 | 410 | `INVITATION_EXPIRED`·`INVITATION_REVOKED` — 사용자가 제시한 유효 형식의 초대 토큰 검증 결과. 새 링크 발급으로 무효가 된 링크만 `INVITATION_REVOKED`, 없는 토큰·기간 지남·삭제된 여행·초대자 이탈은 `INVITATION_EXPIRED` |
 | 422 | `INSUFFICIENT_DATA`, `CURRENCY_MISMATCH`, `INVALID_PARTICIPANTS`, `UNSUPPORTED_INPUT` |
 | 503 | `PROVIDER_UNAVAILABLE` — 지도·날씨·장소 공급자 장애. 결과 없음과 구분 |
 
-동시 편집 대상인 일정·투표·경비·정산·설정·피드 편집에는 `expectedVersion:integer`를 사용한다. 다른 버전을 덮어쓰지 않고 `409`를 반환한다. 공동 피드 편집과 개인 숨김 변경에도 버전 조건을 적용한다. 여행 생성·경비 생성·비동기 작업 생성·정산 계산·사진 업로드 배치 생성·메시지 전송 POST에는 `Idempotency-Key` 헤더가 필수라는 제안이며 `(사용자, 실제 요청 경로, 키)`를 묶는다. 같은 키/같은 본문은 최초 결과, 다른 본문은 409. 여행 안 자료를 만드는 POST(경비 등록 등)는 최초 결과를 다시 줄 때도 현재 멤버 권한을 다시 검사한다(등록 뒤 이탈·내보내기·여행 삭제면 404). 다른 POST에는 이 헤더를 필수로 요구하지 않는다. 유효기간은 Q-12에서 확정한다.
+동시 편집 대상인 일정·투표·경비·정산·설정·피드 편집에는 `expectedVersion:integer`를 사용한다. 다른 버전을 덮어쓰지 않고 `409`를 반환한다. 공동 피드 편집과 개인 숨김 변경에도 버전 조건을 적용한다. 여행 생성·경비 생성·비동기 작업 생성·정산 계산·사진 업로드 배치 생성 POST에는 `Idempotency-Key` 헤더가 필수라는 제안이며 `(사용자, 실제 요청 경로, 키)`를 묶는다. 채팅 메시지 전송은 본문의 `clientMessageId`가 이 역할을 하므로 헤더를 요구하지 않는다(보내도 쓰지 않음, §9, 2026-11-02). 같은 키/같은 본문은 최초 결과, 다른 본문은 409. 여행 안 자료를 만드는 POST(경비 등록 등)는 최초 결과를 다시 줄 때도 현재 멤버 권한을 다시 검사한다(등록 뒤 이탈·내보내기·여행 삭제면 404). 다른 POST에는 이 헤더를 필수로 요구하지 않는다. 유효기간은 Q-12에서 확정한다.
 
 ## 3. 인증·프로필·팔로우·설정
 
@@ -112,7 +112,7 @@
 | GET | `/invitations/{token}` | 공개(D-1) | 없음 | `InvitationPreview` / 200 | 여행명·기간·초대한 사람만, 내부 명단/경비 반환 안 함. 형식이 틀린 토큰 404, 링크가 쓸 수 없으면 410(사유는 §2). 로그인한 사람이 이미 ACTIVE 멤버면 링크가 만료·무효여도 200, `alreadyMember=true`. Authorization 헤더를 보내면 검증(잘못된 토큰 401, 가입 대기 403) |
 | POST | `/invitations/{token}/accept` | 로그인 | 없음 | `Trip` / 200 | 유효 링크로 관계 없이 참여. 이미 ACTIVE 멤버면 링크가 만료·무효여도 바뀌는 것 없이 같은 여행 반환. 그 밖에는 새 발급으로 무효(410 `INVITATION_REVOKED`)·만료·초대자 이탈(410 `INVITATION_EXPIRED`) 검사 후, 정원은 여행당 ACTIVE 멤버 20명(방장 포함, Q-4)으로 넘으면 409 `TRIP_FULL`. 이탈 멤버는 기존 멤버십으로 재참여하고 joinOrder를 새로 받음. 채팅 참여와 함께 처리하고 여행 version 증가 |
 | POST | `/trips/{tripId}/owner-transfer` | 방장 | `{targetMemberId:id,expectedVersion:integer}` | `Trip` / 200 | 같은 여행의 다른 ACTIVE 멤버만, 아니면 400. 방장 아닌 멤버 403. 알림 없음 |
-| POST | `/trips/{tripId}/leave` | 멤버 | `{deleteOwnPhotos:boolean,deleteOwnMessages:boolean,expectedVersion:integer}` | `LeaveResult` / 202 | 일반 이탈은 경비 유지·방장 자동 양도. 마지막 방장은 여행 삭제로 접수하며 tripDeleted=true, 같은 TRIP_DELETE 작업 사용 |
+| POST | `/trips/{tripId}/leave` | 멤버 | `{deleteOwnPhotos:boolean,deleteOwnMessages:boolean,expectedVersion:integer}` | `LeaveResult` / 200(삭제 작업이 있으면 202) | 일반 이탈은 경비 유지·방장 자동 양도. (2단계, 여행 삭제 기능 이후) 마지막 방장은 여행 삭제로 접수하며 tripDeleted=true, 같은 TRIP_DELETE 작업 사용. **1단계(2026-11-02 확정)**: 경비·사진·메시지를 남기는 기본 나가기만 지원한다. 성공은 200 + `LeaveResult{tripId,tripDeleted:false,newOwnerMemberId(방장이 나갔을 때만, 아니면 null),cleanupJobId:null,status:LEFT}`. 삭제 옵션 `true`는 삭제 기능 전까지 400 `VALIDATION_ERROR`(필드 deleteOwnPhotos·deleteOwnMessages), 혼자 남은 방장은 여행 삭제 기능 전까지 409 `TRIP_DELETION_PENDING`(상태 변경 없음). 여행 version 다르면 409, 성공 시 version 1 증가. 멱등키 대상이 아니므로 성공 뒤 재시도는 404 |
 | DELETE | `/trips/{tripId}/members/{memberId}` | 방장 | `expectedVersion:integer`(query) | 204 | 본인·방장 내보내기 금지(400). 없거나 이탈한 대상 404 `MEMBER_NOT_FOUND`. 멤버십 REMOVED·채팅 참여 해제를 한 트랜잭션으로. 강제 이탈 시 타인 자료 삭제 여부는 Q-11 |
 
 2026-10-30 사용자 확정: 여행 정원은 방장 포함 ACTIVE 멤버 최대 20명이다. 이탈·내보내기로 빈자리가 생기면 다시 참여할 수 있다. 초대 링크는 발급 시각부터 7일(168시간) 유효하며, 만료 시각부터 참여할 수 없다. ACTIVE 멤버 누구나 재발급할 수 있고 재발급하면 이전 링크는 즉시 무효화한다. 링크 만료·재발급은 기존 참여자에게 영향을 주지 않는다. 수락 시 정원 확인과 참여 반영을 원자적으로 처리해 동시 수락으로 20명을 초과하지 않게 한다. 만료는 410 INVITATION_EXPIRED, 정원 초과는 409 TRIP_FULL이다. 재발급 시 이전 링크 무효화는 EODI-128에서 반영했다(여행 행 잠금으로 동시 발급에도 쓸 수 있는 링크는 하나, 무효가 된 링크는 410 INVITATION_REVOKED). 기존 ACTIVE 멤버는 만료·무효 링크로 열어도 미리보기 `alreadyMember=true`, 수락은 같은 여행을 받는다.
@@ -268,14 +268,14 @@
 
 ## 9. 채팅·알림·작업 조회
 
-근거: WD-FR-33~34, WD-NFR-02. 여행 그룹 채팅만 제공한다. 아래 REST는 조회/전송 계약이며 채팅 실시간 전송은 Q-13, 코스 공동 편집 프로토콜은 Q-15에서 합의한다.
+근거: WD-FR-33~34, WD-NFR-02. 여행 그룹 채팅만 제공한다. 아래 REST는 조회/전송 계약이며 채팅 실시간 전송은 Q-13, 코스 공동 편집 프로토콜은 Q-15에서 합의한다. 2026-11-02 Q-13 확정(REST 범위): 신규·재참여 ACTIVE 멤버 모두 여행 채팅의 처음부터 전체 대화를 보고(이탈 기간 포함), LEFT·REMOVED는 조회·전송할 수 없다. 첨부·일반 메시지 편집/삭제·대화 읽음 규격은 추가하지 않는다. 방 참여 권한은 현재 여행 ACTIVE 멤버십이며, `/chat/rooms/{roomId}/**`에서 삭제된 여행·비참여·이탈한 방은 모두 404 `CHAT_ROOM_NOT_FOUND`(여행 경로인 `GET /trips/{tripId}/chat-room`은 404 `TRIP_NOT_FOUND`).
 
 | Method | URL | 권한 | 요청 | 성공 data / 상태 | 주요 규칙 |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/chat/rooms` | 본인 | 페이지 | `ChatRoom[]` / 200 | 현재 접근 가능한 방만 |
+| GET | `/chat/rooms` | 본인 | 페이지 | `ChatRoom[]` / 200 | 현재 접근 가능한 방만(ACTIVE 멤버인 삭제 안 된 여행). 방 생성 역순(createdAt DESC, id DESC) 커서 |
 | GET | `/trips/{tripId}/chat-room` | 멤버 | 없음 | `ChatRoom` / 200 | 여행당 그룹 채팅방 하나 |
-| GET | `/chat/rooms/{roomId}/messages` | 방 참여자 | `beforeSequence?:integer,limit?:integer` | `Message[]` / 200 | 공통 cursor 미사용. sequence 내림차순·경계값 미포함 |
-| POST | `/chat/rooms/{roomId}/messages` | 방 참여자 | `{clientMessageId:id,text:string}` | `Message` / 201 | 같은 sender/clientMessageId는 최초 응답. 다른 본문 재사용 409 |
+| GET | `/chat/rooms/{roomId}/messages` | 방 참여자 | `beforeSequence?:integer,limit?:integer` | `Message[]` / 200 | 공통 cursor 미사용. sequence 내림차순·경계값 미포함, limit 기본 20·최대 100. 응답 page는 `nextBeforeSequence`·`hasNext`(아래 문단), `cursor`와 혼용하면 400 |
+| POST | `/chat/rooms/{roomId}/messages` | 방 참여자 | `{clientMessageId:id,text:string}` | `Message` / 201 | 같은 sender/clientMessageId·같은 방·같은 본문은 최초 응답(201). 다른 방·본문 재사용 409 `CLIENT_MESSAGE_ID_REUSED`. 본문은 받은 그대로 저장, 공백만·NUL 문자 포함은 400, 최대 1,000자(코드 포인트). 방 행 잠금으로 sequence를 빈틈없이 발급 |
 | GET | `/me/notifications` | 본인 | `unreadOnly?:boolean` + 페이지 | `Notification[]` / 200 | 실행/복귀 팝업도 동일 목록 사용 |
 | PATCH | `/me/notifications/{notificationId}` | 수신자 | `{read:true}` | `Notification` / 200 | 읽음 멱등 |
 | DELETE | `/me/notifications/{notificationId}` | 수신자 | 없음 | 204 | 본인 목록에서 숨김 |
