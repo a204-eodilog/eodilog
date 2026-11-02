@@ -10,6 +10,16 @@ spring:
     compose:
       enabled: false
 app:
+  jobs:
+    enabled: false
+    polling: 1s
+    timeout: 60s
+    lease: 120s
+    heartbeat: 20s
+    max-attempts: 3
+    retry-delay: 30s
+    batch-size: 1
+    concurrency: 2
   auth:
     kakao-client-id: fake-local-client
     kakao-client-secret: fake-local-secret
