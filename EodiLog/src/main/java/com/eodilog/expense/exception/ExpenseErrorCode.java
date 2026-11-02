@@ -13,8 +13,8 @@ public enum ExpenseErrorCode implements ErrorCode {
 	CURRENCY_MISMATCH(HttpStatus.UNPROCESSABLE_CONTENT, "경비는 원화(KRW)로만 입력할 수 있습니다."),
 	// 결제자·분담자가 이 여행의 멤버가 아니거나 새로 넣을 수 없는 멤버다
 	INVALID_PARTICIPANTS(HttpStatus.UNPROCESSABLE_CONTENT, "결제자와 분담자는 이 여행의 동행이어야 합니다."),
-	// 1인 부담액 10원 올림 시점과 차액 귀속(Q-10)이 정해지기 전에는 정산을 계산하지 않는다
-	SETTLEMENT_POLICY_PENDING(HttpStatus.CONFLICT, "정산 방식이 아직 정해지지 않아 정산을 계산할 수 없습니다.");
+	// 다른 여행의 정산 계산도 같은 응답을 쓴다
+	SETTLEMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "정산 결과를 찾을 수 없습니다.");
 
 	private final HttpStatus status;
 	private final String message;

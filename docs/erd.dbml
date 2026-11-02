@@ -14,7 +14,7 @@ Project eodilogue {
   개인별 피드·사진 공개 동의·코스 승인·정산 완료·1:1 채팅은 제거한다.
   투표는 시각 마감 자동 확정, 동률 최다 모두. 진행 중 후보 추가. 0표는 확정 없이 마감.
   단일 코스·구간별 수단·모든 멤버 AI 적용. 버전 검사, 실시간 전송/알림 묶음 Q-15·16.
-  KRW 정수·1인 부담액 10원 올림. 적용 시점/차액 귀속 Q-10. 송금액 자체의 재올림 없음.
+  KRW 정수·1인 부담액 10원 올림. 여행 합산 후 1회 올림·차액은 원금 기준 최대 수령자(Q-10 확정). 송금액 자체의 재올림 없음.
   이탈 멤버십·공동 피드·경비 보존, 경비는 등록자만 수정/삭제. 삭제/익명화 Q-11.
   논리 타입이며 DB 엔진은 PostgreSQL(ADR-0001). cascade 삭제 일괄 적용 금지, timestamp UTC.
   '''
@@ -685,24 +685,28 @@ Table settlements {
   expense_version bigint [not null]
   currency varchar(3) [not null, default: 'KRW', note: 'KRW만 허용']
   total_amount_minor bigint [not null, note: '원금 총액']
-  rounding_policy varchar(64) [not null, note: 'Q-10 합의한 규칙 식별자']
-  rounding_adjustment_minor bigint [not null, note: '원금 대비 총 차액, 귀속 규칙 Q-10']
+  rounding_policy varchar(64) [not null, note: 'Q-10 규칙 식별자. 현재 TRIP_TOTAL_CEIL_10_TO_TOP_CREDITOR']
+  rounding_adjustment_minor bigint [not null, note: '원금 대비 총 차액. 원금 기준 받을 돈이 가장 많은 한 멤버에게 귀속']
   expense_snapshot_json json [not null, note: '비용 ID/버전·등록값·선택 분담자/분담액 포함, 과거 계산 재현용']
   version bigint [not null, default: 1]
   calculated_at timestamp [not null]
-  indexes { (trip_id, calculated_at) }
-  Note: '현재 계산은 trips.current_settlement_id, 같은 여행 검사. 원금 스냅샷·차액·계산 규칙 저장 및 포인터 교체 원자 처리. 비용 버전/현재 포인터 불일치면 stale. 완료 상태/이벤트 없음. Q-10 1인 부담액 올림 시점·차액 귀속 합의 전 계산 생성 차단 제안. 보관/삭제 영향 Q-10·11.'
+  indexes { (trip_id, calculated_at, id) }
+  Note: '현재 계산은 trips.current_settlement_id, 같은 여행 검사. 원금 스냅샷·차액·계산 규칙 저장 및 포인터 교체 원자 처리. 비용 버전/현재 포인터 불일치면 stale. 완료 상태/이벤트 없음. 여행이 있는 동안 모두 보관, 물리 삭제 시점은 Q-11. trips.current_settlement_id와 서로 참조하므로 여행 물리 삭제 시 포인터를 먼저 비운다.'
 }
 
 Table settlement_members {
   settlement_id uuid [not null, ref: > settlements.id]
   member_id uuid [not null, ref: > trip_members.id]
   paid_minor bigint [not null]
-  base_owed_minor bigint [not null, note: '원금 부담액 표현 제안, 소수 처리/올림 시점 Q-10']
+  base_owed_minor bigint [not null, note: '저장된 원금 분담액의 사람별 합계(올림 전)']
   owed_minor bigint [not null, note: '1인 올림 부담액, 10원 배수']
   rounding_adjustment_minor bigint [not null]
   balance_minor bigint [not null]
-  indexes { (settlement_id, member_id) [pk] }
+  display_order integer [not null, note: '계산할 때의 참여 순. 이후 재참여해도 과거 계산 순서 유지']
+  indexes {
+    (settlement_id, member_id) [pk]
+    (settlement_id, display_order) [unique]
+  }
 }
 
 Table settlement_transfers {
@@ -711,7 +715,9 @@ Table settlement_transfers {
   from_member_id uuid [not null, ref: > trip_members.id]
   to_member_id uuid [not null, ref: > trip_members.id]
   amount_minor bigint [not null]
-  Note: '같은 여행·서로 다른 멤버·양수 검증. 송금 제안액이며 이 금액을 다시 10원 단위로 올리지 않음. 1인 부담액 올림 차액 귀속 Q-10 확정 뒤 계산. 완료/은행 상태 없음.'
+  display_order integer [not null, note: '계산할 때 정한 표시 순서(금액이 큰 순)']
+  indexes { (settlement_id, display_order) [unique] }
+  Note: '같은 여행·서로 다른 멤버·양수 검증. 송금 제안액이며 이 금액을 다시 10원 단위로 올리지 않음. 1인 부담액 올림 차액은 수령자 잔액에 한 번만 더한 뒤 계산. 완료/은행 상태 없음.'
 }
 
 Table feed_reviews {

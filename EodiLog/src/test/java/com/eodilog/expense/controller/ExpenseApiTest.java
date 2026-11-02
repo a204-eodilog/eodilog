@@ -401,19 +401,6 @@ class ExpenseApiTest {
 	}
 
 	@Test
-	void blocksSettlementCalculationUntilPolicyIsDecided() throws Exception {
-		mockMvc.perform(post("/api/v1/trips/{tripId}/settlements", tripId).with(authUser(ownerId))
-						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"expectedExpenseVersion\":0}"))
-				.andExpect(status().isConflict())
-				.andExpect(jsonPath("$.error.code").value("SETTLEMENT_POLICY_PENDING"));
-		mockMvc.perform(post("/api/v1/trips/{tripId}/settlements", tripId).with(authUser(insertUser("모르는 사람")))
-						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"expectedExpenseVersion\":0}"))
-				.andExpect(status().isNotFound());
-	}
-
-	@Test
 	void documentsExpenseApis() throws Exception {
 		JsonNode docs = jsonMapper.readTree(mockMvc.perform(get("/v3/api-docs"))
 				.andExpect(status().isOk())
@@ -423,7 +410,7 @@ class ExpenseApiTest {
 				.andExpect(jsonPath("$.paths['/api/v1/trips/{tripId}/expenses/{expenseId}'].patch.responses['403']").exists())
 				.andExpect(jsonPath("$.paths['/api/v1/trips/{tripId}/settlement'].get").exists())
 				.andExpect(jsonPath("$.paths['/api/v1/trips/{tripId}/settlements'].post.responses['409'].description")
-						.value(containsString("SETTLEMENT_POLICY_PENDING")))
+						.value(containsString("VERSION_CONFLICT")))
 				.andReturn().getResponse().getContentAsString());
 
 		assertThat(docs.get("components").get("schemas").get("UpdateExpenseRequest").get("properties").propertyNames())

@@ -44,6 +44,9 @@ public class Trip {
 
 	private long expenseVersion;
 
+	// 현재 정산 계산. 새로 계산할 때마다 바꾼다. 여행 정보 version과는 상관없다
+	private UUID currentSettlementId;
+
 	private Instant createdAt;
 
 	private Instant updatedAt;
@@ -92,6 +95,11 @@ public class Trip {
 	// 경비 등록·수정·삭제마다 올린다(ERD 불변식 5). 여행 정보 version과는 따로 움직여 서로 충돌을 만들지 않는다
 	public void increaseExpenseVersion() {
 		this.expenseVersion++;
+	}
+
+	// 정산 계산과 같은 트랜잭션에서 바꾼다. 이전 계산은 지우지 않고 이전 계산 목록에 남는다
+	public void replaceCurrentSettlement(UUID settlementId) {
+		this.currentSettlementId = settlementId;
 	}
 
 }
