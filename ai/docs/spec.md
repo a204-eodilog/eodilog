@@ -1,19 +1,20 @@
 ---
 title: "어디로그 AI 서버 API 스펙"
 status: draft
-version: "0.3"
+version: "0.4"
 created: 2026-10-27
-updated: 2026-10-27
+updated: 2026-11-02
 jira: EODI-76
-parent: EODI-68
+parent: EODI-141
 sources:
   - "docs/api-spec.md (dev, 설계 제안 v0.4) — 최우선: 백엔드 계약에 맞춘다"
   - "docs/erd.dbml (dev)"
+  - "EodiLog/docs/plan/jobs-foundation.md (dev)"
   - "docs/design/open-decisions-2026-10-27.md (dev)"
   - "프론트 화면 설계 (eodilog-figma-import)"
 ---
 
-# 어디로그 AI 서버 API 스펙 v0.3
+# 어디로그 AI 서버 API 스펙 v0.4
 
 > 백엔드 작업 큐(worker)가 호출하는 **내부 API**다. 응답 `data`는 백엔드 [`api-spec.md`](../../docs/api-spec.md) §10 "비동기 작업 kind별 result"의 모양 그대로이므로 백엔드는 변환 없이 `jobs.result_json`에 저장할 수 있다.
 > 기준 우선순위: **백엔드 API 명세(dev) → 화면 설계 → PRD.** 스펙과 코드가 다르면 스펙을 먼저 고친다.
@@ -49,7 +50,7 @@ sources:
 - 인증: `X-Internal-Token` 헤더 = 환경변수 `INTERNAL_API_TOKEN`(비어 있으면 로컬 개발로 검사 안 함).
 - ID는 문자열(백엔드 UUID). 날짜시각 ISO 8601 UTC, 날짜 `YYYY-MM-DD`, 일정 시각 `HH:MM`(Asia/Seoul).
 - 성공: `200 {"data": ...}`.
-- 실패: `{"error":{"code":"...","message":"...","fields":[],"traceId":"..."}}`. `traceId`는 요청 헤더 `X-Request-Id`, 없으면 서버가 만든다.
+- 실패: `{"error":{"code":"...","message":"...","fields":[],"traceId":"..."}}`. `traceId`는 요청 헤더 `X-Trace-Id`(백엔드 공통 헤더), 없으면 서버가 만든다. `JobHandler`는 이 값에 `jobId`를 넣는다.
 
 | HTTP | code | 언제 |
 | --- | --- | --- |
@@ -62,7 +63,19 @@ sources:
 | 503 | `PROVIDER_UNAVAILABLE` | LLM(GMS)·장소 검색·경로 공급자 장애. "결과 없음"과 구분 |
 | 500 | `INTERNAL_ERROR` | 예상하지 못한 오류 |
 
-백엔드 worker는 2xx면 `data`를 `result`로 저장하고 `SUCCEEDED`, 4xx면 `FAILED`(재시도 안 함), 503·500이면 재시도 정책에 따른다.
+### 1.0 백엔드 `jobs`와의 연결
+
+백엔드 `JobHandler.execute`가 AI를 호출하고, 응답을 아래처럼 `JobOutcome`으로 바꾼다. 예외를 던지면 재시도 없이 실패하므로 HTTP 오류는 예외로 던지지 말고 값으로 돌려준다.
+
+| AI 응답 | `JobOutcome` | 재시도 |
+| --- | --- | --- |
+| 2xx | `succeeded(data)` (`{data}` 봉투를 벗긴 객체) | - |
+| 503, 500, 연결 실패, 호출 타임아웃 | `failed(TEMPORARY_FAILURE)` | 최초 포함 3회, 간격 30초 |
+| 4xx | `failed(EXECUTION_FAILED)` | 없음 |
+
+- **사용자에게 사유를 보여 줄 오류는 작업 등록 전에 백엔드가 검사한다.** `jobs.error_code`에는 공통 값 4개만 저장되므로 AI의 `INSUFFICIENT_DATA` 같은 코드는 사용자에게 전달되지 않는다. 기간·장소 없음(S23), 날씨 대안 `INFO`, 입력 개수·형식은 `validate`·도메인 검사에서 동기로 거부한다. AI 쪽 4xx는 이를 통과한 잘못된 입력을 막는 마지막 방어선이다.
+- **시간 예산:** 백엔드 worker 제한은 60초다. `JobHandler`의 AI 호출 타임아웃은 50초, AI 서버는 요청 하나를 45초 안에 끝내거나 503을 돌려준다.
+- **재실행:** `jobs`는 at-least-once라 같은 `jobId`로 다시 호출될 수 있다. AI 서버는 저장하는 것이 없으므로 그대로 다시 처리한다. 결과가 달라질 수 있어도(`groupId`·`alternativeId` 포함) 백엔드는 완료된 결과 하나만 저장한다.
 
 ### 1.1 공통 입력 모델 (백엔드 DTO + AI가 더 필요로 하는 선택 필드)
 
@@ -379,7 +392,12 @@ sources:
 | 3 | 날씨 대안 후보(`alternativePool`)와 영업 정보 전달 | 같은 이유 |
 | 4 | `RecommendationResult`에 멤버별 취향 일치(화면 S21 `세 바다` 칩)와 "○○의 취향으로" 구분 필드 추가 검토 | 지금 DTO에는 `reason` 문장뿐 |
 | 5 | `follow-suggestions` 응답에 취향 태그 칩(S44) 필드 추가 검토 | 지금은 `reason`에 문장으로 넣음 |
-| 6 | AI 서버 호출 타임아웃 30초 이상, `X-Internal-Token`, `X-Request-Id` 전달 | 추출·추천은 LLM 때문에 3~6초 |
+| 6 | AI 호출 타임아웃 50초, `X-Internal-Token`, `X-Trace-Id`(`jobId`) 전달 | §1.0 시간 예산 |
+| 7 | AI kind별 `JobHandler`·`JobAccessPolicy` 담당 지정, 응답을 §1.0대로 변환 | `jobs` 문서상 실행기는 기능 담당 몫인데 AI 연동 담당이 미정이다 |
+| 8 | §1.0의 사전 검사를 작업 등록 전에 수행 | 공통 오류 코드 4개로는 사유를 화면에 보여 줄 수 없다 |
+| 9 | `regions`의 코드 체계(Q-8)·시드 시점과 좌표 제공 범위 공유 | 현재 운영 자료가 없고 좌표는 NULL 가능. 추천·코스가 사용 |
+| 10 | S21 "모은 장소" 수를 `basis`에 추가할지 결정(예: `savedPlaceCount`) | 디자인 결정의 숫자 칸 3개 중 지금 `basis`에 없는 값 |
+| 11 | 이동 시간 공급자를 카카오로 통일할지 결정 | AI 변경안의 구간 시간과 백엔드 `ROUTE_RECALCULATION`이 같은 값을 내야 한다 |
 
 ## 12. 임시 가정
 
@@ -393,6 +411,7 @@ sources:
 | AS-6 | 날씨: 비 기준 0.6, 도보 대안 1.2km |
 | AS-7 | 사진: 주제 4종, 유사 0.94, 방문 판정 300m |
 | AS-8 | 모델: GMS `gpt-5.6-luna`, 사진 SigLIP2 `ViT-B-32-SigLIP2-256` |
+| AS-9 | 시간 예산: AI 요청 45초, 백엔드 호출 50초, worker 60초 |
 
 ## 13. 변경 이력
 
@@ -401,3 +420,4 @@ sources:
 | 0.1 | PRD v0.4 기준 초안 |
 | 0.2 | 화면 설계 기준 개편 |
 | 0.3 | **백엔드 API 명세(dev v0.4)에 맞춤.** 응답을 `{data}`/`{error}`와 job kind별 result 모양으로, camelCase, 동기 처리(작업 관리는 백엔드), 날씨 요약·날씨 조회 제거, 코스 재조정(`PLACE_REMOVED`·`WEATHER`)·방문 판정 추가, 구간별 수단, 캡처 10장·사진 50장·HEIC, 준비물 삭제 항목 재제안 금지, 강수확률 0~1 |
+| 0.4 | **백엔드 `jobs` 기반(EODI-135)에 맞춤.** 추적 헤더를 `X-Trace-Id`로 변경, 응답→`JobOutcome` 변환표, 사전 검사 위치, 시간 예산, 재실행 동작 추가. 백엔드 요청 7~11 추가 |
