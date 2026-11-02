@@ -39,7 +39,7 @@ public class BearerFilter extends OncePerRequestFilter {
             } catch(BusinessException e) { SecurityContextHolder.clearContext(); errors.write(response,e.getErrorCode()); return; }
             catch(RuntimeException e) {
                 SecurityContextHolder.clearContext();
-                log.error("API failure traceId={} code=INTERNAL_ERROR exceptionType={}",TraceIdFilter.currentTraceId(),e.getClass().getName());
+                log.error("API failure traceId={} code=INTERNAL_ERROR diagnostics={}",TraceIdFilter.currentTraceId(),ExceptionDiagnostics.summarize(e));
                 errors.write(response,CommonErrorCode.INTERNAL_ERROR);
                 return;
             }
