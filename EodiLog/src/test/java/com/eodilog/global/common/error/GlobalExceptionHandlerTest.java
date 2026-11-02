@@ -45,13 +45,13 @@ import org.springframework.web.bind.annotation.RestController;
 class GlobalExceptionHandlerTest {
 	@Test
 	@org.junit.jupiter.api.extension.ExtendWith(org.springframework.boot.test.system.OutputCaptureExtension.class)
-	void logsOnlyFirstFrameAndUsesUnknownForEmptyStack(org.springframework.boot.test.system.CapturedOutput output) {
+	void logsLimitedFramesAndCauseTypesWithoutMessages(org.springframework.boot.test.system.CapturedOutput output) {
 		var handler = new GlobalExceptionHandler();
 		var business = new BusinessException(CommonErrorCode.INTERNAL_ERROR, "private-business-message");
 		var unexpected = new IllegalStateException("private-exception-message", new RuntimeException("private-cause"));
 		var mvc = new IllegalStateException("private-mvc-message");
 		var frames = new StackTraceElement[] {
-				new StackTraceElement("safe.Origin", "execute", "Origin.java", 42),
+				new StackTraceElement("com.eodilog.safe.Origin", "execute", "Origin.java", 42),
 				new StackTraceElement("private.SecondFrame", "hidden", "Hidden.java", 99)
 		};
 		business.setStackTrace(frames);
@@ -63,11 +63,11 @@ class GlobalExceptionHandlerTest {
 				HttpStatus.INTERNAL_SERVER_ERROR, new org.springframework.web.context.request.ServletWebRequest(
 						new org.springframework.mock.web.MockHttpServletRequest()));
 		assertThat(output.getAll()).contains("Business failure", "API failure", "MVC failure",
-				"location=safe.Origin.execute:42").doesNotContain("private-business-message",
+				"com.eodilog.safe.Origin.execute:42", "causedBy=java.lang.RuntimeException").doesNotContain("private-business-message",
 				"private-exception-message", "private-cause", "private-mvc-message", "private.SecondFrame");
 		unexpected.setStackTrace(new StackTraceElement[0]);
 		handler.handleUnexpected(unexpected);
-		assertThat(output.getAll()).contains("location=unknown");
+		assertThat(output.getAll()).contains("java.lang.IllegalStateException[unknown]");
 	}
 
 	@Autowired

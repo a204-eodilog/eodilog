@@ -46,7 +46,7 @@ class BearerFilterTest {
         assertThat(body.get("code").asText()).isEqualTo("INTERNAL_ERROR");
         assertThat(body.get("fields").isArray()).isTrue();
         String traceId=body.get("traceId").asText(); assertThat(traceId).matches("[0-9a-f]{32}"); assertThat(response.getHeader("X-Trace-Id")).isEqualTo(traceId);
-        assertThat(output.getAll()).contains("traceId="+traceId,"code=INTERNAL_ERROR","exceptionType=org.springframework.dao.DataAccessResourceFailureException");
+        assertThat(output.getAll()).contains("traceId="+traceId,"code=INTERNAL_ERROR","diagnostics=org.springframework.dao.DataAccessResourceFailureException[");
         assertThat(response.getContentAsString()).doesNotContain("secret-token-private-PII","DataAccessResourceFailureException");
         assertThat(output.getAll()).doesNotContain("secret-token-private-PII");
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();

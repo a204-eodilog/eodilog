@@ -458,7 +458,7 @@ class AuthIntegrationTest {
             .andExpect(status().isInternalServerError()).andExpect(jsonPath("$.error.code").value("INTERNAL_ERROR")).andExpect(jsonPath("$.error.traceId").isNotEmpty()).andExpect(jsonPath("$.error.fields").isArray()).andReturn();
         assertThat(result.getResponse().getContentAsString()).doesNotContain("private-token-and-PII-must-not-leak","IllegalStateException");
         String traceId=mapper.readTree(result.getResponse().getContentAsString()).at("/error/traceId").asText();
-        assertThat(output.getOut()).contains("traceId="+traceId,"code=INTERNAL_ERROR","exceptionType=java.lang.IllegalStateException");
+        assertThat(output.getOut()).contains("traceId="+traceId,"code=INTERNAL_ERROR","diagnostics=java.lang.IllegalStateException[");
         assertThat(output.getOut()).doesNotContain("private-token-and-PII-must-not-leak");
     }
 }
