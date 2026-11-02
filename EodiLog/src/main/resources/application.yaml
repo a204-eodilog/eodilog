@@ -19,6 +19,8 @@ spring:
       fail-on-unknown-properties: true
 
 app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:}
   auth:
     kakao-client-id: ${KAKAO_CLIENT_ID}
     kakao-client-secret: ${KAKAO_CLIENT_SECRET}
