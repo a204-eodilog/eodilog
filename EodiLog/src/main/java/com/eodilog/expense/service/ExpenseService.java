@@ -96,15 +96,19 @@ public class ExpenseService {
 	}
 
 	// 등록자는 요청자의 멤버십이다. Idempotency-Key 재시도에도 경비를 한 번만 만든다(명세 §2)
+	// 저장된 응답을 다시 줄 때도 지금 ACTIVE 멤버여야 하므로 권한 검사를 멱등 처리보다 먼저 한다
+	// 경비 등록은 항상 여행 행 잠금 → 멱등 기록 순서로 잡아 서로 다른 순서로 기다리는 교착을 만들지 않는다
 	@Transactional
 	public ExpenseResponse createExpense(UUID userId, UUID tripId, String idempotencyKey, CreateExpenseRequest request) {
 		NewExpense newExpense = validateCreate(request);
+		idempotencyService.validateKey(idempotencyKey);
+		TripAccess access = tripAccessChecker.requireActiveMemberForUpdate(tripId, userId);
 		return idempotencyService.execute(userId, "POST /api/v1/trips/" + tripId + "/expenses", idempotencyKey,
-				request, ExpenseResponse.class, HttpStatus.CREATED, () -> create(userId, tripId, newExpense));
+				request, ExpenseResponse.class, HttpStatus.CREATED, () -> create(access, newExpense));
 	}
 
-	private ExpenseResponse create(UUID userId, UUID tripId, NewExpense newExpense) {
-		TripAccess access = tripAccessChecker.requireActiveMemberForUpdate(tripId, userId);
+	private ExpenseResponse create(TripAccess access, NewExpense newExpense) {
+		UUID tripId = access.trip().getId();
 		Map<UUID, TripMember> members = membersById(tripId);
 		List<ErrorField> errors = new ArrayList<>();
 		requireActiveMember(members, newExpense.payerMemberId(), "payerMemberId", errors);

@@ -89,7 +89,8 @@ public class IdempotencyService {
 		return jsonMapper.readValue(record.responseJson(), responseType);
 	}
 
-	private void validateKey(String idempotencyKey) {
+	// execute 안에서도 검사한다. 호출 측이 권한 검사보다 먼저 키 형식 400을 내야 할 때 따로 부른다(명세 §2 입력 오류 우선)
+	public void validateKey(String idempotencyKey) {
 		if (idempotencyKey == null || idempotencyKey.isBlank() || idempotencyKey.length() > MAX_KEY_LENGTH) {
 			throw new BusinessException(CommonErrorCode.VALIDATION_ERROR, CommonErrorCode.VALIDATION_ERROR.message(),
 					List.of(new ErrorField(HEADER_NAME, "1~" + MAX_KEY_LENGTH + "자의 요청 키가 필요합니다.")));
