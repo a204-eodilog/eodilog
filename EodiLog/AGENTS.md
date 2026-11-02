@@ -35,7 +35,7 @@ cd EodiLog
 - `dev-up` 대신 직접 띄울 때는 `.\gradlew.bat bootRun --args="--spring.profiles.active=local"`을 쓴다. `local` 프로필이 `.env`를 읽는다. 자세한 실행·카카오 로그인 점검은 [로컬 실행 문서](docs/plan/local-development.md)를 본다.
 - 커버리지 리포트는 `build/reports/jacoco/test/html/index.html`에 생긴다([커버리지 문서](docs/plan/backend-test-coverage.md)).
 - compose 없이 다른 DB에 붙일 때는 `SPRING_DATASOURCE_URL`·`SPRING_DATASOURCE_USERNAME`·`SPRING_DATASOURCE_PASSWORD` 환경 변수를 쓴다. `application*.yaml`에 접속 정보를 적지 않는다.
-- 테스트는 실제 `.env` 없이 돈다. `src/test/resources/application.yaml`이 본 `application.yaml`을 **대신**하므로, 본 설정에 값을 추가하면 테스트 설정에도 필요한지 확인한다.
+- 테스트는 실제 `.env` 없이 돈다. Gradle test는 `test` 프로필을 적용하며 `application-test.yaml`의 가짜 인증 값만 본 설정에 덮어쓴다. JPA·Flyway·Jackson·로그·토큰 수명은 본 설정을 상속한다. IDE 직접 실행은 `-Dspring.profiles.active=test`를 지정한다([테스트 프로필](docs/plan/test-profile.md)).
 
 ## DB·마이그레이션
 
