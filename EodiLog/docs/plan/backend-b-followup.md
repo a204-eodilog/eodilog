@@ -1,6 +1,6 @@
-# 백엔드 B 후속 작업 — 준비물 체크리스트·멤버 관리·경비·초대·정산·채팅
+# 백엔드 B 후속 작업 — 준비물 체크리스트·멤버 관리·경비·초대·정산·채팅·나가기
 
-작성일: 2026-10-29 · 상태: 체크리스트·멤버 관리 병합 완료(MR !49·!50), 경비·정산 상태 병합 완료(MR !56, 2026-10-30), 초대 링크 병합 완료(MR !58·!62), 정산 계산 병합 완료(MR !69), 채팅 REST 구현(EODI-136)
+작성일: 2026-10-29 · 상태: 체크리스트·멤버 관리 병합 완료(MR !49·!50), 경비·정산 상태 병합 완료(MR !56, 2026-10-30), 초대 링크 병합 완료(MR !58·!62), 정산 계산 병합 완료(MR !69), 채팅 REST 병합 완료(MR !71), 기본 나가기 구현(EODI-140)
 
 [B 첫 작업](backend-b-trip-basic.md)(여행 생성·조회·수정)이 끝난 뒤 A의 카카오 로그인을 기다리는 동안 진행한 B 작업이다. [분담안](../../../docs/plan/backend-first-work-split.md) §6은 이 기능들을 "첫 통합 뒤 배분"으로 두었지만, 로그인 없이 개발할 수 있고 여행 패키지 안에서 끝나는 것부터 B가 먼저 맡았다. A와 겹치는 파일(`user`·`auth` 패키지, `SecurityConfig`)은 건드리지 않는다.
 
@@ -15,7 +15,8 @@
 | 초대 링크 | `POST /trips/{tripId}/invitations`, `GET /invitations/{token}`(공개), `POST /invitations/{token}/accept` | EODI-125, -128 | 병합(MR !58·!62, §9) |
 | 경비·정산 상태 | `GET/POST /trips/{tripId}/expenses`, `PATCH/DELETE /trips/{tripId}/expenses/{expenseId}`, `GET /trips/{tripId}/settlement`, `POST /trips/{tripId}/settlements`(409) | EODI-122 | 병합(MR !56, §8) |
 | 정산 계산 | `POST /trips/{tripId}/settlements`, `GET /trips/{tripId}/settlements`, `GET /trips/{tripId}/settlements/{settlementId}`, `GET /trips/{tripId}/settlement` | EODI-134 | 병합(MR !69, §10) |
-| 채팅 REST | `GET /chat/rooms`, `GET /trips/{tripId}/chat-room`, `GET/POST /chat/rooms/{roomId}/messages` | EODI-136 | 구현(§12) |
+| 채팅 REST | `GET /chat/rooms`, `GET /trips/{tripId}/chat-room`, `GET/POST /chat/rooms/{roomId}/messages` | EODI-136 | 병합(MR !71, §12) |
+| 기본 나가기 | `POST /trips/{tripId}/leave` | EODI-140 | 구현(§11) |
 
 검증은 B 첫 작업과 같이 테스트에서 `AuthUser` principal을 넣어 했다. A 로그인 병합 뒤 실제 카카오 계정 2개로 여행 API 통합 검증(B-7)을 마쳤다([계약 §8](backend-a-b-contract.md)).
 
@@ -59,7 +60,7 @@ AI 준비물 제안(`POST /trips/{tripId}/checklist-suggestions`)은 `jobs`, 날
 | M-10 | 멤버 목록 | 기본 ACTIVE만 참여 순. `includeInactive=true`면 LEFT·REMOVED 포함. 조회는 ACTIVE 멤버만 | 명세 "정산에 남는 이탈 멤버는 별도 includeInactive" |
 | M-11 | "방장은 같은 여행 ACTIVE 멤버" 불변식 | 서비스에서 보장하고 복합 FK는 두지 않는다 | `(trip_id, owner_user_id) → trip_members(trip_id, user_id)` FK로는 멤버 여부만 막고 ACTIVE 상태는 막지 못한다. 여행을 방장 멤버십보다 먼저 넣으므로 지연 제약(`DEFERRABLE`)까지 필요해 얻는 것에 비해 복잡하다. 대신 양도·내보내기를 여행 행 잠금 안에서 처리하고 방장은 내보낼 수 없게 막는다. 나가기도 같은 방식으로 만든다 |
 
-채팅 참여 해제는 `chat.service.ChatParticipationService.leaveTripRoom`으로 했다. 나가기(`POST /trips/{tripId}/leave`)도 이 메서드를 쓰면 된다. 이 메서드는 멤버의 채팅 참여 행이 있다고 가정하고, 없으면 자료 오류로 500을 낸다. 지금은 여행 생성(방장)만 멤버를 만들므로 문제가 없지만, **초대 수락을 만들 때 채팅 참여 행 생성(재참여면 `left_at` 해제)을 같은 트랜잭션에 넣어야 한다.**
+채팅 참여 해제는 `chat.service.ChatParticipationService.leaveTripRoom`으로 한다. 내보내기와 나가기(`POST /trips/{tripId}/leave`, §11)가 이 메서드를 쓴다. 이 메서드는 멤버의 채팅 참여 행이 있다고 가정하고 없으면 자료 오류로 500을 낸다. 여행 생성(방장)과 초대 수락(`joinTripRoom`, 재참여면 같은 행의 `left_at`을 지움)이 참여 행을 만들므로 ACTIVE 멤버에게는 항상 행이 있다.
 
 ## 5. 명세 반영
 
@@ -102,7 +103,7 @@ AI 준비물 제안(`POST /trips/{tripId}/checklist-suggestions`)은 `jobs`, 날
 
 | 기능 | 막힌 점 |
 | --- | --- |
-| 나가기 | 1단계 응답 계약 확정(§11). 채팅 REST 다음에 구현 |
+| 나가기 2단계 | 사진·메시지 삭제 옵션과 혼자 남은 방장의 여행 삭제. 사진 기능과 `jobs` 정리 작업(LEAVE_CLEANUP·TRIP_DELETE), Q-11 삭제 범위가 필요 |
 
 ## 8. 경비·정산 정책
 
@@ -160,7 +161,7 @@ Q-10은 2026-11-02에 확정됐다([A 답변](to-B-backend-decisions-2026-11-02.
 
 ## 11. 나가기 1단계 계약
 
-A 답변(11/02) §5에 따라 사진·메시지를 남기는 **기본 나가기부터** 한다. A가 요청한 "기본 나가기 성공 응답과 미지원 요청 응답"을 2026-11-02에 아래처럼 확정했다(구현은 채팅 REST 다음).
+A 답변(11/02) §5에 따라 사진·메시지를 남기는 **기본 나가기부터** 한다. A가 요청한 "기본 나가기 성공 응답과 미지원 요청 응답"을 2026-11-02에 아래처럼 확정하고 EODI-140에서 구현했다(`TripMemberService.leave`).
 
 | # | 질문 | 결정 | 근거 |
 | --- | --- | --- | --- |
@@ -170,6 +171,8 @@ A 답변(11/02) §5에 따라 사진·메시지를 남기는 **기본 나가기�
 | L-4 | 혼자 남은 방장 | 여행 삭제 기능 전에는 **409 `TRIP_DELETION_PENDING`**. 멤버십·여행 상태를 바꾸지 않는다 | A 답변 §5. 정책 전 차단 409 선례(`FEED_REPUBLICATION_PENDING`) |
 | L-5 | 버전 | `expectedVersion`은 여행 version. 다르면 409 `VERSION_CONFLICT`, 성공하면 members가 바뀌므로 version 1 증가 | 명세 §4 "이탈도 같은 version", M-2 |
 | L-6 | 판정 순서 | 입력 400(누락·삭제 옵션 true) → 여행 행 잠금 후 ACTIVE 멤버 404 → version 409 → 혼자 남은 방장 409 → 처리 | M-3과 같은 순서 |
+
+구현 메모: 방장이 나가면 `transferOwner`로, 아니면 `markMembersChanged`로 version을 한 번만 올린다. 같은 version으로 두 사람이 동시에 나가면 여행 행 잠금 때문에 한 명만 성공하고 다른 한 명은 409다.
 
 프론트에 전달할 것: 성공은 200(나중에 삭제 옵션 요청은 202), 멱등키 대상이 아니라 성공 뒤 재시도는 404이므로 "이미 나감"으로 처리, 나간 사람이 만든 초대 링크는 410이 되므로 남은 멤버가 새로 발급, 새 방장은 멤버 목록의 joinOrder로 미리 표시.
 

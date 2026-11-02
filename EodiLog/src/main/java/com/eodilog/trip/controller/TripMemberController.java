@@ -3,6 +3,8 @@ package com.eodilog.trip.controller;
 import com.eodilog.global.common.error.ErrorResponse;
 import com.eodilog.global.common.response.DataResponse;
 import com.eodilog.global.security.AuthUser;
+import com.eodilog.trip.dto.LeaveTripRequest;
+import com.eodilog.trip.dto.LeaveTripResponse;
 import com.eodilog.trip.dto.OwnerTransferRequest;
 import com.eodilog.trip.dto.TripMembersResponse;
 import com.eodilog.trip.dto.TripResponse;
@@ -72,6 +74,28 @@ public class TripMemberController {
 			@RequestBody OwnerTransferRequest request) {
 		TripResponse trip = tripMemberService.transferOwner(CurrentUser.requireUserId(authUser), tripId, request);
 		return ResponseEntity.ok(DataResponse.of(trip));
+	}
+
+	@Operation(summary = "여행 나가기", description = """
+			ACTIVE 멤버가 스스로 여행에서 나간다(1단계: 기본 나가기). 경비·사진·메시지는 남고, 멤버십은 LEFT가 되며 그룹 채팅 참여도 끝난다.
+			방장이 나가면 남은 동행 중 참여 순이 가장 빠른 사람이 방장이 되고 newOwnerMemberId로 알려 준다.
+			사진·메시지 삭제 옵션은 삭제 기능 전이라 false만 받으며 true면 400이다. 혼자 남은 방장은 여행 삭제 기능 전이라 409로 막는다.
+			expectedVersion은 여행 version이며 다르면 409, 성공하면 version이 하나 오른다. 정리 작업이 없어 cleanupJobId는 null이다.
+			멱등키 대상이 아니라서 성공 뒤 같은 요청을 다시 보내면 이미 멤버가 아니므로 404다.""")
+	@ApiResponse(responseCode = "200", description = "나가기 성공")
+	@ApiResponse(responseCode = "404", description = "TRIP_NOT_FOUND: 없거나 볼 수 없는(이미 나간) 여행",
+			content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+	@ApiResponse(responseCode = "409",
+			description = "VERSION_CONFLICT: 여행이 그 사이 바뀜 / TRIP_DELETION_PENDING: 혼자 남은 방장(여행 삭제 기능 전)",
+			content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+	@PostMapping("/leave")
+	public ResponseEntity<DataResponse<LeaveTripResponse>> leave(
+			@Parameter(hidden = true) @AuthenticationPrincipal AuthUser authUser,
+			@Parameter(description = "여행 ID(UUID)", example = "0193c2a1-7e2b-7c4d-9a1e-2f3b4c5d6e70")
+			@PathVariable UUID tripId,
+			@RequestBody LeaveTripRequest request) {
+		LeaveTripResponse result = tripMemberService.leave(CurrentUser.requireUserId(authUser), tripId, request);
+		return ResponseEntity.ok(DataResponse.of(result));
 	}
 
 	@Operation(summary = "동행 내보내기", description = """

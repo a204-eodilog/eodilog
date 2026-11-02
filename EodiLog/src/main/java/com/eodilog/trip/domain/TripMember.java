@@ -56,6 +56,12 @@ public class TripMember {
 		this.leftAt = now;
 	}
 
+	// 스스로 나간다. 내보내기(REMOVED)와 구분하며, 행은 남겨 경비·정산에서 과거 멤버로 보인다
+	public void leave(Instant now) {
+		this.status = TripMemberStatus.LEFT;
+		this.leftAt = now;
+	}
+
 	// 나간·내보낸 멤버가 초대로 돌아오면 멤버십 ID는 유지하고 참여 순번을 새로 받는다(ERD trip_members 노트)
 	public void rejoin(long joinOrder, Instant now) {
 		this.status = TripMemberStatus.ACTIVE;
