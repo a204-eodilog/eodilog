@@ -47,6 +47,8 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
+	// 본 application.yaml을 읽고 테스트 전용 인증 값만 덮어쓴다.
+	systemProperty 'spring.profiles.active', 'test'
 	finalizedBy tasks.named('jacocoTestReport')
 	// 실패 원인을 보고서가 덮어써져도 콘솔에서 볼 수 있게 남긴다
 	testLogging {

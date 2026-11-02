@@ -1,0 +1,9 @@
+# JPA·Flyway·Jackson·로그 설정은 src/main/resources/application.yaml에서 상속한다.
+# 실제 .env나 공급자 자격 증명 없이 테스트할 수 있는 인증 값만 덮어쓴다.
+app:
+  auth:
+    kakao-client-id: test-client
+    kakao-client-secret: test-secret
+    allowed-redirects: https://app.example.com/oauth/kakao
+    jwt-secret: test-only-key-at-least-thirty-two-bytes-long
+    issuer: eodilog-test
