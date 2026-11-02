@@ -1,6 +1,6 @@
 # [BE] A → B 장소·지역 계약안 — 카카오 로컬 (2026-11-02)
 
-상태: **B 전 항목 동의(2026-11-02) / A가 B 세부 제안 전부 수용**. B 답변은 [B → A 답변](to-A-places-regions-reply-2026-11-02.md), A의 최종 회신은 [A → B 회신](to-B-places-regions-final-2026-11-02.md)에 있다. 2a는 [EODI-159](https://jira.example.com/browse/EODI-159)로 진행한다(§7 끝의 구현 결과 참고). 나머지 작업은 아직 구현하지 않았다.
+상태: **B 전 항목 동의(2026-11-02) / A가 B 세부 제안 전부 수용**. B 답변은 [B → A 답변](to-A-places-regions-reply-2026-11-02.md), A의 최종 회신은 [A → B 회신](to-B-places-regions-final-2026-11-02.md)에 있다. 2a는 [EODI-159](https://jira.example.com/browse/EODI-159), 지역 기반은 EODI-160으로 구현했다(§7 및 문서 끝 구현 결과 참고). 2b·즐겨찾기·여행별 장소 저장은 아직 구현하지 않았다.
 
 기준: [다음 분담안 A-2·B-4](backend-next-work-split-2026-11-02.md), [API 명세](../../../docs/api-spec.md) §5·DTO(Region·RegionDetail·Place·Bookmark·SavedPlace), [ERD](../../../docs/erd.dbml) `regions`·`places`·`trip_place_saves`, 기존 결정 D-6(공급자 ID 우선 식별).
 
@@ -144,3 +144,10 @@ public interface RegionReader {
 | 5. 테스트 지역 코드는 시드와 겹치지 않게 | B 동의 |
 | B 세부 제안(2a 분리, Reader record 반환, 검색 범위·커서·갱신, RegionDetail 고정값, 테스트용 가짜 구현·설정) | A 전부 수용 |
 | 여행지 선택 단계 | 시·도와 시·군·구 모두 허용 |
+
+지역 구현 결과(EODI-160):
+
+- 공유 DTO `region.dto.RegionView`, 내부 조회 `region.service.RegionReader`(find/findAll), 법정동 매핑 `region.service.RegionCodeResolver.resolve(String)`를 사용한다. 좌표는 nullable BigDecimal, ID/parentId는 UUID다.
+- 검색·상세 `/api/v1/regions`, `/api/v1/regions/{regionId}`는 로그인·가입 완료가 필요하다. 검색은 공식 전체 이름 부분 일치, query 필수, code ASC/id ASC 전용 query-bound 커서다.
+- 시드 `V202611021500__seed_regions.sql`: 공식 현재 존재 최상위16(세종3611000000 포함)+하위229=245개, 일반구39별칭. 원본 기준이므로 과거17시도/폐지코드를 합성하지 않는다. 신규 좌표null, 기존 code의 ID/이름/좌표/FK 보존 및 공식 parent_id 보정. 직접 매핑은 공식 region_code_targets230개(시군구229+세종), 일반구는 alias39개를 우선 사용하므로 남아 있는 폐지/일반구 행이 매핑을 덮어쓰지 않는다.
+- 상세 구현·시드 재생성·현행 시군구 스냅샷 한계는 [지역 기반 구현](regions-foundation.md)을 따른다. 원본 ZIP 시각은 법적 시행일이 아니다. 개별 읍면동의 존폐 검증은 제공하지 않는다.
