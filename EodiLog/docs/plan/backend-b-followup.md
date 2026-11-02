@@ -1,6 +1,6 @@
-# 백엔드 B 후속 작업 — 준비물 체크리스트·멤버 관리·경비·초대
+# 백엔드 B 후속 작업 — 준비물 체크리스트·멤버 관리·경비·초대·정산
 
-작성일: 2026-10-29 · 상태: 체크리스트·멤버 관리 병합 완료(MR !49·!50), 경비·정산 상태 병합 완료(MR !56, 2026-10-30), 초대 링크 병합 완료(MR !58·!62)
+작성일: 2026-10-29 · 상태: 체크리스트·멤버 관리 병합 완료(MR !49·!50), 경비·정산 상태 병합 완료(MR !56, 2026-10-30), 초대 링크 병합 완료(MR !58·!62), 정산 계산 구현(EODI-134)
 
 [B 첫 작업](backend-b-trip-basic.md)(여행 생성·조회·수정)이 끝난 뒤 A의 카카오 로그인을 기다리는 동안 진행한 B 작업이다. [분담안](../../../docs/plan/backend-first-work-split.md) §6은 이 기능들을 "첫 통합 뒤 배분"으로 두었지만, 로그인 없이 개발할 수 있고 여행 패키지 안에서 끝나는 것부터 B가 먼저 맡았다. A와 겹치는 파일(`user`·`auth` 패키지, `SecurityConfig`)은 건드리지 않는다.
 
@@ -14,6 +14,7 @@
 | 멤버 관리 | `GET /trips/{tripId}/members`, `POST /trips/{tripId}/owner-transfer`, `DELETE /trips/{tripId}/members/{memberId}` | EODI-111 | 병합(MR !50) |
 | 초대 링크 | `POST /trips/{tripId}/invitations`, `GET /invitations/{token}`(공개), `POST /invitations/{token}/accept` | EODI-125, -128 | 병합(MR !58·!62, §9) |
 | 경비·정산 상태 | `GET/POST /trips/{tripId}/expenses`, `PATCH/DELETE /trips/{tripId}/expenses/{expenseId}`, `GET /trips/{tripId}/settlement`, `POST /trips/{tripId}/settlements`(409) | EODI-122 | 병합(MR !56, §8) |
+| 정산 계산 | `POST /trips/{tripId}/settlements`, `GET /trips/{tripId}/settlements`, `GET /trips/{tripId}/settlements/{settlementId}`, `GET /trips/{tripId}/settlement` | EODI-134 | 구현(§10) |
 
 검증은 B 첫 작업과 같이 테스트에서 `AuthUser` principal을 넣어 했다. A 로그인 병합 뒤 실제 카카오 계정 2개로 여행 API 통합 검증(B-7)을 마쳤다([계약 §8](backend-a-b-contract.md)).
 
@@ -80,7 +81,7 @@ AI 준비물 제안(`POST /trips/{tripId}/checklist-suggestions`)은 `jobs`, 날
 | `MEMBER_NOT_FOUND` | 404 | 동행 내보내기 |
 | `EXPENSE_NOT_FOUND` | 404 | 경비 수정·삭제 |
 
-`VERSION_CONFLICT`는 도메인별 enum(`TripErrorCode`, `ChecklistErrorCode`, `ExpenseErrorCode`)에 같은 코드 이름으로 둔다. 명세에 이미 있던 `CURRENCY_MISMATCH`·`INVALID_PARTICIPANTS`(422)와 `SETTLEMENT_POLICY_PENDING`(409)은 `ExpenseErrorCode`에 둔다.
+`VERSION_CONFLICT`는 도메인별 enum(`TripErrorCode`, `ChecklistErrorCode`, `ExpenseErrorCode`)에 같은 코드 이름으로 둔다. 명세에 이미 있던 `CURRENCY_MISMATCH`·`INVALID_PARTICIPANTS`(422)와 정산의 `SETTLEMENT_NOT_FOUND`(404)는 `ExpenseErrorCode`에 둔다. Q-10 전 정산 차단용 `SETTLEMENT_POLICY_PENDING`은 정산 계산을 열면서(EODI-134) 없앴다.
 
 ## 6. A에게 알릴 것
 
@@ -100,7 +101,6 @@ AI 준비물 제안(`POST /trips/{tripId}/checklist-suggestions`)은 `jobs`, 날
 
 | 기능 | 막힌 점 |
 | --- | --- |
-| 정산 계산·이전 계산 조회 | Q-10(1인 부담액 10원 올림 시점·차액 귀속) 합의 후 `settlements` 테이블과 함께 |
 | 채팅 메시지 조회·전송(REST) | `messages` 테이블 필요. 실시간 전송은 Q-13 |
 | 나가기 | 일반 이탈·방장 자동 양도는 가능. 자료 삭제 선택과 마지막 방장 이탈(여행 삭제)은 `jobs`·Q-11 필요 |
 
@@ -118,8 +118,8 @@ AI 준비물 제안(`POST /trips/{tripId}/checklist-suggestions`)은 `jobs`, 날
 | E-6 | 버전 | 경비마다 `version`(수정 시 `expectedVersion`), 여행에는 `expense_version`. 등록·수정·삭제마다 여행 행을 잠그고 `expense_version`을 1 올린다. 여행 정보 `version`과는 따로 움직인다 | ERD 불변식 5. 경비 변경이 여행 정보 수정을 409로 만들지 않는다(JPA `@Version`을 쓰지 않은 이유, B 첫 작업 §6) |
 | E-7 | 수정 방식 | 생략 필드 유지, `memo`만 null로 비움. 원금이나 분담자 집합이 바뀌면 분담액을 다시 계산한다. 바뀐 값이 없으면 version·`expense_version` 그대로(P-8) | 명세 ExpensePatch "분담자 변경은 전체 배열 교체" |
 | E-8 | 삭제 방식 | `deleted_at` 논리 삭제, 분담액 행은 남긴다. 목록·수정·재삭제에서 제외(404) | 이전 정산 스냅샷·비용 버전 이력을 깨지 않는다 |
-| E-9 | 정산 상태 조회 | Q-10 전에는 계산을 만들지 않으므로 `current=null`, `recalculationRequired=false`, `currentExpenseVersion`은 여행의 `expense_version` | 명세 "GET은 계산 생성 안 함", "재계산 필요"는 이전 계산이 있을 때만 의미가 있다 |
-| E-10 | 정산 계산 | ACTIVE 멤버 확인 뒤 항상 `409 SETTLEMENT_POLICY_PENDING`. `settlements` 테이블과 이전 계산 목록·상세는 Q-10 합의 후 추가 | 명세 "정책 확정 전 계산 POST는 409 제안" |
+| E-9 | 정산 상태 조회 | `current`는 여행의 현재 계산(`trips.current_settlement_id`), 없으면 null. `recalculationRequired`는 현재 계산이 stale일 때 true. `currentExpenseVersion`은 여행의 `expense_version` | 명세 "GET은 계산 생성 안 함". 세부는 §10 |
+| E-10 | 정산 계산 | Q-10 확정(11/02)으로 409 차단을 풀고 계산을 저장한다. 세부는 §10 | A 답변(`to-B-backend-decisions-2026-11-02.md` §3) |
 | E-11 | 목록 | `createdAt DESC, id DESC` 커서 페이지(기본 20, 최대 100). 여행 목록과 같은 커서(`global.common.response.CreatedAtCursor`)를 쓴다 | 명세 §2 목록 공통 |
 | E-12 | 중복 요청 | 경비 등록은 `Idempotency-Key` 필수. 범위는 실제 요청 경로(`POST /api/v1/trips/{tripId}/expenses`). 판정 순서는 입력 400(키 형식 포함) → 여행 행 잠금 후 ACTIVE 멤버 확인 404 → 멱등 처리. 같은 키 재요청도 지금 ACTIVE 멤버여야 처음 결과를 받는다(이탈·내보내기·여행 삭제 뒤엔 404). 잠금은 항상 여행 행 → 멱등 기록 순서 | 명세 §2 "(사용자, 실제 요청 경로, 키)". 재요청 권한 누락은 A 리뷰(11/02)에서 발견, EODI-133에서 수정 |
 
@@ -141,3 +141,19 @@ Q-4 기본값은 2026-10-30에 정했다(만료 7일, 정원 20명). 나머지�
 | I-10 | 이미 참여 표시 | 미리보기 응답 `alreadyMember`: 로그인한 사람이 그 여행의 ACTIVE 멤버면 true, 익명·비멤버는 false. true면 링크가 만료·무효여도 410 대신 200으로 미리보기를 준다. 앱은 true일 때 [참여하기] 대신 "이미 참여 중"을 보여 주고 수락 API로 여행을 받아 이동한다 | PRD WD-FR-04 검증 "무효/만료/이미 참여 구분", S04 상태 "이미 참여". 미리보기는 여행 ID를 숨기므로 앱이 스스로 판단할 수 없다 |
 
 남은 것: 새 발급 없이 링크만 끊는 취소 API, 참여 알림, 프론트 초대 화면 경로가 정해진 뒤의 `url` 설정.
+
+## 10. 정산 계산 정책
+
+Q-10은 2026-11-02에 확정됐다([A 답변](to-B-backend-decisions-2026-11-02.md) §3). 계산은 `SettlementCalculator`(DB·시간에 의존하지 않는 순수 계산)가 하고, `SettlementService`가 저장·조회한다.
+
+| # | 질문 | 결정 | 근거 |
+| --- | --- | --- | --- |
+| S-1 | 올림 시점 | 저장된 원금 분담액을 사람별로 여행 전체 합산한 뒤 한 번만 10원 단위로 올린다(`owedMinor`). 지출별 올림은 하지 않고 0원은 0원. 이탈자의 과거 결제·분담도 포함 | Q-10 확정 |
+| S-2 | 차액 귀속 | 전체 차액(Σ(owed - base))은 원금 기준 받을 돈(결제 - 원금 부담)이 가장 많은 한 사람의 잔액에 한 번 더한다. 동률은 joinOrder, memberId 순. 모두 0이면 결제 합계가 가장 큰 사람. 경비가 없으면 차액 0, 수령자 없음 | Q-10 확정. 잔액 합 0을 계산마다 확인한다 |
+| S-3 | 송금 제안 | 낼 돈이 큰 사람이 받을 돈이 큰 사람에게 보내도록 큰 금액끼리 짝짓는다. 건수는 멤버 수 - 1 이하, 금액은 다시 올리지 않음. 응답은 금액이 큰 순이며 이 순서를 계산할 때 `display_order`로 저장한다 | 명세 "송금액 재올림 없음". 완료·은행 상태 없음 |
+| S-4 | 계산 요청 판정 순서 | 본문 400(`expectedExpenseVersion` 누락) → 키 형식 400 → 여행 행 잠금 후 ACTIVE 멤버 404 → 멱등 처리 → 비용 버전 다르면 409 `VERSION_CONFLICT`(저장 안 함) | E-12와 같은 순서·잠금 규칙. 같은 키 재요청도 현재 ACTIVE 멤버만 |
+| S-5 | 스냅샷 | 계산할 때의 경비(ID·버전·이름·원금·결제자·분담액)를 `expense_snapshot_json`에 담는다. 이후 경비를 수정·삭제해도 과거 계산은 그대로 | Q-10 "과거 계산 스냅샷을 덮어쓰지 않음" |
+| S-6 | 현재 계산과 stale | 새 계산이 `trips.current_settlement_id`가 된다. 비용 버전이 바뀌었거나 현재 계산이 아니면 `stale=true`. 결과는 바뀌지 않아 `version`은 1 | ERD settlements 노트 |
+| S-7 | 멤버·경비가 없을 때 | `members`는 경비에 결제자·분담자로 나온 멤버만, 계산할 때의 참여 순으로 `display_order`에 저장한다(이후 재참여로 참여 순이 바뀌어도 과거 계산의 순서는 그대로). 경비가 없어도 계산은 만들고 모든 목록이 비어 있다 | A 답변 "경비가 없으면 차액 0, 수령자 없음" |
+| S-8 | 이전 계산 | 목록은 최근 계산 순(calculatedAt DESC, id DESC) 커서 페이지(기본 20, 최대 100). 다른 여행의 계산 ID는 `404 SETTLEMENT_NOT_FOUND`. 여행이 있는 동안 모두 보관 | 명세 §7, Q-10 보관 결정. 물리 삭제 시점은 Q-11. `trips.current_settlement_id`와 `settlements.trip_id`가 서로 참조하므로 여행을 물리 삭제할 때는 포인터를 먼저 비운다 |
+| S-9 | 같은 키 재요청 응답 | 처음 저장한 응답을 그대로 준다. 그 사이 경비가 바뀌었어도 응답의 `stale`은 처음 값(false)이므로, 최신 상태는 `GET /settlement`로 확인한다 | 명세 §2 "같은 키/같은 본문은 최초 결과" |

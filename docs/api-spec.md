@@ -15,7 +15,7 @@
 | D-4 | 공동 피드는 멤버 게시 시 여행당 하나 생성. 모든 멤버 게시/삭제 확정, 공동 제목/본문 편집은 ACTIVE 멤버 제안. 본인 경로의 특정 친구 숨김은 viewer ID별로 저장 | Q-3 |
 | D-5 | 게시 후 공동 피드 기본 전체 공개. 특정 친구 숨김은 설정자 프로필/피드/지도 경로에만 적용하고 직접 공동 피드·다른 경로는 차단하지 않음. 비공개 계정과 결합은 미정 | Q-3 |
 | D-6 | 장소는 공급자 ID로 우선 식별. 이름/좌표만 같은 후보를 자동 병합하지 않음 | Q-5 |
-| D-7 | KRW 정수만, 1인 부담액 10원 올림. 지출별/여행 합산 적용 시점·차액 귀속은 미정. 원금 분담의 1원 잔여 배분은 제안이며 올림과 구분 | Q-10 |
+| D-7 | KRW 정수만, 1인 부담액 10원 올림. 여행 합산 후 1회 올림·차액은 원금 기준 받을 돈이 가장 많은 사람(Q-10, 2026-11-02 확정). 원금 분담의 1원 잔여 배분은 제안이며 올림과 구분 | Q-10 |
 | D-8 | AI는 제안만, 멤버가 적용. 기준 버전 검사는 타인 편집 보존을 위한 서버 제안이며 별도의 오래된 변경안 확인 화면을 만들지 않음. 경합 처리/재계산 흐름 합의 필요 | Q-15 |
 | D-9 | 여행 이름/기간/여행지와 공동 준비물은 모든 멤버 편집 확정. 준비물 체크한 멤버 기록. 그룹 저장 메모는 등록자만 편집 제안 | Q-4·15 |
 | D-10 | 그룹 이탈 시 채팅 삭제는 여행 채팅방의 본인 메시지 본문 삭제, 사진 삭제는 본인 사진·파일의 삭제 작업 요청으로 해석. 구체 보존은 미정 | Q-11·13 |
@@ -50,8 +50,8 @@
 
 | 상태 | 대표 업무 오류 |
 | --- | --- |
-| 404 | `TRIP_NOT_FOUND`, `FEED_NOT_FOUND`, `JOB_NOT_FOUND` — 존재를 공개할 수 없는 자료도 같은 응답. 여행 안의 하위 자료는 `MEMBER_NOT_FOUND`(없거나 이탈한 멤버십), `CHECKLIST_ITEM_NOT_FOUND`(없거나 삭제된 준비물), `EXPENSE_NOT_FOUND`(없거나 삭제된 경비) |
-| 409 | `VERSION_CONFLICT`, `POLL_CLOSED`, `ALREADY_MEMBER`, `ALREADY_APPLIED`, `SETTLEMENT_POLICY_PENDING`, `TRIP_FULL`(여행 ACTIVE 멤버 정원 초과) |
+| 404 | `TRIP_NOT_FOUND`, `FEED_NOT_FOUND`, `JOB_NOT_FOUND` — 존재를 공개할 수 없는 자료도 같은 응답. 여행 안의 하위 자료는 `MEMBER_NOT_FOUND`(없거나 이탈한 멤버십), `CHECKLIST_ITEM_NOT_FOUND`(없거나 삭제된 준비물), `EXPENSE_NOT_FOUND`(없거나 삭제된 경비), `SETTLEMENT_NOT_FOUND`(없거나 다른 여행의 정산 계산) |
+| 409 | `VERSION_CONFLICT`, `POLL_CLOSED`, `ALREADY_MEMBER`, `ALREADY_APPLIED`, `TRIP_FULL`(여행 ACTIVE 멤버 정원 초과) |
 | 410 | `INVITATION_EXPIRED`·`INVITATION_REVOKED` — 사용자가 제시한 유효 형식의 초대 토큰 검증 결과. 새 링크 발급으로 무효가 된 링크만 `INVITATION_REVOKED`, 없는 토큰·기간 지남·삭제된 여행·초대자 이탈은 `INVITATION_EXPIRED` |
 | 422 | `INSUFFICIENT_DATA`, `CURRENCY_MISMATCH`, `INVALID_PARTICIPANTS`, `UNSUPPORTED_INPUT` |
 | 503 | `PROVIDER_UNAVAILABLE` — 지도·날씨·장소 공급자 장애. 결과 없음과 구분 |
@@ -223,14 +223,14 @@
 | POST | `/trips/{tripId}/expenses` | 멤버 | `ExpenseWrite` | `Expense` / 201 | 등록자 서버 지정, 같은 여행 결제자/분담자·KRW 정수 검증, 외화 422 |
 | PATCH | `/trips/{tripId}/expenses/{expenseId}` | 활성 멤버인 등록자 | `ExpensePatch` | `Expense` / 200 | 방장·결제자라도 등록자가 아니면 403 |
 | DELETE | `/trips/{tripId}/expenses/{expenseId}` | 활성 멤버인 등록자 | `expectedVersion:integer`(query) | 204 | 전체 비용 버전 증가, 이전 정산 무효화 |
-| GET | `/trips/{tripId}/settlement` | 멤버 | 없음 | `SettlementState` / 200 | current 계산(없으면 null)·현재 비용 버전·재계산 필요 반환. GET은 계산 생성 안 함. 경비 미입력은 current=null |
+| GET | `/trips/{tripId}/settlement` | 멤버 | 없음 | `SettlementState` / 200 | current 계산(없으면 null)·현재 비용 버전·재계산 필요 반환. GET은 계산 생성 안 함. 계산한 적이 없으면 current=null(경비가 없어도 계산하면 빈 결과가 current가 됨) |
 
-비용 원금 10,001원의 3인 균등 분담은 원금 보존 표현과 올림 부담액을 구분한다. 1인 부담액이 3,333.67원이면 10원 올림 결과는 3,340원이다. 비용 원금 잔여 배분 방식과 지출별/여행 합산 중 올림 시점은 D-7 제안/Q-10이며 최종 송금액을 다시 10원으로 올리는 규칙은 추가하지 않는다. 총 올림 차액 귀속이 미정이므로 해당 정책 확정 전 계산 POST는 409 SETTLEMENT_POLICY_PENDING 제안이다. 원금 잔액 합=0과 올림 차액을 분리해 검증한다. 이탈자의 과거 경비는 보존하며 신규 분담자 추가는 ACTIVE 멤버만 허용하는 제안이다. 구현: 원금의 1원 잔여는 참여 순이 빠른 분담자부터 1원씩 배분하고, 정산 정책 합의 전 `GET /settlement`의 `current`는 null이다.
+비용 원금 10,001원의 3인 균등 분담은 원금 보존 표현과 올림 부담액을 구분한다. 1인 부담액이 3,333.67원이면 10원 올림 결과는 3,340원이다. 2026-11-02 Q-10 확정: 사람별 원금 분담 합계를 여행 전체로 더한 뒤 한 번만 10원 단위로 올리고(지출별 올림 없음, 0원은 0원), 올림 차액은 원금 기준 받을 돈(결제 합계 - 원금 부담 합계)이 가장 많은 한 사람에게 귀속한다(동률은 joinOrder·memberId 순, 모두 0이면 결제 합계가 가장 큰 사람, 경비가 없으면 차액 0·수령자 없음). 모든 멤버의 balanceMinor 합은 0이고, 최종 송금액을 다시 10원으로 올리는 규칙·완료 상태는 추가하지 않는다. 예: 10,001원 경비 3건을 세 사람이 균등 분담하면 원금 합계 10,002/10,002/9,999원 → 1인 부담액 10,010/10,010/10,000원, 전체 차액 17원. 원금 잔액 합=0과 올림 차액을 분리해 검증한다. 이탈자의 과거 경비는 보존하며 신규 분담자 추가는 ACTIVE 멤버만 허용하는 제안이다. 구현: 원금의 1원 잔여는 참여 순이 빠른 분담자부터 1원씩 배분한다. `GET /settlement`의 `current`는 여행의 현재 계산이며 계산한 적이 없으면 null이다.
 
 | Method | URL | 권한 | 요청 | 성공 data / 상태 | 주요 규칙 |
 | --- | --- | --- | --- | --- | --- |
-| POST | `/trips/{tripId}/settlements` | 멤버 | `{expectedExpenseVersion:integer}` | `Settlement` / 201 | Q-10 합의 후 활성화. KRW·비용 스냅샷·원금/올림 금액/차액·송금 제안 저장 및 current 포인터 교체. Idempotency-Key 필수, 오래된 비용 버전 409 |
-| GET | `/trips/{tripId}/settlements` | 멤버 | 페이지 | `Settlement[]` / 200 | 이전 계산 결과. 완료 상태 없음, 보관기간 Q-10 |
+| POST | `/trips/{tripId}/settlements` | 멤버 | `{expectedExpenseVersion:integer}` | `Settlement` / 201 | KRW·비용 스냅샷·원금/올림 금액/차액·송금 제안 저장 및 current 포인터 교체(여행 행 잠금). Idempotency-Key 필수, 오래된 비용 버전 409 `VERSION_CONFLICT`. 같은 키 재요청도 현재 ACTIVE 멤버만. 경비가 없어도 빈 결과로 계산 |
+| GET | `/trips/{tripId}/settlements` | 멤버 | 페이지 | `Settlement[]` / 200 | 이전 계산 결과, 최근 계산 순(calculatedAt DESC, id DESC) 커서. 완료 상태 없음. 여행이 있는 동안 모두 보관(물리 삭제 시점은 Q-11) |
 | GET | `/trips/{tripId}/settlements/{settlementId}` | 멤버 | 없음 | `Settlement` / 200 | 원래 계산시각·버전·포함 지출 확인 |
 
 ## 8. 공동 피드·특정 친구 숨김·지도·타임라인
@@ -355,7 +355,7 @@
 | ExpenseWrite | `title:string,memo?:string\|null,amountMinor:integer,currency:KRW,payerMemberId:id,participantMemberIds:id[],spentAt:datetime`. 양수 원화 정수, 균등 원금 분담. 정산 올림과 구분. 빈 memo는 null로 저장하고 응답 memo도 null일 수 있다 |
 | ExpensePatch | ExpenseWrite의 변경 필드 + 필수 `expectedVersion:integer`. 분담자 변경은 전체 배열 교체. `memo:null`은 메모 삭제, 생략은 유지 |
 | Expense | ExpenseWrite + `id,registeredByMemberId:id,shares:{memberId:id,amountMinor:integer}[],version:integer` |
-| Settlement | `id,tripId,currency:KRW,expenseVersion:integer,version:integer,stale:boolean,totalAmountMinor:integer,includedExpenses:{expenseId:id,expenseVersion:integer,title:string,amountMinor:integer,payerMemberId:id,shares:{memberId:id,amountMinor:integer}[]}[],members:{memberId:id,paidMinor:integer,baseOwedMinor:integer,owedMinor:integer,roundingAdjustmentMinor:integer,balanceMinor:integer}[],transfers:{id,fromMemberId:id,toMemberId:id,amountMinor:integer}[],roundingPolicy:string,roundingAdjustmentMinor:integer,calculatedAt:datetime`. owedMinor=1인 올림 부담액·10원 배수, base 원금/차액 구분. 송금액 재올림 없음. Q-10 합의 전 계산 차단 제안, 완료 상태 없음 |
+| Settlement | `id,tripId,currency:KRW,expenseVersion:integer,version:integer,stale:boolean,totalAmountMinor:integer,includedExpenses:{expenseId:id,expenseVersion:integer,title:string,amountMinor:integer,payerMemberId:id,shares:{memberId:id,amountMinor:integer}[]}[],members:{memberId:id,paidMinor:integer,baseOwedMinor:integer,owedMinor:integer,roundingAdjustmentMinor:integer,balanceMinor:integer}[],transfers:{id,fromMemberId:id,toMemberId:id,amountMinor:integer}[],roundingPolicy:string,roundingAdjustmentMinor:integer,calculatedAt:datetime`. owedMinor=1인 올림 부담액·10원 배수, base 원금/차액 구분. 송금액 재올림 없음, 완료 상태 없음. members는 경비에 결제자·분담자로 나온 멤버(이탈 포함)를 참여 순으로, roundingAdjustmentMinor(멤버)=owed-base, balance=paid-owed(+차액 수령자는 전체 차액). stale은 비용 버전이 바뀌었거나 현재 계산이 아닐 때 true. 계산 결과는 바뀌지 않아 version은 1 |
 | FeedCard | `id,tripId,title:string,coverPhotoId:id\|null,regions:Region[],startDate:date\|null,endDate:date\|null,publishedAt:datetime,likedByMe:boolean,likeCount:integer`. 여행당 하나·단일 author 없음 |
 | Feed | `id,tripId,title:string,body:string,publishedAt:datetime,coverPhotoId:id\|null,regions:Region[],startDate:date\|null,endDate:date\|null,photos:PublicPhoto[],places:Place[],publicItinerary:CourseContent\|null,publicReviews:PublishedReview[],expenseSummary:PublicExpenseSummary\|null,likedByMe:boolean,likeCount:integer,version:integer`. 서버 공통 공개 표현, include 선택 필드 없음 |
 | FeedWrite | `title:string,body:string`. 공개 범위는 공통 정책, 항목별 플래그 없음 |
@@ -426,7 +426,7 @@
 
 1. **Q-3:** 공통 공개 콘텐츠·비공개 계정 결합·공동 제목/본문 편집·삭제 후 재게시. 수동 게시 생성·기본 전체 공개·특정 친구 본인 경로 숨김·항목별 토글/사진 동의 없음·멤버 누구나 삭제는 적용했다.
 2. **Q-6:** 참가자 변동·후보 삭제·재개/짧은 마감 알림. 0표 확정 없이 마감·24시간 기본·동률 모두·1시간 전 미투표자 알림·직후 1단계 되돌리기는 적용했다.
-3. **Q-10:** 1인 부담액 10원 올림의 지출별/여행 합산 시점과 차액 귀속. 최종 송금액 재올림·완료 상태는 추가하지 않는다.
+3. **Q-10:** 2026-11-02 확정(여행 합산 후 1회 10원 올림, 차액은 원금 기준 받을 돈이 가장 많은 사람, 이전 계산은 여행이 있는 동안 보관). 최종 송금액 재올림·완료 상태는 추가하지 않는다.
 4. **Q-15·16:** 실시간 전송·presence/편집 저장·재접속·AI/undo 경합 및 코스 변경 알림 묶음. 추가 오래된 변경안 확인 화면 없이 서버 검증/재계산을 정해야 한다.
 5. **Q-1·2·4·5·7~9·11~14:** 인증/프로필·공개 전환·기간 경계/시간대·추천/사진 판정/집계·용량/보존·채팅 이력 등. 검색/추천 숨김·이미 정한 한도/별점/정렬/준비물은 다시 미정으로 돌리지 않는다.
 6. 사용자 지정 C-1~C-51 원문은 여전히 없어 전체 항목 대조는 미완료이며 팀 전체 합의/구현 완료를 선언하지 않는다. 소스 간 폐기된 종료/확정 팝업·삭제 알림 충돌은 PRD §1.1의 우선순위를 따른다.
