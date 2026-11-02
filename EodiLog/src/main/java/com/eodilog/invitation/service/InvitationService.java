@@ -9,6 +9,7 @@ import com.eodilog.invitation.dto.InvitationPreviewResponse;
 import com.eodilog.invitation.dto.InvitationSecretResponse;
 import com.eodilog.invitation.exception.InvitationErrorCode;
 import com.eodilog.invitation.repository.TripInvitationRepository;
+import com.eodilog.poll.service.PollCloser;
 import com.eodilog.trip.domain.Trip;
 import com.eodilog.trip.domain.TripMember;
 import com.eodilog.trip.domain.TripMemberStatus;
@@ -47,6 +48,7 @@ public class InvitationService {
 	private final TripResponseAssembler tripResponseAssembler;
 	private final ChatParticipationService chatParticipationService;
 	private final UserCardReader userCardReader;
+	private final PollCloser pollCloser;
 	private final Clock clock;
 
 	// 프론트 초대 화면 경로가 정해지면 환경별로 바꾼다. 기본은 앱 스킴(frontend/app.json)
@@ -106,6 +108,8 @@ public class InvitationService {
 			throw new BusinessException(InvitationErrorCode.TRIP_FULL);
 		}
 
+		// 마감 시각이 지난 투표는 멤버가 바뀌기 전 기준으로 먼저 마감한다(정책 §13 V-6b·V-12)
+		pollCloser.closeDuePolls(trip.getId());
 		Instant now = now();
 		long joinOrder = tripMemberRepository.findMaxJoinOrder(trip.getId()) + 1;
 		existing.ifPresentOrElse(member -> member.rejoin(joinOrder, now),

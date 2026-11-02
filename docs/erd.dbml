@@ -290,8 +290,14 @@ Table polls {
   closed_reason varchar(16) [note: 'DEADLINE/NO_VOTES; 0표 확정 없이 마감']
   closed_at timestamp
   finalized_at timestamp
+  eligible_member_count integer [note: '마감 때의 ACTIVE 멤버 수. OPEN이면 null']
+  voted_member_count integer [note: '마감 때 한 표 이상 던진 ACTIVE 멤버 수. OPEN이면 null']
   created_at timestamp [not null]
-  indexes { (trip_id, created_at) }
+  indexes {
+    (trip_id, created_at)
+    closes_at [note: 'status=OPEN 부분 인덱스. 주기 마감용']
+  }
+  Note: '참여 대상은 그때그때의 ACTIVE 멤버(2026-11-02 B 결정). 나간 멤버의 표는 집계에서 빼고 마감 때 집계를 고정한다. version은 후보 추가·마감 때만 증가. 지역 확정은 trip_destinations 끝에 추가하고 trips.version 증가.'
 }
 
 Table poll_candidates {
@@ -299,10 +305,13 @@ Table poll_candidates {
   poll_id uuid [not null, ref: > polls.id]
   region_id uuid [ref: > regions.id]
   place_id uuid [ref: > places.id]
+  display_order integer [not null, note: '입력·추가 순서(0부터)']
+  vote_count integer [note: '마감 때 고정한 득표 수. OPEN이면 null']
   created_at timestamp [not null]
   indexes {
     (poll_id, region_id) [unique]
     (poll_id, place_id) [unique]
+    (poll_id, display_order) [unique]
   }
   Note: 'region_id XOR place_id, polls.type과 일치. ACTIVE 멤버가 OPEN·마감 전 추가, version/마감 동시 검사. 후보 삭제 Q-6. 같은 투표 중복 후보 금지.'
 }
@@ -665,7 +674,7 @@ Table poll_participants {
   poll_id uuid [not null, ref: > polls.id]
   member_id uuid [not null, ref: > trip_members.id]
   indexes { (poll_id, member_id) [pk] }
-  Note: 'D-13 생성 시 참여 대상 스냅샷. 같은 여행 검사. 신규/이탈 멤버의 참여 대상 포함 Q-6. 전원 참여만으로 조기 종료하지 않음. 고유 투표 인원은 poll_votes를 이 집합으로 필터·중복 제거해 계산.'
+  Note: '만들지 않음(2026-11-02 B 결정, Q-6). 참여 대상은 생성 시 스냅샷이 아니라 그때그때의 ACTIVE 멤버다. 고유 투표 인원은 poll_votes를 ACTIVE 멤버로 필터·중복 제거해 계산하고 마감 때 polls에 고정.'
 }
 
 Table visit_candidates {
