@@ -18,7 +18,7 @@
 | 채팅 REST | `GET /chat/rooms`, `GET /trips/{tripId}/chat-room`, `GET/POST /chat/rooms/{roomId}/messages` | EODI-136 | 병합(MR !71, §12) |
 | 기본 나가기 | `POST /trips/{tripId}/leave` | EODI-140 | 병합(MR !76, §11) |
 | 투표 | `GET/POST /trips/{tripId}/polls`, `GET /trips/{tripId}/polls/{pollId}`, `PUT .../ballot`, `POST .../candidates` | EODI-161 | 구현(§13) |
-| 코스 수동 편집 | `GET/PUT /trips/{tripId}/itinerary` | 미정 | 정책만 확정(§13-3) |
+| 코스 수동 편집 | `GET/PUT /trips/{tripId}/itinerary` | EODI-164 | 구현(§13-3) |
 
 검증은 B 첫 작업과 같이 테스트에서 `AuthUser` principal을 넣어 했다. A 로그인 병합 뒤 실제 카카오 계정 2개로 여행 API 통합 검증(B-7)을 마쳤다([계약 §8](backend-a-b-contract.md)).
 
@@ -76,6 +76,8 @@ AI 준비물 제안(`POST /trips/{tripId}/checklist-suggestions`)은 `jobs`, 날
 | §6 준비물 추가·삭제 행 | AI 연동 전 `sourceJobId`·`suggestionIndex` 400(C-1), 논리 삭제(C-2) |
 | §2 404 표 | `EXPENSE_NOT_FOUND`(경비, EODI-122) |
 | §7 경비 표 아래 | 원금 1원 잔여 배분 순서(E-2), 정산 정책 합의 전 `GET /settlement`의 `current`는 null(E-9) |
+| §2 422 표 | `INVALID_ROUTE_LEGS`(코스 구간, EODI-164) |
+| §6 코스 행·표 아래 | 항목 200개·검증 범위·판정 순서, 바뀐 게 없으면 version 유지, 경로 연동 전 구간 `UNAVAILABLE`(C-3~C-6) |
 
 새 오류 코드:
 
@@ -84,8 +86,9 @@ AI 준비물 제안(`POST /trips/{tripId}/checklist-suggestions`)은 `jobs`, 날
 | `CHECKLIST_ITEM_NOT_FOUND` | 404 | 준비물 수정·삭제 |
 | `MEMBER_NOT_FOUND` | 404 | 동행 내보내기 |
 | `EXPENSE_NOT_FOUND` | 404 | 경비 수정·삭제 |
+| `INVALID_ROUTE_LEGS` | 422 | 코스 전체 교체(구간이 빠지거나 겹치거나 인접하지 않음) |
 
-`VERSION_CONFLICT`는 도메인별 enum(`TripErrorCode`, `ChecklistErrorCode`, `ExpenseErrorCode`)에 같은 코드 이름으로 둔다. 명세에 이미 있던 `CURRENCY_MISMATCH`·`INVALID_PARTICIPANTS`(422)와 정산의 `SETTLEMENT_NOT_FOUND`(404)는 `ExpenseErrorCode`에 둔다. Q-10 전 정산 차단용 `SETTLEMENT_POLICY_PENDING`은 정산 계산을 열면서(EODI-134) 없앴다.
+`VERSION_CONFLICT`는 도메인별 enum(`TripErrorCode`, `ChecklistErrorCode`, `ExpenseErrorCode`, `PollErrorCode`, `ItineraryErrorCode`)에 같은 코드 이름으로 둔다. 명세에 이미 있던 `CURRENCY_MISMATCH`·`INVALID_PARTICIPANTS`(422)와 정산의 `SETTLEMENT_NOT_FOUND`(404)는 `ExpenseErrorCode`에 둔다. Q-10 전 정산 차단용 `SETTLEMENT_POLICY_PENDING`은 정산 계산을 열면서(EODI-134) 없앴다.
 
 ## 6. A에게 알릴 것
 
@@ -277,7 +280,7 @@ Q-13의 REST 범위는 2026-11-02에 확정됐다([A 답변](to-B-backend-decisi
 - 주기 마감은 `PollClosingScheduler`(1분)가 `PollAutoCloser`를 부르고 여행마다 따로 커밋한다. 테스트 프로필은 `app.polls.auto-close-enabled=false`로 끈다.
 - 지역 확정으로 추가된 여행지는 `trip_destinations.source_candidate_id`에 후보를 남긴다(이번에 FK 추가). 여행 수정으로 여행지를 전체 교체해도 남는 지역의 기록은 유지한다. 여행 정보 변경 이벤트(`TripInfoChangedEvent`)는 `actorUserId=null`로 낸다.
 
-### 13-3. 코스 정책(구현 전)
+### 13-3. 코스 정책(EODI-164 구현)
 
 | # | 질문 | 결정 | 근거 |
 | --- | --- | --- | --- |
@@ -291,6 +294,16 @@ Q-13의 REST 범위는 2026-11-02에 확정됐다([A 답변](to-B-backend-decisi
 | C-8 | 여행 기간을 줄였을 때 | 이미 저장된 코스의 범위를 벗어나는 `day`는 그대로 두고, 다음 PUT 때 검증한다(여행 수정이 코스를 자동으로 지우지 않음) | 코스를 조용히 잃지 않게 |
 | C-9 | 알림 | 코스 변경 알림은 A의 알림 기반이 생긴 뒤 연결한다(묶음 Q-16) | PRD "코스 변경 알림" |
 
+#### 13-3-1. 구현 메모(EODI-164, 2026-11-03)
+
+- 테이블 `itinerary_items`·`route_legs`(`V202611031000`). `(itinerary_id, day, sequence)` 유일 제약은 `DEFERRABLE INITIALLY DEFERRED`다. 전체 교체에서 남는 항목끼리 순서를 맞바꾸면 UPDATE 도중 잠깐 겹치기 때문이다. API의 `order`가 열 `sequence`다.
+- 판정 순서는 요청 400 → 구간 422 → 여행 404 → 코스 version 409 → 코스 소유 id·여행 기간 400이다. 뒤의 두 400은 코스를 잠근 뒤에야 알 수 있어 순서가 이렇다. 장소 존재는 `PlaceReader.findAll`로 요청 검증 단계에서 확인한다.
+- 잠금은 여행 행(`requireActiveMemberForUpdate`) → 코스 행(`findByTripIdForUpdate`) 순서다. 나가기·내보내기가 멤버십을 바꾸는 사이에 끼지 않게 여행 행도 잡는다. 코스 version은 코스 행에만 있어 여행 정보·멤버 변경과 409를 주고받지 않는다(C-7).
+- 교체는 구간 전체 삭제 → 빠진 항목 삭제 → flush → 남는 항목 갱신·새 항목 삽입 → flush → 구간 재생성 순서다. 구간은 매번 새로 만들고 `queried_at`은 저장 시각이다. `route_legs.geometry_json`은 엔티티에 매핑하지 않았다(경로 연동 때 추가).
+- "바뀐 게 없다"는 모든 항목이 id로 유지되고 장소·날짜·순서·시간이 같고 구간(출발·도착 항목·수단) 집합이 같을 때다. 새 항목이 하나라도 있으면 변경이다.
+- 응답의 `ItineraryItem.place`는 `PlaceView`를 `ItineraryPlaceResponse`(명세 Place와 같은 필드)로 옮긴 것이다. A가 장소 API 응답 DTO를 내놓으면 그것으로 바꾼다.
+- 테스트는 `places`에 MANUAL 행을 직접 넣는다(장소 2b 정책 확정 전, A 안내대로). 동시 교체는 한쪽만 200이고 다른 쪽은 409다.
+
 ### 13-4. A에게 공유할 것
 
 - 투표 참여 대상은 지금 ACTIVE 멤버 기준(V-6a~d)이라 ERD의 `poll_participants`를 만들지 않는다(ERD 노트 수정).
@@ -299,3 +312,5 @@ Q-13의 REST 범위는 2026-11-02에 확정됐다([A 답변](to-B-backend-decisi
 - 알림(후보 추가·마감 1시간 전·마감·코스 변경)은 A의 events·notifications 기반이 생기면 B가 연결한다. 그때 이벤트 이름·필드를 맞춘다.
 - 경로 시간·거리 계산은 경로 공급자를 정한 뒤 확장한다(분담안 B-4). 그 전에는 구간 `status=UNAVAILABLE`.
 - 지역 존재 확인은 A의 `RegionReader`를 쓴다. `application.yaml`에 `app.polls.auto-close-enabled`, `application-test.yaml`에 끄는 값 한 줄을 추가했다. `TripMemberService`·`InvitationService`가 멤버십을 바꾸기 전에 `PollCloser`를 부른다.
+- (코스, 2026-11-03) 새 오류 코드 `INVALID_ROUTE_LEGS`(422). 코스 응답의 `place`는 B가 `PlaceView`를 명세 Place 모양으로 옮긴 `ItineraryPlaceResponse`다. A가 `GET /places` 응답 DTO를 만들면 같은 모양인지 맞추고 B가 그것으로 바꾼다. 장소 2b 저장 정책과 무관하게 코스는 `PlaceReader`와 실제 places UUID만 쓴다.
+- (코스) `itinerary_items`의 (코스, 날짜, 순서) 유일 제약은 DEFERRABLE이다. 다른 테이블에 같은 방식을 쓸 때 참고.

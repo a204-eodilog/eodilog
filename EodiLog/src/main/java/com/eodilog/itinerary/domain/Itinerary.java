@@ -10,7 +10,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.UuidGenerator;
 
-// 여행별 단일 코스. 항목·구간 편집은 코스 기능에서 다루고, 여기서는 여행 생성 때의 빈 코스만 만든다
+// 여행별 단일 코스. 항목·구간은 itinerary_items·route_legs에 따로 두고, 이 행은 version과 마지막 편집 정보만 가진다
+// version은 전체 교체로 실제 바뀐 게 있을 때만 오른다(C-6). 여행 정보 version과는 다른 행이라 서로 409를 만들지 않는다(C-7)
 @Entity
 @Table(name = "itineraries")
 @Getter
@@ -36,6 +37,13 @@ public class Itinerary {
 		itinerary.updatedByMemberId = ownerMemberId;
 		itinerary.updatedAt = now;
 		return itinerary;
+	}
+
+	// 바뀐 값이 있을 때만 호출한다. 그 전에 본 화면의 요청은 409를 받는다
+	public void markReplaced(UUID memberId, Instant now) {
+		this.version++;
+		this.updatedByMemberId = memberId;
+		this.updatedAt = now;
 	}
 
 }
