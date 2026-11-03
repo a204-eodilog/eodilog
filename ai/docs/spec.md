@@ -82,7 +82,7 @@ sources:
 ```jsonc
 // Place = 백엔드 Place + 선택 필드 category
 { "id": "uuid", "name": "흰여울문화마을", "address": "부산 영도구 …", "latitude": 35.078, "longitude": 129.045,
-  "regionId": "uuid|null", "provider": "KAKAO|null", "providerPlaceId": "26338954|null", "source": "PROVIDER|MANUAL",
+  "regionId": "uuid|null", "provider": "NAVER|null", "providerPlaceId": "이름·주소 해시(AS-12)|null", "source": "PROVIDER|MANUAL",
   "category": "여행 > 관광,명소|null" }   // ★ 백엔드 places 테이블에 없음. 공급자 분류를 넘겨 달라고 요청(§11)
 
 // Region = 백엔드 Region
@@ -121,7 +121,7 @@ sources:
   "resultStatus": "MULTIPLE_CANDIDATES",
   "candidates": [
     { "name": "바다 앞 카페", "place": { "name": "바다 앞 카페 남천점", "address": "부산 수영구 …", "latitude": 35.14,
-        "longitude": 129.11, "provider": "KAKAO", "providerPlaceId": "123", "category": "음식점 > 카페" },
+        "longitude": 129.11, "provider": "NAVER", "providerPlaceId": "이름·주소 해시", "category": "카페,디저트>카페" },
       "evidence": "캡처 속 간판에서 찾았어요", "confidence": 1.0 },
     { "name": "바다 앞 카페", "place": { "…민락점" }, "evidence": "캡처 속 간판에서 찾았어요", "confidence": 1.0 },
     { "name": "신기산업", "place": null, "evidence": "게시물 글에서 찾았어요", "confidence": null }
@@ -379,7 +379,7 @@ sources:
 | 의존성 | 쓰는 곳 | 장애 시 |
 | --- | --- | --- |
 | GMS `gpt-5.6-luna` | 장소 언급·캡처 읽기, 추천 문장, 준비물 추가 | 추출 503, 나머지는 규칙 결과 |
-| 카카오 로컬 | 장소 추출의 장소 검색 | `place: null` |
+| 네이버 지역 검색(NAVER API HUB) | 장소 추출의 장소 검색 | `place: null` |
 | 카카오 길찾기(자동차·도보·대중교통) | 코스 변경안의 구간 시간, 날씨 대안 이동 시간 | 구간 `UNAVAILABLE` |
 | SigLIP2 `ViT-B-32-SigLIP2-256` (로컬) | 사진 분류·묶음 | 503 |
 
@@ -387,7 +387,7 @@ sources:
 
 | # | 요청 | 이유 |
 | --- | --- | --- |
-| 1 | `places`에 공급자 분류(`category`, 카카오 `category_name`) 저장·전달 | 취향 일치, 실내 판단, 식사 시간 배치에 필요 |
+| 1 | `places`에 공급자 분류(`category`, 네이버 `category`) 저장·전달 | 취향 일치, 실내 판단, 식사 시간 배치에 필요 |
 | 2 | 추천 후보 장소(`candidatePlaces`)를 여행지 주변 공급자 검색으로 채워 전달 | AI는 장소를 만들지 않는다 |
 | 3 | 날씨 대안 후보(`alternativePool`)와 영업 정보 전달 | 같은 이유 |
 | 4 | `RecommendationResult`에 멤버별 취향 일치(화면 S21 `세 바다` 칩)와 "○○의 취향으로" 구분 필드 추가 검토 | 지금 DTO에는 `reason` 문장뿐 |
@@ -396,7 +396,8 @@ sources:
 | 7 | §1.0의 사전 검사를 작업 등록 전에 수행 | 공통 오류 코드 4개로는 사유를 화면에 보여 줄 수 없다 |
 | 8 | `regions`의 코드 체계(Q-8)·시드 시점과 좌표 제공 범위 공유 | 현재 운영 자료가 없고 좌표는 NULL 가능. 추천·코스가 사용 |
 | 9 | S21 "모은 장소" 수를 `basis`에 추가할지 결정(예: `savedPlaceCount`) | 디자인 결정의 숫자 칸 3개 중 지금 `basis`에 없는 값 |
-| 10 | 이동 시간 공급자를 카카오로 통일할지 결정 | AI 변경안의 구간 시간과 백엔드 `ROUTE_RECALCULATION`이 같은 값을 내야 한다 |
+| 11 | 네이버 장소 ID 규칙 합의(-162). 응답에 고유 ID가 없어 AI는 AS-12로 만든다. 백엔드도 같은 값을 써야 같은 장소로 저장된다. 저장 약관도 함께 확인 | 추출 결과를 즐겨찾기에 넣을 때 필요 |
+| 10 | 이동 시간 공급자 결정. 2026-11-03 네이버 확정과 AI의 카카오 길찾기가 어긋나 재검토 필요 | AI 변경안의 구간 시간과 백엔드 `ROUTE_RECALCULATION`이 같은 값을 내야 한다 |
 
 ## 12. 임시 가정
 
@@ -412,6 +413,8 @@ sources:
 | AS-8 | 모델: GMS `gpt-5.6-luna`, 사진 SigLIP2 `ViT-B-32-SigLIP2-256` |
 | AS-9 | 시간 예산: AI 요청 45초, 백엔드 호출 50초, worker 60초 |
 | AS-10 | 근거리 도보 대체: 대중교통 경로가 없고 직선 1km 이내일 때만 `WALK`. 그보다 멀면 `UNAVAILABLE`. 공급자 장애는 거리와 무관하게 `UNAVAILABLE` |
+| AS-11 | 장소 추출: 링크·메모에서 찾았다는 이름은 그 글에 실제로 있을 때만 받는다(글자·공백 차이는 정규화). 언급은 요청당 20개까지, 링크 읽기는 전체 5초, 입력 길이는 `url` 2048자·`memo` 500자·`regionHint` 50자 |
+| AS-12 | 네이버 장소 ID: `sha256(정규화한 이름 + 줄바꿈 + 정규화한 도로명 주소, 없으면 지번 주소)`의 16진수. 정규화는 NFKC·소문자·글자와 숫자만. 주소 없는 결과는 뺀다. 가게 이름이나 주소가 바뀌면 다른 장소가 된다 |
 
 ## 13. 변경 이력
 
@@ -421,3 +424,4 @@ sources:
 | 0.2 | 화면 설계 기준 개편 |
 | 0.3 | **백엔드 API 명세(dev v0.4)에 맞춤.** 응답을 `{data}`/`{error}`와 job kind별 result 모양으로, camelCase, 동기 처리(작업 관리는 백엔드), 날씨 요약·날씨 조회 제거, 코스 재조정(`PLACE_REMOVED`·`WEATHER`)·방문 판정 추가, 구간별 수단, 캡처 10장·사진 50장·HEIC, 준비물 삭제 항목 재제안 금지, 강수확률 0~1 |
 | 0.4 | **백엔드 `jobs` 기반(EODI-135)에 맞춤.** 추적 헤더를 `X-Trace-Id`로 변경, 응답 처리표, 사전 검사 위치, 시간 예산, 재실행 동작 추가. 백엔드 요청 7~10 추가 |
+| 0.5 | **장소 검색을 카카오에서 네이버로 교체**(2026-11-03 기술 확정). 장소 ID 규칙 AS-12 추가 |
