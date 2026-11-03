@@ -11,6 +11,10 @@ public interface JobHandler {
      * Return {@code JobOutcome.failed(TEMPORARY_FAILURE)} for transient errors; any thrown exception is a permanent EXECUTION_FAILED.
      */
     JobOutcome execute(JobContext context) throws Exception;
-    /** Runs only while holding the fenced job row lock, in the result transaction. No external I/O. */
+    /**
+     * Runs only while holding the fenced job row lock, in the result transaction. No external I/O.
+     * A thrown exception rolls back the result together with the domain writes, and the whole job (execute included)
+     * is retried as TEMPORARY_FAILURE within max-attempts, so the hook must be idempotent for the same jobId.
+     */
     void complete(JobContext context, JsonNode result);
 }
