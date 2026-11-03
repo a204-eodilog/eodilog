@@ -7,6 +7,7 @@ import {
   AvatarGroup,
   BottomSheet,
   Button,
+  Card,
   Chip,
   EmptyState,
   ErrorState,
@@ -15,10 +16,12 @@ import {
   MascotTraveler,
   type IconName,
   TabBar,
+  Tag,
   type TabKey,
   TextField,
   toast,
 } from '@/components/ui';
+import { formatThousands, parseAmount } from '@/lib/format-number';
 import { colors, layout, spacing, typography } from '@/theme';
 
 const ICONS: IconName[] = [
@@ -40,7 +43,16 @@ const ICONS: IconName[] = [
   'link',
   'copy',
   'alert',
+  'info',
+  'clock',
+  'refresh',
+  'card',
+  'calculator',
+  'star',
 ];
+
+/** 서버 상한 9,007,199,254,740,991원(16자리) + 쉼표 5개 */
+const AMOUNT_MAX_LENGTH = 21;
 
 const TASTES = ['바다', '맛집', '카페', '산책', '야경', '사진'];
 
@@ -51,6 +63,8 @@ export default function UiCatalog() {
   const [tastes, setTastes] = useState<string[]>(['바다']);
   const [name, setName] = useState('겨울 여행');
   const [nickname, setNickname] = useState('');
+  const [amount, setAmount] = useState('21,000');
+  const [memo, setMemo] = useState('');
   const [sheet, setSheet] = useState(false);
   const [loading, setLoading] = useState(false);
   const [view, setView] = useState<'catalog' | 'empty' | 'first' | 'error'>('catalog');
@@ -181,6 +195,61 @@ export default function UiCatalog() {
           />
         </Section>
 
+        <Section title="입력칸 · 회색 상자 (variant=filled)">
+          <TextField
+            label="금액"
+            required
+            variant="filled"
+            large
+            keyboardType="number-pad"
+            value={amount}
+            onChangeText={(v) => setAmount(formatThousands(v))}
+            style={styles.amount}
+            trailing={<Text style={[typography.title1, styles.text]}>원</Text>}
+            maxLength={AMOUNT_MAX_LENGTH}
+            hideCount
+            error={parseAmount(amount) ? undefined : '금액을 입력해 주세요'}
+            helper="서버 규칙: 1원 이상 정수, 0은 저장할 수 없어요"
+          />
+          <TextField
+            label="한 줄 평가"
+            variant="filled"
+            placeholder="예: 노을 질 때 가 보기"
+            value={memo}
+            onChangeText={setMemo}
+            maxLength={100}
+          />
+          <TextField
+            label="메모"
+            variant="filled"
+            multiline
+            placeholder="여러 줄로 적어요"
+            error="메모를 저장하지 못했어요"
+          />
+        </Section>
+
+        <Section title="태그 (누를 수 없음)">
+          <Row>
+            <Tag label="야경" />
+            <Tag label="비공개" icon="person" />
+            <Tag label="게시됨" tone="brand" icon="check" />
+            <Tag label="계획 중" tone="brandSoft" icon="calendar" />
+            <Tag label="사진으로 확인됨" tone="success" icon="check" />
+            <Tag label="지도 핀 없음" tone="outline" icon="map-pin" />
+          </Row>
+        </Section>
+
+        <Section title="카드">
+          <Card variant="filled" rounded="lg">
+            <Text style={[typography.caption, styles.muted]}>함께 쓴 돈</Text>
+            <Text style={[typography.title1, styles.text]}>23.4만 원</Text>
+          </Card>
+          <Card onPress={() => toast.show('사진 목록으로 가요')} accessibilityLabel="사진 32장">
+            <Text style={[typography.bodyBold, styles.text]}>사진 32장</Text>
+            <Text style={[typography.caption, styles.muted]}>누를 수 있는 흰 테두리 카드</Text>
+          </Card>
+        </Section>
+
         <Section title="칩 · 필터">
           <Row>
             <Chip label="전체 5" selected={filter === 'all'} onPress={() => setFilter('all')} />
@@ -212,13 +281,13 @@ export default function UiCatalog() {
 
         <Section title="동행 얼굴">
           <Row>
-            <Avatar name="지우" size="sm" />
+            <Avatar name="지우" size="sm" me />
             <Avatar name="민준" size="md" />
             <Avatar name="서연" size="lg" />
             <Avatar name="사진" size="lg" imageUrl="https://picsum.photos/seed/eodilog/80" />
           </Row>
           <Row>
-            <AvatarGroup people={[{ name: '지우' }, { name: '민준' }]} />
+            <AvatarGroup people={[{ name: '지우', me: true }, { name: '민준' }]} />
             <AvatarGroup
               people={[
                 { name: '지우' },
@@ -259,6 +328,15 @@ export default function UiCatalog() {
               onPress={() => toast.success('링크를 복사했어요')}
             />
             <Button label="기본 안내" variant="neutral" onPress={() => toast.show('저장했어요')} />
+            <Button
+              label="버튼 있는 안내"
+              variant="neutral"
+              onPress={() =>
+                toast.success('강릉 바다 여행에 담았어요', {
+                  action: { label: '보기', onPress: () => toast.show('여행으로 가요') },
+                })
+              }
+            />
             <Button
               label="실패 안내"
               variant="neutral"
@@ -337,6 +415,7 @@ const styles = StyleSheet.create({
   text: { color: colors.text.default },
   muted: { color: colors.text.muted },
   iconCell: { width: 64, alignItems: 'center', gap: spacing[4] },
+  amount: { textAlign: 'right' },
   sheetRow: {
     flexDirection: 'row',
     alignItems: 'center',
