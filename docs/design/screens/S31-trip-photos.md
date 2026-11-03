@@ -11,7 +11,7 @@
 | 기본 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-17384) | 아래 "기본" 그대로 |
 | 분류 중 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-17604) | 칩 아래 안내 "사진을 주제별로 나누고 있어요", "32장 중 20장 나눴어요 · 끝나면 묶음이 보여요". 장소 묶음 대신 "올린 순서" 제목과 "아직 나누지 않았어요" 사진 격자(올린 사람 얼굴만) |
 | 사진 없음 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-17738) | 가운데 빈 화면: "아직 올린 사진이 없어요", "사진을 올리면 장소별로 나눠요", 주 버튼 [사진 올리기] |
-| 장소 미지정 묶음 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-17795) | 별도 화면(제목 "장소 미지정"). "위치와 날짜가 없는 사진을 장소에 연결해요", 사진 3장 격자("3장 선택"), "어디서 찍었나요?" 아래 코스 장소 목록(일차별, 번호 + 이름), [장소 검색] "코스에 없는 곳이면 찾아서 연결해요", 주 버튼 [연결하기] |
+| 장소 미지정 묶음 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-17795) | 아래 "장소 미지정 묶음 (별도 화면)" 참고 |
 | 자동 분류 실패 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-30488) | 분류 중과 같고 안내가 "사진을 주제별로 나누지 못했어요" + [다시 시도] |
 
 ## 기본
@@ -27,6 +27,18 @@
         - 오른쪽 아래 올린 사람 얼굴 22(`typography.captionBold`). **나**는 `colors.brand.primaryLight` 배경, 다른 동행은 `colors.line.default` ([S35 얼굴 모양](S35-expenses.md#얼굴-모양))
       - 칸을 누르면 묶음이면 S32, 한 장이면 사진 크게 보기
 3. **아래 줄** — 왼쪽 "사진 32장 · 3명이 올렸어요" `typography.caption` `colors.text.icon`, 오른쪽 알약 주 버튼 48 "공동 피드 게시"(게시 아이콘 20) → S38
+
+## 장소 미지정 묶음 (별도 화면)
+
+상단 바 [뒤로], 제목 "장소 미지정" `typography.bodyBold` + "겨울 여행" `typography.caption`, 오른쪽 동행 얼굴 묶음 24. 본문 위 16, 좌우 20, 세로 간격 14.
+
+1. 안내 "위치와 날짜가 없는 사진을 장소에 연결해요" `typography.caption` `colors.text.sub2`
+2. **사진 묶음** — 제목 줄: "사진 3장" `typography.title3` + 오른쪽 "3장 선택" `typography.caption` `colors.text.icon`, 간격 12. 칸 82x88(둥글기 12) 3개 가로: 오른쪽 아래 올린 사람 얼굴 22, 고른 칸은 `colors.text.default` 막 흐림 0.38 + 흰 동그라미 24 체크 14. 기본은 모두 고른 상태
+3. **어디서 찍었나요?** — 제목 줄: "어디서 찍었나요?" `typography.title3` + 오른쪽 "코스 장소" `typography.caption`. 아래 일차별 목록(간격 2)
+   - 일차 머리 "1일차 · 11.14(토)" `typography.captionMedium` `colors.text.icon`(위 4)
+   - 장소 줄(높이 48, 좌우 12, 둥글기 14, 간격 14): 번호 동그라미 28(`colors.text.muted`, `typography.captionBold` 흰색) · 이름 `typography.body` · 오른쪽 라디오 24(안 고름 `colors.line.default` 동그라미). 고른 줄은 배경 `colors.brand.primaryBg`, 번호 `colors.brand.primary`, 라디오 `colors.brand.primary` + 체크 14
+4. **장소 검색 줄** — 배경 `colors.surface.default`, 둥글기 16, 안쪽 16/20, 간격 18: 검색 아이콘 20 · "장소 검색" `typography.bodyMedium` + "코스에 없는 곳이면 찾아서 연결해요" `typography.caption` · `Icon chevron-right` 16 → S13(A)
+5. **아래 버튼** — 오른쪽 알약 주 버튼 48 [링크 아이콘 20 + "연결하기"]. 고른 사진을 고른 장소에 붙이고 S31로 돌아간다
 
 ## 예시 데이터
 

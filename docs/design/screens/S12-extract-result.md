@@ -8,9 +8,9 @@
 
 | 상태 | 피그마 | 달라지는 점 |
 | --- | --- | --- |
-| 진행 중 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-6645) | 지도 없이 가운데: "장소를 찾고 있어요", "보통 10초 안에 끝나요", 단계 3개 "링크와 캡처 읽기 / 장소 이름 찾기 / 지도에 표시하기"(지금 단계 강조), 글자 버튼 [취소] |
+| 진행 중 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-6645) | 아래 "진행 중" 참고 |
 | 성공 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-6941) | 아래 "성공" 그대로 |
-| 복수 후보 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-6727) | 지도 핀이 A·B·C 글자. 시트 제목 "어느 곳인가요?", 설명 "같은 이름이 3곳 있어요", 후보 줄 A·B·C(이름 + 주소 "부산 수영구 남천동"). 아래 글자 버튼 "여기에 없어요"(→ S13), 주 버튼 "이곳으로" |
+| 복수 후보 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-6727) | 아래 "복수 후보" 참고 |
 | 식별 불가 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-6847) | 가운데 빈 화면: "장소를 알아내지 못했어요", "장소를 찾지 못했어요. 직접 골라 주세요", 주 버튼 "장소 직접 검색하기"(→ S13) |
 | 처리 실패 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-6894) | 가운데 오류 화면: "링크를 열지 못했어요", "불러오지 못했어요", 주 버튼 "다시 시도". 공통 `ErrorState` |
 | 그룹 즐겨찾기에서 시작 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-7617) | 성공과 같고 설명이 "겨울 여행 그룹 즐겨찾기에서 시작했어요", 주 버튼이 "겨울 여행 그룹에 저장"(저장 시트 없이 바로 저장) |
@@ -29,6 +29,30 @@
      - [핀 아이콘 16 + "부산 수영구" `typography.caption` `colors.text.icon`] 다음 키워드 칩(높이 24, 좌우 8, 둥글기 `radius.sm`(8), 배경 `colors.surface.default`, 12/24 보통 `colors.text.icon`), 간격 10
      - 찾은 근거 [반짝임 아이콘 16 + "게시물 글에서 찾았어요"] `typography.caption` `colors.brand.primaryDark`
    - 아래 오른쪽 알약 주 버튼 48: 저장 아이콘 20 + "2곳" → S08 가져온 장소
+
+## 진행 중
+
+상단 바 [뒤로] + 큰 제목 "장소 찾기" `typography.title1`. 지도는 없고 흰 배경.
+
+1. **찾는 중 그림** — 화면 가운데 위쪽에 `colors.brand.primary` 동그라미 세 겹(140·100·64, 바깥일수록 옅게)과 가운데 점 20(흰 테두리). 퍼져 나가는 움직임을 넣으면 좋다
+2. **원본 요약 칩** — 성공 상태와 같은 흰 알약 [링크 아이콘 + 주소] [사진 아이콘 + "2장"]
+3. **아래 영역** — 좌우 40·아래 34, 세로 간격 20, 가운데 정렬
+   - "장소를 찾고 있어요" `typography.title1`, 간격 2, "보통 10초 안에 끝나요" `typography.caption` `colors.text.icon`
+   - **진행 단계** 세로 목록(간격 14, 폭 148): 줄마다 동그라미 24(끝난 단계 `colors.status.successMid` 바탕 + 체크 16, 진행 중 `colors.brand.primary`, 남은 단계 `colors.line.default`) + 글자 `typography.body` `colors.text.icon` — "링크와 캡처 읽기 / 장소 이름 찾기 / 지도에 표시하기"
+   - 글자 버튼 "취소" `typography.bodyMedium` `colors.text.icon`(높이 48, 좌우 16). 누르면 작업을 취소하고 S11로
+4. 작업 조회는 `GET /jobs/{jobId}`를 주기적으로 읽는다. 단계는 작업 상태로 바꾼다
+
+## 복수 후보
+
+지도 위 핀이 번호 대신 글자 A·B·C다. 고른 후보(B)는 `colors.brand.primary` 동그라미 30(글자 15 굵게 흰색), 나머지는 `colors.text.sub2` 동그라미 24(`typography.label` 흰색)에 흐림 0.55.
+
+**아래 시트**(좌우 20·아래 34, 손잡이 36x4)
+1. "어느 곳인가요?" `typography.title1`, 간격 2, [핀 아이콘 16 + "같은 이름이 3곳 있어요" `typography.caption` `colors.text.icon`]
+2. **후보 줄**(위 16, 줄 사이 10): 높이 74, 안쪽 14/18/14/14, 둥글기 `radius.lg`(16), 간격 18. 고른 줄 배경 `colors.brand.primaryBg`, 나머지 `colors.surface.default`
+   - 왼쪽 글자 동그라미 24("A", `typography.captionBold` 흰색, 고른 것 `colors.brand.primary` 나머지 `colors.text.sub2`)
+   - 가운데: 이름 "바다 앞 카페 남천점" `typography.bodyBold` + [핀 아이콘 16 + "부산 수영구 남천동" `typography.caption` `colors.text.icon`]
+   - 오른쪽 라디오 22(S08과 같음)
+3. **버튼 줄**(위 20, 간격 10, 오른쪽 정렬): 글자 버튼 [검색 아이콘 20 + "여기에 없어요"](`colors.text.icon`) → S13, 알약 주 버튼 48 [체크 아이콘 + "이곳으로"]
 
 ## 공통 부품과 맞지 않는 점
 

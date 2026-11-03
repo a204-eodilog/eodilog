@@ -10,8 +10,8 @@
 | --- | --- | --- |
 | 사진 선택 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-16782) | 아래 "사진 선택" 그대로 |
 | 사진 권한 거절 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-16998) | 가운데 빈 화면: "사진에 접근할 수 없어요", "설정에서 사진 접근을 허용해 주세요", 주 버튼 [설정으로 이동], 글자 버튼 [나중에] |
-| 업로드 진행 중 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-17057) | 진행 표시 "20장 중 12장 올렸어요", "다 올리면 주제와 장소별로 나눠요", "취소해도 이미 올린 사진은 남아요", 글자 버튼 [올리기 취소] |
-| 일부 실패 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-17208) | "2장을 올리지 못했어요", "18장은 올라갔어요", 실패한 사진 칸에 "실패" 표시, 안내 "실패한 2장만 다시 올려요", 글자 버튼 [나중에], 주 버튼 [2장 다시 시도] |
+| 업로드 진행 중 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-17057) | 아래 "업로드 진행 중" 참고 |
+| 일부 실패 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-17208) | 아래 "일부 실패" 참고 |
 
 ## 사진 선택
 
@@ -22,6 +22,24 @@
    - **날짜 묶음**(묶음 사이 간격 18, 제목과 격자 12): 왼쪽 "11.14(토)" `typography.title3`, 오른쪽 "14장 중 12장" `typography.caption` `colors.text.icon`
    - **사진 격자**: 4열, 칸 83x84, 둥글기 `radius.md`(12), 사진 없으면 `colors.line.default`. 고른 사진은 위에 `colors.text.default` 반투명 막 + 오른쪽 위 흰 동그라미 24 안에 체크 14. 안 고른 사진은 흰 테두리 동그라미 24만
 3. **아래 줄** — 위 12·아래 34, 좌우 20. 왼쪽 "20장 선택" `typography.bodyBold`, 오른쪽 알약 주 버튼 48: 올리기 아이콘 20 + "올리기"
+
+## 업로드 진행 중
+
+상단 바는 같다. 보기 범위 칩은 사라진다.
+
+1. **진행 상자** — 배경 `colors.brand.primaryBg`, 둥글기 `radius.xl`(20), 안쪽 18, 세로 간격 14
+   - 줄(간격 14): 흰 동그라미 44 안에 올리기 아이콘 22 · "20장 중 12장 올렸어요" `typography.bodyBold` + "다 올리면 주제와 장소별로 나눠요" `typography.caption` `colors.text.icon`(간격 2)
+   - **진행 막대** 높이 6, 흰 바탕 알약, 채운 부분 `colors.brand.primary` 알약(12/20 만큼)
+2. **사진 격자** — 선택 화면과 같은 4열 83x84. 올린 사진은 오른쪽 위에 `colors.status.success` 동그라미 20 + 체크 12, 아직 안 올린 사진은 표시 없음
+3. 안내: 정보 아이콘 16 + "취소해도 이미 올린 사진은 남아요" `typography.caption` `colors.text.icon`
+4. **아래 줄** — 왼쪽 글자 버튼 "올리기 취소"(`typography.bodyMedium` `colors.text.icon`, 높이 48, 좌우 16). 주 버튼 없음
+
+## 일부 실패
+
+1. **안내 상자** — 배경 연회색(피그마 `color/grey/98`, `colors.surface.subtle`), 둥글기 20, 안쪽 20, 줄 간격 14: 흰 동그라미 44 안에 경고 아이콘 22 · "2장을 올리지 못했어요" `typography.bodyBold` + "18장은 올라갔어요" `typography.caption` `colors.text.icon`
+2. **사진 격자** — 올라간 사진은 초록 체크 동그라미 20, 실패한 사진은 오른쪽 위 빨간 동그라미(`colors.status.dangerMid`) + X, 칸 아래 "실패" `typography.micro` `colors.status.danger`
+3. 안내: 정보 아이콘 16 + "실패한 2장만 다시 올려요" `typography.caption`
+4. **아래 줄**(오른쪽 정렬, 간격 10): 글자 버튼 "나중에"(`colors.text.icon`), 알약 주 버튼 48 [다시 시도 아이콘 20 + "2장 다시 시도"]
 
 ## 공통 부품과 맞지 않는 점
 

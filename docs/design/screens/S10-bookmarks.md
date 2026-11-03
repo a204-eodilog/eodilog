@@ -9,7 +9,7 @@
 | 상태 | 피그마 | 달라지는 점 |
 | --- | --- | --- |
 | 목록 보기 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-5795) | 아래 "목록 보기" 그대로 |
-| 지도 보기 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-5989) | 목록 자리에 지도. 지역 묶음 마커("강릉 2", "부산 3")와 장소 핀, 아래에 고른 장소 카드(사진, 이름, 동 이름, 출처 배지). **지도 공통 부품(A)** 위에 만든다 |
+| 지도 보기 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-5989) | 아래 "지도 보기" 참고 |
 | 저장 없음 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-6363) | 가운데 빈 화면: "sns 링크" 그림, "가고 싶은 곳 링크를 붙여 넣어 보세요", "링크·캡처로 장소를 찾아요". 오른쪽 아래 [+] 버튼은 그대로 |
 | 연결 끊김 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-28358) | 목록 위에 안내 줄 "인터넷에 연결되지 않았어요", "10:20 기준이에요". 저장해 둔 목록은 그대로 보여 준다 |
 
@@ -25,6 +25,14 @@
    - 사진 아래 간격 10: 장소 이름 15/23 굵게 `colors.text.default`, 간격 2, "부산 수영구 · 카페 바다뷰" 12/18 보통 `colors.text.sub2`
 5. **[+] 버튼** — 오른쪽 아래 떠 있는 동그라미 56, `colors.brand.primary`, 더하기 아이콘 28 흰색. 누르면 S11
 6. **하단 탭** — 공통 `TabBar`, 저장 탭 선택
+
+## 지도 보기
+
+목록 보기와 상단 바·즐겨찾기 종류·[+] 버튼·하단 탭은 같다. 본문 자리에 지도가 꽉 찬다. **지도 공통 부품(A)** 위에 만든다.
+
+1. **지역 묶음 마커** — 지도 위 흰 알약(높이 28, 왼쪽 12·오른쪽 10, 간격 8): 지역 이름 "강릉" `typography.captionMedium` `colors.text.default` + [북마크 아이콘 16 + 개수 "2" `typography.captionMedium` `colors.brand.primaryDark`](간격 2). 알약 아래 가운데에 점 8(`colors.brand.primary`). 누르면 그 지역으로 확대
+2. **장소 카드 가로 목록** — 화면 아래 떠 있는 가로 스크롤, 좌우 여백 20, 카드 간격 10. 카드 248x84, 흰 바탕, 둥글기 `radius.lg`(16), 안쪽 14, 간격 18: 사진 56x56(둥글기 12, 없으면 `colors.line.default`) · 이름 `typography.bodyBold` + 아래(간격 8) [핀 아이콘 16 + "수영구" `typography.caption` `colors.text.icon`] [출처 아이콘 16 + "SNS" `typography.caption` `colors.text.sub`](묶음 간격 14). 카드를 넘기면 지도의 해당 핀이 강조되고, 누르면 S14
+3. 지도 안 장소 핀은 지도 부품의 기본 핀. 확대 전에는 지역 묶음 마커만 보인다
 
 ## 공통 부품과 맞지 않는 점
 

@@ -9,8 +9,8 @@
 | 상태 | 피그마 | 달라지는 점 |
 | --- | --- | --- |
 | 게시 전 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-21466) | 아래 "게시 전" 그대로 |
-| 게시 확인 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=385-3339) | 아래 시트: "공동 피드를 게시할까요?", "겨울 여행 · 동행 3명의 기록", 안내 세 줄 "모두에게 공개돼요⏎사진·코스·평가·경비가 함께 올라가요⏎숨길 친구는 게시 후 고를 수 있어요", 글자 버튼 [친구에게 보이는 모습 미리 보기](→ S40), 주 버튼 [게시] |
-| 게시됨 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-21588) | 상태 태그 "게시됨"(연파랑) + "전체 공개 · 하늘에게 숨김", 안내 "하늘님은 서연님 피드에서는 볼 수 있어요". 기록 관리에 [공동 피드 삭제] 추가, 아래 버튼이 [내 노출 설정](→ S39). 토스트 "공동 피드를 게시했어요" |
+| 게시 확인 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=385-3339) | 아래 "게시 확인 (시트)" 참고 |
+| 게시됨 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-21588) | 아래 "게시됨" 참고 |
 | 불러오기 실패 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-31377) | 공통 `ErrorState`: "여행 기록을 불러오지 못했어요", [다시 시도], [돌아가기] |
 
 ## 게시 전
@@ -26,6 +26,25 @@
       - 누르면 각각 S24 / S33 / S35
    4. **기록 관리** — 흰 알약 버튼 40(테두리, 좌우 10/14, 아이콘 16 + `typography.captionMedium`), 간격 10: "장소 위치 바꾸기"(`colors.text.default`), "기록 삭제"(`colors.status.danger`) → S50
 3. **아래 버튼** — 오른쪽 알약 주 버튼 48: 게시 아이콘 20 + "공동 피드 게시" → 게시 확인 시트
+
+## 게시 확인 (시트)
+
+게시 전 화면 위에 어두운 막과 아래 시트. 공통 `BottomSheet`, 좌우 20·아래 34.
+
+1. **제목 줄** — "공동 피드를 게시할까요?" `typography.title1`, 간격 2, [여행 아이콘 16 + "겨울 여행 · 동행 3명의 기록" `typography.caption` `colors.text.icon`]. 오른쪽 [닫기]
+2. **안내 카드** — 위 16·아래 20. 흰 바탕 테두리 카드(`Card variant="outline" rounded="xl"`, 둥글기 24, 안쪽 18), 가로 간격 16: 연파랑 동그라미 40(`colors.brand.primaryBg`) 안에 지구본 아이콘 20 · 오른쪽 글자 세 줄 `typography.body` 줄 높이 20 — "모두에게 공개돼요"(굵게), "사진·코스·평가·경비가 함께 올라가요", "숨길 친구는 게시 후 고를 수 있어요". 그 아래 글자 링크 "친구에게 보이는 모습 미리 보기" `typography.captionMedium` `colors.brand.primary` → S40(A)
+3. **버튼** — 가로 꽉 찬 알약 주 버튼 48 "게시"(이 화면만 전체 폭). 누르면 게시 API, 성공하면 시트가 닫히고 "게시됨" 상태 + 토스트 "공동 피드를 게시했어요"
+
+피그마의 이 상태는 글자 크기가 12/18·16/24처럼 토큰과 조금 다르게 그려져 있다. 게시 전 화면과 같은 토큰(`caption`·`bodyBold`)으로 맞춘다.
+
+## 게시됨
+
+게시 전과 같은 구조에서 머리와 아래 버튼만 바뀐다.
+
+- **머리** — 태그 줄(간격 10): `Tag tone="brand" icon="check"` "게시됨" + "전체 공개 · 하늘에게 숨김" `typography.caption` `colors.brand.primaryDark`. 마지막 안내 줄이 "하늘님은 서연님 피드에서는 볼 수 있어요" `typography.caption` `colors.text.icon`(숨긴 친구가 있을 때만)
+- **기록 관리** — "장소 위치 바꾸기", "기록 삭제"는 그대로
+- **아래 줄**(오른쪽 정렬, 간격 10): 글자 버튼 "공동 피드 삭제"(`typography.bodyMedium` `colors.text.icon`) → S39 삭제 확인, 흰 테두리 알약 48 [설정 아이콘 20 + "내 노출 설정"] → S39
+- 게시 직후 토스트 "공동 피드를 게시했어요"
 
 ## 공통 부품과 맞지 않는 점
 

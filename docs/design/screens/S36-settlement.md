@@ -9,7 +9,7 @@
 | 상태 | 피그마 | 달라지는 점 |
 | --- | --- | --- |
 | 기본 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-19618) | 아래 "기본 화면" 그대로 |
-| 재계산 필요 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-19859) | 맨 위에 연파랑 안내 상자: 새로고침 아이콘 동그라미, "다시 계산해야 해요", "정산 뒤 택시 12,000원이 추가됐어요", 오른쪽 주 버튼 [새로고침 아이콘 다시 계산]. 그 아래 회색 배지 "이전 정산 · 지금과 달라요". 이전 결과는 모두 흐리게 보여 준다. "누가 누구에게 얼마" 줄에는 보내는 사람·받는 사람 얼굴이 화살표 양쪽에 붙는다 |
+| 재계산 필요 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-19859) | 아래 "재계산 필요" 참고 |
 | 계산 실패 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-31138) | 결과 없이 가운데 오류 화면: 계산기 아이콘 동그라미, "정산을 계산하지 못했어요", "지출 3건은 그대로예요. 다시 계산해 주세요", 주 버튼 [새로고침 아이콘 다시 계산], 그 아래 글자 버튼 "경비 목록 보기" |
 
 ## 기본 화면
@@ -49,6 +49,20 @@
 | 낸 돈 | [assets/icon-card.svg](assets/icon-card.svg) |
 | 10원 단위 안내, 계산 실패 | [assets/icon-calculator.svg](assets/icon-calculator.svg) — 파일은 흰 선이라 회색으로 바꿔 쓴다 |
 | 다시 계산 | 새로고침 아이콘 — 공통 아이콘에 없음 |
+
+## 재계산 필요
+
+기본 화면 위에 안내 상자가 붙고, 이전 결과 전체가 흐림 0.48로 보인다. "포함한 지출" 상자는 없다.
+
+1. **안내 상자** — 위 4, 배경 `colors.brand.primaryBg`, 둥글기 `radius.xl`(20), 안쪽 20, 세로 간격 12
+   - 줄(간격 14): 흰 동그라미 44 안에 새로고침 아이콘 22 · "다시 계산해야 해요" `typography.bodyBold` + "정산 뒤 택시 12,000원이 추가됐어요" `typography.caption` `colors.text.icon`
+   - 오른쪽 정렬 알약 주 버튼 40(좌우 12/16, 새로고침 아이콘 16 + "다시 계산" `typography.bodyMedium` 흰색). 누르면 `POST /trips/{tripId}/settlements`
+2. **이전 정산**(흐림 0.48, 세로 간격 28)
+   - 회색 태그 "이전 정산 · 지금과 달라요"(배경 `colors.line.default`, 둥글기 8, 좌우 8, `typography.captionMedium` `colors.text.default`)
+   - 요약 "234,000원을 3명이 나눴어요" + 계산 시각 — 기본과 같음
+   - "누가 누구에게 얼마" 줄이 조금 다르다: 높이 68, 안쪽 18/20. 왼쪽에 **보내는 사람 얼굴 32 → 화살표 아이콘 18 → 받는 사람 얼굴 32**(간격 6), 그다음 "민준 → 지우" `typography.body`, 오른쪽 금액 `typography.bodyBold`
+   - "구성원별 부담액"은 기본과 같음
+3. 이 상태에서는 "포함한 지출" 상자와 안내 "10원 단위" 줄이 없다
 
 ## 공통 부품과 맞지 않는 점
 
