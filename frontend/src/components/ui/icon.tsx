@@ -1,0 +1,103 @@
+import Svg, { Circle, Path } from 'react-native-svg';
+
+import { colors, size } from '@/theme';
+
+/** 앱 공통 선 아이콘. 24 기준 좌표를 쓰고 크기만 바꾼다. */
+export type IconName =
+  | 'back'
+  | 'close'
+  | 'plus'
+  | 'check'
+  | 'chevron-right'
+  | 'search'
+  | 'home'
+  | 'trip'
+  | 'bookmark'
+  | 'chat'
+  | 'person'
+  | 'people'
+  | 'bell'
+  | 'map-pin'
+  | 'calendar'
+  | 'link'
+  | 'copy'
+  | 'alert';
+
+type IconProps = {
+  name: IconName;
+  /** 지름. 기본 size.icon.lg(24) */
+  size?: number;
+  color?: string;
+  /** 하단 탭처럼 채운 모양이 필요할 때 */
+  filled?: boolean;
+};
+
+const PATHS: Record<IconName, string> = {
+  back: 'M15 5L8 12L15 19',
+  close: 'M6 6L18 18M18 6L6 18',
+  plus: 'M12 5V19M5 12H19',
+  check: 'M5 12.5L9.5 17L19 7',
+  'chevron-right': 'M9 5L16 12L9 19',
+  search: 'M20 20L16.5 16.5M18 10.5A7.5 7.5 0 1 1 3 10.5A7.5 7.5 0 0 1 18 10.5Z',
+  home: 'M4 10.5L12 4L20 10.5V19A1 1 0 0 1 19 20H15V14H9V20H5A1 1 0 0 1 4 19V10.5Z',
+  trip: 'M4 8H20V19A1 1 0 0 1 19 20H5A1 1 0 0 1 4 19V8Z',
+  bookmark: 'M6 4H18V20L12 15.5L6 20V4Z',
+  chat: 'M4 6A2 2 0 0 1 6 4H18A2 2 0 0 1 20 6V15A2 2 0 0 1 18 17H9L4 21V6Z',
+  person: 'M12 12A4 4 0 1 0 12 4A4 4 0 0 0 12 12ZM4 20C4 16.7 7.6 15 12 15C16.4 15 20 16.7 20 20',
+  people:
+    'M9 11A3.5 3.5 0 1 0 9 4A3.5 3.5 0 0 0 9 11ZM2 19C2 15.9 5.1 14 9 14C12.9 14 16 15.9 16 19M16 11A3 3 0 1 0 16 5M18 14.3C20.4 14.9 22 16.4 22 19',
+  bell: 'M6 16V11A6 6 0 0 1 18 11V16L19.5 18H4.5L6 16ZM10 21H14',
+  'map-pin':
+    'M12 21C12 21 5 14.5 5 10A7 7 0 0 1 19 10C19 14.5 12 21 12 10ZM12 12.5A2.5 2.5 0 1 0 12 7.5A2.5 2.5 0 0 0 12 12.5Z',
+  calendar: 'M4 6H20V20H4V6ZM4 10H20M8 4V8M16 4V8',
+  link: 'M10 14L14 10M13 7L15 5A3.5 3.5 0 0 1 19 10L17 12M11 17L9 19A3.5 3.5 0 0 1 5 14L7 12',
+  copy: 'M9 9H19V19H9V9ZM5 15V5H15',
+  alert: 'M12 3L22 20H2L12 3ZM12 10V14M12 17V17.5',
+};
+
+/** 채워도 선으로만 남겨야 하는 부분. 가방 손잡이처럼 몸통과 따로 그린다. */
+const OUTLINE_ONLY: Partial<Record<IconName, string>> = {
+  trip: 'M9 8V5A1 1 0 0 1 10 4H14A1 1 0 0 1 15 5V8',
+};
+
+export function Icon({
+  name,
+  size: dim = size.icon.lg,
+  color = colors.text.icon,
+  filled = false,
+}: IconProps) {
+  const path = PATHS[name];
+  const outline = OUTLINE_ONLY[name];
+  return (
+    <Svg width={dim} height={dim} viewBox="0 0 24 24" fill="none">
+      <Path
+        d={path}
+        stroke={color}
+        strokeWidth={filled ? 1.5 : 1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill={filled ? color : 'none'}
+      />
+      {outline ? (
+        <Path
+          d={outline}
+          stroke={color}
+          strokeWidth={1.8}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      ) : null}
+    </Svg>
+  );
+}
+
+type DotProps = { color?: string; size?: number };
+
+/** 새 소식 점. 아이콘 오른쪽 위에 겹쳐 쓴다. */
+export function Dot({ color = colors.status.dangerMid, size: dim = 8 }: DotProps) {
+  return (
+    <Svg width={dim} height={dim} viewBox="0 0 8 8">
+      <Circle cx={4} cy={4} r={4} fill={color} />
+    </Svg>
+  );
+}
