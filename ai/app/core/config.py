@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     request_budget_seconds: float = 45
     llm_timeout_seconds: float = 30
     kakao_timeout_seconds: float = 5
+    link_timeout_seconds: float = 5
 
 
 @lru_cache

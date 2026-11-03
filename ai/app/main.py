@@ -1,19 +1,33 @@
 import logging
 import time
+from contextlib import asynccontextmanager
 
+import httpx
 from fastapi import FastAPI, Request
 
+from app.clients.gms import GmsClient
+from app.clients.kakao_local import KakaoLocalClient
+from app.clients.page_meta import PageMetaFetcher
 from app.core.budget import RequestBudgetMiddleware
 from app.core.config import Settings, get_settings
 from app.core.errors import TRACE_HEADER, register_error_handlers, resolve_trace_id
+from app.features.place_extraction.router import router as place_extraction_router
+from app.features.place_extraction.service import PlaceExtractor
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 log = logging.getLogger("ai")
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
-    app = FastAPI(title="어디로그 AI 서버", version="0.1.0")
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        yield
+        await app.state.http.aclose()
+
+    app = FastAPI(title="어디로그 AI 서버", version="0.1.0", lifespan=lifespan)
     app.state.settings = settings or get_settings()
+    app.state.http = httpx.AsyncClient()
+    app.state.place_extractor = _build_place_extractor(app.state.settings, app.state.http)
 
     # 뒤에 등록한 미들웨어가 바깥을 감싼다. 예산 초과 503에도 trace가 추적 ID를 붙인다
     app.add_middleware(RequestBudgetMiddleware, seconds=app.state.settings.request_budget_seconds)
@@ -40,7 +54,27 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def health():
         return {"data": {"status": "ok"}}
 
+    app.include_router(place_extraction_router)
+
     return app
+
+
+def _build_place_extractor(settings: Settings, http: httpx.AsyncClient) -> PlaceExtractor:
+    return PlaceExtractor(
+        llm=GmsClient(
+            http,
+            api_key=settings.gms_api_key,
+            base_url=settings.gms_base_url,
+            model=settings.llm_model,
+            timeout_seconds=settings.llm_timeout_seconds,
+        ),
+        places=KakaoLocalClient(
+            http,
+            api_key=settings.kakao_rest_api_key,
+            timeout_seconds=settings.kakao_timeout_seconds,
+        ),
+        pages=PageMetaFetcher(http, timeout_seconds=settings.link_timeout_seconds),
+    )
 
 
 app = create_app()
