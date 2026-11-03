@@ -47,7 +47,7 @@ sources:
 ## 1. 공통 계약 (백엔드 §2와 같음)
 
 - 경로 `/ai/v1`, JSON, **camelCase**. 사진·캡처만 `multipart/form-data`.
-- 인증: `X-Internal-Token` 헤더 = 환경변수 `INTERNAL_API_TOKEN`(비어 있으면 로컬 개발로 검사 안 함).
+- 인증: `X-Internal-Token` 헤더 = 환경변수 `INTERNAL_API_TOKEN`. 비어 있으면 서버가 시작되지 않고, 시작 검사를 건너뛰어도 요청을 401로 거부한다. 로컬 개발만 `ALLOW_NO_INTERNAL_TOKEN=true`로 검사를 끈다.
 - ID는 문자열(백엔드 UUID). 날짜시각 ISO 8601 UTC, 날짜 `YYYY-MM-DD`, 일정 시각 `HH:MM`(Asia/Seoul).
 - 성공: `200 {"data": ...}`.
 - 실패: `{"error":{"code":"...","message":"...","fields":[],"traceId":"..."}}`. `traceId`는 요청 헤더 `X-Trace-Id`(백엔드 공통 헤더), 없으면 서버가 만든다. 백엔드는 이 값에 `jobId`를 넣는다.

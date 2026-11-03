@@ -6,8 +6,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    # 비어 있으면 서버 간 인증을 검사하지 않는다 (로컬 개발)
+    # 백엔드와 공유하는 서버 간 인증 토큰. 없으면 서버가 시작되지 않는다
     internal_api_token: str = ""
+    # 로컬 개발 전용. 토큰이 없어도 시작하고 검사를 건너뛴다. 운영에서는 켜지 않는다
+    allow_no_internal_token: bool = False
 
     gms_api_key: str = ""
     gms_base_url: str = "https://llm-gateway.example.com/api.openai.com/v1"

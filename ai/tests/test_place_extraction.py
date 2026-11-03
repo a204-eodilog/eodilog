@@ -570,6 +570,7 @@ def test_default_wiring_uses_settings_keys_and_closes_http():
     app = create_app(
         Settings(
             _env_file=None,
+            allow_no_internal_token=True,
             gms_api_key="k",
             gms_base_url="https://gms.test/v1",
             naver_client_id="i",

@@ -22,9 +22,22 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("ai")
 
 
+def _check_internal_token(settings: Settings) -> None:
+    if settings.internal_api_token.strip():
+        return
+    if settings.allow_no_internal_token:
+        log.warning("internal_token_check_disabled")
+        return
+    raise RuntimeError(
+        "INTERNAL_API_TOKEN이 없어 서버를 시작하지 않습니다. "
+        "로컬 개발이면 ALLOW_NO_INTERNAL_TOKEN=true를 설정하세요."
+    )
+
+
 def create_app(settings: Settings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
+        _check_internal_token(app.state.settings)
         yield
         await app.state.http.aclose()
 

@@ -12,7 +12,9 @@ from app.main import create_app
 
 
 def build_client(budget: float = 0.05) -> TestClient:
-    app = create_app(Settings(_env_file=None, request_budget_seconds=budget))
+    app = create_app(
+        Settings(_env_file=None, request_budget_seconds=budget, allow_no_internal_token=True)
+    )
 
     @app.get("/slow")
     async def slow():
