@@ -1,4 +1,4 @@
-# 이어행 프론트엔드
+# 어디로그 프론트엔드
 
 Expo SDK 58 · React Native · TypeScript · Expo Router · TanStack Query · Zustand
 

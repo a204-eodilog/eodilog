@@ -411,6 +411,7 @@ sources:
 | AS-7 | 사진: 주제 4종, 유사 0.94, 방문 판정 300m |
 | AS-8 | 모델: GMS `gpt-5.6-luna`, 사진 SigLIP2 `ViT-B-32-SigLIP2-256` |
 | AS-9 | 시간 예산: AI 요청 45초, 백엔드 호출 50초, worker 60초 |
+| AS-10 | 근거리 도보 대체: 대중교통 경로가 없고 직선 1km 이내일 때만 `WALK`. 그보다 멀면 `UNAVAILABLE`. 공급자 장애는 거리와 무관하게 `UNAVAILABLE` |
 
 ## 13. 변경 이력
 

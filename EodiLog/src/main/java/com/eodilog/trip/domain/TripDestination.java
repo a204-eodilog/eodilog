@@ -25,11 +25,15 @@ public class TripDestination {
 
 	private int displayOrder;
 
-	public static TripDestination of(UUID tripId, UUID regionId, int displayOrder) {
+	// 지역 투표 확정으로 추가된 여행지면 그 후보(정책 §13 V-14). 직접 고른 여행지는 null
+	private UUID sourceCandidateId;
+
+	public static TripDestination of(UUID tripId, UUID regionId, int displayOrder, UUID sourceCandidateId) {
 		TripDestination destination = new TripDestination();
 		destination.tripId = tripId;
 		destination.regionId = regionId;
 		destination.displayOrder = displayOrder;
+		destination.sourceCandidateId = sourceCandidateId;
 		return destination;
 	}
 

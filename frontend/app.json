@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "이어행",
-    "slug": "ieohaeng",
+    "name": "어디로그",
+    "slug": "eodilog",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "ieohaeng",
+    "scheme": "eodilog",
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon",
@@ -34,7 +34,9 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
-      ]
+      ],
+      "expo-secure-store",
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,

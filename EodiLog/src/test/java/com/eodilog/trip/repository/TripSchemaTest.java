@@ -76,8 +76,8 @@ class TripSchemaTest {
 		UUID jeju = insertRegion("JEJU");
 		UUID seogwipo = insertRegion("SEOGWIPO");
 		tripDestinationRepository.saveAllAndFlush(List.of(
-				TripDestination.of(trip.getId(), seogwipo, 0),
-				TripDestination.of(trip.getId(), jeju, 1)));
+				TripDestination.of(trip.getId(), seogwipo, 0, null),
+				TripDestination.of(trip.getId(), jeju, 1, null)));
 		ChatRoom room = chatRoomRepository.saveAndFlush(ChatRoom.open(trip.getId(), NOW));
 		chatParticipantRepository.saveAndFlush(ChatParticipant.join(room.getId(), ownerId, NOW));
 		itineraryRepository.saveAndFlush(Itinerary.createEmpty(trip.getId(), owner.getId(), NOW));
