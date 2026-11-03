@@ -1,48 +1,34 @@
-import { router } from 'expo-router';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Button } from '@/components/ui';
+import { signOut } from '@/features/auth/logout';
+import { colors, layout, spacing, typography } from '@/theme';
+
+/** S05 홈 자리. 지도와 탭은 지도 공통 부품 작업 뒤 채운다 */
 export function HomeScreen() {
   return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>홈</Text>
-      <Text style={styles.description}>탭 구성은 사용자 흐름과 화면 목록이 확정된 뒤 정해요.</Text>
-      <Pressable
-        accessibilityRole="button"
-        style={styles.button}
-        onPress={() => router.replace('/login')}
-      >
-        <Text style={styles.buttonText}>로그인 화면으로</Text>
-      </Pressable>
+    <SafeAreaView style={styles.screen}>
+      <View style={styles.body}>
+        <Text style={[typography.title2, styles.title]}>홈</Text>
+        <Text style={[typography.body, styles.text]}>
+          로그인했어요. 친구 여행 지도는 다음 작업에서 만들어요.
+        </Text>
+        <Button label="로그아웃" variant="neutral" onPress={signOut} />
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screen: { flex: 1, backgroundColor: colors.surface.white },
+  body: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
-    padding: 24,
+    gap: spacing[12],
+    paddingHorizontal: layout.screenPaddingX,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-  },
-  description: {
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  button: {
-    marginTop: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  title: { color: colors.text.default },
+  text: { color: colors.text.sub, textAlign: 'center' },
 });

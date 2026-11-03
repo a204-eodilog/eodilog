@@ -14,8 +14,10 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { queryClient } from '@/api/query-client';
 import { ToastHost } from '@/components/ui/toast';
+import { SessionExpiredDialog } from '@/features/auth/components/session-expired-dialog';
+import { useSessionStore } from '@/stores/session-store';
 
-// 글꼴을 다 불러오기 전에는 시작 화면을 유지해 기본 글꼴이 잠깐 보이지 않게 한다
+// 글꼴과 저장된 로그인을 다 불러오기 전에는 시작 화면을 유지한다
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
@@ -24,7 +26,12 @@ export default function RootLayout() {
     NotoSansKR_500Medium,
     NotoSansKR_700Bold,
   });
-  const ready = fontsLoaded || fontError !== null;
+  const sessionLoaded = useSessionStore((s) => s.status !== 'loading');
+  const ready = (fontsLoaded || fontError !== null) && sessionLoaded;
+
+  useEffect(() => {
+    useSessionStore.getState().hydrate();
+  }, []);
 
   useEffect(() => {
     if (ready) SplashScreen.hideAsync();
@@ -38,6 +45,7 @@ export default function RootLayout() {
       <QueryClientProvider client={queryClient}>
         <BottomSheetModalProvider>
           <Stack screenOptions={{ headerShown: false }} />
+          <SessionExpiredDialog />
           <ToastHost />
         </BottomSheetModalProvider>
       </QueryClientProvider>
