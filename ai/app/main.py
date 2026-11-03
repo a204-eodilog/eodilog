@@ -11,6 +11,8 @@ from app.clients.page_meta import PageMetaFetcher
 from app.core.budget import RequestBudgetMiddleware
 from app.core.config import Settings, get_settings
 from app.core.errors import TRACE_HEADER, register_error_handlers, resolve_trace_id
+from app.features.checklist_suggestion.router import router as checklist_suggestion_router
+from app.features.checklist_suggestion.service import ChecklistSuggester
 from app.features.place_extraction.router import router as place_extraction_router
 from app.features.place_extraction.service import PlaceExtractor
 from app.features.preference_inference.router import router as preference_inference_router
@@ -30,6 +32,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings or get_settings()
     app.state.http = httpx.AsyncClient()
     app.state.place_extractor = _build_place_extractor(app.state.settings, app.state.http)
+    app.state.checklist_suggester = ChecklistSuggester(
+        llm=_build_llm(app.state.settings, app.state.http)
+    )
     app.state.preference_inferrer = PreferenceInferrer(
         llm=_build_llm(app.state.settings, app.state.http)
     )
@@ -61,6 +66,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.include_router(place_extraction_router)
     app.include_router(preference_inference_router)
+    app.include_router(checklist_suggestion_router)
 
     return app
 
