@@ -1,0 +1,28 @@
+# S42 여행 요약 카드
+
+담당 B · 완성도 · 요구사항 WD-FR-30 · 여는 곳 S41, S38
+
+화면 규칙은 [화면 목록](../../flow/screen-list.md) S42 줄: 지도·대표 사진·이동거리·기간·경비, 입력하지 않은 값은 '미입력'.
+
+## 상태
+
+| 상태 | 피그마 | 달라지는 점 |
+| --- | --- | --- |
+| 기본 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-23170) | 아래 "기본" 그대로 |
+| 만들기 실패 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-31904) | 공통 `ErrorState`: "요약 카드를 만들지 못했어요", "다시 시도해 주세요", [다시 시도], [돌아가기] |
+
+## 기본
+
+1. **상단 바** — [뒤로] + 큰 제목 "여행 요약" `typography.title1`
+2. **본문** — 위 16, 좌우 20, 간격 14
+   - 안내: 정보 아이콘 16 + "공개한 항목만 들어가요" `typography.caption` `colors.text.default`
+   - **요약 카드**(여행마다 하나, 흰 바탕 테두리, 둥글기 `radius.xxl`(24), 안쪽 20, 세로 18)
+     1. **지도 그림** — 가로 꽉, 높이 200, 둥글기 `radius.lg`(16). 이동 경로 선과 장소 점, 왼쪽 아래에 대표 사진 64x64(둥글기 12) 겹침. **지도 공통 부품(A)**의 경로 선을 쓰거나, 정적 그림으로 그린다. 경로를 그릴 장소가 없으면 높이 120 회색(`colors.line.default`) 칸 가운데 지도 아이콘
+     2. 여행 이름 `typography.title1`
+     3. **값 세 칸**(각 98, 세로 2): 이름 `typography.caption` `colors.text.icon` + 값 `typography.bodyBold` — "기간 1박 2일", "이동거리 약 38km", "다녀온 곳 4곳" 또는 "경비 23.4만 원". 입력하지 않은 값은 "미입력" `typography.bodyMedium` `colors.text.sub`
+     4. 빠진 항목 안내 "경비를 입력하지 않아 넣지 않았어요" / "코스·경비 아직 없음" `typography.caption` `colors.text.icon`
+
+## 공통 부품과 맞지 않는 점
+
+- 큰 흰 테두리 카드(둥글기 24)는 공통 부품에 없다. S38 요약 카드(둥글기 16)와 둥글기가 다르다.
+- 피그마 레이어 이름에 옛 여행 이름("부산 1박 2일")이 남아 있다. 화면 글자는 "겨울 여행"이다.

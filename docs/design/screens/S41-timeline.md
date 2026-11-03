@@ -1,0 +1,26 @@
+# S41 타임라인
+
+담당 B · 완성도 · 요구사항 WD-FR-29 · 여는 곳 S37
+
+화면 규칙은 [화면 목록](../../flow/screen-list.md) S41 줄: 여행 시작일 최신순, 날짜 없는 여행은 맨 아래, 계획 중 / 실제 방문 구분.
+
+## 상태
+
+| 상태 | 피그마 | 달라지는 점 |
+| --- | --- | --- |
+| 기본 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-22968) | 아래 "기본" 그대로 |
+| 불러오기 실패 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-31855) | 공통 `ErrorState`: "타임라인을 불러오지 못했어요", "불러오지 못했어요. 다시 시도해 주세요.", [다시 시도], [돌아가기] |
+
+## 기본
+
+1. **상단 바** — [뒤로] + 큰 제목 "타임라인" `typography.title1`
+2. **본문** — 위 16, 좌우 20, 여행 묶음 사이 28
+   - **여행 머리**(누르면 S42 요약 카드, 간격 10): 여행 이름 `typography.bodyBold` + [달력 아이콘 16 + "11.14 – 11.15" `typography.caption`] · 상태 태그([N4 태그](N4-my-trips.md#기본): "비공개" 회색, "계획 중"은 배경 `colors.brand.primaryBg` 글자 `colors.brand.primaryDark`) · `Icon chevron-right` 16
+   - **장소 줄**(머리와 8, 줄 사이 6, 줄 안 간격 12): 왼쪽 날짜 칸 폭 44 "11.14" `typography.captionMedium` `colors.text.icon`(같은 날 둘째 줄부터 비움) · 점 10(실제 다녀온 곳 `colors.status.success`, 계획만 있는 곳은 회색) · 장소 이름 `typography.body` + 아래 시각 "10:00" `typography.caption` `colors.text.icon`
+     - 가지 않은 곳: 시각 뒤에 "· 가지 않았어요", 옆에 "계획만" 표시
+     - 날짜 없는 계획 여행: 시각 자리에 "개인 즐겨찾기에서 담음"
+     - 사진만 있는 곳: "사진 18장"
+
+## 예시 데이터
+
+겨울 여행(11.14 – 11.15, 비공개): 해운대 해변 10:00, 광안리 바다뷰 카페 13:00, 서면 돼지국밥집 19:00, 감천문화마을 10:30, 흰여울문화마을 14:00 · 가지 않았어요. 강릉 바다 여행(날짜 미정, 계획 중): 강문 해변, 명주동 골목 카페. 추석 전주(09.26 – 09.27, 비공개): 한옥마을 골목 사진 18장.
