@@ -13,4 +13,9 @@ function required(name: string, value: string | undefined): string {
 export const env = {
   appEnv: (process.env.EXPO_PUBLIC_APP_ENV ?? 'local') as AppEnv,
   apiBaseUrl: required('EXPO_PUBLIC_API_BASE_URL', process.env.EXPO_PUBLIC_API_BASE_URL),
+  /**
+   * 앱(안드로이드)에서 카카오 로그인 뒤 돌아올 https 주소. 카카오는 eodilog:// 같은 앱 주소를 허용하지 않아
+   * 이 주소가 code·state를 eodilog://oauth/kakao로 넘겨 줘야 한다. 웹 미리보기는 비워 두면 현재 주소/oauth/kakao를 쓴다.
+   */
+  kakaoRedirectUri: process.env.EXPO_PUBLIC_KAKAO_REDIRECT_URI || null,
 } as const;

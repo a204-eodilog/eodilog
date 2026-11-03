@@ -1,12 +1,17 @@
-import { create, type AxiosError } from 'axios';
+import { create, type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 
 import { env } from '@/config/env';
 import { useSessionStore } from '@/stores/session-store';
 
+import { API_BASE_PATH, refreshAccessToken } from './session';
+
 const API_TIMEOUT_MS = 10_000;
 
+type RetriableConfig = InternalAxiosRequestConfig & { _retried?: boolean };
+
+/** 로그인한 사용자의 요청. 경로는 명세의 /api/v1 뒤만 쓴다. 예: apiClient.get('/me') */
 export const apiClient = create({
-  baseURL: env.apiBaseUrl,
+  baseURL: `${env.apiBaseUrl}${API_BASE_PATH}`,
   timeout: API_TIMEOUT_MS,
   headers: { 'Content-Type': 'application/json' },
 });
@@ -21,10 +26,16 @@ apiClient.interceptors.request.use((config) => {
 
 apiClient.interceptors.response.use(
   (response) => response,
-  (error: AxiosError) => {
-    if (error.response?.status === 401) {
-      useSessionStore.getState().clearSession();
+  async (error: AxiosError) => {
+    const config = error.config as RetriableConfig | undefined;
+    if (error.response?.status !== 401 || !config || config._retried) {
+      return Promise.reject(error);
     }
-    return Promise.reject(error);
+    // access 토큰이 만료됐다. 갱신을 한 번만 시도하고 원래 요청을 다시 보낸다
+    const token = await refreshAccessToken();
+    if (!token) return Promise.reject(error);
+    config._retried = true;
+    config.headers.Authorization = `Bearer ${token}`;
+    return apiClient(config);
   },
 );

@@ -73,6 +73,7 @@ export const colors = {
   },
   external: {
     kakao: '#FEE500',
+    naver: '#03C75A',
     black: '#000000',
   },
   /** 하단 시트·확인창 뒤 어두운 막 */
