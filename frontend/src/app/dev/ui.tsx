@@ -17,6 +17,7 @@ import {
   TabBar,
   type TabKey,
   TextField,
+  toast,
 } from '@/components/ui';
 import { colors, layout, spacing, typography } from '@/theme';
 
@@ -248,6 +249,22 @@ export default function UiCatalog() {
             variant="secondary"
             onPress={() => setSheet(true)}
           />
+        </Section>
+
+        <Section title="짧은 알림 (토스트)">
+          <Row>
+            <Button
+              label="링크를 복사했어요"
+              variant="secondary"
+              onPress={() => toast.success('링크를 복사했어요')}
+            />
+            <Button label="기본 안내" variant="neutral" onPress={() => toast.show('저장했어요')} />
+            <Button
+              label="실패 안내"
+              variant="neutral"
+              onPress={() => toast.error('복사하지 못했어요')}
+            />
+          </Row>
         </Section>
 
         <Section title="빈 화면 · 오류 화면">

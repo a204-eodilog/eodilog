@@ -24,3 +24,4 @@ export { TABS, TabBar } from './tab-bar';
 export type { TabBarProps, TabKey } from './tab-bar';
 export { TextField } from './text-field';
 export type { TextFieldProps } from './text-field';
+export { ToastHost, toast } from './toast';
