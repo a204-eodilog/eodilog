@@ -4,9 +4,11 @@ import com.eodilog.global.common.error.ErrorResponse;
 import com.eodilog.global.common.response.DataResponse;
 import com.eodilog.global.idempotency.IdempotencyService;
 import com.eodilog.global.security.AuthUser;
+import com.eodilog.job.JobRef;
 import com.eodilog.trip.dto.CreateTripRequest;
 import com.eodilog.trip.dto.TripResponse;
 import com.eodilog.trip.dto.UpdateTripRequest;
+import com.eodilog.trip.service.TripDeletionService;
 import com.eodilog.trip.service.TripQueryService;
 import com.eodilog.trip.service.TripService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -21,6 +23,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -28,6 +31,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "여행", description = "여행 생성·조회·수정과 멤버 관리")
@@ -38,6 +42,7 @@ public class TripController {
 
 	private final TripService tripService;
 	private final TripQueryService tripQueryService;
+	private final TripDeletionService tripDeletionService;
 
 	@Operation(summary = "여행 생성", description = """
 			로그인한 사용자가 여행을 만들고 방장이 된다. 이름만 필수이며 기간·여행지는 아는 경우만 보낸다.
@@ -93,6 +98,29 @@ public class TripController {
 			@RequestBody UpdateTripRequest request) {
 		TripResponse trip = tripService.updateTrip(CurrentUser.requireUserId(authUser), tripId, request);
 		return ResponseEntity.ok(DataResponse.of(trip));
+	}
+
+	@Operation(summary = "여행 삭제", description = """
+			방장만 삭제한다. expectedVersion은 조회한 여행 version이며 다르면 409다.
+			요청이 끝나면 여행은 모든 멤버에게 즉시 404가 되고(내 여행 목록·채팅방 목록에서도 빠진다), 투표·코스·경비·정산·채팅·초대·준비물·멤버 자료는
+			접수된 TRIP_DELETE 작업이 지운다. 되돌릴 수 없다. 작업 진행은 요청한 방장만 GET /jobs/{jobId}로 볼 수 있다.
+			멱등키 대상이 아니라서 성공 뒤 같은 요청을 다시 보내면 이미 삭제된 여행이므로 404다.""")
+	@ApiResponse(responseCode = "202", description = "삭제 접수. data는 TRIP_DELETE 작업 참조(JobRef)")
+	@ApiResponse(responseCode = "403", description = "FORBIDDEN: 방장이 아닌 동행",
+			content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+	@ApiResponse(responseCode = "404", description = "TRIP_NOT_FOUND: 없거나 볼 수 없는(이미 삭제된) 여행",
+			content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+	@ApiResponse(responseCode = "409", description = "VERSION_CONFLICT: 여행이 그 사이 바뀜. 다시 조회 후 시도",
+			content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+	@DeleteMapping("/{tripId}")
+	public ResponseEntity<DataResponse<JobRef>> deleteTrip(
+			@Parameter(hidden = true) @AuthenticationPrincipal AuthUser authUser,
+			@Parameter(description = "여행 ID(UUID)", example = "0193c2a1-7e2b-7c4d-9a1e-2f3b4c5d6e70")
+			@PathVariable UUID tripId,
+			@Parameter(description = "조회한 여행의 version", example = "3", required = true)
+			@RequestParam(required = false) Long expectedVersion) {
+		JobRef job = tripDeletionService.deleteTrip(CurrentUser.requireUserId(authUser), tripId, expectedVersion);
+		return ResponseEntity.status(HttpStatus.ACCEPTED).body(DataResponse.of(job));
 	}
 
 }

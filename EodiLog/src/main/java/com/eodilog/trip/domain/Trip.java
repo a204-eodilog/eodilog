@@ -98,6 +98,13 @@ public class Trip {
 		this.updatedAt = now;
 	}
 
+	// 논리 삭제(정책 §14). 즉시 모든 조회·쓰기에서 404가 되고, 하위 자료는 TRIP_DELETE 작업이 지운다. 이 행은 tombstone으로 남는다
+	public void markDeleted(Instant now) {
+		this.deletedAt = now;
+		this.version++;
+		this.updatedAt = now;
+	}
+
 	// 경비 등록·수정·삭제마다 올린다(ERD 불변식 5). 여행 정보 version과는 따로 움직여 서로 충돌을 만들지 않는다
 	public void increaseExpenseVersion() {
 		this.expenseVersion++;
