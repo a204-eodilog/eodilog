@@ -212,21 +212,21 @@ export default function UiCatalog() {
 
         <Section title="동행 얼굴">
           <Row>
-            <Avatar name="세은" size="sm" />
-            <Avatar name="승기" size="md" />
-            <Avatar name="영광" size="lg" />
+            <Avatar name="지우" size="sm" />
+            <Avatar name="민준" size="md" />
+            <Avatar name="서연" size="lg" />
             <Avatar name="사진" size="lg" imageUrl="https://picsum.photos/seed/eodilog/80" />
           </Row>
           <Row>
-            <AvatarGroup people={[{ name: '세은' }, { name: '승기' }]} />
+            <AvatarGroup people={[{ name: '지우' }, { name: '민준' }]} />
             <AvatarGroup
               people={[
-                { name: '세은' },
-                { name: '승기' },
-                { name: '영광' },
-                { name: '성환' },
-                { name: '인경' },
-                { name: '수철' },
+                { name: '지우' },
+                { name: '민준' },
+                { name: '서연' },
+                { name: '하늘' },
+                { name: '도윤' },
+                { name: '유나' },
               ]}
             />
           </Row>
