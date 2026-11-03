@@ -4,6 +4,7 @@ import com.eodilog.chat.service.ChatParticipationService;
 import com.eodilog.global.common.error.BusinessException;
 import com.eodilog.global.common.error.CommonErrorCode;
 import com.eodilog.global.common.error.ErrorResponse.ErrorField;
+import com.eodilog.poll.service.PollCloser;
 import com.eodilog.trip.domain.Trip;
 import com.eodilog.trip.domain.TripMember;
 import com.eodilog.trip.dto.LeaveTripRequest;
@@ -40,6 +41,7 @@ public class TripMemberService {
 	private final TripResponseAssembler tripResponseAssembler;
 	private final UserCardReader userCardReader;
 	private final ChatParticipationService chatParticipationService;
+	private final PollCloser pollCloser;
 	private final Clock clock;
 
 	// 기본은 ACTIVE 멤버만. 정산에 남는 이탈 멤버를 보려면 includeInactive로 LEFT·REMOVED도 포함한다(명세 §4)
@@ -84,6 +86,8 @@ public class TripMemberService {
 			throw new BusinessException(TripErrorCode.TRIP_DELETION_PENDING);
 		}
 
+		// 마감 시각이 지난 투표는 멤버가 바뀌기 전 기준으로 먼저 마감한다(정책 §13 V-6b·V-12)
+		pollCloser.closeDuePolls(tripId);
 		Instant now = now();
 		access.member().leave(now);
 		chatParticipationService.leaveTripRoom(tripId, userId, now);
@@ -149,6 +153,8 @@ public class TripMemberService {
 			throw invalid("memberId", "방장은 내보낼 수 없습니다. 여행에서 나가려면 나가기를 이용해 주세요.");
 		}
 
+		// 마감 시각이 지난 투표는 멤버가 바뀌기 전 기준으로 먼저 마감한다(정책 §13 V-6b·V-12)
+		pollCloser.closeDuePolls(tripId);
 		Instant now = now();
 		target.remove(now);
 		chatParticipationService.leaveTripRoom(tripId, target.getUserId(), now);

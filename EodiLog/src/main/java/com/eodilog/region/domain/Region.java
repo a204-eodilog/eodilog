@@ -9,7 +9,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-// 지역 코드 체계(Q-8)가 정해지기 전이라 생성 기능은 두지 않는다. 테스트 자료는 SQL로 넣는다
+// 법정동 기반 시드 지역. 테스트 문자열 코드와 기존 참조도 유지한다.
 @Entity
 @Table(name = "regions")
 @Getter

@@ -1,6 +1,6 @@
-# 백엔드 B 후속 작업 — 준비물 체크리스트·멤버 관리·경비·초대·정산·채팅·나가기
+# 백엔드 B 후속 작업 — 준비물 체크리스트·멤버 관리·경비·초대·정산·채팅·나가기·투표·코스
 
-작성일: 2026-10-29 · 상태: 체크리스트·멤버 관리 병합 완료(MR !49·!50), 경비·정산 상태 병합 완료(MR !56, 2026-10-30), 초대 링크 병합 완료(MR !58·!62), 정산 계산 병합 완료(MR !69), 채팅 REST 병합 완료(MR !71), 기본 나가기 구현(EODI-140)
+작성일: 2026-10-29 · 상태: 체크리스트·멤버 관리 병합 완료(MR !49·!50), 경비·정산 상태 병합 완료(MR !56, 2026-10-30), 초대 링크 병합 완료(MR !58·!62), 정산 계산 병합 완료(MR !69), 채팅 REST 병합 완료(MR !71), 기본 나가기 병합 완료(MR !76), 투표 구현(EODI-161)
 
 [B 첫 작업](backend-b-trip-basic.md)(여행 생성·조회·수정)이 끝난 뒤 A의 카카오 로그인을 기다리는 동안 진행한 B 작업이다. [분담안](../../../docs/plan/backend-first-work-split.md) §6은 이 기능들을 "첫 통합 뒤 배분"으로 두었지만, 로그인 없이 개발할 수 있고 여행 패키지 안에서 끝나는 것부터 B가 먼저 맡았다. A와 겹치는 파일(`user`·`auth` 패키지, `SecurityConfig`)은 건드리지 않는다.
 
@@ -16,7 +16,9 @@
 | 경비·정산 상태 | `GET/POST /trips/{tripId}/expenses`, `PATCH/DELETE /trips/{tripId}/expenses/{expenseId}`, `GET /trips/{tripId}/settlement`, `POST /trips/{tripId}/settlements`(409) | EODI-122 | 병합(MR !56, §8) |
 | 정산 계산 | `POST /trips/{tripId}/settlements`, `GET /trips/{tripId}/settlements`, `GET /trips/{tripId}/settlements/{settlementId}`, `GET /trips/{tripId}/settlement` | EODI-134 | 병합(MR !69, §10) |
 | 채팅 REST | `GET /chat/rooms`, `GET /trips/{tripId}/chat-room`, `GET/POST /chat/rooms/{roomId}/messages` | EODI-136 | 병합(MR !71, §12) |
-| 기본 나가기 | `POST /trips/{tripId}/leave` | EODI-140 | 구현(§11) |
+| 기본 나가기 | `POST /trips/{tripId}/leave` | EODI-140 | 병합(MR !76, §11) |
+| 투표 | `GET/POST /trips/{tripId}/polls`, `GET /trips/{tripId}/polls/{pollId}`, `PUT .../ballot`, `POST .../candidates` | EODI-161 | 구현(§13) |
+| 코스 수동 편집 | `GET/PUT /trips/{tripId}/itinerary` | EODI-164 | 구현(§13-3) |
 
 검증은 B 첫 작업과 같이 테스트에서 `AuthUser` principal을 넣어 했다. A 로그인 병합 뒤 실제 카카오 계정 2개로 여행 API 통합 검증(B-7)을 마쳤다([계약 §8](backend-a-b-contract.md)).
 
@@ -74,6 +76,8 @@ AI 준비물 제안(`POST /trips/{tripId}/checklist-suggestions`)은 `jobs`, 날
 | §6 준비물 추가·삭제 행 | AI 연동 전 `sourceJobId`·`suggestionIndex` 400(C-1), 논리 삭제(C-2) |
 | §2 404 표 | `EXPENSE_NOT_FOUND`(경비, EODI-122) |
 | §7 경비 표 아래 | 원금 1원 잔여 배분 순서(E-2), 정산 정책 합의 전 `GET /settlement`의 `current`는 null(E-9) |
+| §2 422 표 | `INVALID_ROUTE_LEGS`(코스 구간, EODI-164) |
+| §6 코스 행·표 아래 | 항목 200개·검증 범위·판정 순서, 바뀐 게 없으면 version 유지, 경로 연동 전 구간 `UNAVAILABLE`(C-3~C-6) |
 
 새 오류 코드:
 
@@ -82,8 +86,9 @@ AI 준비물 제안(`POST /trips/{tripId}/checklist-suggestions`)은 `jobs`, 날
 | `CHECKLIST_ITEM_NOT_FOUND` | 404 | 준비물 수정·삭제 |
 | `MEMBER_NOT_FOUND` | 404 | 동행 내보내기 |
 | `EXPENSE_NOT_FOUND` | 404 | 경비 수정·삭제 |
+| `INVALID_ROUTE_LEGS` | 422 | 코스 전체 교체(구간이 빠지거나 겹치거나 인접하지 않음) |
 
-`VERSION_CONFLICT`는 도메인별 enum(`TripErrorCode`, `ChecklistErrorCode`, `ExpenseErrorCode`)에 같은 코드 이름으로 둔다. 명세에 이미 있던 `CURRENCY_MISMATCH`·`INVALID_PARTICIPANTS`(422)와 정산의 `SETTLEMENT_NOT_FOUND`(404)는 `ExpenseErrorCode`에 둔다. Q-10 전 정산 차단용 `SETTLEMENT_POLICY_PENDING`은 정산 계산을 열면서(EODI-134) 없앴다.
+`VERSION_CONFLICT`는 도메인별 enum(`TripErrorCode`, `ChecklistErrorCode`, `ExpenseErrorCode`, `PollErrorCode`, `ItineraryErrorCode`)에 같은 코드 이름으로 둔다. 명세에 이미 있던 `CURRENCY_MISMATCH`·`INVALID_PARTICIPANTS`(422)와 정산의 `SETTLEMENT_NOT_FOUND`(404)는 `ExpenseErrorCode`에 둔다. Q-10 전 정산 차단용 `SETTLEMENT_POLICY_PENDING`은 정산 계산을 열면서(EODI-134) 없앴다.
 
 ## 6. A에게 알릴 것
 
@@ -191,3 +196,121 @@ Q-13의 REST 범위는 2026-11-02에 확정됐다([A 답변](to-B-backend-decisi
 | CH-7 | 메시지 목록 | sequence 내림차순, `beforeSequence` 미포함, limit 기본 20·최대 100. 응답은 공통 `PageResponse`가 아니라 `{data, page:{nextBeforeSequence, hasNext}}`(nextBeforeSequence는 이 페이지의 최소 sequence, 더 없으면 null). 공통 `cursor`를 함께 보내면 400 | 명세 §9 메시지 페이지 문단 |
 | CH-8 | 채팅방 목록·응답 | ACTIVE 멤버인 삭제 안 된 여행의 방만, 방 생성 역순 커서. `participants`는 지금 ACTIVE인 동행(참여 순), `lastMessage`는 가장 큰 sequence | 명세 §9 "현재 접근 가능한 방만" |
 | CH-9 | 범위 밖 | 첨부·일반 메시지 편집/삭제·읽음(`eventReadAt`)·시스템 카드(`type=SYSTEM`, `eventId`, `target`)는 만들지 않는다. 응답 필드는 명세대로 두고 값은 null. 이탈 시 본문 제거(D-10)를 할 때는 `ck_messages_text`(TEXT의 text NOT NULL)를 바꾸는 마이그레이션이 필요 | Q-13 "이번 결정으로 추가하지 않음". 시스템 카드는 events 기능과 함께 |
+
+## 13. 투표·코스 정책 (B-4)
+
+2026-11-02 B 확정, A에게 공유(확인 요청 아님). 투표는 EODI-161에서 구현했고 코스는 같은 정책으로 다음 작업에서 구현한다. 기준: [다음 분담안 B-4](backend-next-work-split-2026-11-02.md), [API 명세](../../../docs/api-spec.md) §6·§10, [ERD](../../../docs/erd.dbml) `polls`~`poll_results`·`itineraries`~`route_legs`, PRD WD-FR-12~14, 결정 D-13·F-12~F-15, [장소·지역 계약](places-regions-contract-to-B-2026-11-02.md).
+
+이미 확정돼 다시 정하지 않는 것: 시각 마감·기본 24시간, 복수 선택, 진행 중 후보 추가, 최다 후보 모두 확정(동률 포함), 0표는 확정 없이 마감, 방장 수동 종료·전원 참여 조기 종료 없음, 단일 공동 코스·확정 단계 없음, 구간별 WALK/CAR/TRANSIT.
+
+### 13-1. 범위
+
+| 이번 B-4 | 이번에 하지 않음(근거) |
+| --- | --- |
+| 투표 목록·생성·조회·내 선택·후보 추가, 자동 마감·확정(구현) | 투표 삭제·재개·후보 삭제(Q-6 미정) |
+| 코스 조회·전체 교체(수동 편집), 버전 충돌(다음 작업) | AI 변경안·적용·되돌리기, 경로 재계산(분담안 B-4 "정책·연동 계약 후 확장") |
+| 구간 이동 수단 저장(다음 작업) | 경로 시간·거리·지도선 계산(경로 공급자는 분담안 B-4에서 이후 확장으로 뺌) |
+| | 알림 이벤트·전송·묶음(A의 events·notifications 기반이 생긴 뒤 연결, Q-16) |
+| | 실시간 공동 편집·접속 표시(Q-15) |
+
+### 13-2. 투표 정책
+
+#### 13-2-1. 공통
+
+| # | 질문 | 결정 | 근거 |
+| --- | --- | --- | --- |
+| V-1 | 권한 | 여행의 ACTIVE 멤버 누구나 목록·생성·조회·투표·후보 추가. 비참여·이탈·삭제된 여행은 404 `TRIP_NOT_FOUND`, 다른 여행의 투표는 404 `POLL_NOT_FOUND` | 명세 §6 "멤버", 기존 404 숨김 원칙(P-10) |
+| V-2 | 후보 참조 | REGION 투표는 `regionId`만, PLACE 투표는 `placeId`만. 지역은 A의 `RegionReader`, 장소는 A의 `PlaceReader`로 존재를 확인하고, 없거나 유형이 틀리면 400 `VALIDATION_ERROR`(필드 `candidates[i]` 또는 `candidate`) | 장소 계약 §4 "B가 판단", 다른 자원을 가리키는 요청 ID는 400(여행지 P-5와 같은 방식) |
+| V-3 | 판정 순서 | 입력 400 → 여행 행 잠금 후 ACTIVE 404 → 투표 404 → 마감 여부 409 `POLL_CLOSED` → version 409 → 처리 | 멤버 관리 M-3·경비 E-5와 같은 순서 |
+
+#### 13-2-2. 투표 열기 `POST /trips/{tripId}/polls`
+
+| # | 질문 | 결정 |
+| --- | --- | --- |
+| V-4 | 입력 | `title` 공백 제거 후 1~200자. 후보 **1개 이상 30개 이하**(진행 중 추가가 있으니 1개도 허용), 같은 후보 중복은 400. `closesAt` 필수·서버 시각보다 미래, **최대 30일 뒤** |
+| V-5 | 마감 기본값 | 기본 24시간은 화면이 채운다. 서버는 `closesAt`을 생략하면 400(명세 "서버 임의 생략 허용 없음") |
+| V-6 | 중복 요청 | 명세 §2 멱등 목록에 없으므로 `Idempotency-Key`를 받지 않는다. 같은 투표가 두 번 열려도 각각 유효 |
+
+#### 13-2-3. 참여 대상과 집계 (Q-6 참가자 변동, B 결정)
+
+| # | 질문 | 결정 |
+| --- | --- | --- |
+| V-6a | 누가 투표하나 | **지금 ACTIVE인 멤버 기준.** 투표를 연 뒤 들어온 동행도 마감 전이면 투표할 수 있다 |
+| V-6b | 나간 멤버의 표 | 나가거나 내보내진 멤버의 표는 행은 남기고 집계에서 뺀다. 다시 들어오면 다시 셈한다 |
+| V-6c | 인원 표시 | `eligibleMemberCount`는 지금 ACTIVE 인원, `votedMemberCount`는 그중 한 표 이상 던진 인원 |
+| V-6d | 결과 고정 | 마감할 때 그 시점 기준으로 집계해 `poll_results`에 저장한다. 이후 멤버가 바뀌어도 결과는 바뀌지 않는다 |
+
+24시간 남짓한 투표에서 새 동행 의견이 반영되는 편이 자연스럽고, 집계 규칙이 하나라 단순하다. 그래서 ERD가 제안한 생성 시 스냅샷(`poll_participants`)은 만들지 않는다. ERD `poll_participants`는 만들지 않는다고 고쳤다(EODI-161).
+
+#### 13-2-4. 내 선택 `PUT /trips/{tripId}/polls/{pollId}/ballot`
+
+| # | 질문 | 결정 |
+| --- | --- | --- |
+| V-7 | 동작 | `candidateIds`로 내 선택 전체 교체. 빈 배열은 취소. 같은 투표의 후보가 아니거나 중복이면 400 |
+| V-8 | **version이 오르는 때** | **후보 추가와 마감 때만** 오른다. 다른 사람이 투표했다고 오르지 않는다. 그래서 여러 명이 동시에 투표해도 서로 409를 만들지 않고, `expectedVersion`은 "내가 본 후보 목록이 그대로인가"만 확인한다 |
+| V-9 | 마감 경계 | 서버 시각 ≥ `closesAt`이면 409 `POLL_CLOSED`. 이때 아직 OPEN이면 같은 트랜잭션에서 마감 처리(V-12)한 뒤 거부 |
+
+#### 13-2-5. 후보 추가 `POST /trips/{tripId}/polls/{pollId}/candidates`
+
+| # | 질문 | 결정 |
+| --- | --- | --- |
+| V-10 | 조건 | OPEN·마감 전, 유형 일치, 이미 있는 후보면 400, 후보 30개 상한. `expectedVersion` 다르면 409. 성공하면 version +1, 201 + `Poll` |
+| V-11 | 알림 | "이미 투표한 멤버에게 후보 추가 알림"은 A의 알림 기반이 생긴 뒤 연결한다(지금은 남기지 않음) |
+
+#### 13-2-6. 마감과 확정
+
+| # | 질문 | 결정 |
+| --- | --- | --- |
+| V-12 | 마감 시점 | 두 경로가 같은 규칙으로 한 번만 처리한다. ① **조회·쓰기 때 지연 마감**: 투표 행을 잠근 뒤 OPEN이고 서버 시각 ≥ `closesAt`이면 마감. ② **주기 마감**: 1분마다 지난 OPEN 투표를 같은 방법으로 마감(알림이 제때 나가도록). jobs의 kind 목록에 투표 마감이 없어 Spring 스케줄러를 쓴다 |
+| V-13 | 결과 | 표가 있으면 최다 득표 후보 전부 `poll_results`에 저장, `FINALIZED`·`closedReason=DEADLINE`. 0표면 `CLOSED`·`NO_VOTES`·`selectedCandidateIds=[]`. version +1 |
+| V-14 | 지역 확정 반영 | 사용자 흐름("확정 지역 → 여행지 반영 → 코스에서 날짜별 나누기")대로, 마감할 때 확정 지역을 **여행지 끝에 자동 추가**(이미 있으면 건너뜀)하고 여행 version +1. 장소 확정은 서버가 코스를 바꾸지 않고, 화면이 결과로 "코스 후보 맨 위"에 표시 |
+| V-15 | 마감 1시간 전 알림 | 미투표자에게만 보내는 규칙은 그대로 두고, A의 알림 기반이 생긴 뒤 주기 작업에 연결한다. 마감까지 1시간 미만으로 연 투표의 사전 알림(Q-6 "짧은 마감")은 그때 함께 정한다 |
+
+#### 13-2-7. 조회
+
+- `GET /polls`: 최근 생성 순 커서 페이지(`createdAt DESC, id DESC`, 기본 20·최대 100). 각 투표는 `myCandidateIds`·집계 포함.
+- 조회도 V-12 지연 마감을 거치므로, 마감 시각이 지난 투표가 OPEN으로 보이지 않는다.
+- 이탈 멤버의 표 처리는 2-3(V-6b)대로 집계에서 뺀다.
+
+#### 13-2-8. 구현 메모(EODI-161)
+
+- 마감 때 집계를 `polls.eligible_member_count`·`voted_member_count`, `poll_candidates.vote_count`에 고정한다(V-6d). OPEN 동안은 null이고 응답 때 지금 ACTIVE 멤버의 표로 센다. 후보 순서는 `poll_candidates.display_order`(입력·추가 순)다.
+- 잠금은 항상 여행 행 → 투표 행 순서다. 지역 확정이 여행 행(여행지·version)을 바꾸고, 다른 여행 쓰기도 여행 행을 먼저 잡기 때문이다. 투표 API는 요청 트랜잭션을 열기 전에 마감할 투표를 **따로 커밋해** 마감한다. 요청이 409·400으로 롤백돼도 마감이 남게 하려는 것이다. 그래서 실제 판정 순서는 마감 → 입력·권한·버전 검사이고, 마감은 권한과 관계없이 시각만으로 정해지는 일이라 결과가 같다. 마감할 투표가 없으면 여행 행을 잠그지 않고, 조회 자체는 읽기 전용 트랜잭션이다.
+- 나가기·내보내기·초대 수락은 여행 행을 잠근 뒤 멤버십을 바꾸기 직전에 같은 트랜잭션에서 마감한다. 마감 시각 전에 던진 표가 주기 마감 타이밍 때문에 빠지거나, 마감 뒤 들어온 사람이 인원에 들어가지 않게 하려는 것이다.
+- 주기 마감은 `PollClosingScheduler`(1분)가 `PollAutoCloser`를 부르고 여행마다 따로 커밋한다. 테스트 프로필은 `app.polls.auto-close-enabled=false`로 끈다.
+- 지역 확정으로 추가된 여행지는 `trip_destinations.source_candidate_id`에 후보를 남긴다(이번에 FK 추가). 여행 수정으로 여행지를 전체 교체해도 남는 지역의 기록은 유지한다. 여행 정보 변경 이벤트(`TripInfoChangedEvent`)는 `actorUserId=null`로 낸다.
+
+### 13-3. 코스 정책(EODI-164 구현)
+
+| # | 질문 | 결정 | 근거 |
+| --- | --- | --- | --- |
+| C-1 | 기본 상태 | 여행 생성 때 이미 version 1의 빈 코스가 있다(`ItineraryInitializer`). 조회는 ACTIVE 멤버 | 명세 Itinerary "새 여행 version=1·빈 items/legs" |
+| C-2 | 전체 교체 | `PUT /itinerary`는 요청에 없는 기존 항목을 지우고, 기존 `id`는 이 코스 소유인지 확인(아니면 400), 새 항목 ID는 서버 발급 | 명세 §6 |
+| C-3 | 항목 검증 | `placeId`는 `PlaceReader`로 존재 확인(없으면 400). `day`는 1 이상, 여행 기간이 있으면 일수 이하. 날짜별 `order`는 1부터 빈틈없이. `startTime`은 `HH:mm`(00:00~23:59), `stayMinutes`는 1~1440, 생략·null이면 비움. 같은 장소 여러 번 허용. 항목 최대 200개 | ERD itinerary_items 노트, 명세 §6 |
+| C-4 | 구간 | `legs`는 같은 날짜의 연속 인접 쌍마다 정확히 하나. 빠지거나 중복·비인접이면 **422**. 하루에 장소가 하나면 구간 없음 | 명세 §6 "비인접/중복 구간은 422" |
+| C-5 | 경로 값 | 경로 공급자가 정해지기 전에는 이동 수단만 저장하고 `durationSeconds`·`distanceMeters`·`geometry`는 null, `status=UNAVAILABLE`. 0분·직선 거리로 채우지 않는다 | PRD WD-FR-14 "실패는 0분·직선으로 대체하지 않음" |
+| C-6 | 버전 | `expectedVersion` 다르면 409 `VERSION_CONFLICT`. 바뀐 게 없으면 version 그대로(P-8). 성공하면 +1, `updatedByMemberId`·`updatedAt` 기록 | 명세 §6, 기존 P-8 |
+| C-7 | 잠금 | 코스 행을 잠근 뒤 버전 비교. 여행 정보·멤버 변경과는 다른 행이라 서로 409를 만들지 않는다 | 경비 `expense_version` 분리와 같은 이유 |
+| C-8 | 여행 기간을 줄였을 때 | 이미 저장된 코스의 범위를 벗어나는 `day`는 그대로 두고, 다음 PUT 때 검증한다(여행 수정이 코스를 자동으로 지우지 않음) | 코스를 조용히 잃지 않게 |
+| C-9 | 알림 | 코스 변경 알림은 A의 알림 기반이 생긴 뒤 연결한다(묶음 Q-16) | PRD "코스 변경 알림" |
+
+#### 13-3-1. 구현 메모(EODI-164, 2026-11-03)
+
+- 테이블 `itinerary_items`·`route_legs`(`V202611031000`). `(itinerary_id, day, sequence)` 유일 제약은 `DEFERRABLE INITIALLY DEFERRED`다. 전체 교체에서 남는 항목끼리 순서를 맞바꾸면 UPDATE 도중 잠깐 겹치기 때문이다. API의 `order`가 열 `sequence`다.
+- 판정 순서는 요청 400 → 구간 422 → 여행 404 → 코스 version 409 → 코스 소유 id·여행 기간 400이다. 뒤의 두 400은 코스를 잠근 뒤에야 알 수 있어 순서가 이렇다. 장소 존재는 `PlaceReader.findAll`로 요청 검증 단계에서 확인한다.
+- 잠금은 여행 행(`requireActiveMemberForUpdate`) → 코스 행(`findByTripIdForUpdate`) 순서다. 나가기·내보내기가 멤버십을 바꾸는 사이에 끼지 않게 여행 행도 잡는다. 코스 version은 코스 행에만 있어 여행 정보·멤버 변경과 409를 주고받지 않는다(C-7).
+- 교체는 구간 전체 삭제 → 빠진 항목 삭제 → flush → 남는 항목 갱신·새 항목 삽입 → flush → 구간 재생성 순서다. 구간은 매번 새로 만들고 `queried_at`은 저장 시각이다. `route_legs.geometry_json`은 엔티티에 매핑하지 않았다(경로 연동 때 추가).
+- "바뀐 게 없다"는 모든 항목이 id로 유지되고 장소·날짜·순서·시간이 같고 구간(출발·도착 항목·수단) 집합이 같을 때다. 새 항목이 하나라도 있으면 변경이다.
+- 응답의 `ItineraryItem.place`는 `PlaceView`를 `ItineraryPlaceResponse`(명세 Place와 같은 필드)로 옮긴 것이다. A가 장소 API 응답 DTO를 내놓으면 그것으로 바꾼다.
+- 테스트는 `places`에 MANUAL 행을 직접 넣는다(장소 2b 정책 확정 전, A 안내대로). 동시 교체는 한쪽만 200이고 다른 쪽은 409다.
+
+### 13-4. A에게 공유할 것
+
+- 투표 참여 대상은 지금 ACTIVE 멤버 기준(V-6a~d)이라 ERD의 `poll_participants`를 만들지 않는다(ERD 노트 수정).
+- 지역 투표가 확정되면 여행지에 자동 추가되고 여행 version이 오른다(V-14). 열어 둔 여행 수정 화면은 409를 받을 수 있으니 프론트는 다시 조회한다.
+- 새 오류 코드 `POLL_NOT_FOUND`(404). `POLL_CLOSED`(409)는 명세에 이미 있다.
+- 알림(후보 추가·마감 1시간 전·마감·코스 변경)은 A의 events·notifications 기반이 생기면 B가 연결한다. 그때 이벤트 이름·필드를 맞춘다.
+- 경로 시간·거리 계산은 경로 공급자를 정한 뒤 확장한다(분담안 B-4). 그 전에는 구간 `status=UNAVAILABLE`.
+- 지역 존재 확인은 A의 `RegionReader`를 쓴다. `application.yaml`에 `app.polls.auto-close-enabled`, `application-test.yaml`에 끄는 값 한 줄을 추가했다. `TripMemberService`·`InvitationService`가 멤버십을 바꾸기 전에 `PollCloser`를 부른다.
+- (코스, 2026-11-03) 새 오류 코드 `INVALID_ROUTE_LEGS`(422). 코스 응답의 `place`는 B가 `PlaceView`를 명세 Place 모양으로 옮긴 `ItineraryPlaceResponse`다. A가 `GET /places` 응답 DTO를 만들면 같은 모양인지 맞추고 B가 그것으로 바꾼다. 장소 2b 저장 정책과 무관하게 코스는 `PlaceReader`와 실제 places UUID만 쓴다.
+- (코스) `itinerary_items`의 (코스, 날짜, 순서) 유일 제약은 DEFERRABLE이다. 다른 테이블에 같은 방식을 쓸 때 참고.

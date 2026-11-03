@@ -3,6 +3,7 @@ import time
 
 from fastapi import FastAPI, Request
 
+from app.core.budget import RequestBudgetMiddleware
 from app.core.config import Settings, get_settings
 from app.core.errors import TRACE_HEADER, register_error_handlers, resolve_trace_id
 
@@ -13,6 +14,9 @@ log = logging.getLogger("ai")
 def create_app(settings: Settings | None = None) -> FastAPI:
     app = FastAPI(title="어디로그 AI 서버", version="0.1.0")
     app.state.settings = settings or get_settings()
+
+    # 뒤에 등록한 미들웨어가 바깥을 감싼다. 예산 초과 503에도 trace가 추적 ID를 붙인다
+    app.add_middleware(RequestBudgetMiddleware, seconds=app.state.settings.request_budget_seconds)
 
     @app.middleware("http")
     async def trace(request: Request, call_next):

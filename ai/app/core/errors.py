@@ -9,6 +9,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from app.clients.errors import ProviderUnavailable
 from app.core.schemas import ApiError, ErrorField
 
 log = logging.getLogger("ai")
@@ -25,6 +26,10 @@ _HTTP_ERRORS = {
 }
 _BAD_REQUEST = ("VALIDATION_ERROR", "요청 값이 올바르지 않습니다.")
 _INTERNAL = ("INTERNAL_ERROR", "일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.")
+_UNAVAILABLE = (
+    "PROVIDER_UNAVAILABLE",
+    "외부 서비스를 사용할 수 없습니다. 잠시 후 다시 시도해 주세요.",
+)
 
 
 def resolve_trace_id(request: Request) -> str:
@@ -59,7 +64,15 @@ def _error(
     )
 
 
+def unavailable_response(request: Request) -> JSONResponse:
+    return _error(request, 503, *_UNAVAILABLE)
+
+
 def register_error_handlers(app: FastAPI) -> None:
+    @app.exception_handler(ProviderUnavailable)
+    async def provider_unavailable(request: Request, exc: ProviderUnavailable):
+        return unavailable_response(request)
+
     @app.exception_handler(ApiError)
     async def api_error(request: Request, exc: ApiError):
         return _error(request, exc.status, exc.code, exc.message, exc.fields)
