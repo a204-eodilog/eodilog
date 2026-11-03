@@ -2,16 +2,16 @@
 
 import asyncio
 import logging
-import unicodedata
 from dataclasses import dataclass
 from difflib import SequenceMatcher
 from typing import Literal
 
 from app.clients.gms import GmsClient, LLMUnavailable
 from app.clients.images import ImageDecodeError, UnsupportedImage, to_llm_jpeg
-from app.clients.kakao_local import KakaoLocalClient, PlaceSearchUnavailable, ProviderPlace
+from app.clients.naver_local import NaverLocalClient, PlaceSearchUnavailable, ProviderPlace
 from app.clients.page_meta import LinkFetchError, PageMeta, PageMetaFetcher, UnsupportedLink
 from app.core.schemas import ApiError, CamelModel, ErrorField
+from app.core.text import normalize
 
 log = logging.getLogger("ai")
 
@@ -71,11 +71,6 @@ class Mention:
     found_in: str
 
 
-def normalize(text: str) -> str:
-    folded = unicodedata.normalize("NFKC", text).casefold()
-    return "".join(char for char in folded if char.isalnum())
-
-
 def similarity(mention: str, place_name: str) -> float:
     """정규화한 언급 이름과 공급자 장소 이름의 문자열 유사도 0~1."""
     a, b = normalize(mention), normalize(place_name)
@@ -85,7 +80,7 @@ def similarity(mention: str, place_name: str) -> float:
 
 
 class PlaceExtractor:
-    def __init__(self, *, llm: GmsClient, places: KakaoLocalClient, pages: PageMetaFetcher):
+    def __init__(self, *, llm: GmsClient, places: NaverLocalClient, pages: PageMetaFetcher):
         self._llm = llm
         self._places = places
         self._pages = pages

@@ -12,11 +12,14 @@ class Settings(BaseSettings):
     gms_api_key: str = ""
     gms_base_url: str = "https://llm-gateway.example.com/api.openai.com/v1"
     llm_model: str = "gpt-5.6-luna"
+    naver_client_id: str = ""
+    naver_client_secret: str = ""
     kakao_rest_api_key: str = ""
 
     # 요청 하나의 상한. 백엔드 호출 타임아웃 50초, worker 제한 60초보다 먼저 끝난다 (spec §1.0)
     request_budget_seconds: float = 45
     llm_timeout_seconds: float = 30
+    place_search_timeout_seconds: float = 5
     kakao_timeout_seconds: float = 5
     link_timeout_seconds: float = 5
 

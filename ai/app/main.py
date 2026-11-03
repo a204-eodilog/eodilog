@@ -6,7 +6,7 @@ import httpx
 from fastapi import FastAPI, Request
 
 from app.clients.gms import GmsClient
-from app.clients.kakao_local import KakaoLocalClient
+from app.clients.naver_local import NaverLocalClient
 from app.clients.page_meta import PageMetaFetcher
 from app.core.budget import RequestBudgetMiddleware
 from app.core.config import Settings, get_settings
@@ -68,10 +68,11 @@ def _build_place_extractor(settings: Settings, http: httpx.AsyncClient) -> Place
             model=settings.llm_model,
             timeout_seconds=settings.llm_timeout_seconds,
         ),
-        places=KakaoLocalClient(
+        places=NaverLocalClient(
             http,
-            api_key=settings.kakao_rest_api_key,
-            timeout_seconds=settings.kakao_timeout_seconds,
+            client_id=settings.naver_client_id,
+            client_secret=settings.naver_client_secret,
+            timeout_seconds=settings.place_search_timeout_seconds,
         ),
         pages=PageMetaFetcher(http, timeout_seconds=settings.link_timeout_seconds),
     )

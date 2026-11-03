@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 from PIL import Image
 
 from app.clients.gms import GmsClient
-from app.clients.kakao_local import KakaoLocalClient
+from app.clients.naver_local import NaverLocalClient, provider_place_id
 from app.clients.page_meta import PageMetaFetcher
 from app.core.config import Settings
 from app.features.place_extraction.service import PlaceExtractor, normalize, similarity
@@ -19,7 +19,7 @@ from app.main import create_app
 
 PATH = "/ai/v1/place-extractions"
 GMS_URL = "https://gms.test/v1/chat/completions"
-KAKAO_URL = "https://dapi.kakao.com/v2/local/search/keyword.json"
+NAVER_URL = "https://naverapihub.apigw.ntruss.com/search/v1/local"
 LINK = "https://blog.test/post"
 LINK_AT_IP = "https://93.184.216.34/post"
 PRIVATE_LINK = "https://internal.test/admin"
@@ -37,15 +37,20 @@ def png() -> bytes:
     return out.getvalue()
 
 
-def document(name: str, place_id: str = "1") -> dict:
+def document(name: str, spot: str = "1") -> dict:
     return {
-        "id": place_id,
-        "place_name": name,
-        "road_address_name": "부산 수영구 민락동 1",
-        "x": "129.12",
-        "y": "35.15",
-        "category_name": "여행 > 관광,명소",
+        "title": name,
+        "roadAddress": f"부산 수영구 민락동 {spot}",
+        "address": "",
+        "mapx": "1291200000",
+        "mapy": "351500000",
+        "category": "여행,명소>공원",
     }
+
+
+def spots(data: dict) -> list[str]:
+    """document()에 넣은 spot을 주소 끝에서 다시 읽는다."""
+    return [c["place"]["address"].rsplit(" ", 1)[1] for c in data["candidates"]]
 
 
 async def resolver(host: str) -> list[str]:
@@ -60,7 +65,7 @@ def client() -> TestClient:
         llm=GmsClient(
             http, api_key="k", base_url="https://gms.test/v1", model="m", timeout_seconds=1
         ),
-        places=KakaoLocalClient(http, api_key="k", timeout_seconds=1),
+        places=NaverLocalClient(http, client_id="i", client_secret="k", timeout_seconds=1),
         pages=PageMetaFetcher(http, timeout_seconds=1, resolver=resolver),
     )
     test_client = TestClient(app, raise_server_exceptions=False)
@@ -80,11 +85,11 @@ def mock_llm(*mentions: dict) -> respx.Route:
     )
 
 
-def mock_kakao(results: dict[str, list[dict]]) -> respx.Route:
+def mock_places(results: dict[str, list[dict]]) -> respx.Route:
     def respond(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json={"documents": results.get(request.url.params["query"], [])})
+        return httpx.Response(200, json={"items": results.get(request.url.params["query"], [])})
 
-    return respx.get(KAKAO_URL).mock(side_effect=respond)
+    return respx.get(NAVER_URL).mock(side_effect=respond)
 
 
 def mention(name: str, found_in: str = "MEMO", hint: str | None = None) -> dict:
@@ -95,7 +100,7 @@ def mention(name: str, found_in: str = "MEMO", hint: str | None = None) -> dict:
 def test_T01_1_finds_places_in_link_and_capture_sign(client):
     respx.get(LINK_AT_IP).mock(return_value=httpx.Response(200, html=PAGE))
     mock_llm(mention("민락 수변공원", "LINK_TEXT"), mention("신기산업", "CAPTURE_SIGN"))
-    mock_kakao(
+    mock_places(
         {"민락 수변공원": [document("민락수변공원", "1")], "신기산업": [document("신기산업", "2")]}
     )
 
@@ -112,9 +117,9 @@ def test_T01_1_finds_places_in_link_and_capture_sign(client):
                 "address": "부산 수영구 민락동 1",
                 "latitude": 35.15,
                 "longitude": 129.12,
-                "provider": "KAKAO",
-                "providerPlaceId": "1",
-                "category": "여행 > 관광,명소",
+                "provider": "NAVER",
+                "providerPlaceId": provider_place_id("민락수변공원", "부산 수영구 민락동 1"),
+                "category": "여행,명소>공원",
             },
             "evidence": "게시물 글에서 찾았어요",
             "confidence": 1.0,
@@ -123,12 +128,12 @@ def test_T01_1_finds_places_in_link_and_capture_sign(client):
             "name": "신기산업",
             "place": {
                 "name": "신기산업",
-                "address": "부산 수영구 민락동 1",
+                "address": "부산 수영구 민락동 2",
                 "latitude": 35.15,
                 "longitude": 129.12,
-                "provider": "KAKAO",
-                "providerPlaceId": "2",
-                "category": "여행 > 관광,명소",
+                "provider": "NAVER",
+                "providerPlaceId": provider_place_id("신기산업", "부산 수영구 민락동 2"),
+                "category": "여행,명소>공원",
             },
             "evidence": "캡처 속 간판에서 찾았어요",
             "confidence": 1.0,
@@ -139,7 +144,7 @@ def test_T01_1_finds_places_in_link_and_capture_sign(client):
 @respx.mock
 def test_T01_2_same_name_branches_are_multiple_candidates(client):
     mock_llm(mention("바다 앞 카페", "CAPTURE_TEXT"))
-    mock_kakao(
+    mock_places(
         {
             "바다 앞 카페": [
                 document("바다 앞 카페 남천점", "1"),
@@ -160,18 +165,18 @@ def test_T01_2_same_name_branches_are_multiple_candidates(client):
 @respx.mock
 def test_one_exact_match_among_results_is_confirmed(client):
     mock_llm(mention("신기산업", "CAPTURE_SIGN"))
-    mock_kakao({"신기산업": [document("신기산업 2호점", "2"), document("신기 산업", "1")]})
+    mock_places({"신기산업": [document("신기산업 2호점", "2"), document("신기 산업", "1")]})
 
     data = post(client, [png()]).json()["data"]
 
     assert data["resultStatus"] == "SUCCESS"
-    assert [c["place"]["providerPlaceId"] for c in data["candidates"]] == ["1"]
+    assert spots(data) == ["1"]
 
 
 @respx.mock
 def test_two_exact_matches_are_not_confirmed(client):
     mock_llm(mention("신기산업", "CAPTURE_SIGN"))
-    mock_kakao({"신기산업": [document("신기산업", "1"), document("신기산업", "2")]})
+    mock_places({"신기산업": [document("신기산업", "1"), document("신기산업", "2")]})
 
     data = post(client, [png()]).json()["data"]
 
@@ -182,7 +187,7 @@ def test_two_exact_matches_are_not_confirmed(client):
 @respx.mock
 def test_similar_but_different_single_result_needs_confirmation(client):
     mock_llm(mention("청사포 카페", "CAPTURE_SIGN"))
-    mock_kakao({"청사포 카페": [document("청사포역", "1")]})
+    mock_places({"청사포 카페": [document("청사포역", "1")]})
 
     data = post(client, [png()]).json()["data"]
 
@@ -193,19 +198,19 @@ def test_similar_but_different_single_result_needs_confirmation(client):
 @respx.mock
 def test_candidates_are_sorted_by_similarity(client):
     mock_llm(mention("광안리", "CAPTURE_TEXT"))
-    mock_kakao(
+    mock_places(
         {"광안리": [document("부산 수영구 광안리 먼 곳", "1"), document("광안리 해변", "2")]}
     )
 
     data = post(client, [png()]).json()["data"]
 
-    assert [c["place"]["providerPlaceId"] for c in data["candidates"]] == ["2", "1"]
+    assert spots(data) == ["2", "1"]
 
 
 @respx.mock
 def test_no_search_result_gives_null_place_and_multiple_candidates(client):
     mock_llm(mention("신기산업", "CAPTURE_SIGN"))
-    mock_kakao({})
+    mock_places({})
 
     data = post(client, [png()]).json()["data"]
 
@@ -247,7 +252,7 @@ def test_T01_4_private_address_link_fails_without_connecting(client):
 def test_T01_5_forbidden_link_continues_with_capture(client):
     respx.get(LINK_AT_IP).mock(return_value=httpx.Response(403))
     llm = mock_llm(mention("신기산업", "CAPTURE_SIGN"))
-    mock_kakao({"신기산업": [document("신기산업")]})
+    mock_places({"신기산업": [document("신기산업")]})
 
     data = post(client, [png()], url=LINK).json()["data"]
 
@@ -281,7 +286,7 @@ def test_empty_page_only_fails(client):
 @respx.mock
 def test_T01_7_search_outage_gives_null_place(client):
     mock_llm(mention("신기산업", "CAPTURE_SIGN"), mention("해운대", "CAPTURE_TEXT"))
-    respx.get(KAKAO_URL).mock(return_value=httpx.Response(500))
+    respx.get(NAVER_URL).mock(return_value=httpx.Response(500))
 
     response = post(client, [png()])
 
@@ -299,7 +304,7 @@ def test_T01_8_duplicate_mentions_are_merged(client):
         mention("신기 산업!", "CAPTURE_TEXT"),
         mention("신기산업", "CAPTURE_SIGN"),
     )
-    search = mock_kakao({"신기산업": [document("신기산업")]})
+    search = mock_places({"신기산업": [document("신기산업")]})
 
     data = post(client, [png()]).json()["data"]
 
@@ -432,7 +437,7 @@ def test_llm_outage_with_capture_is_503(client):
 def test_llm_outage_with_link_title_continues_with_title(client):
     respx.get(LINK_AT_IP).mock(return_value=httpx.Response(200, html=PAGE))
     respx.post(GMS_URL).mock(return_value=httpx.Response(500))
-    mock_kakao({"민락 수변공원 야경 산책": [document("민락 수변공원 야경 산책")]})
+    mock_places({"민락 수변공원 야경 산책": [document("민락 수변공원 야경 산책")]})
 
     data = post(client, url=LINK).json()["data"]
 
@@ -466,7 +471,7 @@ def test_link_mention_not_in_page_text_is_dropped(client):
     # 글에서 찾았다는 이름이 글에 없으면 LLM이 지어냈거나 페이지의 지시를 따른 것이다
     respx.get(LINK_AT_IP).mock(return_value=httpx.Response(200, html=PAGE))
     mock_llm(mention("남천동 베이커리", "LINK_TEXT"), mention("지어낸 식당", "LINK_TEXT"))
-    search = mock_kakao({"남천동 베이커리": [document("남천동 베이커리")]})
+    search = mock_places({"남천동 베이커리": [document("남천동 베이커리")]})
 
     data = post(client, url=LINK).json()["data"]
 
@@ -477,7 +482,7 @@ def test_link_mention_not_in_page_text_is_dropped(client):
 @respx.mock
 def test_memo_mention_not_in_memo_is_dropped(client):
     mock_llm(mention("신기산업", "MEMO"), mention("지어낸 식당", "MEMO"))
-    mock_kakao({"신기산업": [document("신기산업")]})
+    mock_places({"신기산업": [document("신기산업")]})
 
     data = post(client, [png()], memo="신기 산업 꼭 가기").json()["data"]
 
@@ -488,7 +493,7 @@ def test_memo_mention_not_in_memo_is_dropped(client):
 @respx.mock
 def test_mentions_from_sources_not_given_are_dropped(client):
     mock_llm(mention("신기산업", "LINK_TEXT"), mention("다른곳", "MEMO"), mention("없음", "OTHER"))
-    mock_kakao({})
+    mock_places({})
 
     assert post(client, [png()]).json()["data"]["resultStatus"] == "NOT_FOUND"
 
@@ -497,7 +502,7 @@ def test_mentions_from_sources_not_given_are_dropped(client):
 def test_capture_mention_without_capture_is_dropped(client):
     respx.get(LINK_AT_IP).mock(return_value=httpx.Response(200, html=PAGE))
     mock_llm(mention("남천동 베이커리", "CAPTURE_SIGN"))
-    mock_kakao({})
+    mock_places({})
 
     assert post(client, url=LINK).json()["data"]["resultStatus"] == "NOT_FOUND"
 
@@ -506,7 +511,7 @@ def test_capture_mention_without_capture_is_dropped(client):
 def test_malformed_mentions_are_skipped_and_count_is_capped(client):
     too_many = [mention(f"장소{i}", "CAPTURE_TEXT") for i in range(30)]
     mock_llm("문자열", {"found_in": "MEMO"}, mention("가" * 101, "CAPTURE_TEXT"), *too_many)
-    search = mock_kakao({})
+    search = mock_places({})
 
     data = post(client, [png()]).json()["data"]
 
@@ -521,7 +526,7 @@ def test_search_prefers_address_hint_then_region_hint_then_name(client):
         mention("가게둘", "CAPTURE_TEXT"),
         mention("가게셋", "CAPTURE_TEXT", hint="없는지역"),
     )
-    search = mock_kakao(
+    search = mock_places(
         {
             "영도구 가게하나": [document("가게하나", "1")],
             "부산 가게둘": [document("가게둘", "2")],
@@ -532,7 +537,7 @@ def test_search_prefers_address_hint_then_region_hint_then_name(client):
     data = post(client, [png()], regionHint="부산").json()["data"]
 
     assert data["resultStatus"] == "SUCCESS"
-    assert [c["place"]["providerPlaceId"] for c in data["candidates"]] == ["1", "2", "3"]
+    assert spots(data) == ["1", "2", "3"]
     assert search.call_count == 4
 
 
@@ -567,7 +572,8 @@ def test_default_wiring_uses_settings_keys_and_closes_http():
             _env_file=None,
             gms_api_key="k",
             gms_base_url="https://gms.test/v1",
-            kakao_rest_api_key="k",
+            naver_client_id="i",
+            naver_client_secret="k",
         )
     )
     llm = mock_llm()

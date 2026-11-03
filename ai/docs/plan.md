@@ -34,7 +34,7 @@ AI 서버가 쓰는 모델은 두 개다. 둘 다 환경변수로 바꿀 수 있
 | 글·캡처 이해, 추천·준비물 문장 | **GMS `gpt-5.6-luna`** | 외부 API(GMS) | `LLM_MODEL`, `VISION_MODEL` |
 | 사진 주제 분류, 비슷한 사진 묶기 | **SigLIP2 `ViT-B-32-SigLIP2-256`** (webli 가중치) | 우리 서버(GPU 서버 3번 또는 EC2 c6g CPU) | `CLIP_MODEL`, `CLIP_PRETRAINED` |
 
-LLM이 하지 않는 일: 좌표·주소(카카오 장소 검색), 이동 시간(카카오 길찾기), 날씨(백엔드 조회), 점수·순서·시각 계산(규칙). LLM은 문장과 이름 읽기만 한다.
+LLM이 하지 않는 일: 좌표·주소(네이버 장소 검색), 이동 시간(카카오 길찾기), 날씨(백엔드 조회), 점수·순서·시각 계산(규칙). LLM은 문장과 이름 읽기만 한다.
 
 #### LLM: `gpt-5.6-luna`
 
@@ -98,7 +98,7 @@ ai/
 │  │  ├─ container.py       # 외부 의존성 묶음
 │  │  ├─ security.py        # X-Internal-Token
 │  │  ├─ taste_match.py, place_rules.py, text.py   # 취향 일치, 실내·식사·머무는 시간, 조사
-│  ├─ clients/              # kakao_local(장소), travel(카카오 길찾기 3종), page_meta(SSRF 방지), images(EXIF·HEIC)
+│  ├─ clients/              # naver_local(장소), travel(카카오 길찾기 3종), page_meta(SSRF 방지), images(EXIF·HEIC)
 │  └─ features/             # 백엔드 job kind 하나 = service.py + router.py
 │     ├─ places/            # PLACE_EXTRACTION
 │     ├─ tastes/            # 취향 추론
@@ -127,7 +127,7 @@ v0.3에서 바뀐 점: 작업 관리는 백엔드가 하므로 모든 API가 동
 | 의존성 | 키 없을 때 | 테스트 |
 | --- | --- | --- |
 | GMS | `LLMUnavailable` → 기능별 대체 동작 | `FakeLLM` (응답을 미리 정해 둠) |
-| 카카오 장소 검색 | `PlaceSearchUnavailable` | `FakePlaceSearch` |
+| 네이버 장소 검색 | `PlaceSearchUnavailable` | `FakePlaceSearch` |
 | 이동 시간 | `UNAVAILABLE` 구간 | `FakeTravel` (좌표 쌍 → 분) |
 | SigLIP2 | `vision` 미설치·로드 실패면 503 `PROVIDER_UNAVAILABLE` | `FakeEmbedder` (평균 색으로 정해진 벡터) |
 | 링크 메타데이터 | — | respx로 HTTP 응답 고정, DNS 검사는 주입한 해석기로 대체 |
