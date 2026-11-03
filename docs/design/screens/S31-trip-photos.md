@@ -9,10 +9,10 @@
 | 상태 | 피그마 | 달라지는 점 |
 | --- | --- | --- |
 | 기본 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-17384) | 아래 "기본" 그대로 |
-| 분류 중 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-17604) | 칩 아래 안내 "사진을 주제별로 나누고 있어요", "32장 중 20장 나눴어요 · 끝나면 묶음이 보여요". 장소 묶음 대신 "올린 순서" 제목과 "아직 나누지 않았어요" 사진 격자(올린 사람 얼굴만) |
-| 사진 없음 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-17738) | 가운데 빈 화면: "아직 올린 사진이 없어요", "사진을 올리면 장소별로 나눠요", 주 버튼 [사진 올리기] |
+| 분류 중 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-17604) | 아래 "그 밖의 상태" 참고 |
+| 사진 없음 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-17738) | 아래 "그 밖의 상태" 참고 |
 | 장소 미지정 묶음 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-17795) | 아래 "장소 미지정 묶음 (별도 화면)" 참고 |
-| 자동 분류 실패 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-30488) | 분류 중과 같고 안내가 "사진을 주제별로 나누지 못했어요" + [다시 시도] |
+| 자동 분류 실패 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-30488) | 아래 "그 밖의 상태" 참고 |
 
 ## 기본
 
@@ -43,6 +43,12 @@
 ## 예시 데이터
 
 해운대 해변(1일차 · 9장: 지우 6장 묶음, 서연 1장, 민준 2장 묶음), 서면 돼지국밥집(1일차 · 6장), 감천문화마을(2일차 · 14장). 제목 표기는 "N일차 · N장"으로 통일했다(2026-11-03 피그마 수정).
+
+## 그 밖의 상태
+
+- **분류 중** — 주제 칩 대신 [README 상태 공통 모양](README.md#상태-공통-모양)의 **진행 상자(연파랑)**: 분류 아이콘, "사진을 주제별로 나누고 있어요" + "32장 중 20장 나눴어요 · 끝나면 묶음이 보여요", 진행 막대(20/32). 그 아래 섹션 제목 "올린 순서" + 오른쪽 "아직 나누지 않았어요", 3열 111x112 사진 격자(올린 사람 얼굴 22만, 묶음 표시 없음). 아래 [공동 피드 게시] 줄 없음. 작업 조회로 자동 갱신
+- **사진 없음** — [README 상태 공통 모양](README.md#상태-공통-모양)의 **가운데 안내 화면**: 사진 아이콘, "아직 올린 사진이 없어요", "사진을 올리면 장소별로 나눠요", 주 버튼 [올리기 아이콘 + "사진 올리기"] → S30
+- **자동 분류 실패** — 분류 중과 같은 배치인데 상자가 [README 상태 공통 모양](README.md#상태-공통-모양)의 **안내 상자(회색)**: "사진을 주제별로 나누지 못했어요" + 흰 알약 버튼 36 [새로고침 16 + "다시 시도"]. 진행 막대 없음
 
 ## 버튼과 이동
 

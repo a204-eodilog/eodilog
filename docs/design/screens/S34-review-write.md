@@ -9,8 +9,8 @@
 | 상태 | 피그마 | 달라지는 점 |
 | --- | --- | --- |
 | 작성 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-18768) | 아래 "작성" 그대로 |
-| 남긴 뒤 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-18933) | 별점·입력 칸 대신 "내 평가" 카드(동행 평가 카드와 같은 모양, 내 얼굴은 연파랑) + 카드 안 글자 버튼 [수정] [삭제]. 상단 제목 "평가". 토스트 "평가를 남겼어요" |
-| 저장 실패 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-30839) | 맨 위 연빨강 오류 상자 "평가를 저장하지 못했어요", "저장하지 못했어요. 다시 눌러 주세요". 입력값 그대로, 버튼 [다시 저장] |
+| 남긴 뒤 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-18933) | 아래 "그 밖의 상태" 참고 |
+| 저장 실패 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-30839) | 아래 "그 밖의 상태" 참고 |
 
 ## 작성
 
@@ -32,6 +32,11 @@
 ## 예시 데이터
 
 동행 평가: 서연(11.15(일)) "사진 찍기 좋은 곳이에요", 민준(11.16(월)) "사람이 많았지만 바다가 예뻐요". 내 평가 4점 "파도 소리 들으며 걷기 좋았어요".
+
+## 그 밖의 상태
+
+- **남긴 뒤** — 별점·입력 칸 대신 섹션 "내 평가" `typography.title3`: 카드 배경 `colors.brand.primaryBg`(동행 카드는 `colors.surface.default`), 둥글기 16, 안쪽 18/20, 세로 10. 머리 줄은 동행 카드와 같고 내 얼굴 28은 연파랑. 글 아래(위 4, 간격 6) 흰 알약 버튼 36 두 개(좌우 10/12, 아이콘 16 + `typography.captionMedium`): [연필 + "수정"] [휴지통 + "삭제"]. 상단 제목 "평가". 저장 직후 토스트 "평가를 남겼어요"
+- **저장 실패** — 작성 화면 맨 위(장소 줄 위, 간격 24)에 [README 상태 공통 모양](README.md#상태-공통-모양)의 **안내 상자(회색)**: 경고 아이콘, "평가를 저장하지 못했어요" + "저장하지 못했어요. 다시 눌러 주세요". 입력값 그대로, 아래 버튼 [다시 저장]
 
 ## 버튼과 이동
 

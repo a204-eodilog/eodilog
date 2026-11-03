@@ -11,9 +11,9 @@
 | 진행 중 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-6645) | 아래 "진행 중" 참고 |
 | 성공 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-6941) | 아래 "성공" 그대로 |
 | 복수 후보 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-6727) | 아래 "복수 후보" 참고 |
-| 식별 불가 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-6847) | 가운데 빈 화면: "장소를 알아내지 못했어요", "장소를 찾지 못했어요. 직접 골라 주세요", 주 버튼 "장소 직접 검색하기"(→ S13) |
-| 처리 실패 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-6894) | 가운데 오류 화면: "링크를 열지 못했어요", "불러오지 못했어요", 주 버튼 "다시 시도". 공통 `ErrorState` |
-| 그룹 즐겨찾기에서 시작 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-7617) | 성공과 같고 설명이 "겨울 여행 그룹 즐겨찾기에서 시작했어요", 주 버튼이 "겨울 여행 그룹에 저장"(저장 시트 없이 바로 저장) |
+| 식별 불가 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-6847) | 아래 "그 밖의 상태" 참고 |
+| 처리 실패 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-6894) | 아래 "그 밖의 상태" 참고 |
+| 그룹 즐겨찾기에서 시작 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-7617) | 아래 "그 밖의 상태" 참고 |
 
 ## 성공
 
@@ -59,6 +59,12 @@
 - 글자 12/24 보통(지도 이름표, 키워드 칩)은 토큰에 없다. 가까운 것은 `typography.captionMedium`(12/20).
 - 키워드 칩은 공통 `Chip`(알약)과 모양이 달라 둥글기 8의 작은 태그다. 여러 화면(S12, S14)에 나와서 공통 **태그**로 만드는 게 좋다.
 - 진행 단계 표시는 공통 부품에 없다.
+
+## 그 밖의 상태
+
+- **식별 불가** — [README 상태 공통 모양](README.md#상태-공통-모양)의 **가운데 안내 화면**(좌우 40): 돋보기 아이콘, "장소를 알아내지 못했어요", "장소를 찾지 못했어요. 직접 골라 주세요", 주 버튼 [검색 아이콘 + "장소 직접 검색하기"] → S13. 상단 바 제목 "장소 찾기"
+- **처리 실패** — 같은 가운데 안내 화면: 끊긴 링크 아이콘, "링크를 열지 못했어요", "불러오지 못했어요", 주 버튼 [새로고침 + "다시 시도"]
+- **그룹 즐겨찾기에서 시작** — 성공 상태와 같고 둘만 다르다. 설명이 "겨울 여행 그룹 즐겨찾기에서 시작했어요", 아래 버튼 영역이 연회색 상자(`colors.surface.subtle`, 둥글기 24, 안쪽 16) 안에 가로 꽉 찬 주 버튼 [저장 아이콘 + "겨울 여행 그룹에 저장"]. 저장 위치 시트를 띄우지 않음
 
 ## 버튼과 이동
 

@@ -9,7 +9,7 @@
 | 상태 | 피그마 | 달라지는 점 |
 | --- | --- | --- |
 | 사진 선택 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-16782) | 아래 "사진 선택" 그대로 |
-| 사진 권한 거절 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-16998) | 가운데 빈 화면: "사진에 접근할 수 없어요", "설정에서 사진 접근을 허용해 주세요", 주 버튼 [설정으로 이동], 글자 버튼 [나중에] |
+| 사진 권한 거절 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-16998) | 아래 "사진 권한 거절" 참고 |
 | 업로드 진행 중 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-17057) | 아래 "업로드 진행 중" 참고 |
 | 일부 실패 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-17208) | 아래 "일부 실패" 참고 |
 
@@ -45,6 +45,10 @@
 
 - 사진 고르기 칸(체크 동그라미, 어두운 막)은 S30·S32·S31 장소 미지정에서 같이 쓴다. B 기능 폴더에 **사진 칸** 부품을 하나 두면 좋다.
 - 칩 안 숫자 표시는 공통 `Chip`에 없다(`label`에 숫자까지 넣거나 `count`를 추가).
+
+## 사진 권한 거절
+
+[README 상태 공통 모양](README.md#상태-공통-모양)의 **가운데 안내 화면**(좌우 40, 위 16): 사진 아이콘, "사진에 접근할 수 없어요", "설정에서 사진 접근을 허용해 주세요", 주 버튼 [설정 아이콘 + "설정으로 이동"], 그 아래(간격 10) 글자 버튼 "나중에". 상단 바는 그대로, 사진 격자 없음
 
 ## 버튼과 이동
 

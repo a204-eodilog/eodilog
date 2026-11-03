@@ -11,7 +11,7 @@
 | 게시 전 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-21466) | 아래 "게시 전" 그대로 |
 | 게시 확인 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=385-3339) | 아래 "게시 확인 (시트)" 참고 |
 | 게시됨 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-21588) | 아래 "게시됨" 참고 |
-| 불러오기 실패 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-31377) | 공통 `ErrorState`: "여행 기록을 불러오지 못했어요", [다시 시도], [돌아가기] |
+| 불러오기 실패 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-31377) | 아래 "불러오기 실패" 참고 |
 
 ## 게시 전
 
@@ -50,6 +50,10 @@
 
 - 흰 테두리 카드(사진 카드, 요약 카드)는 공통 부품에 없다. 테두리 색은 `colors.line.default`.
 - 흰 테두리 알약 작은 버튼(40)은 공통 `Button`에 없다.
+
+## 불러오기 실패
+
+[README 상태 공통 모양](README.md#상태-공통-모양)의 **가운데 안내 화면**: "여행 기록을 불러오지 못했어요", "불러오지 못했어요. 다시 시도해 주세요.", [다시 시도], "돌아가기"
 
 ## 버튼과 이동
 

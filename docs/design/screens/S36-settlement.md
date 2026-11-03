@@ -10,7 +10,7 @@
 | --- | --- | --- |
 | 기본 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-19618) | 아래 "기본 화면" 그대로 |
 | 재계산 필요 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-19859) | 아래 "재계산 필요" 참고 |
-| 계산 실패 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-31138) | 결과 없이 가운데 오류 화면: 계산기 아이콘 동그라미, "정산을 계산하지 못했어요", "지출 3건은 그대로예요. 다시 계산해 주세요", 주 버튼 [새로고침 아이콘 다시 계산], 그 아래 글자 버튼 "경비 목록 보기" |
+| 계산 실패 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-31138) | 아래 "계산 실패" 참고 |
 
 ## 기본 화면
 
@@ -80,6 +80,10 @@
 | 서연 | 21,000원 | 81,500원 | 60,500원 보내요 |
 
 보내기: 민준 → 지우 38,000원, 서연 → 지우 60,500원.
+
+## 계산 실패
+
+[README 상태 공통 모양](README.md#상태-공통-모양)의 **가운데 안내 화면**(좌우 36, 위 16): 계산기 아이콘, "정산을 계산하지 못했어요", "지출 3건은 그대로예요. 다시 계산해 주세요", 주 버튼 [새로고침 + "다시 계산"], 그 아래(간격 10) 글자 버튼 "경비 목록 보기" → S35. 상단 바(얼굴 묶음 포함)는 그대로
 
 ## 버튼과 이동
 

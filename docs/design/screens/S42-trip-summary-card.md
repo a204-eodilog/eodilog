@@ -9,7 +9,7 @@
 | 상태 | 피그마 | 달라지는 점 |
 | --- | --- | --- |
 | 기본 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-23170) | 아래 "기본" 그대로 |
-| 만들기 실패 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-31904) | 공통 `ErrorState`: "요약 카드를 만들지 못했어요", "다시 시도해 주세요", [다시 시도], [돌아가기] |
+| 만들기 실패 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-31904) | 아래 "만들기 실패" 참고 |
 
 ## 기본
 
@@ -26,6 +26,10 @@
 
 - 큰 흰 테두리 카드(둥글기 24)는 공통 부품에 없다. S38 요약 카드(둥글기 16)와 둥글기가 다르다.
 - 피그마 레이어 이름에 옛 여행 이름("부산 1박 2일")이 남아 있다. 화면 글자는 "겨울 여행"이다.
+
+## 만들기 실패
+
+[README 상태 공통 모양](README.md#상태-공통-모양)의 **가운데 안내 화면**(좌우 36): 아이콘 동그라미 연파랑, "요약 카드를 만들지 못했어요", "다시 시도해 주세요", [다시 시도], "돌아가기"
 
 ## 버튼과 이동
 

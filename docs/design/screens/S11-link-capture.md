@@ -9,7 +9,7 @@
 | 상태 | 피그마 | 달라지는 점 |
 | --- | --- | --- |
 | 기본 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-6459) | 아래 "기본" 그대로 |
-| 지원하지 않는 형식 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-6573) | 링크 칸에 "https://example.com/menu.pdf", 칸 아래 오류 "이 형식에서는 장소를 찾을 수 없어요", 안내 상자 "이런 것을 넣어 주세요" · "SNS 게시물, 블로그 글 링크" · "캡처 이미지 (JPG, PNG)" |
+| 지원하지 않는 형식 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-6573) | 아래 "지원하지 않는 형식" 참고 |
 
 ## 기본
 
@@ -26,6 +26,12 @@
 - 입력 칸이 회색 상자 모양이라 공통 `TextField`(밑줄)와 다르다. S35 경비 입력과 같은 모양이라 **회색 상자 입력칸**을 공통으로 하나 만드는 게 좋다.
 - 글자 16/24 보통(자리 글자)은 토큰에 없다. 가까운 것은 `typography.body`(16/26).
 - 메모 자리 글자 색이 피그마 변수 `color/grey/46 2`로 따로 걸려 있다. `colors.text.muted`나 `colors.text.sub`로 맞추면 된다.
+
+## 지원하지 않는 형식
+
+- 복사한 링크 안내 상자 없음. 링크 칸에 "https://example.com/menu.pdf"가 들어 있고 칸 아래(간격 12) 오류 줄: 경고 아이콘 16 + "이 형식에서는 장소를 찾을 수 없어요" `typography.captionMedium` `colors.status.danger`
+- 그 아래 안내 상자(배경 `colors.surface.default`, 둥글기 16, 안쪽 20, 세로 12): "이런 것을 넣어 주세요" `typography.captionMedium` `colors.text.icon` → [링크 아이콘 20 + "SNS 게시물, 블로그 글 링크"] [사진 아이콘 20 + "캡처 이미지 (JPG, PNG)"] `typography.body`
+- 캡처·메모 칸은 없고, [장소 찾기] 버튼은 흐림 0.32로 누를 수 없음
 
 ## 버튼과 이동
 

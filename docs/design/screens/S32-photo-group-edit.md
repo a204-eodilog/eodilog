@@ -9,7 +9,7 @@
 | 상태 | 피그마 | 달라지는 점 |
 | --- | --- | --- |
 | 기본 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-17941) | 아래 "기본" 그대로 |
-| 바꾸기 실패 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-30627) | 기본 + 오류 문구 "묶음을 바꾸지 못했어요" + [다시 시도]. 고른 사진과 값은 그대로 |
+| 바꾸기 실패 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-30627) | 아래 "바꾸기 실패" 참고 |
 
 ## 기본
 
@@ -29,6 +29,10 @@
 
 - 글자 12/22 보통("대표" 배지)은 토큰에 없다.
 - 회색 알약 버튼은 공통 `Button variant="neutral"`인데, 피그마는 글자색이 `colors.text.default`, 공통은 `colors.text.icon`이다.
+
+## 바꾸기 실패
+
+기본 화면 그대로에 [README 상태 공통 모양](README.md#상태-공통-모양)의 **버튼 있는 토스트**: 경고 아이콘 20 + "묶음을 바꾸지 못했어요" + [다시 시도]. 고른 사진과 바꾼 값은 남아 있다
 
 ## 버튼과 이동
 

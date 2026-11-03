@@ -9,10 +9,10 @@
 | 상태 | 피그마 | 달라지는 점 |
 | --- | --- | --- |
 | 기본 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-19096) | 아래 "기본 화면" 그대로 |
-| 지출 없음 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-19260) | 합계·목록·정산 버튼 없음. 가운데 빈 화면: 카드 아이콘 동그라미, "아직 입력한 지출이 없어요", "함께 쓴 돈을 넣으면 나눠 계산해요", 주 버튼 [+ 지출 추가] |
-| 정산 후 지출 변경 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-19308) | 합계 위에 연파랑 안내 상자: 새로고침 아이콘, "정산한 뒤에 지출이 바뀌었어요", 오른쪽 아래 글자 링크 "이전 정산 보기 >". 정산 뒤 추가된 지출 이름 옆에 연파랑 배지 "정산 후 추가". 아래 버튼은 [새로고침 아이콘 다시 계산] |
+| 지출 없음 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-19260) | 아래 "그 밖의 상태" 참고 |
+| 정산 후 지출 변경 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-19308) | 아래 "그 밖의 상태" 참고 |
 | 지출 추가 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-19508) | 별도 화면. 아래 "지출 추가 화면" |
-| 지출 저장 실패 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-31016) | 지출 추가 화면 맨 위에 연빨강 오류 상자: 빨간 느낌표 동그라미, "지출을 저장하지 못했어요", "저장하지 못했어요. 다시 눌러 주세요". 입력값은 그대로 남고 버튼 글자가 [다시 저장] |
+| 지출 저장 실패 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-31016) | 아래 "그 밖의 상태" 참고 |
 
 ## 기본 화면
 
@@ -84,6 +84,12 @@
 | 서면 돼지국밥집 | 민준 | 3명 똑같이 | 33,000원 |
 | 광안리 바다뷰 카페 | 서연 | 서연, 지우 2명 | 21,000원 |
 | (정산 후 추가) 부산역 가는 택시 | 민준 | 3명 똑같이 | 12,000원 |
+
+## 그 밖의 상태
+
+- **지출 없음** — 합계·목록·정산 버튼 없이 [README 상태 공통 모양](README.md#상태-공통-모양)의 **가운데 안내 화면**(좌우 40): 카드 아이콘, "아직 입력한 지출이 없어요", "함께 쓴 돈을 넣으면 나눠 계산해요", 주 버튼 [더하기 + "지출 추가"]. 상단 바 [+]는 그대로
+- **정산 후 지출 변경** — 합계 상자 위(간격 20)에 [README 상태 공통 모양](README.md#상태-공통-모양)의 **진행 상자(연파랑)** 변형: 새로고침 아이콘, "정산한 뒤에 지출이 바뀌었어요"(설명 줄 없음), 상자 오른쪽 아래 글자 링크 "이전 정산 보기" `typography.captionMedium` `colors.brand.primaryDark` + `Icon chevron-right` 14 → S36 재계산 필요. 합계 "246,000원"(만 원 줄임 없이 원 단위). 정산 뒤 추가된 지출 줄은 이름 옆에 연파랑 태그 "정산 후 추가"(`Tag tone="brand"`, 높이 20·좌우 6으로 조금 작음). 아래 버튼 [새로고침 + "다시 계산"]
+- **지출 저장 실패** — 지출 추가 화면 맨 위(금액 위, 간격 28)에 [README 상태 공통 모양](README.md#상태-공통-모양)의 **안내 상자(회색)**: "지출을 저장하지 못했어요" + "저장하지 못했어요. 다시 눌러 주세요". 입력값 그대로, 아래 버튼 [다시 저장]. 이 상태의 마지막 칸 이름은 "메모"다(기본 지출 추가는 "항목 이름") — 피그마 통일 필요
 
 ## 버튼과 이동
 

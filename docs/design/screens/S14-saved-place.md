@@ -9,9 +9,9 @@
 | 상태 | 피그마 | 달라지는 점 |
 | --- | --- | --- |
 | 기본 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-7248) | 아래 "기본" 그대로 |
-| 원본 공동 피드 삭제·볼 수 없음 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-7347) | "가져온 곳" 줄이 "원본을 더 볼 수 없어요"만 남고 누를 수 없음. 사진·키워드 자리 없음 |
+| 원본 공동 피드 삭제·볼 수 없음 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-7347) | 아래 "그 밖의 상태" 참고 |
 | 그룹 즐겨찾기에 추가 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-7447) | 아래 "그룹 즐겨찾기에 추가 (시트)" 참고 |
-| 그룹에 추가 · 참여 중인 여행 없음 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=385-5108) | 시트의 여행 목록 자리에 "참여 중인 여행이 없어요⏎여행을 만들면 여기에 담을 수 있어요", [추가] 누를 수 없음 |
+| 그룹에 추가 · 참여 중인 여행 없음 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=385-5108) | 아래 "그 밖의 상태" 참고 |
 
 ## 기본
 
@@ -39,6 +39,11 @@ S08의 여행 목록 부분을 따로 떼어 두면 여기서 그대로 쓴다.
 
 - 키워드 태그(둥글기 8)는 S12와 같다. 공통으로 만들면 함께 쓴다.
 - 여행 고르는 시트는 S08 "담을 여행"과 같은 모양이다. S08을 만들 때 여행 목록 부분을 따로 떼어 두면 여기서 다시 쓸 수 있다.
+
+## 그 밖의 상태
+
+- **원본 공동 피드 삭제·볼 수 없음** — 사진 자리에 작은 지도(높이 140, 둥글기 16, 핀 하나)로 위치만 보여 줌. 키워드 태그 없음. "가져온 곳" 줄이 누를 수 없는 회색 줄(높이 68, 안쪽 14/18/14/14): 흰 동그라미 40 안에 끊긴 링크 아이콘 20 + "원본을 더 볼 수 없어요" `typography.body` `colors.text.icon`. 아래 [그룹에 추가]는 그대로
+- **그룹에 추가 · 참여 중인 여행 없음** — 시트 안 여행 목록 자리에 여행 아이콘 16 + "참여 중인 여행이 없어요⏎여행을 만들면 여기에 담을 수 있어요" `typography.caption` `colors.text.icon`(간격 4). [추가] 버튼 줄은 흐림 0.40으로 누를 수 없음. 피그마는 글자 크기가 12/18·16/24로 그려져 있으나 토큰으로 맞춘다
 
 ## 버튼과 이동
 

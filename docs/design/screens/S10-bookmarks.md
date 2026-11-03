@@ -10,8 +10,8 @@
 | --- | --- | --- |
 | 목록 보기 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-5795) | 아래 "목록 보기" 그대로 |
 | 지도 보기 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-5989) | 아래 "지도 보기" 참고 |
-| 저장 없음 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-6363) | 가운데 빈 화면: "sns 링크" 그림, "가고 싶은 곳 링크를 붙여 넣어 보세요", "링크·캡처로 장소를 찾아요". 오른쪽 아래 [+] 버튼은 그대로 |
-| 연결 끊김 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-28358) | 목록 위에 안내 줄 "인터넷에 연결되지 않았어요", "10:20 기준이에요". 저장해 둔 목록은 그대로 보여 준다 |
+| 저장 없음 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-6363) | 아래 "그 밖의 상태" 참고 |
+| 연결 끊김 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-28358) | 아래 "그 밖의 상태" 참고 |
 
 ## 목록 보기
 
@@ -49,6 +49,11 @@
 | 전포 카페거리 | 부산 부산진구 · 카페 골목 | 블로그 |
 | 흰여울문화마을 | 부산 영도구 · 산책 바다 | 캡처 3장 |
 | 명주동 골목 카페 | 강릉 명주동 · 카페 골목 | 서연의 여행 |
+
+## 그 밖의 상태
+
+- **저장 없음** — 상단 바·즐겨찾기 종류·하단 탭은 그대로, 본문은 좌우 32 가운데 정렬: 그림(흰 알약 "sns 링크" 칩 + 링크·캡처 아이콘 36·34, 폭 248) → 위 24 "가고 싶은 곳 링크를 붙여 넣어 보세요" `typography.title1` → 위 8 "링크·캡처로 장소를 찾아요" `typography.body` `colors.text.icon` → 위 24 동그라미 주 버튼 64(더하기 28) → S11. 오른쪽 아래 [+]는 없음(가운데 버튼이 대신)
+- **연결 끊김** — 목록 위(간격 24)에 [README 상태 공통 모양](README.md#상태-공통-모양)의 **안내 상자(회색)**: 와이파이 끊김 아이콘, "인터넷에 연결되지 않았어요" + "10:20 기준이에요". 저장된 목록은 그대로
 
 ## 버튼과 이동
 

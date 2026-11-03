@@ -9,9 +9,9 @@
 | 상태 | 피그마 | 달라지는 점 |
 | --- | --- | --- |
 | 방문 후보 있음 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-18223) | 아래 "기본" 그대로 |
-| 사진 없는 장소 직접 체크 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-18402) | 요약이 "다녀온 곳 4곳 중 1곳 평가했어요". 직접 고른 줄에 배지 "직접 체크함". 이미 평가한 줄은 버튼 자리에 내 점수 "4". 토스트 "다녀온 곳으로 표시했어요" + [되돌리기] |
+| 사진 없는 장소 직접 체크 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-18402) | 아래 "그 밖의 상태" 참고 |
 | 방문 후보 없음 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-18587) | 아래 "방문 후보 없음" 참고 |
-| 불러오기 실패 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-30774) | 공통 `ErrorState`: "방문 장소를 불러오지 못했어요", "다시 시도해 주세요", [다시 시도] |
+| 불러오기 실패 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-30774) | 아래 "그 밖의 상태" 참고 |
 
 ## 기본
 
@@ -38,6 +38,11 @@
 
 - 초록 확인 태그는 S12·S14의 회색 키워드 태그와 같은 모양에 색만 다르다. 공통 **태그**에 색 종류를 두면 된다.
 - 토스트에 [되돌리기] 버튼 자리가 필요하다(S08과 같은 요구).
+
+## 그 밖의 상태
+
+- **사진 없는 장소 직접 체크** — 요약 "다녀온 곳 4곳 중 1곳 평가했어요". 이미 평가한 줄은 오른쪽 버튼 자리에 연파랑 알약 36(좌우 12, 배경 `colors.brand.primaryBg`, 별 아이콘 16 + 내 점수 "4" `typography.bodyMedium` `colors.brand.primaryDark`) → S34 남긴 뒤. 직접 체크한 줄은 태그가 "직접 체크함"(`Tag tone="success" icon="check"`) + [평가하기]. 체크 직후 [README 상태 공통 모양](README.md#상태-공통-모양)의 **버튼 있는 토스트** "다녀온 곳으로 표시했어요" + [되돌리기]
+- **불러오기 실패** — [README 상태 공통 모양](README.md#상태-공통-모양)의 **가운데 안내 화면**: "방문 장소를 불러오지 못했어요", "다시 시도해 주세요", [다시 시도]
 
 ## 버튼과 이동
 

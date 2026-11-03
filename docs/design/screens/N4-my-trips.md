@@ -9,7 +9,7 @@
 | 상태 | 피그마 | 달라지는 점 |
 | --- | --- | --- |
 | 기본 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-21213) | 아래 "기본" 그대로 |
-| 불러오기 실패 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-31328) | 공통 `ErrorState`: "내 여행 목록을 불러오지 못했어요", "불러오지 못했어요. 다시 시도해 주세요.", [다시 시도], 글자 버튼 [돌아가기] |
+| 불러오기 실패 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-31328) | 아래 "불러오기 실패" 참고 |
 
 ## 기본
 
@@ -34,6 +34,10 @@
 ## 예시 데이터
 
 다녀온 여행: 겨울 여행(11.14 – 11.15, 서연·민준, 비공개), 여름 캠핑(08.08 – 08.09, 하늘, 비공개, 지도 핀 없음), 봄 경주(04.11 – 04.12, 서연, 게시됨, 친구 4명이 봐요).
+
+## 불러오기 실패
+
+[README 상태 공통 모양](README.md#상태-공통-모양)의 **가운데 안내 화면**(좌우 36): 아이콘 동그라미가 연파랑(`colors.brand.primaryBg`), "내 여행 목록을 불러오지 못했어요", "불러오지 못했어요. 다시 시도해 주세요.", [다시 시도], 글자 버튼 "돌아가기"
 
 ## 버튼과 이동
 
