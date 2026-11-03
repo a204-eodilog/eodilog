@@ -18,7 +18,8 @@
 | 채팅 REST | `GET /chat/rooms`, `GET /trips/{tripId}/chat-room`, `GET/POST /chat/rooms/{roomId}/messages` | EODI-136 | 병합(MR !71, §12) |
 | 기본 나가기 | `POST /trips/{tripId}/leave` | EODI-140 | 병합(MR !76, §11) |
 | 투표 | `GET/POST /trips/{tripId}/polls`, `GET /trips/{tripId}/polls/{pollId}`, `PUT .../ballot`, `POST .../candidates` | EODI-161 | 구현(§13) |
-| 코스 수동 편집 | `GET/PUT /trips/{tripId}/itinerary` | EODI-164 | 구현(§13-3) |
+| 코스 수동 편집 | `GET/PUT /trips/{tripId}/itinerary` | EODI-164 | 병합(MR !85, §13-3) |
+| 여행 삭제·마지막 멤버 나가기 | `DELETE /trips/{tripId}`, `POST /trips/{tripId}/leave`(혼자 남은 사람) | EODI-167 | 구현(§14) |
 
 검증은 B 첫 작업과 같이 테스트에서 `AuthUser` principal을 넣어 했다. A 로그인 병합 뒤 실제 카카오 계정 2개로 여행 API 통합 검증(B-7)을 마쳤다([계약 §8](backend-a-b-contract.md)).
 
@@ -108,7 +109,7 @@ AI 준비물 제안(`POST /trips/{tripId}/checklist-suggestions`)은 `jobs`, 날
 
 | 기능 | 막힌 점 |
 | --- | --- |
-| 나가기 2단계 | 사진·메시지 삭제 옵션과 혼자 남은 방장의 여행 삭제. 사진 기능과 `jobs` 정리 작업(LEAVE_CLEANUP·TRIP_DELETE), Q-11 삭제 범위가 필요 |
+| 나가기 삭제 옵션 | `deleteOwnMessages`(본인 메시지 본문 삭제, D-10)는 LEAVE_CLEANUP 작업으로 다음에. `deleteOwnPhotos`는 사진 기능 뒤. 혼자 남은 방장의 여행 삭제는 §14에서 끝냄 |
 
 ## 8. 경비·정산 정책
 
@@ -173,7 +174,7 @@ A 답변(11/02) §5에 따라 사진·메시지를 남기는 **기본 나가기�
 | L-1 | 하는 일 | 멤버십 LEFT·`left_at`, 채팅 참여 종료를 한 트랜잭션에서 처리. 경비·사진·메시지는 그대로 둔다. 방장이 나가면 남은 ACTIVE 멤버 중 참여 순이 가장 빠른 사람에게 자동 양도 | A 답변 §5, PRD WD-FR-04 "가장 먼저 가입한 잔여 멤버에게 양도" |
 | L-2 | 성공 응답 | **200** + `LeaveResult{tripId, tripDeleted:false, newOwnerMemberId(방장이 나갔을 때만, 아니면 null), cleanupJobId:null, status:LEFT}`. 남은 작업이 없으므로 202가 아니다. 나중에 삭제 옵션을 지원하면 그 요청만 202 + 작업 ID | A 답변 "가짜 작업 ID를 반환하지 않는다". 처리가 끝났는데 202(접수)라고 하지 않는다 |
 | L-3 | 삭제 옵션 | `deleteOwnPhotos`·`deleteOwnMessages`는 명세대로 필수. 삭제 기능 전에는 `true`면 **400 `VALIDATION_ERROR`**(해당 필드). 무시하고 성공으로 응답하지 않는다 | A 답변 §5. 기능이 없는 입력을 400으로 거부하는 준비물 C-1과 같은 방식. `?` 없는 필드는 필수(명세 §2) |
-| L-4 | 혼자 남은 방장 | 여행 삭제 기능 전에는 **409 `TRIP_DELETION_PENDING`**. 멤버십·여행 상태를 바꾸지 않는다 | A 답변 §5. 정책 전 차단 409 선례(`FEED_REPUBLICATION_PENDING`) |
+| L-4 | 혼자 남은 방장 | ~~여행 삭제 기능 전에는 409 `TRIP_DELETION_PENDING`~~ → 2026-11-03부터 여행 삭제로 접수(§14 D-2). 오류 코드는 없앴다 | A 답변 §5 → Q-11 확정 |
 | L-5 | 버전 | `expectedVersion`은 여행 version. 다르면 409 `VERSION_CONFLICT`, 성공하면 members가 바뀌므로 version 1 증가 | 명세 §4 "이탈도 같은 version", M-2 |
 | L-6 | 판정 순서 | 입력 400(누락·삭제 옵션 true) → 여행 행 잠금 후 ACTIVE 멤버 404 → version 409 → 혼자 남은 방장 409 → 처리 | M-3과 같은 순서 |
 
@@ -304,7 +305,7 @@ Q-13의 REST 범위는 2026-11-02에 확정됐다([A 답변](to-B-backend-decisi
 - 응답의 `ItineraryItem.place`는 `PlaceView`를 `ItineraryPlaceResponse`(명세 Place와 같은 필드)로 옮긴 것이다. A가 장소 API 응답 DTO를 내놓으면 그것으로 바꾼다.
 - 테스트는 `places`에 MANUAL 행을 직접 넣는다(장소 2b 정책 확정 전, A 안내대로). 동시 교체는 한쪽만 200이고 다른 쪽은 409다.
 
-### 13-4. A에게 공유할 것
+### 13-4. A에게 공유할 것 (투표·코스)
 
 - 투표 참여 대상은 지금 ACTIVE 멤버 기준(V-6a~d)이라 ERD의 `poll_participants`를 만들지 않는다(ERD 노트 수정).
 - 지역 투표가 확정되면 여행지에 자동 추가되고 여행 version이 오른다(V-14). 열어 둔 여행 수정 화면은 409를 받을 수 있으니 프론트는 다시 조회한다.
@@ -314,3 +315,38 @@ Q-13의 REST 범위는 2026-11-02에 확정됐다([A 답변](to-B-backend-decisi
 - 지역 존재 확인은 A의 `RegionReader`를 쓴다. `application.yaml`에 `app.polls.auto-close-enabled`, `application-test.yaml`에 끄는 값 한 줄을 추가했다. `TripMemberService`·`InvitationService`가 멤버십을 바꾸기 전에 `PollCloser`를 부른다.
 - (코스, 2026-11-03) 새 오류 코드 `INVALID_ROUTE_LEGS`(422). 코스 응답의 `place`는 B가 `PlaceView`를 명세 Place 모양으로 옮긴 `ItineraryPlaceResponse`다. A가 `GET /places` 응답 DTO를 만들면 같은 모양인지 맞추고 B가 그것으로 바꾼다. 장소 2b 저장 정책과 무관하게 코스는 `PlaceReader`와 실제 places UUID만 쓴다.
 - (코스) `itinerary_items`의 (코스, 날짜, 순서) 유일 제약은 DEFERRABLE이다. 다른 테이블에 같은 방식을 쓸 때 참고.
+
+## 14. 여행 삭제 정책 (Q-11, 2026-11-03 사용자 확정)
+
+A 부재 중 사용자가 Q-11의 여행 삭제 범위를 정했다. 결정 주체는 기획·B이고 A는 리뷰만 한다(나가기 계약 §3 "삭제·보존 범위를 A가 임의로 정하지 않는다"). EODI-167에서 구현했다(`TripDeletionService`, `TripDeleteJobHandler`, `TripDeleteJobAccessPolicy`).
+
+| # | 질문 | 결정 | 근거 |
+| --- | --- | --- | --- |
+| D-1 | 삭제 방식 | `DELETE /trips/{tripId}?expectedVersion=`(방장만). 요청 트랜잭션에서 `trips.deleted_at`을 찍어 즉시 모든 조회·쓰기에서 404가 되게 하고, 같은 트랜잭션에 `TRIP_DELETE` 작업을 등록해 202 `JobRef`를 돌려준다. 작업이 투표·코스·경비·정산·채팅·초대·준비물·멤버 행을 물리 삭제하고 여행 행만 tombstone으로 남긴다 | 명세 §4·§9 그대로. 지금은 파일이 없어 보존 기간의 실익이 없고, 복구 화면도 없다. 여행 행을 남겨야 jobs FK와 "삭제된 여행 404"가 유지된다 |
+| D-2 | 혼자 남은 사람의 나가기 | 여행 삭제와 같게 처리하고 202 + `LeaveResult{tripDeleted:true,status:TRIP_DELETED,cleanupJobId}`. 409 `TRIP_DELETION_PENDING`은 없앴다. 멤버십은 LEFT로 바꾸고 채팅 참여를 끝낸 뒤 삭제한다(행은 작업이 지운다) | 기획 결정 Q-4 "혼자 남은 방장은 삭제와 같게", 명세 §4 2단계 문구 |
+| D-3 | 작업 실행기 | 외부 파일이 없어 `execute`는 할 일이 없고 결과 `{scope:TRIP_DELETE,completedCount:1,failedCount:0}`만 만든다. 물리 삭제는 작업 행을 잠근 `complete`에서 같은 트랜잭션으로 한다(FK 순서: 정산 → 경비 → 여행지 → 투표 → 코스 → 준비물 → 초대 → 채팅 → 멤버). 먼저 `current_settlement_id`를 비운다. 이미 지운 행을 다시 지우는 것뿐이라 멱등하다 | jobs 기반 문서 "complete는 결과 저장과 도메인 반영을 같은 짧은 트랜잭션에서". 사진 파일 삭제는 사진 기능 때 execute에 추가 |
+| D-4 | 권한 | 등록은 논리 삭제된 여행의 방장만(`canSubmit`), 실행·완료는 여행이 논리 삭제돼 있으면 계속(되돌리기가 없어 철회 없음), 조회는 공통 기반대로 최초 요청자만 | 명세 §9 정리 작업 권한표 |
+| D-5 | 판정 순서 | 입력 400(expectedVersion 누락) → 여행 행 잠금 후 ACTIVE 404 → 방장 403 → version 409 → 처리. 삭제 때 여행 version 1 증가 | 양도·내보내기 M-3과 같은 순서 |
+| D-6 | 보존 | 보존 기간·복구 없음. 여행 삭제로 멤버의 경비·정산 기록도 함께 사라진다(여행이 있는 동안만 보관한다는 정산 Q-10 원칙의 끝). 회원 탈퇴(`DELETE /me`)·사진·메시지 옵션 삭제는 이 결정에 포함하지 않는다 | 사용자 결정 2026-11-03 |
+
+### 14-1. A에게 공유할 것
+
+- TRIP_DELETE handler·policy를 `trip.service`에 등록했다. jobs 공통 기반은 손대지 않았다. `complete`에서 DB 삭제를 하는 사용법이 기반 문서의 의도와 맞는지 확인 부탁.
+- 작업 `input`은 `{tripId, reason:OWNER_DELETE|LAST_MEMBER_LEAVE}`, `cleanupScope`는 빈 목록 + cutoff. 대상이 여행 전체라 개별 ID 목록을 두지 않았다.
+- 여행 삭제·마지막 멤버 나가기 알림은 A의 알림 기반이 생긴 뒤 연결한다(Q-16).
+- 주기 투표 마감은 이미 `trips.deleted_at is null`인 여행만 고르므로 논리 삭제된 여행의 투표는 건드리지 않는다.
+- 확인 요청: `complete`가 예외를 던지면 공통 기반이 재시도 없이 EXECUTION_FAILED로 끝낸다. 그러면 여행은 404인데 하위 행이 남고 다시 돌릴 API가 없다. 실행기는 멱등하므로 hook 예외를 `TEMPORARY_FAILURE`처럼 최대 시도 횟수 안에서 재시도하는 쪽을 제안한다(별도 MR로 제안 예정, A 승인 전 머지 금지).
+- 실행기는 멤버십을 지우기 전에 그 여행 작업들의 `jobs.applied_by_member_id`를 비운다. AI 변경안 적용 기록이 멤버십을 가리키면 FK 때문에 삭제가 영구 실패하기 때문이다. A의 jobs 테이블을 B 실행기가 갱신하는 유일한 지점이다.
+
+### 14-2. 실패한 TRIP_DELETE 복구 절차(운영)
+
+작업이 FAILED면 여행은 404인데 하위 행이 남아 있다. 실행기는 멱등하고 `canExecute`가 논리 삭제된 여행만 허용하므로 작업 행을 다시 QUEUED로 돌리면 worker가 안전하게 재실행한다. 재큐 전에 실패 원인(로그의 traceId·diagnostics)을 먼저 고친다.
+
+```sql
+update jobs
+set status = 'QUEUED', attempt = 0, execution_id = null, execution_started_at = null, lease_until = null,
+    heartbeat_at = null, error_code = null, finished_at = null, next_attempt_at = now()
+where id = :jobId and kind = 'TRIP_DELETE' and status = 'FAILED';
+```
+
+남은 하위 행이 있는 삭제 여행을 찾는 점검 쿼리: `select t.id from trips t where t.deleted_at is not null and exists (select 1 from trip_members m where m.trip_id = t.id)`.

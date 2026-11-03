@@ -144,18 +144,35 @@ class TripLeaveApiTest {
 	}
 
 	@Test
-	void blocksLoneOwnerUntilTripDeletionExists() throws Exception {
+	void deletesTripWhenLoneMemberLeaves() throws Exception {
 		jdbcTemplate.update("update trip_members set status = 'LEFT', left_at = now() where id = ?", friendMemberId);
 
 		leave(ownerId, false, false, 0)
 				.andExpect(status().isConflict())
 				.andExpect(jsonPath("$.error.code").value("VERSION_CONFLICT"));
-		leave(ownerId, false, false, 1)
-				.andExpect(status().isConflict())
-				.andExpect(jsonPath("$.error.code").value("TRIP_DELETION_PENDING"));
-		assertThat(count("select count(*) from trip_members where id = ? and status = 'ACTIVE'", ownerMemberId))
-				.isEqualTo(1);
 		assertThat(version()).isEqualTo(1);
+
+		// 혼자 남은 사람의 나가기는 여행 삭제 접수다(정책 §14 D-2): 202, TRIP_DELETED, TRIP_DELETE 작업 ID
+		JsonNode result = data(leave(ownerId, false, false, 1)
+				.andExpect(status().isAccepted())
+				.andExpect(jsonPath("$.data.tripId").value(tripId.toString()))
+				.andExpect(jsonPath("$.data.tripDeleted").value(true))
+				.andExpect(jsonPath("$.data.status").value("TRIP_DELETED"))
+				.andExpect(jsonPath("$.data.newOwnerMemberId").isEmpty())
+				.andExpect(jsonPath("$.data.cleanupJobId").isNotEmpty()));
+		UUID jobId = UUID.fromString(result.get("cleanupJobId").asString());
+		assertThat(count("select count(*) from trip_members where id = ? and status = 'LEFT'", ownerMemberId)).isEqualTo(1);
+		assertThat(count("select count(*) from trips where id = ? and deleted_at is not null", tripId)).isEqualTo(1);
+		assertThat(jdbcTemplate.queryForObject("select kind || ':' || status from jobs where id = ?", String.class, jobId))
+				.isEqualTo("TRIP_DELETE:QUEUED");
+		expectTripNotFound(mockMvc.perform(get("/api/v1/trips/{tripId}", tripId).with(authUser(ownerId))));
+		expectTripNotFound(leave(ownerId, false, false, 2));
+		// 요청한 사람만 작업을 볼 수 있다
+		mockMvc.perform(get("/api/v1/jobs/{jobId}", jobId).with(authUser(ownerId)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.kind").value("TRIP_DELETE"));
+		mockMvc.perform(get("/api/v1/jobs/{jobId}", jobId).with(authUser(friendId)))
+				.andExpect(status().isNotFound());
 	}
 
 	@Test
@@ -259,8 +276,9 @@ class TripLeaveApiTest {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.paths['/api/v1/trips/{tripId}/leave'].post.tags[0]").value("여행"))
 				.andExpect(jsonPath("$.paths['/api/v1/trips/{tripId}/leave'].post.responses['200']").exists())
+				.andExpect(jsonPath("$.paths['/api/v1/trips/{tripId}/leave'].post.responses['202']").exists())
 				.andExpect(jsonPath("$.paths['/api/v1/trips/{tripId}/leave'].post.responses['409'].description")
-						.value(containsString("TRIP_DELETION_PENDING")));
+						.value(containsString("VERSION_CONFLICT")));
 	}
 
 	private void expectTripNotFound(ResultActions result) throws Exception {

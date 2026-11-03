@@ -17,6 +17,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -79,14 +80,15 @@ public class TripMemberController {
 	@Operation(summary = "여행 나가기", description = """
 			ACTIVE 멤버가 스스로 여행에서 나간다(1단계: 기본 나가기). 경비·사진·메시지는 남고, 멤버십은 LEFT가 되며 그룹 채팅 참여도 끝난다.
 			방장이 나가면 남은 동행 중 참여 순이 가장 빠른 사람이 방장이 되고 newOwnerMemberId로 알려 준다.
-			사진·메시지 삭제 옵션은 삭제 기능 전이라 false만 받으며 true면 400이다. 혼자 남은 방장은 여행 삭제 기능 전이라 409로 막는다.
-			expectedVersion은 여행 version이며 다르면 409, 성공하면 version이 하나 오른다. 정리 작업이 없어 cleanupJobId는 null이다.
+			사진·메시지 삭제 옵션은 삭제 기능 전이라 false만 받으며 true면 400이다.
+			혼자 남은 사람이 나가면 여행 삭제로 접수한다: 여행은 즉시 404가 되고 202 + tripDeleted=true, status=TRIP_DELETED, cleanupJobId(TRIP_DELETE 작업)를 돌려준다.
+			expectedVersion은 여행 version이며 다르면 409, 성공하면 version이 하나 오른다. 일반 나가기는 정리 작업이 없어 200이고 cleanupJobId는 null이다.
 			멱등키 대상이 아니라서 성공 뒤 같은 요청을 다시 보내면 이미 멤버가 아니므로 404다.""")
-	@ApiResponse(responseCode = "200", description = "나가기 성공")
+	@ApiResponse(responseCode = "200", description = "나가기 성공(여행 유지)")
+	@ApiResponse(responseCode = "202", description = "혼자 남은 사람의 나가기: 여행 삭제 접수, cleanupJobId로 TRIP_DELETE 작업 조회")
 	@ApiResponse(responseCode = "404", description = "TRIP_NOT_FOUND: 없거나 볼 수 없는(이미 나간) 여행",
 			content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
-	@ApiResponse(responseCode = "409",
-			description = "VERSION_CONFLICT: 여행이 그 사이 바뀜 / TRIP_DELETION_PENDING: 혼자 남은 방장(여행 삭제 기능 전)",
+	@ApiResponse(responseCode = "409", description = "VERSION_CONFLICT: 여행이 그 사이 바뀜. 다시 조회 후 시도",
 			content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
 	@PostMapping("/leave")
 	public ResponseEntity<DataResponse<LeaveTripResponse>> leave(
@@ -95,7 +97,8 @@ public class TripMemberController {
 			@PathVariable UUID tripId,
 			@RequestBody LeaveTripRequest request) {
 		LeaveTripResponse result = tripMemberService.leave(CurrentUser.requireUserId(authUser), tripId, request);
-		return ResponseEntity.ok(DataResponse.of(result));
+		return ResponseEntity.status(result.tripDeleted() ? HttpStatus.ACCEPTED : HttpStatus.OK)
+				.body(DataResponse.of(result));
 	}
 
 	@Operation(summary = "동행 내보내기", description = """

@@ -116,7 +116,7 @@ Table trips {
   created_at timestamp [not null]
   updated_at timestamp [not null]
   deleted_at timestamp
-  Note: 'owner는 반드시 같은 여행 ACTIVE 멤버여야 함. 생성 시 trip·owner 멤버십·여행 채팅방·빈 단일 코스(version=1)을 한 트랜잭션으로 생성. 마지막 방장 이탈은 여행 삭제와 동일. 피드는 게시 때만 생성. 상태는 기간으로 자동 전환, 시간대/경계 Q-4. 통화는 KRW 고정.'
+  Note: 'owner는 반드시 같은 여행 ACTIVE 멤버여야 함. 생성 시 trip·owner 멤버십·여행 채팅방·빈 단일 코스(version=1)을 한 트랜잭션으로 생성. 마지막 방장 이탈은 여행 삭제와 동일. 삭제는 deleted_at 논리 삭제(즉시 404) + TRIP_DELETE 작업의 하위 행 물리 삭제이며 이 행은 tombstone으로 남긴다(2026-11-03, EODI-167). 피드는 게시 때만 생성. 상태는 기간으로 자동 전환, 시간대/경계 Q-4. 통화는 KRW 고정.'
 }
 
 Table trip_members {
