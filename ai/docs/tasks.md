@@ -25,7 +25,7 @@ plan: "./plan.md"
 | 7 | `POST /preference-inferences` | T-02-1 ~ T-02-5 | 완료 |
 | 8 | `POST /trip-recommendations` (TRIP_RECOMMENDATION) | T-03-1 ~ T-03-9 | 할 일 |
 | 9 | `POST /itinerary-proposals` (ITINERARY_PROPOSAL: INITIAL·PLACE_REMOVED·WEATHER) | T-04-1 ~ T-04-10 | 할 일 |
-| 10 | `POST /checklist-suggestions` (CHECKLIST_SUGGESTIONS) | T-07-1 ~ T-07-6 | 할 일 |
+| 10 | `POST /checklist-suggestions` (CHECKLIST_SUGGESTIONS) | T-07-1 ~ T-07-6 | 완료 |
 | 11 | `POST /weather-alternatives` (WEATHER_ALTERNATIVES) | T-06-1 ~ T-06-7 | 할 일 |
 | 12 | `POST /photo-classifications` (PHOTO_CLASSIFICATION, SigLIP2) | T-08-1 ~ T-08-6 | 할 일 |
 | 13 | 사진 평가 스크립트, 실제 여행 사진으로 정확도 측정·임계값 재조정 | 주제 분류 정확도 90% 이상(제안). 측정값·실패 사례를 verification.md에 기록 | 할 일 |
