@@ -53,7 +53,7 @@
 | 404 | `TRIP_NOT_FOUND`, `FEED_NOT_FOUND`, `JOB_NOT_FOUND` — 존재를 공개할 수 없는 자료도 같은 응답. 여행 안의 하위 자료는 `MEMBER_NOT_FOUND`(없거나 이탈한 멤버십), `CHECKLIST_ITEM_NOT_FOUND`(없거나 삭제된 준비물), `EXPENSE_NOT_FOUND`(없거나 삭제된 경비), `SETTLEMENT_NOT_FOUND`(없거나 다른 여행의 정산 계산), `CHAT_ROOM_NOT_FOUND`(없거나 삭제된 여행·참여하지 않았거나 나간 채팅방), `POLL_NOT_FOUND`(없거나 다른 여행의 투표) |
 | 409 | `VERSION_CONFLICT`, `POLL_CLOSED`, `ALREADY_MEMBER`, `ALREADY_APPLIED`, `TRIP_DELETION_PENDING`(여행 삭제 기능 전 혼자 남은 방장의 나가기), `TRIP_FULL`(여행 ACTIVE 멤버 정원 초과), `CLIENT_MESSAGE_ID_REUSED`(같은 clientMessageId를 다른 방·본문에 재사용) |
 | 410 | `INVITATION_EXPIRED`·`INVITATION_REVOKED` — 사용자가 제시한 유효 형식의 초대 토큰 검증 결과. 새 링크 발급으로 무효가 된 링크만 `INVITATION_REVOKED`, 없는 토큰·기간 지남·삭제된 여행·초대자 이탈은 `INVITATION_EXPIRED` |
-| 422 | `INSUFFICIENT_DATA`, `CURRENCY_MISMATCH`, `INVALID_PARTICIPANTS`, `UNSUPPORTED_INPUT` |
+| 422 | `INSUFFICIENT_DATA`, `CURRENCY_MISMATCH`, `INVALID_PARTICIPANTS`, `UNSUPPORTED_INPUT`, `INVALID_ROUTE_LEGS`(코스 구간이 빠지거나 겹치거나 인접하지 않음) |
 | 503 | `PROVIDER_UNAVAILABLE` — 지도·날씨·장소 공급자 장애. 결과 없음과 구분 |
 
 동시 편집 대상인 일정·투표·경비·정산·설정·피드 편집에는 `expectedVersion:integer`를 사용한다. 다른 버전을 덮어쓰지 않고 `409`를 반환한다. 공동 피드 편집과 개인 숨김 변경에도 버전 조건을 적용한다. 여행 생성·경비 생성·비동기 작업 생성·정산 계산·사진 업로드 배치 생성 POST에는 `Idempotency-Key` 헤더가 필수라는 제안이며 `(사용자, 실제 요청 경로, 키)`를 묶는다. 채팅 메시지 전송은 본문의 `clientMessageId`가 이 역할을 하므로 헤더를 요구하지 않는다(보내도 쓰지 않음, §9, 2026-11-02). 같은 키/같은 본문은 최초 결과, 다른 본문은 409. 여행 안 자료를 만드는 POST(경비 등록 등)는 최초 결과를 다시 줄 때도 현재 멤버 권한을 다시 검사한다(등록 뒤 이탈·내보내기·여행 삭제면 404). 다른 POST에는 이 헤더를 필수로 요구하지 않는다. 유효기간은 Q-12에서 확정한다.
@@ -170,8 +170,8 @@
 | GET | `/trips/{tripId}/polls/{pollId}` | 멤버 | 없음 | `Poll` / 200 | 집계와 확정 결과 분리 |
 | PUT | `/trips/{tripId}/polls/{pollId}/ballot` | 멤버 | `{candidateIds:id[],expectedVersion:integer}` | `Poll` / 200 | 참여 대상의 내 선택 교체. 빈 배열=취소, 서버 시각이 마감 이상이면 409 `POLL_CLOSED`. 투표 version은 후보 추가·마감 때만 올라 다른 멤버의 투표로는 409가 나지 않음 |
 | POST | `/trips/{tripId}/polls/{pollId}/candidates` | 멤버 | `{candidate:CandidateInput,expectedVersion:integer}` | `Poll` / 201 | OPEN·마감 전만. 중복/유형/버전 검사, 후보 30개까지. 성공하면 version 증가. 이미 투표한 멤버에게 후보 추가 알림(알림 기능 뒤 연결) |
-| GET | `/trips/{tripId}/itinerary` | 멤버 | 없음 | `Itinerary` / 200 | 현재 단일 코스·버전 반환 |
-| PUT | `/trips/{tripId}/itinerary` | 멤버 | `ItineraryWrite` | `Itinerary` / 200 | 현재 코스 전체 교체, version 증가. 충돌 409 후 최신 조회. 승인 단계 없음 |
+| GET | `/trips/{tripId}/itinerary` | 멤버 | 없음 | `Itinerary` / 200 | 현재 단일 코스·버전 반환. 항목은 day·order 순, 구간은 출발 항목의 day·order 순 |
+| PUT | `/trips/{tripId}/itinerary` | 멤버 | `ItineraryWrite` | `Itinerary` / 200 | 현재 코스 전체 교체, 실제 바뀐 게 있을 때만 version 증가(없으면 그대로 반환). 충돌 409 후 최신 조회. 승인 단계 없음. 항목 최대 200개, 구간이 안 맞으면 422 `INVALID_ROUTE_LEGS`. 경로 공급자 연동 전에는 구간 결과가 null·`UNAVAILABLE`(2026-11-03) |
 | POST | `/trips/{tripId}/itinerary/proposals` | 멤버 | `ProposalWrite` | `JobRef` / 202 | 최초 생성에도 GET에서 얻은 version 사용, 기존 일정 자동 덮어쓰기 없음 |
 | GET | `/trips/{tripId}/itinerary/proposals/{jobId}` | 멤버 | 없음 | `ItineraryProposal` / 200 | 변경 전후 비교, 기준 버전 표시 |
 | POST | `/trips/{tripId}/itinerary/proposals/{jobId}/apply` | 멤버 | `{expectedVersion:integer}` | `Itinerary` / 200 | 성공한 변경안·기준 버전·현재 멤버십 검증 후 단일 코스 원자 교체. 방장 승인 불필요 |
@@ -193,7 +193,7 @@
 
 경로는 구간별 수단을 가진 Itinerary.legs로 반환하며 순서/장소/수단 변경 시 영향 구간을 재계산한다. 실패는 durationSeconds=null/status=UNAVAILABLE이다. 코스 저장·AI 적용·되돌리기·경로 반영은 현재 version을 검사하고 원자적으로 증가시키는 서버 제안이다. AI 결과 baseVersion이 다르면 409 VERSION_CONFLICT로 거부하되 별도의 오래된 변경안 확인 화면을 요구하지 않는다. 실시간 중 자동 재계산/재시도·복귀 충돌 UX는 Q-15 합의 대상이며 REST만으로 실시간 구현을 완료했다고 취급하지 않는다. 코스 변경 알림 묶음은 Q-16이다. 투표 마감은 타이머·조회·쓰기에서 같은 규칙으로 한 번만 처리한다. 최다 후보 전부를 FINALIZED, 0표는 CLOSED/NO_VOTES·selectedCandidateIds=[]로 마감한다. 0표를 결정권자 대기 상태로 해석하지 않는다. 지역 투표가 확정되면 확정 지역을 여행지 끝에 추가(이미 있으면 건너뜀)하고 여행 version을 올린다. 장소 확정은 코스를 바꾸지 않는다(2026-11-02).
 
-일정 전체 교체에서 빠진 기존 항목은 제거한다. 기존 ID는 해당 코스 소유인지 검사하고 신규 항목 ID는 서버가 발급한다. startTime/stayMinutes는 생략/null이면 비운다. 구간은 `{day,fromOrder,toOrder,transportMode}`로 쓰고 서버가 결과 item ID에 연결한다. 같은 날짜의 연속 인접 구간을 빠짐없이 하나씩 지정하고 비인접/중복 구간은 422다. 여행 전체 transportMode 필드는 제공하지 않는다.
+일정 전체 교체에서 빠진 기존 항목은 제거한다. 기존 ID는 해당 코스 소유인지 검사하고 신규 항목 ID는 서버가 발급한다. startTime/stayMinutes는 생략/null이면 비운다. 구간은 `{day,fromOrder,toOrder,transportMode}`로 쓰고 서버가 결과 item ID에 연결한다. 같은 날짜의 연속 인접 구간을 빠짐없이 하나씩 지정하고 빠진/비인접/중복 구간은 422 `INVALID_ROUTE_LEGS`다(하루에 항목이 하나면 그 날은 구간 없음). 여행 전체 transportMode 필드는 제공하지 않는다. 2026-11-03 구현: 항목은 최대 200개, `day`는 1 이상이며 여행 기간이 정해져 있으면 일수 이하, 날짜별 `order`는 1부터 빈틈없이, `startTime`은 `HH:mm`, `stayMinutes`는 1~1440. 요청 자체의 오류는 400, 구간 구조 오류는 422, 그다음 여행 404 → version 409 → 코스 소유·여행 기간 400 순으로 판정한다. 바뀐 게 없으면 version을 올리지 않는다(여행 수정과 같은 규칙). 여행 기간을 줄여도 저장된 코스는 지우지 않고 다음 교체 때 검증한다. 경로 공급자 연동 전에는 구간을 `durationSeconds`·`distanceMeters`·`geometry` null, `status=UNAVAILABLE`로 저장한다.
 
 날씨 대안은 `alternativeId`를 포함한다. WEATHER 제안 요청은 `sourceWeatherJobId`·`selectedAlternativeId`를 받아 같은 여행의 성공한 결과와 선택 항목을 검증하고 기준 일정 버전도 일치해야 한다. 대안 유형은 PLACE_SWAP/TIME_SHIFT/INFO다. TIME_SHIFT는 기존 itemId·목표 시각으로 같은 장소를 이동하므로 새 장소가 없어도 적용 가능하다. INFO만 있는 대안의 적용은 `422 UNSCHEDULABLE_ALTERNATIVE`로 거부한다. 선택한 대안을 무시하고 임의의 새 장소로 대체하지 않는다.
 

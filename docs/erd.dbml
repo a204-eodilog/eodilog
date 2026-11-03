@@ -355,10 +355,10 @@ Table itinerary_items {
   place_id uuid [not null, ref: > places.id]
   day integer [not null]
   sequence integer [not null]
-  start_time varchar(8)
-  stay_minutes integer
-  indexes { (itinerary_id, day, sequence) [unique] }
-  Note: 'day/sequence는 양수. 일정 PUT은 전체 교체이며 요청에서 빠진 기존 항목은 제거. start_time/stay_minutes는 생략/null이면 비움. start_time 현지 시간대 Q-6. 같은 장소 재방문은 허용 제안.'
+  start_time varchar(5) [note: 'HH:mm']
+  stay_minutes integer [note: '1~1440']
+  indexes { (itinerary_id, day, sequence) [unique, note: 'DEFERRABLE INITIALLY DEFERRED. 전체 교체 중 남는 항목끼리 순서를 맞바꾸므로 커밋 때 검사'] }
+  Note: 'day/sequence는 양수(API의 order=sequence). 일정 PUT은 전체 교체이며 요청에서 빠진 기존 항목은 제거, id를 보낸 항목은 유지. start_time/stay_minutes는 생략/null이면 비움. start_time 현지 시간대 Q-6. 같은 장소 재방문 허용. 항목 최대 200개(2026-11-03 구현, EODI-164).'
 }
 
 Table route_legs {
@@ -369,11 +369,11 @@ Table route_legs {
   transport_mode varchar(16) [not null]
   duration_seconds integer
   distance_meters integer
-  geometry_json json [note: '지도 경로 LineString 제안, 좌표 경도·위도 순서. 공급자 저장/재사용 조건 Q-12']
-  status varchar(16) [not null, note: 'AVAILABLE/UNAVAILABLE']
-  queried_at timestamp [not null]
+  geometry_json json [note: '지도 경로 LineString 제안, 좌표 경도·위도 순서. 공급자 저장/재사용 조건 Q-12. 경로 공급자 연동 전에는 항상 NULL(엔티티 미매핑)']
+  status varchar(16) [not null, note: 'AVAILABLE/UNAVAILABLE. AVAILABLE이면 시간·거리 필수, UNAVAILABLE이면 시간·거리·지도선 모두 NULL']
+  queried_at timestamp [not null, note: '조회 전이면 저장 시각']
   indexes { (itinerary_id, from_item_id, to_item_id) [unique] }
-  Note: 'transport_mode는 WALK/CAR/TRANSIT. 두 지점이 같은 itinerary에 속하고 동일 날짜 인접 순서인지 검증. 실패값 NULL. 계획 거리이며 실제 이동거리로 집계하지 않음.'
+  Note: 'transport_mode는 WALK/CAR/TRANSIT. 두 지점이 같은 itinerary에 속하고 동일 날짜 인접 순서인지 서비스가 검증(아니면 422 INVALID_ROUTE_LEGS). 전체 교체 때 구간은 모두 지우고 다시 만든다. 실패값 NULL. 계획 거리이며 실제 이동거리로 집계하지 않음.'
 }
 
 Table checklist_items {
