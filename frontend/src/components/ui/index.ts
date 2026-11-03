@@ -15,6 +15,8 @@ export { Card } from './card';
 export type { CardProps } from './card';
 export { Chip } from './chip';
 export type { ChipProps } from './chip';
+export { ConfirmSheet } from './confirm-sheet';
+export type { ConfirmSheetProps } from './confirm-sheet';
 export { EmptyState, ErrorState } from './empty-state';
 export type { EmptyStateProps, ErrorStateProps } from './empty-state';
 export { Header } from './header';

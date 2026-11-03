@@ -9,6 +9,7 @@ import {
   Button,
   Card,
   Chip,
+  ConfirmSheet,
   EmptyState,
   ErrorState,
   Header,
@@ -49,6 +50,7 @@ const ICONS: IconName[] = [
   'card',
   'calculator',
   'star',
+  'trash',
 ];
 
 /** 서버 상한 9,007,199,254,740,991원(16자리) + 쉼표 5개 */
@@ -66,6 +68,9 @@ export default function UiCatalog() {
   const [amount, setAmount] = useState('21,000');
   const [memo, setMemo] = useState('');
   const [sheet, setSheet] = useState(false);
+  const [confirm, setConfirm] = useState<'photo' | 'withdraw' | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [confirmError, setConfirmError] = useState<string>();
   const [loading, setLoading] = useState(false);
   const [view, setView] = useState<'catalog' | 'empty' | 'first' | 'error'>('catalog');
 
@@ -75,6 +80,25 @@ export default function UiCatalog() {
   const fakeLoad = () => {
     setLoading(true);
     setTimeout(() => setLoading(false), 1500);
+  };
+
+  const openConfirm = (kind: 'photo' | 'withdraw') => {
+    setConfirmError(undefined);
+    setConfirm(kind);
+  };
+
+  // 사진 삭제는 1초 뒤 지운 것처럼, 탈퇴는 1초 뒤 실패한 것처럼 보여 준다
+  const fakeConfirm = () => {
+    setConfirming(true);
+    setTimeout(() => {
+      setConfirming(false);
+      if (confirm === 'withdraw') {
+        setConfirmError('탈퇴하지 못했어요. 다시 시도해 주세요');
+        return;
+      }
+      setConfirm(null);
+      toast.success('사진 2장을 지웠어요');
+    }, 1000);
   };
 
   if (view === 'empty') {
@@ -320,6 +344,17 @@ export default function UiCatalog() {
           />
         </Section>
 
+        <Section title="확인 시트 (S50)">
+          <Row>
+            <Button label="사진 삭제" variant="neutral" onPress={() => openConfirm('photo')} />
+            <Button
+              label="탈퇴 (실패 예시)"
+              variant="neutral"
+              onPress={() => openConfirm('withdraw')}
+            />
+          </Row>
+        </Section>
+
         <Section title="짧은 알림 (토스트)">
           <Row>
             <Button
@@ -385,6 +420,27 @@ export default function UiCatalog() {
           <Text style={[typography.body, styles.text]}>경비 기록은 남아요</Text>
         </View>
       </BottomSheet>
+
+      <ConfirmSheet
+        visible={confirm === 'photo'}
+        onClose={() => setConfirm(null)}
+        onConfirm={fakeConfirm}
+        title="사진 2장을 지울까요?"
+        description="휴대폰 원본은 그대로예요"
+        confirmLabel="지우기"
+        confirmIcon="trash"
+        loading={confirming}
+      />
+      <ConfirmSheet
+        visible={confirm === 'withdraw'}
+        onClose={() => setConfirm(null)}
+        onConfirm={fakeConfirm}
+        title="어디로그를 탈퇴할까요?"
+        description={'내 기록이 모두 지워져요.\n함께 만든 여행은 동행에게 남아요'}
+        confirmLabel={confirmError ? '다시 시도' : '탈퇴하기'}
+        loading={confirming}
+        error={confirmError}
+      />
     </SafeAreaView>
   );
 }
