@@ -21,7 +21,8 @@ export type IconName =
   | 'calendar'
   | 'link'
   | 'copy'
-  | 'alert';
+  | 'alert'
+  | 'trash';
 
 type IconProps = {
   name: IconName;
@@ -53,6 +54,7 @@ const PATHS: Record<IconName, string> = {
   link: 'M10 14L14 10M13 7L15 5A3.5 3.5 0 0 1 19 10L17 12M11 17L9 19A3.5 3.5 0 0 1 5 14L7 12',
   copy: 'M9 9H19V19H9V9ZM5 15V5H15',
   alert: 'M12 3L22 20H2L12 3ZM12 10V14M12 17V17.5',
+  trash: 'M4 7H20M9 7V4H15V7M6 7L7 20H17L18 7M10 11V16M14 11V16',
 };
 
 /** 채워도 선으로만 남겨야 하는 부분. 가방 손잡이처럼 몸통과 따로 그린다. */
