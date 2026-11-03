@@ -13,6 +13,8 @@ from app.core.config import Settings, get_settings
 from app.core.errors import TRACE_HEADER, register_error_handlers, resolve_trace_id
 from app.features.place_extraction.router import router as place_extraction_router
 from app.features.place_extraction.service import PlaceExtractor
+from app.features.preference_inference.router import router as preference_inference_router
+from app.features.preference_inference.service import PreferenceInferrer
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 log = logging.getLogger("ai")
@@ -28,6 +30,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings or get_settings()
     app.state.http = httpx.AsyncClient()
     app.state.place_extractor = _build_place_extractor(app.state.settings, app.state.http)
+    app.state.preference_inferrer = PreferenceInferrer(
+        llm=_build_llm(app.state.settings, app.state.http)
+    )
 
     # 뒤에 등록한 미들웨어가 바깥을 감싼다. 예산 초과 503에도 trace가 추적 ID를 붙인다
     app.add_middleware(RequestBudgetMiddleware, seconds=app.state.settings.request_budget_seconds)
@@ -55,19 +60,24 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return {"data": {"status": "ok"}}
 
     app.include_router(place_extraction_router)
+    app.include_router(preference_inference_router)
 
     return app
 
 
+def _build_llm(settings: Settings, http: httpx.AsyncClient) -> GmsClient:
+    return GmsClient(
+        http,
+        api_key=settings.gms_api_key,
+        base_url=settings.gms_base_url,
+        model=settings.llm_model,
+        timeout_seconds=settings.llm_timeout_seconds,
+    )
+
+
 def _build_place_extractor(settings: Settings, http: httpx.AsyncClient) -> PlaceExtractor:
     return PlaceExtractor(
-        llm=GmsClient(
-            http,
-            api_key=settings.gms_api_key,
-            base_url=settings.gms_base_url,
-            model=settings.llm_model,
-            timeout_seconds=settings.llm_timeout_seconds,
-        ),
+        llm=_build_llm(settings, http),
         places=NaverLocalClient(
             http,
             client_id=settings.naver_client_id,
