@@ -3,15 +3,6 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { colors, radius, size, typography } from '@/theme';
 
-const FRIEND_COLORS = Object.values(colors.friend);
-
-/** 같은 사람은 항상 같은 색이 나오도록 이름으로 색을 고른다. */
-export function avatarColor(seed: string) {
-  let hash = 0;
-  for (const ch of seed) hash = (hash * 31 + ch.charCodeAt(0)) % 997;
-  return FRIEND_COLORS[hash % FRIEND_COLORS.length];
-}
-
 export type AvatarProps = {
   /** 닉네임. 사진이 없으면 첫 글자를 보여 준다 */
   name: string;
@@ -20,7 +11,7 @@ export type AvatarProps = {
   size?: 'sm' | 'md' | 'lg';
 };
 
-/** 동행 얼굴. 사진이 있으면 사진, 없으면 닉네임 첫 글자 + 사람마다 다른 색. */
+/** 동행 얼굴. 사진이 있으면 사진, 없으면 회색 동그라미에 닉네임 첫 글자(Figma 기본 모습). */
 export function Avatar({ name, imageUrl, size: sz = 'md' }: AvatarProps) {
   const dim = size.avatar[sz];
   const base = { width: dim, height: dim, borderRadius: radius.full };
@@ -32,10 +23,7 @@ export function Avatar({ name, imageUrl, size: sz = 'md' }: AvatarProps) {
   }
 
   return (
-    <View
-      style={[styles.fallback, base, { backgroundColor: avatarColor(name) }]}
-      accessibilityLabel={name}
-    >
+    <View style={[styles.fallback, base]} accessibilityLabel={name}>
       <Text style={[sz === 'lg' ? typography.bodyBold : typography.captionBold, styles.letter]}>
         {name.trim().charAt(0)}
       </Text>
@@ -79,8 +67,12 @@ export function AvatarGroup({ people, max = 4, size: sz = 'sm' }: AvatarGroupPro
 }
 
 const styles = StyleSheet.create({
-  fallback: { alignItems: 'center', justifyContent: 'center' },
-  letter: { color: colors.text.default },
+  fallback: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.line.default,
+  },
+  letter: { color: colors.text.strong },
   group: { flexDirection: 'row', alignItems: 'center' },
   ring: { borderWidth: 2, borderColor: colors.surface.white, borderRadius: radius.full },
   rest: { backgroundColor: colors.gray[200], alignItems: 'center', justifyContent: 'center' },

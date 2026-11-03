@@ -52,7 +52,7 @@ export default function UiCatalog() {
   const [nickname, setNickname] = useState('');
   const [sheet, setSheet] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [view, setView] = useState<'catalog' | 'empty' | 'error'>('catalog');
+  const [view, setView] = useState<'catalog' | 'empty' | 'first' | 'error'>('catalog');
 
   const toggleTaste = (t: string) =>
     setTastes((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
@@ -77,9 +77,31 @@ export default function UiCatalog() {
           description="새 여행을 만들거나 초대 링크로 참여해요"
           actionLabel="새 여행"
           onAction={() => setView('catalog')}
-          illustration={<MascotTraveler />}
+          icon="trip"
         />
         <TabBar active="trip" onChange={() => setView('catalog')} />
+      </SafeAreaView>
+    );
+  }
+
+  if (view === 'first') {
+    return (
+      <SafeAreaView style={styles.screen}>
+        <Header
+          title="어디로그"
+          hideBack
+          right={
+            <Button label="돌아가기" variant="text" size="sm" onPress={() => setView('catalog')} />
+          }
+        />
+        <EmptyState
+          title="첫 여행을 만들어 볼까요?"
+          description="새 여행을 만들거나 초대 링크로 참여해요"
+          actionLabel="새 여행"
+          onAction={() => setView('catalog')}
+          illustration={<MascotTraveler />}
+        />
+        <TabBar active="home" onChange={() => setView('catalog')} />
       </SafeAreaView>
     );
   }
@@ -231,6 +253,7 @@ export default function UiCatalog() {
         <Section title="빈 화면 · 오류 화면">
           <Row>
             <Button label="빈 화면 보기" variant="neutral" onPress={() => setView('empty')} />
+            <Button label="첫 방문 홈 보기" variant="neutral" onPress={() => setView('first')} />
             <Button label="오류 화면 보기" variant="neutral" onPress={() => setView('error')} />
           </Row>
         </Section>

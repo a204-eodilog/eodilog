@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { colors, layout, spacing, typography } from '@/theme';
 
 import { Button } from './button';
-import { Icon, Placeholder } from './icon';
+import { Icon, type IconName } from './icon';
 
 export type EmptyStateProps = {
   /** "아직 여행이 없어요" */
@@ -14,21 +14,28 @@ export type EmptyStateProps = {
   /** 큰 버튼 글자와 동작. 없으면 버튼이 없다 */
   actionLabel?: string;
   onAction?: () => void;
-  /** 그림 자리. 기본은 자리표시 그림이고, 마스코트가 오면 바꾼다 */
+  /** 회색 동그라미 안에 넣을 아이콘. 화면 내용에 맞춰 고른다(여행 trip, 장소 map-pin, 대화 chat …) */
+  icon?: IconName;
+  /** 아이콘 대신 쓸 그림. 첫 방문 홈의 걷는 마스코트처럼 특별한 경우에만 */
   illustration?: ReactNode;
 };
 
-/** 빈 화면. 모든 목록·상세 화면이 공통으로 쓴다. 가운데 그림 + 제목 + 설명 + 버튼. */
+/** 빈 화면. 모든 목록·상세 화면이 공통으로 쓴다. 가운데 아이콘 + 제목 + 설명 + 버튼. */
 export function EmptyState({
   title,
   description,
   actionLabel,
   onAction,
+  icon = 'trip',
   illustration,
 }: EmptyStateProps) {
   return (
     <View style={styles.wrap}>
-      {illustration ?? <Placeholder />}
+      {illustration ?? (
+        <View style={styles.iconCircle}>
+          <Icon name={icon} size={32} color={colors.text.icon} />
+        </View>
+      )}
       <Text style={[typography.title1, styles.title]}>{title}</Text>
       {description ? (
         <Text style={[typography.body, styles.description]}>{description}</Text>
@@ -86,6 +93,14 @@ const styles = StyleSheet.create({
   title: { color: colors.text.default, textAlign: 'center', marginTop: spacing[16] },
   description: { color: colors.text.icon, textAlign: 'center' },
   action: { marginTop: spacing[16] },
+  iconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.surface.default,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   errorIcon: {
     width: 64,
     height: 64,

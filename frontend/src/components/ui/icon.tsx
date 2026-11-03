@@ -1,4 +1,4 @@
-import Svg, { Circle, Path, Rect } from 'react-native-svg';
+import Svg, { Circle, Path } from 'react-native-svg';
 
 import { colors, size } from '@/theme';
 
@@ -98,22 +98,6 @@ export function Dot({ color = colors.status.dangerMid, size: dim = 8 }: DotProps
   return (
     <Svg width={dim} height={dim} viewBox="0 0 8 8">
       <Circle cx={4} cy={4} r={4} fill={color} />
-    </Svg>
-  );
-}
-
-/** 빈 화면·오류 화면의 그림 자리. 마스코트가 들어오기 전까지 쓰는 자리표시다. */
-export function Placeholder({ size: dim = 120 }: { size?: number }) {
-  return (
-    <Svg width={dim} height={dim} viewBox="0 0 120 120">
-      <Rect x={10} y={10} width={100} height={100} rx={24} fill={colors.brand.primaryBg} />
-      <Circle cx={60} cy={52} r={18} fill={colors.brand.primarySoft} />
-      <Path
-        d="M30 96C30 80 43 72 60 72C77 72 90 80 90 96"
-        stroke={colors.brand.primarySoft}
-        strokeWidth={10}
-        strokeLinecap="round"
-      />
     </Svg>
   );
 }

@@ -5,7 +5,7 @@
  *
  * 어떤 부품이 있고 어떻게 보이는지는 개발용 화면 /dev/ui에서 본다.
  */
-export { Avatar, AvatarGroup, avatarColor } from './avatar';
+export { Avatar, AvatarGroup } from './avatar';
 export type { AvatarGroupProps, AvatarProps } from './avatar';
 export { BottomSheet } from './bottom-sheet';
 export type { BottomSheetProps } from './bottom-sheet';
@@ -17,7 +17,7 @@ export { EmptyState, ErrorState } from './empty-state';
 export type { EmptyStateProps, ErrorStateProps } from './empty-state';
 export { Header } from './header';
 export type { HeaderProps } from './header';
-export { Dot, Icon, Placeholder } from './icon';
+export { Dot, Icon } from './icon';
 export type { IconName } from './icon';
 export { MascotTraveler } from './mascot';
 export { TABS, TabBar } from './tab-bar';
