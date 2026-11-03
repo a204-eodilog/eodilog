@@ -17,7 +17,9 @@ class Echo(CamelModel):
 
 
 def build_client(token: str = "") -> TestClient:
-    app = create_app(Settings(_env_file=None, internal_api_token=token))
+    app = create_app(
+        Settings(_env_file=None, internal_api_token=token, allow_no_internal_token=not token)
+    )
     router = APIRouter(prefix="/ai/v1", dependencies=[Depends(require_internal_token)])
 
     @router.post("/echo")
