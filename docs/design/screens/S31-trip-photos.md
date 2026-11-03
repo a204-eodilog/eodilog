@@ -21,7 +21,7 @@
    1. **주제 칩**(가로 스크롤, 간격 10): "전체 32 / 풍경 14 / 음식 9 / 사람 6 / 기타 3". 모양은 [S30 칩](S30-photo-upload.md#사진-선택)과 같다
    2. **장소 미지정 안내 줄** — 상자 배경 연회색(피그마 변수 `color/grey/98 2`, `colors.surface.subtle`로 맞추면 됨), 둥글기 `radius.lg`, 안쪽 16, 간격 14. 왼쪽에 사진 40x40 세 장을 12씩 겹쳐 놓음(둥글기 10) · "장소 미지정 3장" `typography.bodyBold` + "위치와 날짜 정보가 없어요" `typography.caption` `colors.text.icon` · 오른쪽 "연결하기" `typography.captionMedium` `colors.brand.primaryDark` + `Icon chevron-right` 14. 누르면 장소 미지정 묶음 화면
    3. **장소별 묶음**(섹션 간격 24, 제목과 격자 12)
-      - 제목 줄: 핀 아이콘 18 + 장소 이름 `typography.title3` + 오른쪽 "1일차, 9장" `typography.caption` `colors.text.icon`
+      - 제목 줄: 핀 아이콘 18 + 장소 이름 `typography.title3` + 오른쪽 "1일차 · 9장" `typography.caption` `colors.text.icon`
       - 칸 3개 가로(111x112, 둥글기 12)
         - 묶음 칸: 왼쪽 아래 검은 알약(`colors.text.default`, 높이 22, 좌우 5/7) 안에 겹친 사진 아이콘 14 + 장수 "6" `typography.captionMedium` 흰색
         - 오른쪽 아래 올린 사람 얼굴 22(`typography.captionBold`). **나**는 `colors.brand.primaryLight` 배경, 다른 동행은 `colors.line.default` ([S35 얼굴 모양](S35-expenses.md#얼굴-모양))
@@ -30,4 +30,4 @@
 
 ## 예시 데이터
 
-해운대 해변(1일차, 9장: 지우 6장 묶음, 서연 1장, 민준 2장 묶음), 서면 돼지국밥집(1일차, 6장), 감천문화마을(2일차 · 14장). 제목 줄 표기가 "1일차, 9장"과 "2일차 · 14장"으로 섞여 있어 하나로 맞춰야 한다.
+해운대 해변(1일차 · 9장: 지우 6장 묶음, 서연 1장, 민준 2장 묶음), 서면 돼지국밥집(1일차 · 6장), 감천문화마을(2일차 · 14장). 제목 표기는 "N일차 · N장"으로 통일했다(2026-11-03 피그마 수정).
