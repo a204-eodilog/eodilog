@@ -5,15 +5,35 @@
 - 링크를 누르면 그 상태 화면이 피그마에서 바로 열린다. 피그마 보기 권한이 있으면 된다.
 - 담당: A 지도, B 업로드·AI·배포, C 실시간 (2026-11-03 확정).
 - 화면별 디자인 값 문서(간격·글자·색을 토큰 이름으로 정리)는 같은 폴더에 `화면ID-영문이름.md`로 하나씩 추가한다. AI에게 화면을 만들게 할 때 이 문서와 [CONVENTION](../../../frontend/CONVENTION.md)을 함께 준다.
+- 화면 사진은 없어도 된다. 값 문서에 구조·간격·글자·색·문구가 다 있다. 지도·사진 격자처럼 배치가 복잡한 화면에서 AI 결과가 어긋나면, 링크로 연 기본 상태를 한 장 캡처해 같이 주면 충분하다.
 - 피그마를 고치면 이 표도 함께 고친다. 상태 이름은 피그마 프레임 이름 그대로다.
 - 화면 56개, 상태 214개. 오류 상태는 피그마 15번 섹션에 따로 있지만 여기서는 해당 화면 아래에 같이 둔다.
 
 ## 값 문서가 있는 화면
 
+B 담당 화면 17개 전부. 다른 담당 화면은 필요할 때 같은 모양으로 추가한다.
+
 | 화면 | 문서 |
 | --- | --- |
+| S08 장소 저장 시트 | [S08-place-save-sheet.md](S08-place-save-sheet.md) |
+| S10 개인 즐겨찾기 | [S10-bookmarks.md](S10-bookmarks.md) |
+| S11 링크·캡처 등록 | [S11-link-capture.md](S11-link-capture.md) |
+| S12 추출 결과 확인 | [S12-extract-result.md](S12-extract-result.md) |
+| S14 저장 장소 상세 | [S14-saved-place.md](S14-saved-place.md) |
+| S30 사진 선택·업로드 | [S30-photo-upload.md](S30-photo-upload.md) |
+| S31 여행 사진 목록 | [S31-trip-photos.md](S31-trip-photos.md) |
+| S32 사진 분류·묶음 수정 | [S32-photo-group-edit.md](S32-photo-group-edit.md) |
+| S33 방문 장소 평가 목록 | [S33-visit-review-list.md](S33-visit-review-list.md) |
+| S34 평점·평가 작성 | [S34-review-write.md](S34-review-write.md) |
 | S35 경비 목록·지출 입력 | [S35-expenses.md](S35-expenses.md) |
 | S36 정산 결과 | [S36-settlement.md](S36-settlement.md) |
+| N4 내 여행 목록 | [N4-my-trips.md](N4-my-trips.md) |
+| S38 내 여행 기록·공동 피드 게시 | [S38-my-trip-record.md](S38-my-trip-record.md) |
+| S41 타임라인 | [S41-timeline.md](S41-timeline.md) |
+| S42 여행 요약 카드 | [S42-trip-summary-card.md](S42-trip-summary-card.md) |
+| S50 삭제·나가기·탈퇴 확인 | [S50-confirm.md](S50-confirm.md) |
+
+**여러 화면에 반복되는 것** (공통으로 만들면 좋은 것): 회색 상자 입력칸(S11·S34·S35), 둥글기 8 작은 태그(S12·S14·S33·N4·S41), 사진 고르기 칸(S30·S31·S32), 버튼이 있는 토스트(S08·S33), "나" 얼굴 연파랑(S31·S35·S36), 흰 테두리 카드(S38·S42), 새로고침·카드·계산기·별 아이콘.
 
 ## 1. 진입
 
