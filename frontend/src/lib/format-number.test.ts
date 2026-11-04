@@ -1,6 +1,14 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { digitsOnly, formatThousands, formatWon, parseAmount } from './format-number';
+import {
+  AMOUNT_MAX,
+  AMOUNT_MAX_LENGTH,
+  digitsOnly,
+  exceedsAmountMax,
+  formatThousands,
+  formatWon,
+  parseAmount,
+} from './format-number';
 
 describe('formatThousands', () => {
   it('천 단위마다 쉼표를 넣는다', () => {
@@ -25,6 +33,18 @@ describe('parseAmount', () => {
   it('쉼표가 있어도 정수로 읽는다', () => {
     expect(parseAmount('180,000')).toBe(180000);
     expect(parseAmount('')).toBeNull();
+  });
+
+  it('상한(MAX_SAFE_INTEGER)까지만 받고 넘으면 null', () => {
+    const max = formatThousands(AMOUNT_MAX);
+    expect(max).toHaveLength(AMOUNT_MAX_LENGTH);
+    expect(parseAmount(max)).toBe(AMOUNT_MAX);
+    expect(exceedsAmountMax(max)).toBe(false);
+    expect(parseAmount('9,007,199,254,740,992')).toBeNull();
+    expect(exceedsAmountMax('9,007,199,254,740,992')).toBe(true);
+    expect(parseAmount('9,999,999,999,999,999')).toBeNull();
+    expect(exceedsAmountMax('0000180000')).toBe(false);
+    expect(exceedsAmountMax('')).toBe(false);
   });
 });
 
