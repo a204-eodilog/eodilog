@@ -118,6 +118,35 @@ class JobIntegrationTest {
         assertThat(state(id)).isEqualTo("RUNNING");
         assertThat(jdbc.queryForObject("SELECT nickname FROM users WHERE id=?", String.class, user)).isEqualTo("original");
     }
+    @Test void completionHookFailureIsRetriedThenFailsAfterMaxAttempts() {
+        fixtures.throwHook = true;
+        var id = submit();
+        for (int attempt = 1; attempt <= properties.maxAttempts(); attempt++) {
+            assertThat(worker.pollOnce()).isTrue();
+            awaitState(id, attempt < properties.maxAttempts() ? "QUEUED" : "FAILED");
+            assertThat(jdbc.queryForObject("SELECT attempt FROM jobs WHERE id=?", Integer.class, id)).isEqualTo(attempt);
+            // The hook's own write rolled back with the result every time.
+            assertThat(jdbc.queryForObject("SELECT nickname FROM users WHERE id=?", String.class, user)).isEqualTo("original");
+            if (attempt < properties.maxAttempts()) {
+                assertThat(service.get(user, id).error()).isNull();
+                clock.advance(properties.retryDelay());
+            }
+        }
+        assertThat(service.get(user, id).error().code()).isEqualTo("TEMPORARY_FAILURE");
+        assertThat(fixtures.hooks).hasValue(0);
+    }
+    @Test void completionHookRecoversOnRetry() {
+        fixtures.throwHook = true;
+        var id = submit();
+        assertThat(worker.pollOnce()).isTrue();
+        awaitState(id, "QUEUED");
+        fixtures.throwHook = false;
+        clock.advance(properties.retryDelay());
+        assertThat(worker.pollOnce()).isTrue();
+        awaitState(id, "SUCCEEDED");
+        assertThat(fixtures.hooks).hasValue(1);
+        assertThat(jdbc.queryForObject("SELECT nickname FROM users WHERE id=?", String.class, user)).isEqualTo("completed");
+    }
     @Test void retriesAreDelayedAndBoundedToThreeAttempts() {
         var id = submit();
         for (int attempt = 1; attempt <= 3; attempt++) {
@@ -274,8 +303,8 @@ class JobIntegrationTest {
         assertThatThrownBy(() -> service.get(user, id)).isInstanceOf(BusinessException.class);
     }
     @Test void cleanupResultIsMinimalRequesterOnlyAndIndependentOfTripMembership() {
-        var id = submit(JobKind.LEAVE_CLEANUP); var c = claim();
-        worker.finish(c, JobOutcome.succeeded(json.readTree("{\"scope\":\"LEAVE_CLEANUP\",\"completedCount\":1,\"failedCount\":0,\"photoIds\":[\"private\"]}")));
+        var id = submit(JobKind.PHOTO_DELETE); var c = claim();
+        worker.finish(c, JobOutcome.succeeded(json.readTree("{\"scope\":\"PHOTO_DELETE\",\"completedCount\":1,\"failedCount\":0,\"photoIds\":[\"private\"]}")));
         var result = service.get(user, id).result();
         assertThat(result.size()).isEqualTo(3); assertThat(result.has("photoIds")).isFalse();
         UUID other = UUID.randomUUID();
@@ -331,7 +360,7 @@ class JobIntegrationTest {
         }
         @Bean JobHandler extractionHandler(JdbcTemplate jdbc) { return handler(JobKind.PLACE_EXTRACTION, jdbc); }
         @Bean JobAccessPolicy extractionPolicy() { return policy(JobKind.PLACE_EXTRACTION); }
-        @Bean JobHandler cleanupHandler(JdbcTemplate jdbc) { return handler(JobKind.LEAVE_CLEANUP, jdbc); }
-        @Bean JobAccessPolicy cleanupPolicy() { return policy(JobKind.LEAVE_CLEANUP); }
+        @Bean JobHandler cleanupHandler(JdbcTemplate jdbc) { return handler(JobKind.PHOTO_DELETE, jdbc); }
+        @Bean JobAccessPolicy cleanupPolicy() { return policy(JobKind.PHOTO_DELETE); }
     }
 }

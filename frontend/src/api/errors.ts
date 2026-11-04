@@ -78,3 +78,9 @@ export function toApiError(e: unknown): ApiError {
 export function hasErrorCode(e: unknown, code: string): boolean {
   return toApiError(e).code === code;
 }
+
+/** 서버 오류 응답의 code. "VERSION_CONFLICT", "TRIP_NOT_FOUND" (docs/api-spec.md §1). 서버 응답이 아니면 undefined */
+export function apiErrorCode(error: unknown): string | undefined {
+  if (!isAxiosError<ApiErrorBody>(error)) return undefined;
+  return error.response?.data?.error?.code;
+}

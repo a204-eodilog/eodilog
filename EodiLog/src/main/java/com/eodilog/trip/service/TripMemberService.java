@@ -44,6 +44,7 @@ public class TripMemberService {
 	private final ChatParticipationService chatParticipationService;
 	private final PollCloser pollCloser;
 	private final TripDeletionService tripDeletionService;
+	private final LeaveCleanupService leaveCleanupService;
 	private final Clock clock;
 
 	// 기본은 ACTIVE 멤버만. 정산에 남는 이탈 멤버를 보려면 includeInactive로 LEFT·REMOVED도 포함한다(명세 §4)
@@ -61,15 +62,18 @@ public class TripMemberService {
 		return new TripMembersResponse(responses);
 	}
 
-	// 기본 나가기(정책 §11). 경비·사진·메시지는 남기고 멤버십 LEFT와 채팅 참여 종료를 한 트랜잭션에서 처리한다
-	// 판정 순서: 입력 400(누락·삭제 옵션 true) → 여행 행 잠금 후 ACTIVE 멤버 404 → version 409 → 처리
+	// 나가기(정책 §11). 경비는 남기고 멤버십 LEFT와 채팅 참여 종료를 한 트랜잭션에서 처리한다
+	// 판정 순서: 입력 400(누락·사진 삭제 옵션 true) → 여행 행 잠금 후 ACTIVE 멤버 404 → version 409 → 처리
 	// 방장이 나가면 남은 ACTIVE 멤버 중 참여 순이 가장 빠른 사람이 방장이 된다. 어느 경우든 여행 version은 1만 오른다
-	// 혼자 남은 사람이 나가면 여행 삭제로 접수한다(정책 §14 D-2): 논리 삭제 + TRIP_DELETE 작업, 202
+	// 내 채팅 삭제를 고르면 지울 메시지를 고정해 같은 트랜잭션에 LEAVE_CLEANUP 작업을 등록하고 202다(정책 §15)
+	// 혼자 남은 사람이 나가면 여행 삭제로 접수한다(정책 §14 D-2): 논리 삭제 + TRIP_DELETE 작업, 202. 메시지도 함께 지워지므로 정리 작업은 따로 만들지 않는다
 	@Transactional
 	public LeaveTripResponse leave(UUID userId, UUID tripId, LeaveTripRequest request) {
 		List<ErrorField> errors = new ArrayList<>();
 		requireDeleteOptionOff(request.deleteOwnPhotos(), "deleteOwnPhotos", "사진을", errors);
-		requireDeleteOptionOff(request.deleteOwnMessages(), "deleteOwnMessages", "메시지를", errors);
+		if (request.deleteOwnMessages() == null) {
+			errors.add(new ErrorField("deleteOwnMessages", "내 메시지를 지울지 true/false로 보내 주세요."));
+		}
 		if (request.expectedVersion() == null) {
 			errors.add(new ErrorField("expectedVersion", "나가기 전에 조회한 version을 보내 주세요."));
 		}
@@ -105,11 +109,15 @@ public class TripMemberService {
 		} else {
 			trip.markMembersChanged(now);
 		}
+		// 정리 작업 등록 정책이 같은 트랜잭션에서 LEFT를 읽으므로 먼저 반영한다
 		tripRepository.flush();
-		return LeaveTripResponse.left(tripId, newOwner == null ? null : newOwner.getId());
+		UUID cleanupJobId = request.deleteOwnMessages()
+				? leaveCleanupService.submitMessageCleanup(tripId, userId, now).map(JobRef::jobId).orElse(null)
+				: null;
+		return LeaveTripResponse.left(tripId, newOwner == null ? null : newOwner.getId(), cleanupJobId);
 	}
 
-	// 삭제 기능이 생기기 전에는 false만 받는다. 무시하고 성공으로 응답하지 않는다(정책 §11 L-3, 준비물 C-1과 같은 방식)
+	// 사진 삭제는 사진 기능이 생기기 전에는 false만 받는다. 무시하고 성공으로 응답하지 않는다(정책 §11 L-3, 준비물 C-1과 같은 방식)
 	private void requireDeleteOptionOff(Boolean option, String field, String targetWithParticle, List<ErrorField> errors) {
 		if (option == null) {
 			errors.add(new ErrorField(field, "내 " + targetWithParticle + " 지울지 true/false로 보내 주세요."));

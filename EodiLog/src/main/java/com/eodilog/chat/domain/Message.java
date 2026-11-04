@@ -12,7 +12,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.UuidGenerator;
 
-// 채팅 메시지 한 건. 지금은 사용자가 보낸 TEXT만 만든다. 편집·삭제는 아직 없다(Q-13 범위 밖)
+// 채팅 메시지 한 건. 지금은 사용자가 보낸 TEXT만 만든다. 편집은 없고(Q-13 범위 밖), 삭제는 나가기의 본문 제거만 있다(OwnMessageCleaner)
 @Entity
 @Table(name = "messages")
 @Getter

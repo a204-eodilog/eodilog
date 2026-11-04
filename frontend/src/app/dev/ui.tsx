@@ -7,7 +7,9 @@ import {
   AvatarGroup,
   BottomSheet,
   Button,
+  Card,
   Chip,
+  ConfirmSheet,
   EmptyState,
   ErrorState,
   Header,
@@ -15,10 +17,19 @@ import {
   MascotTraveler,
   type IconName,
   TabBar,
+  Tag,
   type TabKey,
   TextField,
   toast,
 } from '@/components/ui';
+import { LeaveTripSheet } from '@/features/trip/components/leave-trip-sheet';
+import type { LeaveTripFailure } from '@/features/trip/hooks/use-leave-trip';
+import {
+  AMOUNT_MAX_LENGTH,
+  exceedsAmountMax,
+  formatThousands,
+  parseAmount,
+} from '@/lib/format-number';
 import { colors, layout, spacing, typography } from '@/theme';
 
 const ICONS: IconName[] = [
@@ -40,7 +51,19 @@ const ICONS: IconName[] = [
   'link',
   'copy',
   'alert',
+  'info',
+  'clock',
+  'refresh',
+  'card',
+  'calculator',
+  'star',
+  'trash',
+  'leave',
+  'image',
+  'arrow-right',
 ];
+
+type LeaveExample = 'member' | 'owner' | 'alone' | 'fail' | 'conflict';
 
 const TASTES = ['바다', '맛집', '카페', '산책', '야경', '사진'];
 
@@ -51,7 +74,15 @@ export default function UiCatalog() {
   const [tastes, setTastes] = useState<string[]>(['바다']);
   const [name, setName] = useState('겨울 여행');
   const [nickname, setNickname] = useState('');
+  const [amount, setAmount] = useState('21,000');
+  const [memo, setMemo] = useState('');
   const [sheet, setSheet] = useState(false);
+  const [confirm, setConfirm] = useState<'photo' | 'withdraw' | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [confirmError, setConfirmError] = useState<string>();
+  const [leave, setLeave] = useState<LeaveExample | null>(null);
+  const [leaving, setLeaving] = useState(false);
+  const [leaveFailure, setLeaveFailure] = useState<LeaveTripFailure>();
   const [loading, setLoading] = useState(false);
   const [view, setView] = useState<'catalog' | 'empty' | 'first' | 'error'>('catalog');
 
@@ -61,6 +92,44 @@ export default function UiCatalog() {
   const fakeLoad = () => {
     setLoading(true);
     setTimeout(() => setLoading(false), 1500);
+  };
+
+  const openConfirm = (kind: 'photo' | 'withdraw') => {
+    setConfirmError(undefined);
+    setConfirm(kind);
+  };
+
+  // 사진 삭제는 1초 뒤 지운 것처럼, 탈퇴는 1초 뒤 실패한 것처럼 보여 준다
+  const fakeConfirm = () => {
+    setConfirming(true);
+    setTimeout(() => {
+      setConfirming(false);
+      if (confirm === 'withdraw') {
+        setConfirmError('탈퇴하지 못했어요');
+        return;
+      }
+      setConfirm(null);
+      toast.success('사진 2장을 지웠어요');
+    }, 1000);
+  };
+
+  const openLeave = (kind: LeaveExample) => {
+    setLeaveFailure(undefined);
+    setLeave(kind);
+  };
+
+  // 실패·충돌 예시만 1초 뒤 실패하고, 나머지는 나간 것처럼 닫는다
+  const fakeLeave = () => {
+    setLeaving(true);
+    setTimeout(() => {
+      setLeaving(false);
+      if (leave === 'fail' || leave === 'conflict') {
+        setLeaveFailure(leave === 'fail' ? 'error' : 'conflict');
+        return;
+      }
+      setLeave(null);
+      toast.success(leave === 'alone' ? '여행을 삭제했어요' : '여행에서 나왔어요');
+    }, 1000);
   };
 
   if (view === 'empty') {
@@ -181,6 +250,68 @@ export default function UiCatalog() {
           />
         </Section>
 
+        <Section title="입력칸 · 회색 상자 (variant=filled)">
+          <TextField
+            label="금액"
+            required
+            variant="filled"
+            large
+            keyboardType="number-pad"
+            value={amount}
+            onChangeText={(v) => setAmount(formatThousands(v))}
+            style={styles.amount}
+            trailing={<Text style={[typography.title1, styles.text]}>원</Text>}
+            maxLength={AMOUNT_MAX_LENGTH}
+            hideCount
+            error={
+              parseAmount(amount)
+                ? undefined
+                : exceedsAmountMax(amount)
+                  ? '금액이 너무 커요'
+                  : '금액을 입력해 주세요'
+            }
+            helper="서버 규칙: 1원 이상 정수, 0은 저장할 수 없어요"
+          />
+          <TextField
+            label="한 줄 평가"
+            variant="filled"
+            placeholder="예: 노을 질 때 가 보기"
+            value={memo}
+            onChangeText={setMemo}
+            maxLength={100}
+          />
+          <TextField
+            label="메모"
+            variant="filled"
+            multiline
+            placeholder="여러 줄로 적어요"
+            error="메모를 저장하지 못했어요"
+          />
+        </Section>
+
+        <Section title="태그 (누를 수 없음)">
+          <Row>
+            <Tag label="야경" />
+            <Tag label="비공개" icon="person" />
+            <Tag label="게시됨" tone="brand" icon="check" />
+            <Tag label="계획 중" tone="brandSoft" icon="calendar" />
+            <Tag label="사진으로 확인됨" tone="success" icon="check" />
+            <Tag label="지도 핀 없음" tone="outline" icon="map-pin" />
+            <Tag label="이전 정산 · 지금과 달라요" tone="line" />
+          </Row>
+        </Section>
+
+        <Section title="카드">
+          <Card variant="filled" rounded="xl">
+            <Text style={[typography.caption, styles.muted]}>함께 쓴 돈</Text>
+            <Text style={[typography.title1, styles.text]}>23.4만 원</Text>
+          </Card>
+          <Card onPress={() => toast.show('사진 목록으로 가요')} accessibilityLabel="사진 32장">
+            <Text style={[typography.bodyBold, styles.text]}>사진 32장</Text>
+            <Text style={[typography.caption, styles.muted]}>누를 수 있는 흰 테두리 카드</Text>
+          </Card>
+        </Section>
+
         <Section title="칩 · 필터">
           <Row>
             <Chip label="전체 5" selected={filter === 'all'} onPress={() => setFilter('all')} />
@@ -212,13 +343,13 @@ export default function UiCatalog() {
 
         <Section title="동행 얼굴">
           <Row>
-            <Avatar name="지우" size="sm" />
+            <Avatar name="지우" size="sm" me />
             <Avatar name="민준" size="md" />
             <Avatar name="서연" size="lg" />
             <Avatar name="사진" size="lg" imageUrl="https://picsum.photos/seed/eodilog/80" />
           </Row>
           <Row>
-            <AvatarGroup people={[{ name: '지우' }, { name: '민준' }]} />
+            <AvatarGroup people={[{ name: '지우', me: true }, { name: '민준' }]} />
             <AvatarGroup
               people={[
                 { name: '지우' },
@@ -251,6 +382,28 @@ export default function UiCatalog() {
           />
         </Section>
 
+        <Section title="확인 시트 (S50)">
+          <Row>
+            <Button label="사진 삭제" variant="neutral" onPress={() => openConfirm('photo')} />
+            <Button
+              label="탈퇴 (실패 예시)"
+              variant="neutral"
+              onPress={() => openConfirm('withdraw')}
+            />
+          </Row>
+          <Row>
+            <Button label="여행 나가기" variant="neutral" onPress={() => openLeave('member')} />
+            <Button label="방장일 때" variant="neutral" onPress={() => openLeave('owner')} />
+            <Button label="혼자 남았을 때" variant="neutral" onPress={() => openLeave('alone')} />
+            <Button label="나가기 실패 예시" variant="neutral" onPress={() => openLeave('fail')} />
+            <Button
+              label="먼저 바뀐 예시"
+              variant="neutral"
+              onPress={() => openLeave('conflict')}
+            />
+          </Row>
+        </Section>
+
         <Section title="짧은 알림 (토스트)">
           <Row>
             <Button
@@ -259,6 +412,15 @@ export default function UiCatalog() {
               onPress={() => toast.success('링크를 복사했어요')}
             />
             <Button label="기본 안내" variant="neutral" onPress={() => toast.show('저장했어요')} />
+            <Button
+              label="버튼 있는 안내"
+              variant="neutral"
+              onPress={() =>
+                toast.success('강릉 바다 여행에 담았어요', {
+                  action: { label: '보기', onPress: () => toast.show('여행으로 가요') },
+                })
+              }
+            />
             <Button
               label="실패 안내"
               variant="neutral"
@@ -307,6 +469,43 @@ export default function UiCatalog() {
           <Text style={[typography.body, styles.text]}>경비 기록은 남아요</Text>
         </View>
       </BottomSheet>
+
+      <ConfirmSheet
+        visible={confirm === 'photo'}
+        onClose={() => setConfirm(null)}
+        onConfirm={fakeConfirm}
+        title="사진 2장을 지울까요?"
+        description="휴대폰 원본은 그대로예요"
+        confirmLabel="지우기"
+        confirmIcon="trash"
+        loading={confirming}
+      />
+      <ConfirmSheet
+        visible={confirm === 'withdraw'}
+        onClose={() => setConfirm(null)}
+        onConfirm={fakeConfirm}
+        title="어디로그를 탈퇴할까요?"
+        description={'내 기록이 모두 지워져요.\n함께 만든 여행은 동행에게 남아요'}
+        confirmLabel={confirmError ? '다시 시도' : '탈퇴하기'}
+        confirmIcon={confirmError ? 'refresh' : undefined}
+        loading={confirming}
+        error={confirmError}
+        errorDescription="다시 시도해 주세요"
+      />
+      {/* 방장일 때는 서버가 지우기를 받게 된 뒤의 모습(체크를 고를 수 있음)을 미리 보여 준다 */}
+      <LeaveTripSheet
+        visible={leave !== null}
+        onClose={() => setLeave(null)}
+        onConfirm={fakeLeave}
+        tripTitle="겨울 여행"
+        nextOwnerName={leave === 'owner' ? '민준' : undefined}
+        alone={leave === 'alone'}
+        ownPhotoCount={12}
+        onHandOver={() => toast.show('S19 방장 넘기기로 가요')}
+        cleanupSupported={leave === 'owner'}
+        loading={leaving}
+        failure={leaveFailure}
+      />
     </SafeAreaView>
   );
 }
@@ -337,6 +536,7 @@ const styles = StyleSheet.create({
   text: { color: colors.text.default },
   muted: { color: colors.text.muted },
   iconCell: { width: 64, alignItems: 'center', gap: spacing[4] },
+  amount: { textAlign: 'right' },
   sheetRow: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.eodilog.TestcontainersConfiguration;
 import com.eodilog.global.idempotency.IdempotencyService;
+import com.eodilog.job.JobWorker;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -19,6 +20,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.LockSupport;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,6 +33,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -47,6 +51,12 @@ class TripLeaveApiTest {
 
 	@Autowired
 	private JsonMapper jsonMapper;
+
+	@Autowired
+	private JobWorker worker;
+
+	@Autowired
+	private TransactionTemplate transactionTemplate;
 
 	private UUID ownerId;
 	private UUID friendId;
@@ -115,6 +125,142 @@ class TripLeaveApiTest {
 	}
 
 	@Test
+	void memberLeavesDeletingOwnMessageBodiesThroughJob() throws Exception {
+		UUID roomId = roomId();
+		UUID firstClientId = UUID.randomUUID();
+		sendMessage(friendId, roomId, firstClientId, "먼저 갈게요");
+		sendMessage(ownerId, roomId, UUID.randomUUID(), "잘 가요");
+		sendMessage(friendId, roomId, UUID.randomUUID(), "다음에 봐요");
+
+		// 지울 메시지가 있으면 LEAVE_CLEANUP 작업을 접수하고 202. 나가기 자체는 바로 끝난다(LEFT)
+		JsonNode result = data(leave(friendId, false, true, 1)
+				.andExpect(status().isAccepted())
+				.andExpect(jsonPath("$.data.tripDeleted").value(false))
+				.andExpect(jsonPath("$.data.status").value("LEFT"))
+				.andExpect(jsonPath("$.data.newOwnerMemberId").isEmpty())
+				.andExpect(jsonPath("$.data.cleanupJobId").isNotEmpty()));
+		UUID jobId = UUID.fromString(result.get("cleanupJobId").asString());
+		assertThat(count("select count(*) from trip_members where id = ? and status = 'LEFT'", friendMemberId)).isEqualTo(1);
+		assertThat(version()).isEqualTo(2);
+		assertThat(jdbcTemplate.queryForObject("select kind || ':' || status from jobs where id = ?", String.class, jobId))
+				.isEqualTo("LEAVE_CLEANUP:QUEUED");
+
+		runJob(jobId);
+
+		// 나간 사람의 메시지는 자리(순번)는 남고 본문만 지워진다. 다른 사람 메시지는 그대로다
+		mockMvc.perform(get("/api/v1/chat/rooms/{roomId}/messages", roomId).with(authUser(ownerId)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data", hasSize(3)))
+				.andExpect(jsonPath("$.data[0].sequence").value(3))
+				.andExpect(jsonPath("$.data[0].senderId").value(friendId.toString()))
+				.andExpect(jsonPath("$.data[0].text").isEmpty())
+				.andExpect(jsonPath("$.data[0].deletedAt").isNotEmpty())
+				.andExpect(jsonPath("$.data[1].text").value("잘 가요"))
+				.andExpect(jsonPath("$.data[1].deletedAt").isEmpty())
+				.andExpect(jsonPath("$.data[2].text").isEmpty())
+				.andExpect(jsonPath("$.data[2].deletedAt").isNotEmpty());
+		// 작업은 요청한 사람만 나간 뒤에도 본다. 결과는 개수만
+		mockMvc.perform(get("/api/v1/jobs/{jobId}", jobId).with(authUser(friendId)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.kind").value("LEAVE_CLEANUP"))
+				.andExpect(jsonPath("$.data.status").value("SUCCEEDED"))
+				.andExpect(jsonPath("$.data.result.scope").value("LEAVE_CLEANUP"))
+				.andExpect(jsonPath("$.data.result.completedCount").value(2))
+				.andExpect(jsonPath("$.data.result.failedCount").value(0))
+				.andExpect(jsonPath("$.data.result.messageIds").doesNotExist());
+		mockMvc.perform(get("/api/v1/jobs/{jobId}", jobId).with(authUser(ownerId)))
+				.andExpect(status().isNotFound());
+
+		// 다시 들어와도 지운 메시지는 되살아나지 않고, 그 clientMessageId는 다시 쓸 수 없다
+		String link = data(mockMvc.perform(post("/api/v1/trips/{tripId}/invitations", tripId).with(authUser(ownerId))))
+				.get("token").asString();
+		mockMvc.perform(post("/api/v1/invitations/{token}/accept", link).with(authUser(friendId)))
+				.andExpect(status().isOk());
+		mockMvc.perform(post("/api/v1/chat/rooms/{roomId}/messages", roomId).with(authUser(friendId))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"clientMessageId\":\"" + firstClientId + "\",\"text\":\"먼저 갈게요\"}"))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.error.code").value("CLIENT_MESSAGE_ID_REUSED"));
+		sendMessage(friendId, roomId, UUID.randomUUID(), "다시 왔어요");
+		assertThat(count("select count(*) from messages where room_id = ? and deleted_at is null", roomId)).isEqualTo(2);
+	}
+
+	@Test
+	void waitsForInFlightMessageBeforeFixingCleanupTargets() throws Exception {
+		UUID roomId = roomId();
+		sendMessage(friendId, roomId, UUID.randomUUID(), "먼저 보냄");
+		UUID inFlightId = UUID.randomUUID();
+		CountDownLatch inserted = new CountDownLatch(1);
+		CountDownLatch release = new CountDownLatch(1);
+		ExecutorService executor = Executors.newFixedThreadPool(2);
+		try {
+			// 다른 기기의 전송이 방 행을 잠그고 메시지를 넣었지만 아직 커밋하지 않은 상태(ChatService.sendMessage와 같은 잠금)
+			Future<?> sending = executor.submit(() -> transactionTemplate.executeWithoutResult(status -> {
+				jdbcTemplate.queryForList("select id from chat_rooms where id = ? for update", UUID.class, roomId);
+				jdbcTemplate.update("""
+						insert into messages (id, room_id, sender_user_id, type, sequence, text, client_message_id, created_at)
+						values (?, ?, ?, 'TEXT', 100, '나가는 중에 보냄', ?, now())""",
+						inFlightId, roomId, friendId, UUID.randomUUID());
+				inserted.countDown();
+				try {
+					release.await(10, TimeUnit.SECONDS);
+				} catch (InterruptedException ex) {
+					Thread.currentThread().interrupt();
+				}
+			}));
+			assertThat(inserted.await(10, TimeUnit.SECONDS)).isTrue();
+			Future<MockHttpServletResponse> leaving = executor.submit(
+					() -> leave(friendId, false, true, 1).andReturn().getResponse());
+
+			// 나가기는 지울 메시지를 고르기 전에 방 행 잠금을 기다린다
+			LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(500));
+			assertThat(leaving.isDone()).isFalse();
+			release.countDown();
+			sending.get(10, TimeUnit.SECONDS);
+			MockHttpServletResponse response = leaving.get(10, TimeUnit.SECONDS);
+
+			assertThat(response.getStatus()).isEqualTo(202);
+			UUID jobId = UUID.fromString(jsonMapper.readTree(response.getContentAsString())
+					.get("data").get("cleanupJobId").asString());
+			runJob(jobId);
+			// 커밋을 기다린 전송 메시지도 대상에 들어가 본문이 지워진다
+			assertThat(count("select count(*) from messages where room_id = ? and sender_user_id = ? and text is null",
+					roomId, friendId)).isEqualTo(2);
+			assertThat(count("select count(*) from messages where id = ? and deleted_at is not null", inFlightId))
+					.isEqualTo(1);
+		} finally {
+			release.countDown();
+			executor.shutdownNow();
+		}
+	}
+
+	@Test
+	void leavesWithoutJobWhenNoOwnMessagesToDelete() throws Exception {
+		sendMessage(ownerId, roomId(), UUID.randomUUID(), "방장 메시지");
+
+		// 지울 것이 없으면 가짜 작업을 만들지 않고 200
+		leave(friendId, false, true, 1)
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.status").value("LEFT"))
+				.andExpect(jsonPath("$.data.cleanupJobId").isEmpty());
+		assertThat(count("select count(*) from jobs where trip_id = ?", tripId)).isZero();
+		assertThat(count("select count(*) from messages where room_id = ? and deleted_at is null", roomId())).isEqualTo(1);
+	}
+
+	@Test
+	void loneMemberDeletingMessagesGetsOnlyTripDeletion() throws Exception {
+		sendMessage(ownerId, roomId(), UUID.randomUUID(), "혼자 남았네");
+		jdbcTemplate.update("update trip_members set status = 'LEFT', left_at = now() where id = ?", friendMemberId);
+
+		// 여행 삭제가 메시지까지 지우므로 정리 작업을 따로 만들지 않는다
+		leave(ownerId, false, true, 1)
+				.andExpect(status().isAccepted())
+				.andExpect(jsonPath("$.data.status").value("TRIP_DELETED"));
+		assertThat(jdbcTemplate.queryForList("select kind from jobs where trip_id = ?", String.class, tripId))
+				.containsExactly("TRIP_DELETE");
+	}
+
+	@Test
 	void ownerLeavesAndEarliestRemainingMemberBecomesOwner() throws Exception {
 		// 셋째(참여 순 3)를 나중에 넣고, 먼저 넣은 동행은 재참여로 참여 순이 4가 된 상황.
 		// 넣은 순서가 아니라 참여 순으로 고르면 셋째가 방장이 된다
@@ -177,16 +323,17 @@ class TripLeaveApiTest {
 
 	@Test
 	void rejectsDeleteOptionsAndMissingFields() throws Exception {
-		// 삭제 기능 전이라 true는 성공으로 처리하지 않고 400
+		// 사진 삭제는 사진 기능 전이라 true를 성공으로 처리하지 않고 400. 메시지 삭제는 받는다
 		leave(ownerId, true, true, 1)
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"))
-				.andExpect(jsonPath("$.error.fields[*].field").value(containsInAnyOrder("deleteOwnPhotos", "deleteOwnMessages")));
+				.andExpect(jsonPath("$.error.fields", hasSize(1)))
+				.andExpect(jsonPath("$.error.fields[0].field").value("deleteOwnPhotos"));
 		postLeave(friendId, "{}")
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.error.fields[*].field").value(
 						containsInAnyOrder("deleteOwnPhotos", "deleteOwnMessages", "expectedVersion")));
-		leave(friendId, false, true, 1)
+		postLeave(friendId, "{\"deleteOwnPhotos\":false,\"expectedVersion\":1}")
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.error.fields", hasSize(1)))
 				.andExpect(jsonPath("$.error.fields[0].field").value("deleteOwnMessages"));
@@ -297,6 +444,35 @@ class TripLeaveApiTest {
 		return mockMvc.perform(post("/api/v1/trips/{tripId}/leave", tripId).with(authUser(userId))
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(body));
+	}
+
+	private UUID roomId() {
+		return jdbcTemplate.queryForObject("select id from chat_rooms where trip_id = ?", UUID.class, tripId);
+	}
+
+	private void sendMessage(UUID userId, UUID roomId, UUID clientMessageId, String text) throws Exception {
+		mockMvc.perform(post("/api/v1/chat/rooms/{roomId}/messages", roomId).with(authUser(userId))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"clientMessageId\":\"" + clientMessageId + "\",\"text\":\"" + text + "\"}"))
+				.andExpect(status().isCreated());
+	}
+
+	// 다른 테스트가 남긴 작업이 먼저 선점될 수 있으므로 내 작업이 QUEUED를 벗어날 때까지 선점을 반복한다
+	private void runJob(UUID jobId) {
+		long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+		while (jobState(jobId).equals("QUEUED") && System.nanoTime() < until) {
+			if (!worker.pollOnce()) {
+				LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(20));
+			}
+		}
+		while (!jobState(jobId).equals("SUCCEEDED") && System.nanoTime() < until) {
+			LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(5));
+		}
+		assertThat(jobState(jobId)).isEqualTo("SUCCEEDED");
+	}
+
+	private String jobState(UUID jobId) {
+		return jdbcTemplate.queryForObject("select status from jobs where id = ?", String.class, jobId);
 	}
 
 	private JsonNode data(ResultActions result) throws Exception {

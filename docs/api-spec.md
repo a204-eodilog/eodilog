@@ -50,9 +50,9 @@
 
 | 상태 | 대표 업무 오류 |
 | --- | --- |
-| 404 | `TRIP_NOT_FOUND`, `FEED_NOT_FOUND`, `JOB_NOT_FOUND` — 존재를 공개할 수 없는 자료도 같은 응답. 여행 안의 하위 자료는 `MEMBER_NOT_FOUND`(없거나 이탈한 멤버십), `CHECKLIST_ITEM_NOT_FOUND`(없거나 삭제된 준비물), `EXPENSE_NOT_FOUND`(없거나 삭제된 경비), `SETTLEMENT_NOT_FOUND`(없거나 다른 여행의 정산 계산), `CHAT_ROOM_NOT_FOUND`(없거나 삭제된 여행·참여하지 않았거나 나간 채팅방), `POLL_NOT_FOUND`(없거나 다른 여행의 투표) |
+| 404 | `TRIP_NOT_FOUND`, `FEED_NOT_FOUND`, `JOB_NOT_FOUND` — 존재를 공개할 수 없는 자료도 같은 응답. 여행 안의 하위 자료는 `MEMBER_NOT_FOUND`(없거나 이탈한 멤버십), `CHECKLIST_ITEM_NOT_FOUND`(없거나 삭제된 준비물), `EXPENSE_NOT_FOUND`(없거나 삭제된 경비), `SETTLEMENT_NOT_FOUND`(없거나 다른 여행의 정산 계산), `CHAT_ROOM_NOT_FOUND`(없거나 삭제된 여행·참여하지 않았거나 나간 채팅방), `POLL_NOT_FOUND`(없거나 다른 여행의 투표), `VISIT_NOT_FOUND`(없거나 체크 해제한·다른 여행의 방문) |
 | 409 | `VERSION_CONFLICT`, `POLL_CLOSED`, `ALREADY_MEMBER`, `ALREADY_APPLIED`, `TRIP_FULL`(여행 ACTIVE 멤버 정원 초과), `CLIENT_MESSAGE_ID_REUSED`(같은 clientMessageId를 다른 방·본문에 재사용) |
-| 410 | `INVITATION_EXPIRED`·`INVITATION_REVOKED` — 사용자가 제시한 유효 형식의 초대 토큰 검증 결과. 새 링크 발급으로 무효가 된 링크만 `INVITATION_REVOKED`, 없는 토큰·기간 지남·삭제된 여행·초대자 이탈은 `INVITATION_EXPIRED` |
+| 410 | `INVITATION_EXPIRED`·`INVITATION_REVOKED` — 사용자가 제시한 유효 형식의 초대 토큰 검증 결과. 새 링크 발급이나 취소로 무효가 된 링크만 `INVITATION_REVOKED`, 없는 토큰·기간 지남·삭제된 여행·초대자 이탈은 `INVITATION_EXPIRED` |
 | 422 | `INSUFFICIENT_DATA`, `CURRENCY_MISMATCH`, `INVALID_PARTICIPANTS`, `UNSUPPORTED_INPUT`, `INVALID_ROUTE_LEGS`(코스 구간이 빠지거나 겹치거나 인접하지 않음) |
 | 503 | `PROVIDER_UNAVAILABLE` — 지도·날씨·장소 공급자 장애. 결과 없음과 구분 |
 
@@ -109,13 +109,14 @@
 | DELETE | `/trips/{tripId}` | 방장 | `expectedVersion:integer`(query) | `JobRef` / 202 | **Q-11 2026-11-03 확정**: 요청 트랜잭션에서 논리 삭제(`deleted_at`)해 모든 멤버에게 즉시 404(내 여행·채팅방 목록에서도 제외)가 되고, 같은 트랜잭션에 등록한 `TRIP_DELETE` 작업이 투표·코스·경비·정산·채팅·초대·준비물·멤버 행을 물리 삭제한다. 여행 행만 tombstone으로 남긴다(jobs FK·404 유지). 되돌리기·보존 기간 없음. 방장 아니면 403, version 다르면 409, 누락 400. 멱등키 대상 아님(재요청은 404). 작업 조회는 요청한 방장만. 사진 파일 삭제는 사진 기능 때 같은 작업의 execute에 추가 |
 | GET | `/trips/{tripId}/members` | 멤버 | `includeInactive?:boolean`(query, 기본 false) | `{members:Member[]}` / 200 | 기본 ACTIVE만 joinOrder 순. `includeInactive=true`면 정산에 남는 이탈(LEFT·REMOVED) 멤버도 포함 |
 | POST | `/trips/{tripId}/invitations` | 멤버 | 없음 | `InvitationSecret` / 201 | 만료는 생성 후 7일(Q-4, 2026-10-30 결정). 링크별 사용 횟수 없음. 새로 만들면 같은 여행의 이전 링크는 모두 무효(여행당 쓸 수 있는 링크 하나), 화면 진입마다 호출하지 않음. 토큰 원문 1회 반환, 서버는 해시만 보관 |
+| DELETE | `/trips/{tripId}/invitations` | 멤버 | 없음 | 204 | 새 링크 없이 이 여행에서 지금 쓸 수 있는 링크를 무효화(여행 단위, 링크 ID 없음). 쓸 수 있는 링크가 없으면(이미 취소·만료·발급 이력 없음) 바뀌는 것 없이 204. 취소된 링크는 410 `INVITATION_REVOKED`(이미 ACTIVE 멤버는 미리보기·수락 200 유지). 여행 version 변화·멱등키·알림 없음 |
 | GET | `/invitations/{token}` | 공개(D-1) | 없음 | `InvitationPreview` / 200 | 여행명·기간·초대한 사람만, 내부 명단/경비 반환 안 함. 형식이 틀린 토큰 404, 링크가 쓸 수 없으면 410(사유는 §2). 로그인한 사람이 이미 ACTIVE 멤버면 링크가 만료·무효여도 200, `alreadyMember=true`. Authorization 헤더를 보내면 검증(잘못된 토큰 401, 가입 대기 403) |
-| POST | `/invitations/{token}/accept` | 로그인 | 없음 | `Trip` / 200 | 유효 링크로 관계 없이 참여. 이미 ACTIVE 멤버면 링크가 만료·무효여도 바뀌는 것 없이 같은 여행 반환. 그 밖에는 새 발급으로 무효(410 `INVITATION_REVOKED`)·만료·초대자 이탈(410 `INVITATION_EXPIRED`) 검사 후, 정원은 여행당 ACTIVE 멤버 20명(방장 포함, Q-4)으로 넘으면 409 `TRIP_FULL`. 이탈 멤버는 기존 멤버십으로 재참여하고 joinOrder를 새로 받음. 채팅 참여와 함께 처리하고 여행 version 증가 |
+| POST | `/invitations/{token}/accept` | 로그인 | 없음 | `Trip` / 200 | 유효 링크로 관계 없이 참여. 이미 ACTIVE 멤버면 링크가 만료·무효여도 바뀌는 것 없이 같은 여행 반환. 그 밖에는 새 발급·취소로 무효(410 `INVITATION_REVOKED`)·만료·초대자 이탈(410 `INVITATION_EXPIRED`) 검사 후, 정원은 여행당 ACTIVE 멤버 20명(방장 포함, Q-4)으로 넘으면 409 `TRIP_FULL`. 이탈 멤버는 기존 멤버십으로 재참여하고 joinOrder를 새로 받음. 채팅 참여와 함께 처리하고 여행 version 증가 |
 | POST | `/trips/{tripId}/owner-transfer` | 방장 | `{targetMemberId:id,expectedVersion:integer}` | `Trip` / 200 | 같은 여행의 다른 ACTIVE 멤버만, 아니면 400. 방장 아닌 멤버 403. 알림 없음 |
-| POST | `/trips/{tripId}/leave` | 멤버 | `{deleteOwnPhotos:boolean,deleteOwnMessages:boolean,expectedVersion:integer}` | `LeaveResult` / 200(삭제 작업이 있으면 202) | 일반 이탈은 경비 유지·방장 자동 양도. **1단계(2026-11-02 확정)**: 경비·사진·메시지를 남기는 기본 나가기. 성공은 200 + `LeaveResult{tripId,tripDeleted:false,newOwnerMemberId(방장이 나갔을 때만, 아니면 null),cleanupJobId:null,status:LEFT}`. 삭제 옵션 `true`는 LEAVE_CLEANUP 작업 전까지 400 `VALIDATION_ERROR`(필드 deleteOwnPhotos·deleteOwnMessages). **혼자 남은 사람의 나가기(2026-11-03 확정)**: 여행 삭제와 같게 처리(위 DELETE 행)하고 202 + `LeaveResult{tripDeleted:true,newOwnerMemberId:null,cleanupJobId:TRIP_DELETE 작업 ID,status:TRIP_DELETED}`. 멤버십은 LEFT로 남겼다가 작업이 지운다. 여행 version 다르면 409, 성공 시 version 1 증가. 멱등키 대상이 아니므로 성공 뒤 재시도는 404 |
+| POST | `/trips/{tripId}/leave` | 멤버 | `{deleteOwnPhotos:boolean,deleteOwnMessages:boolean,expectedVersion:integer}` | `LeaveResult` / 200(삭제 작업이 있으면 202) | 일반 이탈은 경비 유지·방장 자동 양도. **1단계(2026-11-02 확정)**: 경비·사진·메시지를 남기는 기본 나가기. 성공은 200 + `LeaveResult{tripId,tripDeleted:false,newOwnerMemberId(방장이 나갔을 때만, 아니면 null),cleanupJobId:null,status:LEFT}`. **내 채팅 삭제(2026-11-04 확정)**: `deleteOwnMessages=true`면 나가는 순간 이 여행 채팅방의 본인 TEXT 메시지 ID를 고정해 LEAVE_CLEANUP 작업을 등록하고 202 + `LeaveResult{tripDeleted:false,status:LEFT,cleanupJobId}`. 작업은 본문만 지운다(`text:null`·`deletedAt`, 순번 유지). 지울 메시지가 없으면 작업 없이 200. `deleteOwnPhotos=true`는 사진 기능 전까지 400 `VALIDATION_ERROR`(필드 deleteOwnPhotos). **혼자 남은 사람의 나가기(2026-11-03 확정)**: 여행 삭제와 같게 처리(위 DELETE 행)하고 202 + `LeaveResult{tripDeleted:true,newOwnerMemberId:null,cleanupJobId:TRIP_DELETE 작업 ID,status:TRIP_DELETED}`. 멤버십은 LEFT로 남겼다가 작업이 지운다. 여행 version 다르면 409, 성공 시 version 1 증가. 멱등키 대상이 아니므로 성공 뒤 재시도는 404 |
 | DELETE | `/trips/{tripId}/members/{memberId}` | 방장 | `expectedVersion:integer`(query) | 204 | 본인·방장 내보내기 금지(400). 없거나 이탈한 대상 404 `MEMBER_NOT_FOUND`. 멤버십 REMOVED·채팅 참여 해제를 한 트랜잭션으로. 강제 이탈 시 타인 자료 삭제 여부는 Q-11 |
 
-2026-10-30 사용자 확정: 여행 정원은 방장 포함 ACTIVE 멤버 최대 20명이다. 이탈·내보내기로 빈자리가 생기면 다시 참여할 수 있다. 초대 링크는 발급 시각부터 7일(168시간) 유효하며, 만료 시각부터 참여할 수 없다. ACTIVE 멤버 누구나 재발급할 수 있고 재발급하면 이전 링크는 즉시 무효화한다. 링크 만료·재발급은 기존 참여자에게 영향을 주지 않는다. 수락 시 정원 확인과 참여 반영을 원자적으로 처리해 동시 수락으로 20명을 초과하지 않게 한다. 만료는 410 INVITATION_EXPIRED, 정원 초과는 409 TRIP_FULL이다. 재발급 시 이전 링크 무효화는 EODI-128에서 반영했다(여행 행 잠금으로 동시 발급에도 쓸 수 있는 링크는 하나, 무효가 된 링크는 410 INVITATION_REVOKED). 기존 ACTIVE 멤버는 만료·무효 링크로 열어도 미리보기 `alreadyMember=true`, 수락은 같은 여행을 받는다.
+2026-10-30 사용자 확정: 여행 정원은 방장 포함 ACTIVE 멤버 최대 20명이다. 이탈·내보내기로 빈자리가 생기면 다시 참여할 수 있다. 초대 링크는 발급 시각부터 7일(168시간) 유효하며, 만료 시각부터 참여할 수 없다. ACTIVE 멤버 누구나 재발급할 수 있고 재발급하면 이전 링크는 즉시 무효화한다. 링크 만료·재발급은 기존 참여자에게 영향을 주지 않는다. 수락 시 정원 확인과 참여 반영을 원자적으로 처리해 동시 수락으로 20명을 초과하지 않게 한다. 만료는 410 INVITATION_EXPIRED, 정원 초과는 409 TRIP_FULL이다. 재발급 시 이전 링크 무효화는 EODI-128에서 반영했다(여행 행 잠금으로 동시 발급에도 쓸 수 있는 링크는 하나, 무효가 된 링크는 410 INVITATION_REVOKED). 새 링크 없이 링크만 끊는 취소(`DELETE /trips/{tripId}/invitations`)는 EODI-187에서 추가했다. 기존 ACTIVE 멤버는 만료·무효 링크로 열어도 미리보기 `alreadyMember=true`, 수락은 같은 여행을 받는다.
 
 방장 양도·멤버 내보내기의 `expectedVersion`은 여행의 `version`(`Trip.version`)이다(이탈·여행 삭제도 같은 version을 쓰는 제안). 입력 형식 400을 먼저 검사한 뒤 비참여자 404, 방장 전용 동작을 멤버가 요청하면 403, 버전이 다르면 409, 끝으로 대상(양도 대상이 동행이 아니거나 이미 방장이면 400, 내보낼 멤버가 없거나 이탈했으면 404 `MEMBER_NOT_FOUND`, 방장 자신이면 400) 순으로 판정한다. 양도·내보내기가 성공하면 `Trip`의 `ownerMemberId`·`members`가 바뀌므로 여행 version을 올리고, 그 전 version으로 보낸 여행 정보 수정(PATCH)은 409가 된다.
 
@@ -177,9 +178,9 @@
 | POST | `/trips/{tripId}/itinerary/proposals/{jobId}/apply` | 멤버 | `{expectedVersion:integer}` | `Itinerary` / 200 | 성공한 변경안·기준 버전·현재 멤버십 검증 후 단일 코스 원자 교체. 방장 승인 불필요 |
 | POST | `/trips/{tripId}/itinerary/undo` | 멤버 | `{expectedVersion:integer,appliedJobId:id}` | `Itinerary` / 200 | 직전 AI 적용 1회만 되돌림. 적용 후 다른 쓰기면 409 UNDO_UNAVAILABLE 제안, 복원도 새 version. 시간 제한은 Q-15 |
 | POST | `/trips/{tripId}/itinerary/routes/recalculate` | 멤버 | `{expectedVersion:integer}` | `JobRef` / 202 | 실패 구간 재조회, 변경된 코스에는 자동 반영하지 않음 |
-| POST | `/trips/{tripId}/visits` | 멤버 | `{placeId:id,visitedAt:datetime,evidenceType:MANUAL}` | `Visit` / 201 | 실제 방문 수동 기록 제안. 자동 위치 수집 추가 안 함 |
-| GET | `/trips/{tripId}/visits` | 멤버 | `memberId?:id,placeId?:id,reviewStatus?:ALL\|WRITTEN\|UNWRITTEN` + 페이지 | `Visit[]` / 200 | 기본 본인·ALL. 같은 여행 멤버만 필터 가능, 평가할 visitId 복원 |
-| DELETE | `/trips/{tripId}/visits/{visitId}` | 본인 방문 작성자 | 없음 | 204 | 방문 체크 되돌리기. 평가가 있으면 409 REVIEW_EXISTS 제안, Q-7 확정 후 조정 |
+| POST | `/trips/{tripId}/visits` | 멤버 | `{placeId:id,visitedAt:datetime,evidenceType:MANUAL}` | `Visit` / 201(이미 체크한 장소는 기존 `Visit` / 200) | 실제 방문 수동 기록. 자동 위치 수집 추가 안 함. 존재하는 장소면 코스 밖도 허용(없으면 400 필드 placeId), `visitedAt`이 서버 시각+5분보다 미래면 400, `evidenceType`은 MANUAL만. 여행·멤버·장소당 체크 하나라 재요청은 기존 방문을 그대로 반환하며 `Idempotency-Key` 불필요(2026-11-04) |
+| GET | `/trips/{tripId}/visits` | 멤버 | `memberId?:id,placeId?:id,reviewStatus?:ALL\|WRITTEN\|UNWRITTEN` + 페이지 | `Visit[]` / 200 | 기본 본인·ALL. 같은 여행 멤버(나간 멤버 포함)만 필터 가능, 다른 여행·없는 memberId는 400. 정렬 createdAt DESC. 평가할 visitId 복원. 평가 기능 전에는 WRITTEN이 빈 목록, `reviewId`·`reviewScore` null |
+| DELETE | `/trips/{tripId}/visits/{visitId}` | 본인 방문 작성자 | 없음 | 204 | 방문 체크 되돌리기(논리 삭제, 다시 체크하면 새 방문). 남의 방문 403, 없거나 해제한 방문 404 `VISIT_NOT_FOUND`. 평가가 있으면 409 REVIEW_EXISTS 제안(평가 기능 때 추가) |
 | POST | `/trips/{tripId}/visit-detections` | 멤버 | `{photoIds:id[]}` | `JobRef` / 202 | 허용된 사진 메타데이터로 후보만 제안, 실제 체크와 구분 |
 | POST | `/trips/{tripId}/visit-candidates/{candidateId}/confirm` | 후보 본인 | `{expectedVersion:integer}` | `Visit` / 201 | 동일 후보 중복 확정은 기존 visit 반환. 사진 속 타인을 자동 방문자로 지정하지 않음 |
 | GET | `/trips/{tripId}/weather` | 멤버 | `date:date,placeId:id` | `Weather` / 200 | 관측/예보 구분, 조회 시점·유효성 |
@@ -295,7 +296,7 @@
 
 삭제 작업 응답에는 사진·메시지 내용이나 다른 사람의 자료를 포함하지 않는다. 재시도는 최초 승인된 대상 ID만 처리하며 신규 멤버십/동의가 없다고 기존 삭제 작업을 중단하지 않는다.
 
-jobs 공통 기반은 PostgreSQL 등록·실행·조회만 제공한다. kind별 실행기와 등록·실행·완료·조회 정책이 모두 등록된 기능만 활성화하며, 현재 운영 실행기는 없다. 공개 생성·재시도·취소 API는 제공하지 않는다. 조회 불가·없는 작업은 모두 404 `JOB_NOT_FOUND`다. 정리 result는 `{scope:LEAVE_CLEANUP|PHOTO_DELETE|TRIP_DELETE,completedCount:integer,failedCount:integer}`만 공개한다. `scope`는 작업 종류이며 대상 ID·본문·파일은 반환하지 않는다. 내부 SPI와 재시도·임대 보장은 [jobs 기반 문서](../EodiLog/docs/plan/jobs-foundation.md)를 따른다.
+jobs 공통 기반은 PostgreSQL 등록·실행·조회만 제공한다. kind별 실행기와 등록·실행·완료·조회 정책이 모두 등록된 기능만 활성화하며, 현재 운영 실행기는 정리 작업 TRIP_DELETE·LEAVE_CLEANUP뿐이다. 공개 생성·재시도·취소 API는 제공하지 않는다. 조회 불가·없는 작업은 모두 404 `JOB_NOT_FOUND`다. 정리 result는 `{scope:LEAVE_CLEANUP|PHOTO_DELETE|TRIP_DELETE,completedCount:integer,failedCount:integer}`만 공개한다. `scope`는 작업 종류이며 대상 ID·본문·파일은 반환하지 않는다. 내부 SPI와 재시도·임대 보장은 [jobs 기반 문서](../EodiLog/docs/plan/jobs-foundation.md)를 따른다.
 
 사용자가 임의 알림·시스템 메시지를 만드는 API는 없다. 서버 이벤트로 알림과 시스템 메시지를 생성하고 `eventId`로 중복을 막는다. 전송 시점과 링크 진입 시점에 모두 권한을 검사한다. 팔로우 요청/수락·투표 마감/자동 결과·여행 참여·코스 변경 이벤트를 포함한다. 정산 완료·사진 동의·코스 승인 이벤트는 제거한다. 코스 연속 변경의 묶음 키/시간창·최종 상태·시스템 카드 연동은 Q-16 합의 전 확정하지 않는다. 실제 송금 확인·푸시·채팅 첨부·일반 메시지 수정/삭제·대화 전체 읽음 규격은 추가하지 않았다. 시스템 카드 읽음은 event_receipts를 통해 알림과 연결한다. 그룹 이탈 시 삭제 선택은 §4 이탈 API로 제공한다.
 
@@ -326,7 +327,7 @@ jobs 공통 기반은 PostgreSQL 등록·실행·조회만 제공한다. kind별
 | Member | `id,user:UserCard,role:OWNER\|MEMBER,status:ACTIVE\|LEFT\|REMOVED,joinOrder:integer,joinedAt:datetime,leftAt:datetime\|null` — role은 owner FK로 계산 |
 | InvitationSecret | `id,token:string,url:string,expiresAt:datetime`. 원문 토큰은 생성 시만 반환, 코드 없음 |
 | InvitationPreview | `tripTitle:string,startDate:date\|null,endDate:date\|null,inviter:{nickname:string},inviterUser:UserCard\|null,expiresAt:datetime,alreadyMember:boolean`. 익명 inviterUser=null, 로그인 시만 본인 기준 관계 상태 포함. alreadyMember는 로그인한 사람이 이미 ACTIVE 멤버일 때만 true |
-| LeaveResult | `tripId:id,tripDeleted:boolean,newOwnerMemberId:id\|null,cleanupJobId:id\|null,status:LEFT\|TRIP_DELETED`. 일반 이탈은 LEFT·cleanupJobId null(200), 혼자 남은 사람의 이탈은 TRIP_DELETED·TRIP_DELETE 작업 ID(202) |
+| LeaveResult | `tripId:id,tripDeleted:boolean,newOwnerMemberId:id\|null,cleanupJobId:id\|null,status:LEFT\|TRIP_DELETED`. 일반 이탈은 LEFT·cleanupJobId null(200), 내 채팅 삭제로 지울 메시지가 있으면 LEFT·LEAVE_CLEANUP 작업 ID(202), 혼자 남은 사람의 이탈은 TRIP_DELETED·TRIP_DELETE 작업 ID(202) |
 | Region | `id,code:string,name:string,parentId:id\|null,latitude:number\|null,longitude:number\|null` |
 | Place | `id,name,address:string\|null,latitude:number,longitude:number,regionId:id\|null,provider:string\|null,providerPlaceId:string\|null,source:PROVIDER\|MANUAL` |
 | Bookmark | `place:Place\|null,retainedPlace:{name:string,latitude:number,longitude:number},memo:string\|null,sourceFeedId:id\|null,sourceUnavailable:boolean,createdAt:datetime`. 소실 시 place=null/sourceFeedId=null·retainedPlace/내 메모만 유지, 내부 원본 필드 미포함 |

@@ -26,7 +26,8 @@ public record MessageResponse(
 		@Schema(description = "메시지 종류", example = "TEXT", requiredMode = Schema.RequiredMode.REQUIRED)
 		MessageType type,
 
-		@Schema(description = "본문. 시스템 메시지는 null일 수 있다", example = "내일 9시에 만나요", nullable = true,
+		@Schema(description = "본문. 보낸 사람이 나가면서 지운 메시지(deletedAt 있음)와 시스템 메시지는 null일 수 있다",
+				example = "내일 9시에 만나요", nullable = true,
 				requiredMode = Schema.RequiredMode.REQUIRED)
 		String text,
 
@@ -50,7 +51,8 @@ public record MessageResponse(
 		@Schema(description = "보낸 시각(UTC)", example = "2026-11-02T02:10:00Z", requiredMode = Schema.RequiredMode.REQUIRED)
 		Instant createdAt,
 
-		@Schema(description = "삭제 시각. 메시지 삭제가 생기기 전까지 null", nullable = true,
+		@Schema(description = "본문을 지운 시각. 보낸 사람이 나가기에서 '내 채팅 삭제'를 고른 메시지만 값이 있다. 자리(순번)는 남는다",
+				nullable = true,
 				requiredMode = Schema.RequiredMode.REQUIRED)
 		Instant deletedAt
 ) {
