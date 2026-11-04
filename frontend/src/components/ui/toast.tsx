@@ -1,3 +1,4 @@
+import { Easing, withTiming, type EntryExitAnimationFunction } from 'react-native-reanimated';
 import { Toaster, toast as sonner } from 'sonner-native';
 
 import { colors, radius, spacing, typography } from '@/theme';
@@ -35,14 +36,34 @@ export const toast = {
   error: (message: string, opts?: ToastOptions) => sonner.error(message, options(opts)),
 };
 
-/** 앱 시작 레이아웃에 한 번만 둔다. */
+/** 내려오는 시간과 출발 높이. 라이브러리 기본은 20px만 움직여 내려오는 느낌이 없다 */
+const ENTER_MS = 350;
+const ENTER_FROM_Y = -120;
+const easeOut = Easing.bezierFn(0.165, 0.84, 0.44, 1);
+
+/** 화면 위 바깥에서 떨어져 자리에 멈춘다 */
+const slideDown: EntryExitAnimationFunction = () => {
+  'worklet';
+  return {
+    initialValues: { opacity: 0, transform: [{ translateY: ENTER_FROM_Y }] },
+    animations: {
+      opacity: withTiming(1, { duration: ENTER_MS / 2 }),
+      transform: [{ translateY: withTiming(0, { duration: ENTER_MS, easing: easeOut }) }],
+    },
+  };
+};
+
+/**
+ * 앱 시작 레이아웃에 한 번만 둔다.
+ * 화면 위에서 내려온다. offset을 주지 않으면 상태 표시줄 높이 + 8만큼 띄우고(sonner-native 기본), 위로 밀면 닫힌다.
+ */
 export function ToastHost() {
   return (
     <Toaster
-      position="bottom-center"
-      offset={88}
+      position="top-center"
       duration={2200}
       swipeToDismissDirection="up"
+      animation={{ enter: slideDown }}
       toastOptions={{
         style: {
           backgroundColor: colors.text.strong,

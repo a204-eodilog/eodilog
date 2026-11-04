@@ -24,12 +24,12 @@ public class Tokens {
             jwt.sign(new MACSigner(properties.jwtSecret().getBytes(StandardCharsets.UTF_8))); return jwt.serialize();
         } catch(JOSEException e) { throw new IllegalStateException("Token signing failed",e); }
     }
-    public record Claims(UUID userId, UUID sessionId) { }
+    public record Claims(UUID userId, UUID sessionId, Instant expiresAt) { }
     public Claims verify(String token) {
         try {
             var jwt=SignedJWT.parse(token); var c=jwt.getJWTClaimsSet();
             if(!JWSAlgorithm.HS256.equals(jwt.getHeader().getAlgorithm()) || !jwt.verify(new MACVerifier(properties.jwtSecret().getBytes(StandardCharsets.UTF_8))) || !properties.issuer().equals(c.getIssuer()) || c.getExpirationTime()==null || !c.getExpirationTime().toInstant().isAfter(Instant.now())) throw new BusinessException(CommonErrorCode.UNAUTHENTICATED);
-            return new Claims(UUID.fromString(c.getSubject()),UUID.fromString(c.getJWTID()));
+            return new Claims(UUID.fromString(c.getSubject()),UUID.fromString(c.getJWTID()),c.getExpirationTime().toInstant());
         } catch(Exception e) { throw new BusinessException(CommonErrorCode.UNAUTHENTICATED); }
     }
 }

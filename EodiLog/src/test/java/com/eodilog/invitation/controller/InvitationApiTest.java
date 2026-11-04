@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.matchesPattern;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -154,6 +155,69 @@ class InvitationApiTest {
 		} finally {
 			executor.shutdownNow();
 		}
+	}
+
+	@Test
+	void cancelRevokesUsableLinkWithoutIssuingNewOne() throws Exception {
+		UUID friendId = insertUser("동행");
+		insertMember(friendId, 2, "ACTIVE");
+		String token = token(createInvitation(ownerId));
+		UUID guestId = insertUser("손님");
+
+		// 링크를 만든 사람이 아니어도 ACTIVE 멤버면 취소한다
+		cancelInvitations(friendId).andExpect(status().isNoContent());
+
+		expectGone(mockMvc.perform(get("/api/v1/invitations/{token}", token)), "INVITATION_REVOKED");
+		expectGone(acceptInvitation(guestId, token), "INVITATION_REVOKED");
+		// 이미 동행인 사람은 취소된 링크로도 이미 참여 중으로 본다
+		mockMvc.perform(get("/api/v1/invitations/{token}", token).with(authUser(ownerId)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.alreadyMember").value(true));
+		assertThat(count("select count(*) from trip_invitations where trip_id = ?", tripId)).isEqualTo(1);
+		assertThat(count("select count(*) from trip_invitations where trip_id = ? and revoked_at is null", tripId))
+				.isZero();
+		assertThat(count("select version from trips where id = ?", tripId)).isEqualTo(1);
+		assertThat(count("select count(*) from trip_members where trip_id = ? and user_id = ?", tripId, guestId))
+				.isZero();
+
+		// 다시 취소해도 그대로 성공하고, 취소 뒤 새로 만든 링크는 쓸 수 있다
+		cancelInvitations(ownerId).andExpect(status().isNoContent());
+		acceptInvitation(guestId, token(createInvitation(ownerId))).andExpect(status().isOk());
+	}
+
+	@Test
+	void cancelSucceedsWithoutUsableLinkAndKeepsExpiredReason() throws Exception {
+		cancelInvitations(ownerId).andExpect(status().isNoContent());
+
+		String expired = token(createInvitation(ownerId));
+		jdbcTemplate.update("""
+				update trip_invitations set created_at = now() - interval '8 days', expires_at = now() - interval '1 day'
+				where token_hash = ?""", InvitationToken.hash(expired));
+		cancelInvitations(ownerId).andExpect(status().isNoContent());
+		// 이미 만료된 링크는 무효화하지 않아 만료 사유를 그대로 알린다
+		expectExpired(mockMvc.perform(get("/api/v1/invitations/{token}", expired)));
+		assertThat(count("select count(*) from trip_invitations where trip_id = ? and revoked_at is not null", tripId))
+				.isZero();
+	}
+
+	@Test
+	void hidesTripFromNonMembersWhenCancelling() throws Exception {
+		String token = token(createInvitation(ownerId));
+		UUID leftId = insertUser("나간 동행");
+		insertMember(leftId, 2, "LEFT");
+
+		for (UUID outsiderId : List.of(insertUser("모르는 사람"), leftId)) {
+			cancelInvitations(outsiderId)
+					.andExpect(status().isNotFound())
+					.andExpect(jsonPath("$.error.code").value("TRIP_NOT_FOUND"));
+		}
+		mockMvc.perform(delete("/api/v1/trips/{tripId}/invitations", tripId)).andExpect(status().isUnauthorized());
+		mockMvc.perform(delete("/api/v1/trips/{tripId}/invitations", "not-a-uuid").with(authUser(ownerId)))
+				.andExpect(status().isBadRequest());
+		mockMvc.perform(get("/api/v1/invitations/{token}", token)).andExpect(status().isOk());
+
+		jdbcTemplate.update("update trips set deleted_at = now() where id = ?", tripId);
+		cancelInvitations(ownerId).andExpect(status().isNotFound());
 	}
 
 	@Test
@@ -332,6 +396,8 @@ class InvitationApiTest {
 		mockMvc.perform(get("/v3/api-docs"))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.paths['/api/v1/trips/{tripId}/invitations'].post.tags[0]").value("초대"))
+				.andExpect(jsonPath("$.paths['/api/v1/trips/{tripId}/invitations'].delete.tags[0]").value("초대"))
+				.andExpect(jsonPath("$.paths['/api/v1/trips/{tripId}/invitations'].delete.responses['204']").exists())
 				.andExpect(jsonPath("$.paths['/api/v1/invitations/{token}'].get.security", hasSize(0)))
 				// 공개 API지만 Authorization 헤더를 보내면 검증하므로 401·403을 직접 적는다
 				.andExpect(jsonPath("$.paths['/api/v1/invitations/{token}'].get.responses['401'].description")
@@ -355,6 +421,10 @@ class InvitationApiTest {
 
 	private ResultActions createInvitation(UUID userId) throws Exception {
 		return mockMvc.perform(post("/api/v1/trips/{tripId}/invitations", tripId).with(authUser(userId)));
+	}
+
+	private ResultActions cancelInvitations(UUID userId) throws Exception {
+		return mockMvc.perform(delete("/api/v1/trips/{tripId}/invitations", tripId).with(authUser(userId)));
 	}
 
 	private ResultActions acceptInvitation(UUID userId, String token) throws Exception {

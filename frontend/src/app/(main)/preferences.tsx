@@ -1,3 +1,3 @@
-import { PreferencesScreen } from '@/features/auth/screens/preferences-screen';
+import { PreferencesScreen } from '@/features/preferences/screens/preferences-screen';
 
 export default PreferencesScreen;

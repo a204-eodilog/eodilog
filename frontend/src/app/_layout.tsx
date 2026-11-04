@@ -13,12 +13,16 @@ import { StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { queryClient } from '@/api/query-client';
+import { setupQueryFocus } from '@/api/query-focus';
 import { ToastHost } from '@/components/ui/toast';
 import { SessionExpiredDialog } from '@/features/auth/components/session-expired-dialog';
 import { useSessionStore } from '@/stores/session-store';
 
 // 글꼴과 저장된 로그인을 다 불러오기 전에는 시작 화면을 유지한다
 SplashScreen.preventAutoHideAsync();
+
+// 앱 복귀·연결 복구 때 서버 데이터를 다시 받게 한다
+setupQueryFocus();
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({

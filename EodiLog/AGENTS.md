@@ -5,7 +5,7 @@
 ## 기술 스택
 
 - Java 25, Spring Boot 4.1.2, Gradle 9.8.2 (Wrapper 사용)
-- Spring Security, OAuth2 Client, Validation, Web MVC, Lombok
+- Spring Security, OAuth2 Client, Validation, Web MVC, WebSocket(STOMP, 내장 simple broker), Lombok
 - springdoc-openapi 3.2.0 (Swagger UI)
 - PostgreSQL 17 + PostGIS 3.5 ([ADR-0001](../docs/decisions/0001-database.md)), Spring Data JPA(Hibernate 7), Flyway
 - 로컬 DB는 Docker Compose(`compose.yaml`, `spring-boot-docker-compose`), 테스트 DB는 Testcontainers 2.x
@@ -50,8 +50,8 @@ cd EodiLog
 
 - 루트 패키지: `com.eodilog`
 - 공통 설정: `global.config` (`SwaggerConfig`, `SecurityConfig`, `TimeConfig`의 `Clock` 빈)
-- 공통 코드: `global.common`(응답·예외·traceId), `global.idempotency`(요청 중복 방지), `global.security`(`AuthUser`)
-- 도메인: `domain.auth`(카카오 로그인·서비스 토큰·`BearerFilter`), `user`(회원·`/me`·`UserCardReader`), `trip`, `chat`(그룹 채팅방·메시지), `itinerary`, `checklist`, `expense`(경비·정산), `invitation`(초대 링크), `poll`(지역·장소 투표), `region`, `visit`(실제 방문 기록). 새 도메인은 루트 아래에 둔다
+- 공통 코드: `global.common`(응답·예외·traceId), `global.idempotency`(요청 중복 방지), `global.security`(`AuthUser`), `global.websocket`(STOMP `/ws` 연결·CONNECT 인증·ERROR 형식)
+- 도메인: `domain.auth`(카카오 로그인·서비스 토큰·`BearerFilter`), `user`(회원·`/me`·`UserCardReader`), `trip`, `chat`(그룹 채팅방·메시지, `chat.realtime` 커밋 뒤 실시간 전달), `itinerary`, `checklist`, `expense`(경비·정산), `invitation`(초대 링크), `poll`(지역·장소 투표), `region`, `visit`(실제 방문 기록). 새 도메인은 루트 아래에 둔다
 - 공통 목록 커서: `global.common.response.CreatedAtCursor`(기본 정렬 `createdAt DESC, id DESC`)
 
 ## 백엔드 문서

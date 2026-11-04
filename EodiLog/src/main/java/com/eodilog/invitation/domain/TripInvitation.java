@@ -29,7 +29,7 @@ public class TripInvitation {
 
 	private Instant expiresAt;
 
-	// 같은 여행에 새 링크를 발급하면 채운다. 채워진 링크는 만료 전이라도 쓸 수 없다
+	// 같은 여행에 새 링크를 발급하거나 링크를 취소하면 채운다. 채워진 링크는 만료 전이라도 쓸 수 없다
 	private Instant revokedAt;
 
 	private Instant createdAt;
