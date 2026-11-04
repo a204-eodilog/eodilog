@@ -65,7 +65,25 @@ describe('splitLabel', () => {
 
 describe('정산 후 지출 변경', () => {
   const state: SettlementState = {
-    current: { id: 's1', includedExpenses: [{ expenseId: 'e1' }] },
+    current: {
+      id: 's1',
+      expenseVersion: 3,
+      stale: true,
+      totalAmountMinor: 180_000,
+      includedExpenses: [
+        {
+          expenseId: 'e1',
+          expenseVersion: 1,
+          title: '숙소 1박',
+          amountMinor: 180_000,
+          payerMemberId: 'm1',
+          shares: [],
+        },
+      ],
+      members: [],
+      transfers: [],
+      calculatedAt: '2026-11-16T12:10:00Z',
+    },
     currentExpenseVersion: 4,
     recalculationRequired: true,
   };

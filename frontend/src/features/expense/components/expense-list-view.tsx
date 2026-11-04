@@ -119,6 +119,7 @@ export function ExpenseListView({
           <View style={[styles.bottom, { paddingBottom: Math.max(insets.bottom, BOTTOM_GAP) }]}>
             <Button
               label={changed ? '다시 계산' : '정산 계산'}
+              weight="medium"
               onPress={onCalculate}
               leading={
                 <Icon

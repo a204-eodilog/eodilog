@@ -60,6 +60,7 @@ const ICONS: IconName[] = [
   'trash',
   'leave',
   'image',
+  'arrow-right',
 ];
 
 type LeaveExample = 'member' | 'owner' | 'alone' | 'fail' | 'conflict';

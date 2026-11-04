@@ -3,7 +3,14 @@ import { randomUUID } from 'expo-crypto';
 import { apiClient } from '@/api/client';
 import type { DataResponse, MyProfile, PageResponse } from '@/api/types';
 
-import type { Expense, ExpenseInput, ExpenseTrip, SettlementState, TripMember } from './types';
+import type {
+  Expense,
+  ExpenseInput,
+  ExpenseTrip,
+  Settlement,
+  SettlementState,
+  TripMember,
+} from './types';
 
 /** 서버 최대 페이지 크기. 한 여행의 지출은 많지 않아 합계를 내려고 끝까지 읽는다 */
 const PAGE_LIMIT = 100;
@@ -48,6 +55,23 @@ export async function getAllExpenses(tripId: string): Promise<Expense[]> {
 export async function getSettlementState(tripId: string): Promise<SettlementState> {
   const { data } = await apiClient.get<DataResponse<SettlementState>>(
     `/trips/${tripId}/settlement`,
+  );
+  return data.data;
+}
+
+/**
+ * 정산 계산. Idempotency-Key 필수, 지금 비용 버전을 함께 보낸다.
+ * 그 사이 지출이 바뀌었으면 409 VERSION_CONFLICT
+ */
+export async function calculateSettlement(
+  tripId: string,
+  expectedExpenseVersion: number,
+  idempotencyKey: string,
+): Promise<Settlement> {
+  const { data } = await apiClient.post<DataResponse<Settlement>>(
+    `/trips/${tripId}/settlements`,
+    { expectedExpenseVersion },
+    { headers: { 'Idempotency-Key': idempotencyKey } },
   );
   return data.data;
 }
