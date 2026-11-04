@@ -598,7 +598,7 @@ Table messages {
     (sender_user_id, client_message_id) [unique]
     (room_id, event_id) [unique]
   }
-  Note: 'TEXT는 sender/client_message_id 필수, SYSTEM은 event_id 필수·sender NULL. 같은 클라이언트 ID 재전송은 본문까지 일치해야 멱등. 이탈 시 본인 채팅 삭제는 본문 제거 제안, 메시지 일반 수정/삭제·첨부·읽음은 추가하지 않음(Q-13, 11/02). 본문 최대 1,000자, sequence는 chat_rooms 행 잠금으로 발급. event_id FK는 events 테이블이 생길 때 건다. 이탈 시 본문 제거(D-10)를 구현하려면 TEXT의 text NOT NULL 제약(ck_messages_text)을 바꾸는 마이그레이션이 필요.'
+  Note: 'TEXT는 sender/client_message_id 필수, SYSTEM은 event_id 필수·sender NULL. 같은 클라이언트 ID 재전송은 본문까지 일치해야 멱등. 이탈 시 본인 채팅 삭제는 본문 제거(2026-11-04 확정), 메시지 일반 수정/삭제·첨부·읽음은 추가하지 않음(Q-13, 11/02). 본문 최대 1,000자, sequence는 chat_rooms 행 잠금으로 발급. event_id FK는 events 테이블이 생길 때 건다. 이탈 시 본문 제거(D-10, LEAVE_CLEANUP)는 text NULL + deleted_at으로 하고 행과 sequence는 남긴다. TEXT는 본문이 있거나 지워진 상태이며, 지운 메시지는 본문이 없다.'
 }
 
 Table notifications {
