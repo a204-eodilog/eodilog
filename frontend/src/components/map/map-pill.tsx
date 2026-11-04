@@ -3,11 +3,16 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Icon, type IconName } from '@/components/ui';
 import { colors, radius, spacing, typography } from '@/theme';
 
-/** 말풍선 높이 28 + 간격 8 + 점 8. 마커 앵커(점 가운데)를 맞출 때 쓴다 */
-export const MAP_PILL_GAP = 8;
+/**
+ * 말풍선 높이 28 + 간격 4 + 점 칸 16(점 8, 퍼지는 원 16). 점 위아래로 원이 4씩 더 있어
+ * 말풍선과 점 사이는 보기에 8(Figma)이다. 마커 앵커(점 가운데)를 맞출 때 쓴다
+ */
+export const MAP_PILL_GAP = 4;
 export const MAP_PILL_HEIGHT = 28;
 export const MAP_DOT = 8;
-export const MAP_MARKER_HEIGHT = MAP_PILL_HEIGHT + MAP_PILL_GAP + MAP_DOT;
+/** 점 칸. 퍼지는 원(16)이 마커 그림 밖으로 나가지 않게 원 크기만큼 잡는다 */
+export const MAP_DOT_AREA = 16;
+export const MAP_MARKER_HEIGHT = MAP_PILL_HEIGHT + MAP_PILL_GAP + MAP_DOT_AREA;
 
 export type MapPillProps = {
   /** 말풍선 글자. "강릉" */
@@ -102,8 +107,6 @@ const SHADOW = {
   elevation: 2,
 } as const;
 
-const RING = 16;
-
 const styles = StyleSheet.create({
   wrap: { alignItems: 'center', gap: MAP_PILL_GAP, alignSelf: 'flex-start' },
   pill: {
@@ -118,7 +121,8 @@ const styles = StyleSheet.create({
   pillInitials: { gap: spacing[6], paddingLeft: spacing[4], paddingRight: spacing[6] },
   pillHighlighted: { backgroundColor: colors.brand.primaryLight },
   label: { color: colors.text.default },
-  count: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  // 값 문서 S10: 아이콘과 개수 사이 2
+  count: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   badge: {
     minWidth: 20,
     height: 20,
@@ -142,12 +146,17 @@ const styles = StyleSheet.create({
   },
   initialOverlap: { marginLeft: -6 },
   initialText: { color: colors.text.strong, fontSize: 11, lineHeight: 14 },
-  dotArea: { width: RING, height: MAP_DOT, alignItems: 'center', justifyContent: 'center' },
+  dotArea: {
+    width: MAP_DOT_AREA,
+    height: MAP_DOT_AREA,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   ring: {
     position: 'absolute',
-    width: RING,
-    height: RING,
-    borderRadius: RING / 2,
+    width: MAP_DOT_AREA,
+    height: MAP_DOT_AREA,
+    borderRadius: MAP_DOT_AREA / 2,
     backgroundColor: colors.brand.primary,
     opacity: 0.25,
   },
