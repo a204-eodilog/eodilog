@@ -64,7 +64,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   hydrate: async () => {
     // 개발용 테스트 모드: 로그인을 건너뛰고 가입을 마친 것으로 시작한다. 기기에는 저장하지 않는다
     if (env.devMock) {
-      set({ ...DEV_MOCK_TOKENS, status: 'signedIn' });
+      set({ ...DEV_MOCK_TOKENS, status: 'signedIn', landingSeen: true });
       return;
     }
     const landingSeen = (await secureStorage.get(LANDING_KEY).catch(() => null)) === '1';

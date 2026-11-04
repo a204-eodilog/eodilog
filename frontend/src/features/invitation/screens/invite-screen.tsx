@@ -44,7 +44,9 @@ function InviteContent({ token, first }: { token: string; first: boolean }) {
 
   const accept = useMutation({
     mutationFn: () => acceptInvitation(token),
-    onSuccess: (trip) => leave(first ? '/preferences' : tripHref(trip.id)),
+    // 첫 가입은 S03으로. 어느 여행에 참여했는지 넘겨 두어 S17이 생기면 S03 뒤에 그 여행으로 갈 수 있게 한다
+    onSuccess: (trip) =>
+      leave(first ? { pathname: '/preferences', params: { tripId: trip.id } } : tripHref(trip.id)),
     onError: (error) => {
       if (!invitationProblem(error)) toast.error('참여하지 못했어요. 다시 시도해 주세요');
     },
