@@ -5,12 +5,17 @@ import type { Place } from './types';
 /**
  * 다른 화면에서 S13을 열고 고른 장소를 돌려받는 방법.
  *
- * const place = await pickPlace({ regionId });
+ * const place = await pickPlace({ regionId, near: { latitude, longitude } });
  * if (place) save(place.id);
  *
  * - 검색에서 고르거나 지도에서 직접 고르면 그 장소, 뒤로 나가면 null
  * - S13 안에서 검색 → 지도에서 고르기로 바꿔도 같은 약속이 이어진다
  * - 한 번에 하나만 연다. 열려 있는데 또 부르면 앞의 것은 null로 끝난다
+ * - 근처 좌표를 알면 `near`를 꼭 넘긴다. 없으면 지도에서 고르기가 한국 한가운데에서 열려,
+ *   지도를 움직이지 않고 [이 위치로]를 누르면 엉뚱한 좌표로 장소가 만들어진다
+ * - 개발 중 Fast Refresh로 S13 화면의 effect가 다시 실행되면 정리 함수가 먼저 불려 null이
+ *   돌아온다. 그 뒤에 고른 장소는 전달되지 않으니 "골랐는데 안 들어온다"면 화면을 다시 열어 확인한다.
+ *   앱 동작에는 영향이 없다
  */
 export type PickPlaceOptions = {
   /** 이 지역 안에서 먼저 찾는다(GET /places regionId) */
