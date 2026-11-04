@@ -74,7 +74,7 @@ export function TripDetailScreen() {
             onAction={comingSoon}
             onPublish={comingSoon}
           />
-          <TripMenuGrid />
+          <TripMenuGrid tripId={trip.id} />
         </View>
       </ScrollView>
     </View>
