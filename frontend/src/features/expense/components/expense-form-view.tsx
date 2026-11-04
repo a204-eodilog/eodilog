@@ -45,6 +45,11 @@ export type ExpenseFormViewProps = {
   saving?: boolean;
   /** 저장 실패. 맨 위에 안내 상자, 버튼은 [다시 저장] */
   failed?: boolean;
+  /**
+   * 실패 이유가 버전 충돌(그 사이 지출이 먼저 바뀜). 안내 문구만 바뀐다.
+   * 목록은 이미 다시 읽었으니 [다시 저장]은 지금 입력한 내용으로 덮어쓴다
+   */
+  conflict?: boolean;
   /** edit에서만. [삭제] → S50 확인 시트 */
   onDelete?: () => void;
 };
@@ -63,6 +68,7 @@ export function ExpenseFormView({
   amountError,
   saving = false,
   failed = false,
+  conflict = false,
   onDelete,
 }: ExpenseFormViewProps) {
   const insets = useSafeAreaInsets();
@@ -91,7 +97,7 @@ export function ExpenseFormView({
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          {failed ? <SaveFailedBox /> : null}
+          {failed ? <SaveFailedBox conflict={conflict} /> : null}
 
           <Section title="금액">
             <TextField
@@ -211,16 +217,25 @@ function Section({
   );
 }
 
-/** README 상태 공통 모양의 안내 상자(회색) */
-function SaveFailedBox() {
+/**
+ * README 상태 공통 모양의 안내 상자(회색). 문구는 값 문서 "지출 저장 실패".
+ * 버전 충돌 문구는 문서에 없어 정한 것이다(지출은 등록한 사람만 고쳐서, 보통 내 다른 기기에서 먼저 고친 경우)
+ */
+function SaveFailedBox({ conflict }: { conflict: boolean }) {
   return (
     <View style={styles.failBox} accessibilityLiveRegion="polite">
       <View style={styles.failIcon}>
         <Icon name="alert" size={22} color={colors.status.danger} />
       </View>
       <View style={styles.flex}>
-        <Text style={[typography.bodyBold, styles.text]}>지출을 저장하지 못했어요</Text>
-        <Text style={[typography.caption, styles.sub]}>저장하지 못했어요. 다시 눌러 주세요</Text>
+        <Text style={[typography.bodyBold, styles.text]}>
+          {conflict ? '그 사이 지출이 바뀌었어요' : '지출을 저장하지 못했어요'}
+        </Text>
+        <Text style={[typography.caption, styles.sub]}>
+          {conflict
+            ? '다시 저장하면 지금 입력한 내용으로 바뀌어요'
+            : '저장하지 못했어요. 다시 눌러 주세요'}
+        </Text>
       </View>
     </View>
   );

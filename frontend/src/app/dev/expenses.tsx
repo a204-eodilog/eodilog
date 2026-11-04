@@ -112,6 +112,7 @@ type Example =
   | 'changed'
   | 'create'
   | 'failed'
+  | 'conflict'
   | 'edit'
   | 'view'
   | 'settlement'
@@ -173,7 +174,7 @@ export default function ExpenseStates() {
     return (
       <>
         <ExpenseFormView
-          mode={view === 'failed' ? 'create' : view}
+          mode={view === 'failed' ? 'create' : view === 'conflict' ? 'edit' : view}
           tripTitle="겨울 여행"
           members={MEMBERS}
           myMemberId={ME}
@@ -187,8 +188,9 @@ export default function ExpenseStates() {
               ? '금액이 너무 커요'
               : undefined
           }
-          failed={view === 'failed'}
-          onDelete={view === 'edit' ? () => setConfirm(true) : undefined}
+          failed={view === 'failed' || view === 'conflict'}
+          conflict={view === 'conflict'}
+          onDelete={view === 'edit' || view === 'conflict' ? () => setConfirm(true) : undefined}
         />
         <ConfirmSheet
           visible={confirm}
@@ -213,6 +215,7 @@ export default function ExpenseStates() {
       <View style={styles.row}>
         <Button label="지출 추가" variant="neutral" onPress={() => setView('create')} />
         <Button label="지출 저장 실패" variant="neutral" onPress={() => setView('failed')} />
+        <Button label="먼저 바뀐 지출" variant="neutral" onPress={() => setView('conflict')} />
         <Button label="내 지출 수정" variant="neutral" onPress={() => setView('edit')} />
         <Button label="남의 지출 보기" variant="neutral" onPress={() => setView('view')} />
       </View>

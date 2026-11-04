@@ -9,7 +9,7 @@ import { colors } from '@/theme';
 import { ExpenseFormView } from '../components/expense-form-view';
 import { type ExpenseForm, toExpenseInput } from '../expense-rules';
 import { useExpenseBoard } from '../hooks/use-expense-board';
-import { useDeleteExpense, useSaveExpense } from '../hooks/use-expense-mutations';
+import { expenseFailure, useDeleteExpense, useSaveExpense } from '../hooks/use-expense-mutations';
 import type { Expense, TripMember } from '../types';
 
 /**
@@ -113,12 +113,17 @@ function ExpenseEditor({
         amountError={amountError}
         saving={save.isPending}
         failed={save.isError}
+        conflict={save.isError && expenseFailure(save.error) === 'conflict'}
         onDelete={mode === 'edit' ? () => setConfirmDelete(true) : undefined}
       />
       {expense ? (
         <ConfirmSheet
           visible={confirmDelete}
-          onClose={() => setConfirmDelete(false)}
+          // 닫았다 다시 열 때 지난 실패가 남지 않게 지운다
+          onClose={() => {
+            setConfirmDelete(false);
+            remove.reset();
+          }}
           onConfirm={() =>
             remove.mutate(expense, {
               onSuccess: () => {
@@ -132,7 +137,13 @@ function ExpenseEditor({
           confirmLabel={remove.isError ? '다시 시도' : '지우기'}
           confirmIcon={remove.isError ? 'refresh' : 'trash'}
           loading={remove.isPending}
-          error={remove.isError ? '지우지 못했어요' : undefined}
+          error={
+            !remove.isError
+              ? undefined
+              : expenseFailure(remove.error) === 'conflict'
+                ? '그 사이 지출이 바뀌었어요'
+                : '지우지 못했어요'
+          }
           errorDescription="다시 시도해 주세요"
         />
       ) : null}
