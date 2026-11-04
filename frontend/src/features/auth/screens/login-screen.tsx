@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Icon, toast } from '@/components/ui';
+import { inviteHref } from '@/features/invitation/invite-rules';
 import { useSessionStore } from '@/stores/session-store';
 import { colors, layout, spacing, typography } from '@/theme';
 
@@ -40,7 +41,11 @@ export function LoginScreen() {
       const result = await loginWithKakao();
       if (result.type === 'cancel') return;
       await setSession(result.session);
-      router.replace(result.session.user.profileCompleted ? '/home' : '/profile');
+      const { profileCompleted } = result.session.user;
+      const invite = useSessionStore.getState().pendingInviteToken;
+      // 초대 링크로 왔으면 가입 뒤 S04로 이어 준다. 가입 대기면 S02를 먼저 거친다
+      if (!profileCompleted) router.replace('/profile');
+      else router.replace(invite ? inviteHref(invite) : '/home');
     } catch (e) {
       setError(errorMessage(e));
       prepareKakaoLogin().catch(() => undefined);

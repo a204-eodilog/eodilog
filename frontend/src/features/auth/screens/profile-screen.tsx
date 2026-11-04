@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, Card, Chip, Header, Icon, Tag, TextField, toast } from '@/components/ui';
+import { inviteHref } from '@/features/invitation/invite-rules';
 import { useSessionStore } from '@/stores/session-store';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -22,7 +23,7 @@ import { AGE_BANDS, type AgeBand, NICKNAME_MAX_LENGTH, normalizeNickname } from 
 /**
  * S02 프로필·연령 입력. 닉네임을 넣어 가입을 마친다.
  * 상태: 기본 / 필수 항목 누락 / 저장 실패. 프로필 사진·연령대는 저장 API가 아직 없어 화면에서만 고른다.
- * 저장 뒤에는 S03 취향 입력으로 간다(초대로 온 경우 S04는 초대 화면 작업 때 붙인다).
+ * 저장 뒤에는 S03 취향 입력으로, 초대 링크로 왔으면 S04 초대 참여 확인으로 간다.
  */
 export function ProfileScreen() {
   const markProfileCompleted = useSessionStore((s) => s.markProfileCompleted);
@@ -40,7 +41,9 @@ export function ProfileScreen() {
     mutationFn: (value: string) => updateNickname(value),
     onSuccess: async () => {
       await markProfileCompleted();
-      router.replace('/preferences');
+      // 초대 링크로 가입했으면 S04 초대 참여 확인, 아니면 S03 취향 입력
+      const invite = useSessionStore.getState().pendingInviteToken;
+      router.replace(invite ? inviteHref(invite, { first: true }) : '/preferences');
     },
   });
 
