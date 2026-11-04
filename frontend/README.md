@@ -15,6 +15,7 @@ npm start
   - iOS: `npx eas-cli@latest build --profile development --platform ios`
 - 레포는 `C:\dev\EODI`처럼 **짧은 영문 경로**에 클론한다. 경로에 한글이 있거나 길면 Android 빌드가 실패한다.
 - `.env`에는 비밀 키를 넣지 않는다. `EXPO_PUBLIC_` 값은 앱에 그대로 들어간다.
+- 네이버 지도 키는 `.env`의 `NAVER_MAP_CLIENT_ID`에 넣는다(네이버 클라우드 Maps, 패키지 `com.eodilog.app` 등록). 비워 두면 빌드는 되지만 지도가 안 뜬다. 키를 바꾸면 개발 빌드를 다시 만든다(빌드할 때 앱 설정에 들어간다).
 
 ## 스크립트
 

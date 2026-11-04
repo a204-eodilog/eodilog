@@ -36,7 +36,15 @@
         }
       ],
       "expo-secure-store",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "extraMavenRepos": ["https://repository.map.naver.com/archive/maven"]
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
