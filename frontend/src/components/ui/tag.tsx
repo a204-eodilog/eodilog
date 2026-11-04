@@ -4,12 +4,13 @@ import { colors, radius, spacing, typography } from '@/theme';
 
 import { Icon, type IconName } from './icon';
 
-type Tone = 'neutral' | 'brand' | 'brandSoft' | 'success' | 'outline';
+type Tone = 'neutral' | 'line' | 'brand' | 'brandSoft' | 'success' | 'outline';
 
 export type TagProps = {
   label: string;
   /**
-   * neutral 회색(키워드, 비공개, 게시 전) / brand 연파랑(게시됨) / brandSoft 아주 연한 파랑(계획 중)
+   * neutral 회색(키워드, 비공개, 게시 전) / line 조금 진한 회색 바탕·진한 글자(S36 "이전 정산 · 지금과 달라요")
+   * / brand 연파랑(게시됨) / brandSoft 아주 연한 파랑(계획 중)
    * / success 초록(사진으로 확인됨) / outline 흰 바탕 테두리(지도 핀 없음)
    */
   tone?: Tone;
@@ -19,6 +20,7 @@ export type TagProps = {
 
 const BG: Record<Tone, string> = {
   neutral: colors.surface.default,
+  line: colors.line.default,
   brand: colors.brand.primaryLight,
   brandSoft: colors.brand.primaryBg,
   success: colors.status.successBg2,
@@ -27,6 +29,7 @@ const BG: Record<Tone, string> = {
 
 const FG: Record<Tone, string> = {
   neutral: colors.text.icon,
+  line: colors.text.default,
   brand: colors.brand.primaryDark,
   brandSoft: colors.brand.primaryDark,
   success: colors.status.success,
