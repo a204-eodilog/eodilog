@@ -50,7 +50,7 @@
 
 | 상태 | 대표 업무 오류 |
 | --- | --- |
-| 404 | `TRIP_NOT_FOUND`, `FEED_NOT_FOUND`, `JOB_NOT_FOUND` — 존재를 공개할 수 없는 자료도 같은 응답. 여행 안의 하위 자료는 `MEMBER_NOT_FOUND`(없거나 이탈한 멤버십), `CHECKLIST_ITEM_NOT_FOUND`(없거나 삭제된 준비물), `EXPENSE_NOT_FOUND`(없거나 삭제된 경비), `SETTLEMENT_NOT_FOUND`(없거나 다른 여행의 정산 계산), `CHAT_ROOM_NOT_FOUND`(없거나 삭제된 여행·참여하지 않았거나 나간 채팅방), `POLL_NOT_FOUND`(없거나 다른 여행의 투표) |
+| 404 | `TRIP_NOT_FOUND`, `FEED_NOT_FOUND`, `JOB_NOT_FOUND` — 존재를 공개할 수 없는 자료도 같은 응답. 여행 안의 하위 자료는 `MEMBER_NOT_FOUND`(없거나 이탈한 멤버십), `CHECKLIST_ITEM_NOT_FOUND`(없거나 삭제된 준비물), `EXPENSE_NOT_FOUND`(없거나 삭제된 경비), `SETTLEMENT_NOT_FOUND`(없거나 다른 여행의 정산 계산), `CHAT_ROOM_NOT_FOUND`(없거나 삭제된 여행·참여하지 않았거나 나간 채팅방), `POLL_NOT_FOUND`(없거나 다른 여행의 투표), `VISIT_NOT_FOUND`(없거나 체크 해제한·다른 여행의 방문) |
 | 409 | `VERSION_CONFLICT`, `POLL_CLOSED`, `ALREADY_MEMBER`, `ALREADY_APPLIED`, `TRIP_FULL`(여행 ACTIVE 멤버 정원 초과), `CLIENT_MESSAGE_ID_REUSED`(같은 clientMessageId를 다른 방·본문에 재사용) |
 | 410 | `INVITATION_EXPIRED`·`INVITATION_REVOKED` — 사용자가 제시한 유효 형식의 초대 토큰 검증 결과. 새 링크 발급으로 무효가 된 링크만 `INVITATION_REVOKED`, 없는 토큰·기간 지남·삭제된 여행·초대자 이탈은 `INVITATION_EXPIRED` |
 | 422 | `INSUFFICIENT_DATA`, `CURRENCY_MISMATCH`, `INVALID_PARTICIPANTS`, `UNSUPPORTED_INPUT`, `INVALID_ROUTE_LEGS`(코스 구간이 빠지거나 겹치거나 인접하지 않음) |
@@ -177,9 +177,9 @@
 | POST | `/trips/{tripId}/itinerary/proposals/{jobId}/apply` | 멤버 | `{expectedVersion:integer}` | `Itinerary` / 200 | 성공한 변경안·기준 버전·현재 멤버십 검증 후 단일 코스 원자 교체. 방장 승인 불필요 |
 | POST | `/trips/{tripId}/itinerary/undo` | 멤버 | `{expectedVersion:integer,appliedJobId:id}` | `Itinerary` / 200 | 직전 AI 적용 1회만 되돌림. 적용 후 다른 쓰기면 409 UNDO_UNAVAILABLE 제안, 복원도 새 version. 시간 제한은 Q-15 |
 | POST | `/trips/{tripId}/itinerary/routes/recalculate` | 멤버 | `{expectedVersion:integer}` | `JobRef` / 202 | 실패 구간 재조회, 변경된 코스에는 자동 반영하지 않음 |
-| POST | `/trips/{tripId}/visits` | 멤버 | `{placeId:id,visitedAt:datetime,evidenceType:MANUAL}` | `Visit` / 201 | 실제 방문 수동 기록 제안. 자동 위치 수집 추가 안 함 |
-| GET | `/trips/{tripId}/visits` | 멤버 | `memberId?:id,placeId?:id,reviewStatus?:ALL\|WRITTEN\|UNWRITTEN` + 페이지 | `Visit[]` / 200 | 기본 본인·ALL. 같은 여행 멤버만 필터 가능, 평가할 visitId 복원 |
-| DELETE | `/trips/{tripId}/visits/{visitId}` | 본인 방문 작성자 | 없음 | 204 | 방문 체크 되돌리기. 평가가 있으면 409 REVIEW_EXISTS 제안, Q-7 확정 후 조정 |
+| POST | `/trips/{tripId}/visits` | 멤버 | `{placeId:id,visitedAt:datetime,evidenceType:MANUAL}` | `Visit` / 201(이미 체크한 장소는 기존 `Visit` / 200) | 실제 방문 수동 기록. 자동 위치 수집 추가 안 함. 존재하는 장소면 코스 밖도 허용(없으면 400 필드 placeId), `visitedAt`이 서버 시각+5분보다 미래면 400, `evidenceType`은 MANUAL만. 여행·멤버·장소당 체크 하나라 재요청은 기존 방문을 그대로 반환하며 `Idempotency-Key` 불필요(2026-11-04) |
+| GET | `/trips/{tripId}/visits` | 멤버 | `memberId?:id,placeId?:id,reviewStatus?:ALL\|WRITTEN\|UNWRITTEN` + 페이지 | `Visit[]` / 200 | 기본 본인·ALL. 같은 여행 멤버(나간 멤버 포함)만 필터 가능, 다른 여행·없는 memberId는 400. 정렬 createdAt DESC. 평가할 visitId 복원. 평가 기능 전에는 WRITTEN이 빈 목록, `reviewId`·`reviewScore` null |
+| DELETE | `/trips/{tripId}/visits/{visitId}` | 본인 방문 작성자 | 없음 | 204 | 방문 체크 되돌리기(논리 삭제, 다시 체크하면 새 방문). 남의 방문 403, 없거나 해제한 방문 404 `VISIT_NOT_FOUND`. 평가가 있으면 409 REVIEW_EXISTS 제안(평가 기능 때 추가) |
 | POST | `/trips/{tripId}/visit-detections` | 멤버 | `{photoIds:id[]}` | `JobRef` / 202 | 허용된 사진 메타데이터로 후보만 제안, 실제 체크와 구분 |
 | POST | `/trips/{tripId}/visit-candidates/{candidateId}/confirm` | 후보 본인 | `{expectedVersion:integer}` | `Visit` / 201 | 동일 후보 중복 확정은 기존 visit 반환. 사진 속 타인을 자동 방문자로 지정하지 않음 |
 | GET | `/trips/{tripId}/weather` | 멤버 | `date:date,placeId:id` | `Weather` / 200 | 관측/예보 구분, 조회 시점·유효성 |

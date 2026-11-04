@@ -404,8 +404,13 @@ Table visits {
   evidence_type varchar(16) [not null, default: 'MANUAL', note: 'MANUAL/PHOTO']
   deleted_at timestamp
   created_at timestamp [not null]
-  indexes { (trip_id, member_id, place_id, visited_at) }
-  Note: '수동 체크·사진 후보 확인으로 실제 방문 기록. 취소 시 평가 존재하면 충돌 제안. 실제 방문 판정 Q-7, 자동 GPS/실시간 위치 수집을 요구하지 않음. 지도 집계에서 계획 itinerary_items와 구분.'
+  indexes {
+    (trip_id, member_id, place_id) [unique, note: 'deleted_at IS NULL인 행만(부분 유일). 여행·멤버·장소당 체크 하나']
+    (trip_id, member_id, created_at, id)
+    member_id
+    place_id
+  }
+  Note: '수동 체크·사진 후보 확인으로 실제 방문 기록. 체크 해제는 deleted_at, 다시 체크하면 새 행. 나가도 남고 여행 삭제 때 지운다. 취소 시 평가 존재하면 충돌 제안. 실제 방문 판정 Q-7, 자동 GPS/실시간 위치 수집을 요구하지 않음. 지도 집계에서 계획 itinerary_items와 구분.'
 }
 
 Table photo_groups {
