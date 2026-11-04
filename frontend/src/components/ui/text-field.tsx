@@ -97,17 +97,25 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     overflow: 'hidden',
   },
+  // 안드로이드 입력칸 글자 높이
+  // - lineHeight를 주면 한글(Noto Sans KR)의 위아래가 잘린다(placeholder 포함). 그래서 주지 않는다
+  // - 기본으로 글꼴의 위아래 여유 공간까지 높이에 넣어(includeFontPadding) Noto Sans KR에서는 칸이 지나치게
+  //   커진다. 여유 공간을 빼고 글자를 세로 가운데에 둔다. iOS에는 영향이 없는 속성이다
   input: {
-    ...typography.bodyMedium,
+    fontFamily: typography.bodyMedium.fontFamily,
+    fontSize: typography.bodyMedium.fontSize,
     color: colors.text.default,
     paddingVertical: spacing[10],
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   inputLarge: {
     fontFamily: typography.title1.fontFamily,
     fontSize: 22,
-    lineHeight: 32,
     color: colors.text.default,
     paddingVertical: spacing[10],
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   footer: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing[8] },
   message: { flex: 1 },
