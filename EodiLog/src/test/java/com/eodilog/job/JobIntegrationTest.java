@@ -303,8 +303,8 @@ class JobIntegrationTest {
         assertThatThrownBy(() -> service.get(user, id)).isInstanceOf(BusinessException.class);
     }
     @Test void cleanupResultIsMinimalRequesterOnlyAndIndependentOfTripMembership() {
-        var id = submit(JobKind.LEAVE_CLEANUP); var c = claim();
-        worker.finish(c, JobOutcome.succeeded(json.readTree("{\"scope\":\"LEAVE_CLEANUP\",\"completedCount\":1,\"failedCount\":0,\"photoIds\":[\"private\"]}")));
+        var id = submit(JobKind.PHOTO_DELETE); var c = claim();
+        worker.finish(c, JobOutcome.succeeded(json.readTree("{\"scope\":\"PHOTO_DELETE\",\"completedCount\":1,\"failedCount\":0,\"photoIds\":[\"private\"]}")));
         var result = service.get(user, id).result();
         assertThat(result.size()).isEqualTo(3); assertThat(result.has("photoIds")).isFalse();
         UUID other = UUID.randomUUID();
@@ -360,7 +360,7 @@ class JobIntegrationTest {
         }
         @Bean JobHandler extractionHandler(JdbcTemplate jdbc) { return handler(JobKind.PLACE_EXTRACTION, jdbc); }
         @Bean JobAccessPolicy extractionPolicy() { return policy(JobKind.PLACE_EXTRACTION); }
-        @Bean JobHandler cleanupHandler(JdbcTemplate jdbc) { return handler(JobKind.LEAVE_CLEANUP, jdbc); }
-        @Bean JobAccessPolicy cleanupPolicy() { return policy(JobKind.LEAVE_CLEANUP); }
+        @Bean JobHandler cleanupHandler(JdbcTemplate jdbc) { return handler(JobKind.PHOTO_DELETE, jdbc); }
+        @Bean JobAccessPolicy cleanupPolicy() { return policy(JobKind.PHOTO_DELETE); }
     }
 }

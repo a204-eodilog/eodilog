@@ -78,14 +78,16 @@ public class TripMemberController {
 	}
 
 	@Operation(summary = "여행 나가기", description = """
-			ACTIVE 멤버가 스스로 여행에서 나간다(1단계: 기본 나가기). 경비·사진·메시지는 남고, 멤버십은 LEFT가 되며 그룹 채팅 참여도 끝난다.
+			ACTIVE 멤버가 스스로 여행에서 나간다. 경비·사진은 남고, 멤버십은 LEFT가 되며 그룹 채팅 참여도 끝난다.
 			방장이 나가면 남은 동행 중 참여 순이 가장 빠른 사람이 방장이 되고 newOwnerMemberId로 알려 준다.
-			사진·메시지 삭제 옵션은 삭제 기능 전이라 false만 받으며 true면 400이다.
+			deleteOwnMessages=true면 이 여행 채팅방에서 내가 보낸 메시지의 본문을 지운다. 메시지 자리(순번)는 남고 text=null·deletedAt으로 보인다.
+			지울 메시지는 나가는 순간 고정하며 LEAVE_CLEANUP 작업이 지운다: 202 + status=LEFT, cleanupJobId. 지울 메시지가 없으면 작업 없이 200이다.
+			사진 삭제 옵션(deleteOwnPhotos)은 사진 기능 전이라 false만 받으며 true면 400이다.
 			혼자 남은 사람이 나가면 여행 삭제로 접수한다: 여행은 즉시 404가 되고 202 + tripDeleted=true, status=TRIP_DELETED, cleanupJobId(TRIP_DELETE 작업)를 돌려준다.
-			expectedVersion은 여행 version이며 다르면 409, 성공하면 version이 하나 오른다. 일반 나가기는 정리 작업이 없어 200이고 cleanupJobId는 null이다.
+			expectedVersion은 여행 version이며 다르면 409, 성공하면 version이 하나 오른다. 정리 작업이 없으면 200이고 cleanupJobId는 null이다.
 			멱등키 대상이 아니라서 성공 뒤 같은 요청을 다시 보내면 이미 멤버가 아니므로 404다.""")
-	@ApiResponse(responseCode = "200", description = "나가기 성공(여행 유지)")
-	@ApiResponse(responseCode = "202", description = "혼자 남은 사람의 나가기: 여행 삭제 접수, cleanupJobId로 TRIP_DELETE 작업 조회")
+	@ApiResponse(responseCode = "200", description = "나가기 성공(여행 유지, 정리 작업 없음)")
+	@ApiResponse(responseCode = "202", description = "정리 작업 접수: 내 채팅 삭제(LEAVE_CLEANUP, status LEFT) 또는 혼자 남은 사람의 여행 삭제(TRIP_DELETE, status TRIP_DELETED). cleanupJobId로 작업 조회")
 	@ApiResponse(responseCode = "404", description = "TRIP_NOT_FOUND: 없거나 볼 수 없는(이미 나간) 여행",
 			content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
 	@ApiResponse(responseCode = "409", description = "VERSION_CONFLICT: 여행이 그 사이 바뀜. 다시 조회 후 시도",
@@ -97,7 +99,7 @@ public class TripMemberController {
 			@PathVariable UUID tripId,
 			@RequestBody LeaveTripRequest request) {
 		LeaveTripResponse result = tripMemberService.leave(CurrentUser.requireUserId(authUser), tripId, request);
-		return ResponseEntity.status(result.tripDeleted() ? HttpStatus.ACCEPTED : HttpStatus.OK)
+		return ResponseEntity.status(result.cleanupJobId() != null ? HttpStatus.ACCEPTED : HttpStatus.OK)
 				.body(DataResponse.of(result));
 	}
 

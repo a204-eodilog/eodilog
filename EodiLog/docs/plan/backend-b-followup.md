@@ -1,6 +1,6 @@
 # 백엔드 B 후속 작업 — 준비물 체크리스트·멤버 관리·경비·초대·정산·채팅·나가기·투표·코스
 
-작성일: 2026-10-29 · 상태: 체크리스트·멤버 관리 병합 완료(MR !49·!50), 경비·정산 상태 병합 완료(MR !56, 2026-10-30), 초대 링크 병합 완료(MR !58·!62), 정산 계산 병합 완료(MR !69), 채팅 REST 병합 완료(MR !71), 기본 나가기 병합 완료(MR !76), 투표 구현(EODI-161)
+작성일: 2026-10-29 · 상태: 체크리스트·멤버 관리 병합 완료(MR !49·!50), 경비·정산 상태 병합 완료(MR !56, 2026-10-30), 초대 링크 병합 완료(MR !58·!62), 정산 계산 병합 완료(MR !69), 채팅 REST 병합 완료(MR !71), 기본 나가기 병합 완료(MR !76), 투표 구현(EODI-161), 나가기 내 채팅 삭제 구현(2026-11-04, §15)
 
 [B 첫 작업](backend-b-trip-basic.md)(여행 생성·조회·수정)이 끝난 뒤 A의 카카오 로그인을 기다리는 동안 진행한 B 작업이다. [분담안](../../../docs/plan/backend-first-work-split.md) §6은 이 기능들을 "첫 통합 뒤 배분"으로 두었지만, 로그인 없이 개발할 수 있고 여행 패키지 안에서 끝나는 것부터 B가 먼저 맡았다. A와 겹치는 파일(`user`·`auth` 패키지, `SecurityConfig`)은 건드리지 않는다.
 
@@ -20,6 +20,7 @@
 | 투표 | `GET/POST /trips/{tripId}/polls`, `GET /trips/{tripId}/polls/{pollId}`, `PUT .../ballot`, `POST .../candidates` | EODI-161 | 구현(§13) |
 | 코스 수동 편집 | `GET/PUT /trips/{tripId}/itinerary` | EODI-164 | 병합(MR !85, §13-3) |
 | 여행 삭제·마지막 멤버 나가기 | `DELETE /trips/{tripId}`, `POST /trips/{tripId}/leave`(혼자 남은 사람) | EODI-167 | 구현(§14) |
+| 나가기 내 채팅 삭제 | `POST /trips/{tripId}/leave`(`deleteOwnMessages=true`), LEAVE_CLEANUP 작업 | EODI-182 | 구현(§15) |
 
 검증은 B 첫 작업과 같이 테스트에서 `AuthUser` principal을 넣어 했다. A 로그인 병합 뒤 실제 카카오 계정 2개로 여행 API 통합 검증(B-7)을 마쳤다([계약 §8](backend-a-b-contract.md)).
 
@@ -109,7 +110,7 @@ AI 준비물 제안(`POST /trips/{tripId}/checklist-suggestions`)은 `jobs`, 날
 
 | 기능 | 막힌 점 |
 | --- | --- |
-| 나가기 삭제 옵션 | `deleteOwnMessages`(본인 메시지 본문 삭제, D-10)는 LEAVE_CLEANUP 작업으로 다음에. `deleteOwnPhotos`는 사진 기능 뒤. 혼자 남은 방장의 여행 삭제는 §14에서 끝냄 |
+| 나가기 삭제 옵션 | `deleteOwnMessages`는 §15에서 끝냄. `deleteOwnPhotos`는 사진 기능 뒤(같은 LEAVE_CLEANUP 작업의 execute에 파일 삭제 추가). 혼자 남은 방장의 여행 삭제는 §14에서 끝냄 |
 
 ## 8. 경비·정산 정책
 
@@ -173,10 +174,10 @@ A 답변(11/02) §5에 따라 사진·메시지를 남기는 **기본 나가기�
 | --- | --- | --- | --- |
 | L-1 | 하는 일 | 멤버십 LEFT·`left_at`, 채팅 참여 종료를 한 트랜잭션에서 처리. 경비·사진·메시지는 그대로 둔다. 방장이 나가면 남은 ACTIVE 멤버 중 참여 순이 가장 빠른 사람에게 자동 양도 | A 답변 §5, PRD WD-FR-04 "가장 먼저 가입한 잔여 멤버에게 양도" |
 | L-2 | 성공 응답 | **200** + `LeaveResult{tripId, tripDeleted:false, newOwnerMemberId(방장이 나갔을 때만, 아니면 null), cleanupJobId:null, status:LEFT}`. 남은 작업이 없으므로 202가 아니다. 나중에 삭제 옵션을 지원하면 그 요청만 202 + 작업 ID | A 답변 "가짜 작업 ID를 반환하지 않는다". 처리가 끝났는데 202(접수)라고 하지 않는다 |
-| L-3 | 삭제 옵션 | `deleteOwnPhotos`·`deleteOwnMessages`는 명세대로 필수. 삭제 기능 전에는 `true`면 **400 `VALIDATION_ERROR`**(해당 필드). 무시하고 성공으로 응답하지 않는다 | A 답변 §5. 기능이 없는 입력을 400으로 거부하는 준비물 C-1과 같은 방식. `?` 없는 필드는 필수(명세 §2) |
+| L-3 | 삭제 옵션 | `deleteOwnPhotos`·`deleteOwnMessages`는 명세대로 필수. 삭제 기능 전에는 `true`면 **400 `VALIDATION_ERROR`**(해당 필드). 무시하고 성공으로 응답하지 않는다 | A 답변 §5. 기능이 없는 입력을 400으로 거부하는 준비물 C-1과 같은 방식. `?` 없는 필드는 필수(명세 §2). 2026-11-04부터 `deleteOwnMessages`는 지원(§15), `deleteOwnPhotos`만 400 |
 | L-4 | 혼자 남은 방장 | ~~여행 삭제 기능 전에는 409 `TRIP_DELETION_PENDING`~~ → 2026-11-03부터 여행 삭제로 접수(§14 D-2). 오류 코드는 없앴다 | A 답변 §5 → Q-11 확정 |
 | L-5 | 버전 | `expectedVersion`은 여행 version. 다르면 409 `VERSION_CONFLICT`, 성공하면 members가 바뀌므로 version 1 증가 | 명세 §4 "이탈도 같은 version", M-2 |
-| L-6 | 판정 순서 | 입력 400(누락·삭제 옵션 true) → 여행 행 잠금 후 ACTIVE 멤버 404 → version 409 → 혼자 남은 방장 409 → 처리 | M-3과 같은 순서 |
+| L-6 | 판정 순서 | 입력 400(누락·사진 삭제 옵션 true) → 여행 행 잠금 후 ACTIVE 멤버 404 → version 409 → 처리(혼자 남은 사람은 여행 삭제 §14 D-2, 내 채팅 삭제는 §15) | M-3과 같은 순서. 2026-11-03·04에 혼자 남은 방장 409와 메시지 삭제 옵션 400을 없앴다 |
 
 구현 메모: 방장이 나가면 `transferOwner`로, 아니면 `markMembersChanged`로 version을 한 번만 올린다. 같은 version으로 두 사람이 동시에 나가면 여행 행 잠금 때문에 한 명만 성공하고 다른 한 명은 409다.
 
@@ -350,3 +351,39 @@ where id = :jobId and kind = 'TRIP_DELETE' and status = 'FAILED';
 ```
 
 남은 하위 행이 있는 삭제 여행을 찾는 점검 쿼리: `select t.id from trips t where t.deleted_at is not null and exists (select 1 from trip_members m where m.trip_id = t.id)`.
+
+## 15. 나가기 내 채팅 삭제 (LEAVE_CLEANUP, 2026-11-04 사용자 확정)
+
+D-10 "그룹 이탈 시 채팅 삭제는 여행 채팅방의 본인 메시지 본문 삭제"를 EODI-182에서 구현했다(`LeaveCleanupService`, `LeaveCleanupJobHandler`, `LeaveCleanupJobAccessPolicy`, `chat.service.OwnMessageCleaner`). 처리 방식(작업 202)과 지우는 모양(본문만)은 사용자가 정했다.
+
+| # | 질문 | 결정 | 근거 |
+| --- | --- | --- | --- |
+| LC-1 | 범위 | `deleteOwnMessages`만 지원. `deleteOwnPhotos=true`는 사진 기능 전까지 계속 400(L-3) | 사진·파일이 아직 없다 |
+| LC-2 | 지우는 모양 | 행과 순번은 남기고 본문만 지운다: `text=null`, `deleted_at`. 응답 `Message.text`는 null·`deletedAt`은 값. 채팅방 `lastMessage`도 같은 모양. 다른 사람 메시지·나간 사람의 경비는 그대로 | 사용자 결정. 순번에 빈틈이 없어야 페이지(CH-7)와 답장 맥락이 유지된다. `ck_messages_text`를 바꾸는 마이그레이션 `V202611041000` |
+| LC-3 | 처리 방식 | 나가기 트랜잭션에서 이 여행 채팅방의 본인 TEXT 메시지 ID를 `CleanupScope.messageIds`로 고정(cutoff=나간 시각)하고 LEAVE_CLEANUP 작업을 함께 등록해 **202** + `LeaveResult{status:LEFT, cleanupJobId}`. 지울 메시지가 없으면 작업을 만들지 않고 200·`cleanupJobId:null` | 사용자 결정(명세 "삭제 작업이 있으면 202"). 가짜 작업 ID를 반환하지 않는다(L-2). 대상을 고정하므로 재참여 뒤 보낸 메시지는 지우지 않는다. 고르기 전에 채팅방 행을 잠가, 나가는 순간 다른 기기에서 보내던 메시지도 빠뜨리지 않는다(전송은 방 행을 잠근 뒤 멤버십을 확인한다) |
+| LC-4 | 실행기 | 외부 I/O가 없어 `execute`는 결과 `{scope:LEAVE_CLEANUP, completedCount:고정한 메시지 수, failedCount:0}`만 만들고, 본문 제거는 작업 행을 잠근 `complete`에서 한다(TRIP_DELETE D-3과 같은 방식). 고정 ID 중 아직 안 지운 본인 TEXT만 갱신하므로 멱등 | 사진 파일 삭제가 생기면 `execute`에 들어간다 |
+| LC-5 | 권한 | 등록은 그 여행에서 LEFT인 본인이고 대상이 모두 본인 TEXT 메시지일 때만. 실행·완료는 항상 계속(승인한 정리를 재참여·여행 삭제로 취소하지 않는다. 여행 삭제가 먼저 끝났으면 지울 행이 없어 0건). 조회는 최초 요청자만(나간 뒤에도) | 명세 §9 정리 작업 권한표 |
+| LC-6 | 혼자 남은 사람 | 옵션과 관계없이 여행 삭제(§14 D-2)만. 여행 삭제가 메시지까지 지우므로 LEAVE_CLEANUP을 따로 만들지 않는다 | 같은 자료를 두 작업이 지우지 않게 |
+| LC-7 | 지운 메시지의 clientMessageId | 재참여 뒤 같은 ID로 다시 보내면 409 `CLIENT_MESSAGE_ID_REUSED`. 지운 메시지를 되살리지 않는다 | CH-4. 본문 비교가 null에서 500이 나던 경로를 막았다 |
+| LC-8 | 내보내기(REMOVED) | 삭제 옵션이 없다(명세 `DELETE /members`에 없음). 내보낸 사람의 메시지는 남는다 | 명세 그대로 |
+
+프론트에 전달할 것: 내 채팅 삭제를 고르면 보통 202이고 `cleanupJobId`로 `GET /jobs/{jobId}`를 볼 수 있다(나간 뒤에도 본인만). 지운 메시지는 `text:null`·`deletedAt` 값으로 오므로 "삭제된 메시지"로 표시한다.
+
+### 15-1. A에게 공유할 것
+
+- A의 `JobIntegrationTest` 고정 실행기를 LEAVE_CLEANUP에서 PHOTO_DELETE로 바꿨다. 실제 LEAVE_CLEANUP 실행기가 생기면 같은 kind가 두 번 등록돼 컨텍스트가 시작하지 않기 때문이다(`JobRegistry` 중복 거부). 사진 삭제 실행기를 만들 때 다시 다른 kind로 옮겨야 한다.
+- LEAVE_CLEANUP handler·policy를 `trip.service`에 등록했다. 작업 `input`은 `{tripId}`, `cleanupScope`는 메시지 ID 목록 + cutoff, `baseVersion`은 없다.
+- 마이그레이션 `V202611041000`이 `messages.ck_messages_text`를 바꾸고 `ck_messages_deleted_body`를 더한다. 실시간 채팅을 붙일 때 지운 메시지 모양(text null)을 같이 다룬다.
+
+### 15-2. 실패한 LEAVE_CLEANUP 복구 절차(운영)
+
+완료 단계 예외는 최대 시도 횟수(기본 3) 안에서 다시 돈다. 같은 여행의 TRIP_DELETE와 동시에 끝나면서 PostgreSQL이 한쪽을 교착으로 끊는 경우도 이 재시도로 넘어간다. 그래도 FAILED가 되면 사용자는 202를 받았는데 본문이 남는다. 실행기는 고정한 ID 중 안 지운 것만 지우므로(멱등) 원인을 고친 뒤 다시 QUEUED로 돌린다.
+
+```sql
+update jobs
+set status = 'QUEUED', attempt = 0, execution_id = null, execution_started_at = null, lease_until = null,
+    heartbeat_at = null, error_code = null, finished_at = null, next_attempt_at = now()
+where id = :jobId and kind = 'LEAVE_CLEANUP' and status = 'FAILED';
+```
+
+남은 본문을 찾는 점검 쿼리: `select j.id from jobs j where j.kind = 'LEAVE_CLEANUP' and j.status = 'FAILED'`. 대상 ID는 `cleanup_scope_json->'messageIds'`에 있다.
