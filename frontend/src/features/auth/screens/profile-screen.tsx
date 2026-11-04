@@ -62,7 +62,7 @@ export function ProfileScreen() {
       >
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           {save.isError ? (
-            <Card variant="filled" rounded="lg" style={styles.failCard}>
+            <Card variant="filled" rounded="xl" style={styles.failCard}>
               <View style={styles.failRow}>
                 <View style={styles.failIcon}>
                   <Icon name="alert" size={22} color={colors.status.danger} />
