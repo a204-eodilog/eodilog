@@ -1,4 +1,6 @@
 import { beforeEach, expect, it, jest } from '@jest/globals';
+import { AxiosError } from 'axios';
+
 import { useSessionStore } from '@/stores/session-store';
 
 import { publicClient, refreshAccessToken } from './session';
@@ -63,8 +65,11 @@ it('동시에 여러 번 불러도 갱신 요청은 한 번만 보낸다', async
   expect(useSessionStore.getState().refreshToken).toBe('new-refresh');
 });
 
-it('갱신이 실패하면 다시 보내지 않고 토큰을 지운 뒤 만료로 표시한다', async () => {
-  const post = jest.spyOn(publicClient, 'post').mockRejectedValue(new Error('401'));
+it('서버가 401로 거부하면 다시 보내지 않고 토큰을 지운 뒤 만료로 표시한다', async () => {
+  const rejected = new AxiosError('Unauthorized', '401', undefined, undefined, {
+    status: 401,
+  } as AxiosError['response']);
+  const post = jest.spyOn(publicClient, 'post').mockRejectedValue(rejected);
 
   await expect(refreshAccessToken()).resolves.toBeNull();
 
@@ -73,4 +78,27 @@ it('갱신이 실패하면 다시 보내지 않고 토큰을 지운 뒤 만료�
   expect(state.status).toBe('signedOut');
   expect(state.expired).toBe(true);
   expect(mockStore.size).toBe(0);
+});
+
+it('인터넷이 끊겨 응답이 없으면 토큰을 남겨 두고 만료로 표시하지 않는다', async () => {
+  const offline = new AxiosError('Network Error', 'ERR_NETWORK');
+  jest.spyOn(publicClient, 'post').mockRejectedValue(offline);
+
+  await expect(refreshAccessToken()).resolves.toBeNull();
+
+  const state = useSessionStore.getState();
+  expect(state.status).toBe('signedIn');
+  expect(state.refreshToken).toBe('old-refresh');
+  expect(state.expired).toBe(false);
+  expect(mockStore.size).toBe(1);
+});
+
+it('서버 오류(5xx)여도 토큰은 남겨 둔다', async () => {
+  const down = new AxiosError('Bad Gateway', '502', undefined, undefined, {
+    status: 502,
+  } as AxiosError['response']);
+  jest.spyOn(publicClient, 'post').mockRejectedValue(down);
+
+  await expect(refreshAccessToken()).resolves.toBeNull();
+  expect(useSessionStore.getState().status).toBe('signedIn');
 });

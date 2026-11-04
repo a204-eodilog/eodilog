@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { StyleSheet, Text, TextInput, type TextInputProps, View } from 'react-native';
 
-import { colors, spacing, typography } from '@/theme';
+import { colors, radius, spacing, typography } from '@/theme';
 
 export type TextFieldProps = TextInputProps & {
   /** 칸 위 작은 이름. "여행 이름" */
@@ -19,9 +19,17 @@ export type TextFieldProps = TextInputProps & {
    * 서버 규칙: 여행 이름 200, 닉네임 50 (앞뒤 공백 뺀 길이)
    */
   maxLength?: number;
+  /** maxLength가 있어도 "12/200" 글자 수를 숨긴다. 금액처럼 쉼표가 섞여 글자 수가 뜻이 없을 때 */
+  hideCount?: boolean;
+  /**
+   * underline 밑줄(S16·S19 이름 입력) / filled 회색 상자(S11 링크, S34 한 줄 평가, S35 금액·항목)
+   */
+  variant?: 'underline' | 'filled';
+  /** filled 칸 안 오른쪽에 붙는 것. 금액의 "원", 붙여넣기 버튼 */
+  trailing?: ReactNode;
 };
 
-/** 밑줄 입력칸. Figma S16·S19의 이름 입력과 같은 모양이다. */
+/** 입력칸. 기본은 밑줄 모양, `variant="filled"`면 회색 상자 모양이다. */
 export function TextField({
   label,
   required,
@@ -29,18 +37,25 @@ export function TextField({
   error,
   large = false,
   maxLength,
+  hideCount = false,
+  variant = 'underline',
+  trailing,
   onFocus,
   onBlur,
   ...inputProps
 }: TextFieldProps) {
   const [focused, setFocused] = useState(false);
+  const filled = variant === 'filled';
   const lineColor = error
     ? colors.status.dangerMid
     : focused
       ? colors.brand.primary
-      : colors.line.strong;
+      : filled
+        ? 'transparent'
+        : colors.line.strong;
   const message = error ?? helper;
   const length = inputProps.value?.length ?? 0;
+  const showCount = maxLength !== undefined && !hideCount;
   const atLimit = maxLength !== undefined && length >= maxLength;
 
   return (
@@ -51,30 +66,61 @@ export function TextField({
           {required ? <Text style={[typography.micro, styles.required]}>필수</Text> : null}
         </View>
       ) : null}
-      <TextInput
-        {...inputProps}
-        maxLength={maxLength}
-        placeholderTextColor={colors.text.muted}
-        onFocus={(e) => {
-          setFocused(true);
-          onFocus?.(e);
-        }}
-        onBlur={(e) => {
-          setFocused(false);
-          onBlur?.(e);
-        }}
-        style={[
-          large ? styles.inputLarge : styles.input,
-          { borderBottomColor: lineColor, borderBottomWidth: focused || error ? 2 : 1 },
-          inputProps.style,
-        ]}
-      />
-      {message || maxLength !== undefined ? (
+      {filled ? (
+        <View
+          style={[
+            styles.box,
+            large && styles.boxLarge,
+            inputProps.multiline && styles.boxMultiline,
+            { borderColor: lineColor },
+          ]}
+        >
+          <TextInput
+            {...inputProps}
+            maxLength={maxLength}
+            placeholderTextColor={colors.text.sub}
+            onFocus={(e) => {
+              setFocused(true);
+              onFocus?.(e);
+            }}
+            onBlur={(e) => {
+              setFocused(false);
+              onBlur?.(e);
+            }}
+            style={[
+              large ? styles.boxInputLarge : styles.boxInput,
+              inputProps.multiline && styles.boxInputMultiline,
+              inputProps.style,
+            ]}
+          />
+          {trailing}
+        </View>
+      ) : (
+        <TextInput
+          {...inputProps}
+          maxLength={maxLength}
+          placeholderTextColor={colors.text.muted}
+          onFocus={(e) => {
+            setFocused(true);
+            onFocus?.(e);
+          }}
+          onBlur={(e) => {
+            setFocused(false);
+            onBlur?.(e);
+          }}
+          style={[
+            large ? styles.inputLarge : styles.input,
+            { borderBottomColor: lineColor, borderBottomWidth: focused || error ? 2 : 1 },
+            inputProps.style,
+          ]}
+        />
+      )}
+      {message || showCount ? (
         <View style={styles.footer}>
           <Text style={[typography.caption, error ? styles.error : styles.helper, styles.message]}>
             {message ?? ''}
           </Text>
-          {maxLength !== undefined ? (
+          {showCount ? (
             <Text style={[typography.caption, atLimit ? styles.error : styles.helper]}>
               {length}/{maxLength}
             </Text>
@@ -109,6 +155,21 @@ const styles = StyleSheet.create({
     color: colors.text.default,
     paddingVertical: spacing[10],
   },
+  box: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[10],
+    minHeight: 48,
+    paddingHorizontal: spacing[16],
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    backgroundColor: colors.surface.default,
+  },
+  boxLarge: { minHeight: 56 },
+  boxMultiline: { alignItems: 'flex-start', minHeight: 88, paddingVertical: spacing[14] },
+  boxInput: { ...typography.body, flex: 1, color: colors.text.default, paddingVertical: 0 },
+  boxInputLarge: { ...typography.title1, flex: 1, color: colors.text.default, paddingVertical: 0 },
+  boxInputMultiline: { textAlignVertical: 'top' },
   footer: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing[8] },
   message: { flex: 1 },
   helper: { color: colors.text.muted },

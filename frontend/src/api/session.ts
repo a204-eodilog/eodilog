@@ -1,4 +1,4 @@
-import { create } from 'axios';
+import { create, isAxiosError } from 'axios';
 
 import { env } from '@/config/env';
 import { useSessionStore } from '@/stores/session-store';
@@ -43,8 +43,12 @@ async function runRefresh(): Promise<string | null> {
     });
     await setSession(data.data);
     return data.data.accessToken;
-  } catch {
-    await clearSession({ expired: true });
+  } catch (error) {
+    // 서버가 토큰을 거부했을 때(401)만 지운다. 인터넷이 끊겼거나 서버가 잠깐 안 될 때는
+    // 토큰을 남겨 두고 이번 요청만 실패시킨다. 다음 요청에서 다시 갱신을 시도한다
+    if (isAxiosError(error) && error.response?.status === 401) {
+      await clearSession({ expired: true });
+    }
     return null;
   }
 }
