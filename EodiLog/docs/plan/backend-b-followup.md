@@ -335,7 +335,7 @@ A 부재 중 사용자가 Q-11의 여행 삭제 범위를 정했다. 결정 주�
 - 작업 `input`은 `{tripId, reason:OWNER_DELETE|LAST_MEMBER_LEAVE}`, `cleanupScope`는 빈 목록 + cutoff. 대상이 여행 전체라 개별 ID 목록을 두지 않았다.
 - 여행 삭제·마지막 멤버 나가기 알림은 A의 알림 기반이 생긴 뒤 연결한다(Q-16).
 - 주기 투표 마감은 이미 `trips.deleted_at is null`인 여행만 고르므로 논리 삭제된 여행의 투표는 건드리지 않는다.
-- 확인 요청: `complete`가 예외를 던지면 공통 기반이 재시도 없이 EXECUTION_FAILED로 끝낸다. 그러면 여행은 404인데 하위 행이 남고 다시 돌릴 API가 없다. 실행기는 멱등하므로 hook 예외를 `TEMPORARY_FAILURE`처럼 최대 시도 횟수 안에서 재시도하는 쪽을 제안한다(별도 MR로 제안 예정, A 승인 전 머지 금지).
+- 확인 요청: `complete`가 예외를 던지면 공통 기반이 재시도 없이 EXECUTION_FAILED로 끝낸다. 그러면 여행은 404인데 하위 행이 남고 다시 돌릴 API가 없다. 실행기는 멱등하므로 hook 예외를 `TEMPORARY_FAILURE`처럼 최대 시도 횟수 안에서 재시도하는 쪽을 EODI-168로 제안했다(A 승인 전 머지 금지).
 - 실행기는 멤버십을 지우기 전에 그 여행 작업들의 `jobs.applied_by_member_id`를 비운다. AI 변경안 적용 기록이 멤버십을 가리키면 FK 때문에 삭제가 영구 실패하기 때문이다. A의 jobs 테이블을 B 실행기가 갱신하는 유일한 지점이다.
 
 ### 14-2. 실패한 TRIP_DELETE 복구 절차(운영)
