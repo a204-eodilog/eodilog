@@ -16,7 +16,8 @@ type NewTripDraft = {
 
 /**
  * 새 여행(S16) 입력 중 상태. S16과 여행지 검색 화면이 함께 쓴다.
- * 만들기에 성공하거나 닫을 때 비운다. 실패하면 그대로 두어 다시 입력하지 않게 한다.
+ * 만들기에 성공하거나 새 여행 화면이 닫힐 때(뒤로 가기 포함) 비운다.
+ * 실패하면 그대로 두어 다시 입력하지 않게 한다.
  */
 export const useNewTripDraft = create<NewTripDraft>((set) => ({
   title: '',

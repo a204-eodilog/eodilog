@@ -48,10 +48,11 @@ export function NewTripScreen() {
       .catch(() => undefined);
   }, [regionId, addRegion, queryClient]);
 
-  const close = () => {
-    reset();
-    router.back();
-  };
+  // 헤더 X뿐 아니라 안드로이드 뒤로 버튼·뒤로 제스처로 나가도 입력을 버린다(US1-12).
+  // 여행지 검색은 이 화면 위에 쌓이므로 이 화면이 남아 있고 입력도 그대로다
+  useEffect(() => reset, [reset]);
+
+  const close = () => router.back();
 
   const submit = () => {
     if (title.trim().length === 0) {
