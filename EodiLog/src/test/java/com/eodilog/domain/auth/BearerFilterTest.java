@@ -7,6 +7,7 @@ import com.eodilog.user.dto.UserCard;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.UUID;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -35,7 +36,7 @@ class BearerFilterTest {
         request.addHeader("Authorization","Bearer token"); return request;
     }
     @Test void storageFailureReturnsSafeJsonAndStopsChain(CapturedOutput output) throws Exception {
-        var claims=new Tokens.Claims(UUID.randomUUID(),UUID.randomUUID());
+        var claims=new Tokens.Claims(UUID.randomUUID(),UUID.randomUUID(),Instant.now().plusSeconds(3600));
         when(tokens.verify("token")).thenReturn(claims);
         when(auth.authenticate(claims)).thenThrow(new DataAccessResourceFailureException("secret-token-private-PII"));
         var response=new MockHttpServletResponse();
