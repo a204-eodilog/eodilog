@@ -1,11 +1,7 @@
-import { formatThousands, formatWon, parseAmount } from '@/lib/format-number';
+import { exceedsAmountMax, formatThousands, formatWon, parseAmount } from '@/lib/format-number';
 
 import type { ExpenseInput, SettlementState, TripMember } from './types';
 
-/** 서버 규칙: 1원 이상 정수, 상한 9,007,199,254,740,991원(ExpenseService MAX_AMOUNT_MINOR) */
-export const AMOUNT_MAX = Number.MAX_SAFE_INTEGER;
-/** 상한 16자리 + 쉼표 5개 */
-export const AMOUNT_MAX_LENGTH = 21;
 /** 서버 규칙: 경비 이름은 앞뒤 공백을 뺀 1~200자 */
 export const TITLE_MAX_LENGTH = 200;
 
@@ -71,9 +67,10 @@ export type ExpenseFormProblem = 'amount' | 'amountTooLarge' | 'title' | 'payer'
 export function toExpenseInput(
   form: ExpenseForm,
 ): { input: ExpenseInput } | { problem: ExpenseFormProblem } {
+  // 상한은 lib/format-number(AMOUNT_MAX)와 서버 ExpenseService MAX_AMOUNT_MINOR가 같다
+  if (exceedsAmountMax(form.amount)) return { problem: 'amountTooLarge' };
   const amount = parseAmount(form.amount);
   if (!amount) return { problem: 'amount' };
-  if (amount > AMOUNT_MAX) return { problem: 'amountTooLarge' };
   const title = form.title.trim();
   if (!title || title.length > TITLE_MAX_LENGTH) return { problem: 'title' };
   if (!form.payerMemberId) return { problem: 'payer' };

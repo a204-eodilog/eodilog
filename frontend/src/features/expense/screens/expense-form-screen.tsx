@@ -130,9 +130,10 @@ function ExpenseEditor({
           title="이 지출을 지울까요?"
           description="지우면 정산을 다시 계산해야 해요"
           confirmLabel={remove.isError ? '다시 시도' : '지우기'}
-          confirmIcon="trash"
+          confirmIcon={remove.isError ? 'refresh' : 'trash'}
           loading={remove.isPending}
-          error={remove.isError ? '지우지 못했어요. 다시 시도해 주세요' : undefined}
+          error={remove.isError ? '지우지 못했어요' : undefined}
+          errorDescription="다시 시도해 주세요"
         />
       ) : null}
     </>

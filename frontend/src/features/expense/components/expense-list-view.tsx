@@ -89,7 +89,7 @@ export function ExpenseListView({
             ListHeaderComponent={
               <View style={styles.top}>
                 {changed ? <SettlementChangedBox onPrevious={onPreviousSettlement} /> : null}
-                <Card variant="filled" rounded="lg" style={styles.total}>
+                <Card variant="filled" rounded="xl" style={styles.total}>
                   <Text style={[typography.caption, styles.sub]}>함께 쓴 돈</Text>
                   <Text style={[typography.title1, styles.text]}>
                     {changed ? formatWon(total) : formatTotalShort(total)}

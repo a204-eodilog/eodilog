@@ -11,10 +11,10 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, Header, Icon, TextField } from '@/components/ui';
-import { formatThousands } from '@/lib/format-number';
+import { AMOUNT_MAX_LENGTH, formatThousands } from '@/lib/format-number';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
-import { AMOUNT_MAX_LENGTH, type ExpenseForm, TITLE_MAX_LENGTH } from '../expense-rules';
+import { type ExpenseForm, TITLE_MAX_LENGTH } from '../expense-rules';
 import type { TripMember } from '../types';
 
 import { MemberChip } from './member-chip';
