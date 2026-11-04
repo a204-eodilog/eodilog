@@ -34,7 +34,7 @@ export type IconName =
   | 'leave'
   | 'image'
   | 'arrow-right'
-  | 'map';
+  | 'map'
   | 'bulb';
 
 type IconProps = {
