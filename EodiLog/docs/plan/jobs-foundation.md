@@ -54,7 +54,7 @@ PostgreSQL `FOR UPDATE SKIP LOCKED`로 한 번에 하나 선점하고 짧은 트
 
 조회는 활성 계정과 kind 정책을 매번 확인한다. 없는·삭제된·정책 거부·미등록 kind는 404 JOB_NOT_FOUND로 숨긴다. ACCOUNT_DELETE는 폴링을 제공하지 않는다. 정리는 최초 요청자만 이탈/여행 삭제 후 조회하며 ACTIVE 여행 멤버십을 공통 기반에서 요구하지 않는다. result는 `scope`(kind 문자열), `completedCount`, `failedCount`의 세 필드로 제한한다. 대상 ID·본문·파일은 반환하지 않는다. 일반 AI result는 도메인 정책의 명시적 publicResult projection을 사용한다.
 
-B는 기본 나가기를 jobs 없이 200으로 구현한다. 향후 실제 정리를 지원할 때 (1) 고정 삭제 대상과 cutoff를 승인 트랜잭션에서 캡처하고 (2) 실제 handler와 네 단계 policy를 등록하고 (3) 도메인 변경과 submit을 함께 커밋한 뒤 (4) 실제 cleanupJobId와 202를 반환한다. 실행 및 완료에서 여행 이탈 때문에 승인된 정리가 취소되지 않도록 cleanup 정책을 설계한다. 아직 없는 삭제/보존 범위를 이 기반에서 결정하지 않는다.
+B는 정리가 없는 나가기를 jobs 없이 200으로, 정리가 있는 나가기(여행 삭제 TRIP_DELETE, 내 채팅 삭제 LEAVE_CLEANUP)를 아래 순서로 구현했다(후속 문서 §14·§15): (1) 고정 삭제 대상과 cutoff를 승인 트랜잭션에서 캡처하고 (2) 실제 handler와 네 단계 policy를 등록하고 (3) 도메인 변경과 submit을 함께 커밋한 뒤 (4) 실제 cleanupJobId와 202를 반환한다. 실행 및 완료에서 여행 이탈 때문에 승인된 정리가 취소되지 않도록 cleanup 정책을 설계한다. 아직 없는 삭제/보존 범위를 이 기반에서 결정하지 않는다.
 
 ## 검증
 

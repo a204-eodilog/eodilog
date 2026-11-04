@@ -33,6 +33,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -53,6 +54,9 @@ class TripLeaveApiTest {
 
 	@Autowired
 	private JobWorker worker;
+
+	@Autowired
+	private TransactionTemplate transactionTemplate;
 
 	private UUID ownerId;
 	private UUID friendId;
@@ -179,6 +183,55 @@ class TripLeaveApiTest {
 				.andExpect(jsonPath("$.error.code").value("CLIENT_MESSAGE_ID_REUSED"));
 		sendMessage(friendId, roomId, UUID.randomUUID(), "다시 왔어요");
 		assertThat(count("select count(*) from messages where room_id = ? and deleted_at is null", roomId)).isEqualTo(2);
+	}
+
+	@Test
+	void waitsForInFlightMessageBeforeFixingCleanupTargets() throws Exception {
+		UUID roomId = roomId();
+		sendMessage(friendId, roomId, UUID.randomUUID(), "먼저 보냄");
+		UUID inFlightId = UUID.randomUUID();
+		CountDownLatch inserted = new CountDownLatch(1);
+		CountDownLatch release = new CountDownLatch(1);
+		ExecutorService executor = Executors.newFixedThreadPool(2);
+		try {
+			// 다른 기기의 전송이 방 행을 잠그고 메시지를 넣었지만 아직 커밋하지 않은 상태(ChatService.sendMessage와 같은 잠금)
+			Future<?> sending = executor.submit(() -> transactionTemplate.executeWithoutResult(status -> {
+				jdbcTemplate.queryForList("select id from chat_rooms where id = ? for update", UUID.class, roomId);
+				jdbcTemplate.update("""
+						insert into messages (id, room_id, sender_user_id, type, sequence, text, client_message_id, created_at)
+						values (?, ?, ?, 'TEXT', 100, '나가는 중에 보냄', ?, now())""",
+						inFlightId, roomId, friendId, UUID.randomUUID());
+				inserted.countDown();
+				try {
+					release.await(10, TimeUnit.SECONDS);
+				} catch (InterruptedException ex) {
+					Thread.currentThread().interrupt();
+				}
+			}));
+			assertThat(inserted.await(10, TimeUnit.SECONDS)).isTrue();
+			Future<MockHttpServletResponse> leaving = executor.submit(
+					() -> leave(friendId, false, true, 1).andReturn().getResponse());
+
+			// 나가기는 지울 메시지를 고르기 전에 방 행 잠금을 기다린다
+			LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(500));
+			assertThat(leaving.isDone()).isFalse();
+			release.countDown();
+			sending.get(10, TimeUnit.SECONDS);
+			MockHttpServletResponse response = leaving.get(10, TimeUnit.SECONDS);
+
+			assertThat(response.getStatus()).isEqualTo(202);
+			UUID jobId = UUID.fromString(jsonMapper.readTree(response.getContentAsString())
+					.get("data").get("cleanupJobId").asString());
+			runJob(jobId);
+			// 커밋을 기다린 전송 메시지도 대상에 들어가 본문이 지워진다
+			assertThat(count("select count(*) from messages where room_id = ? and sender_user_id = ? and text is null",
+					roomId, friendId)).isEqualTo(2);
+			assertThat(count("select count(*) from messages where id = ? and deleted_at is not null", inFlightId))
+					.isEqualTo(1);
+		} finally {
+			release.countDown();
+			executor.shutdownNow();
+		}
 	}
 
 	@Test
