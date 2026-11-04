@@ -3,7 +3,8 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CenterPin, MapHint, MapMarker, MapPill, MapView } from '@/components/map';
-import { Chip, Header, toast } from '@/components/ui';
+import { Button, Chip, Header, toast } from '@/components/ui';
+import { pickPlace } from '@/features/place/place-picker';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 type Example = 'home' | 'saved' | 'group' | 'pick';
@@ -126,6 +127,15 @@ export default function MapCatalog() {
           <MapPill initials={['영']} dot="brand" />
           <MapPill initials={['세', '승']} count={2} countTone="badge" highlighted dot="brand" />
         </View>
+        <Button
+          label="S13 장소 고르기 열기"
+          variant="secondary"
+          size="sm"
+          onPress={async () => {
+            const place = await pickPlace({ near: { latitude: 35.1532, longitude: 129.1186 } });
+            toast.show(place ? `고른 장소: ${place.name}` : '고르지 않고 돌아왔어요');
+          }}
+        />
       </ScrollView>
     </SafeAreaView>
   );
