@@ -20,6 +20,11 @@ export type ButtonProps = {
   block?: boolean;
   /** 글자 왼쪽 아이콘 */
   leading?: ReactNode;
+  /**
+   * 글자 굵기. 기본은 굵게(bodyBold). 값 문서가 bodyMedium으로 적은 알약 버튼
+   * (S35 [정산 계산], S36 [다시 계산] 등)은 medium. sm 크기는 따로 label 글자를 쓴다
+   */
+  weight?: 'bold' | 'medium';
   style?: ViewStyle;
 };
 
@@ -48,11 +53,17 @@ export function Button({
   loading = false,
   block = false,
   leading,
+  weight = 'bold',
   style,
 }: ButtonProps) {
   const inactive = disabled || loading;
   const fg = FG[variant];
-  const labelStyle = sz === 'sm' ? typography.label : typography.bodyBold;
+  const labelStyle =
+    sz === 'sm'
+      ? typography.label
+      : weight === 'medium'
+        ? typography.bodyMedium
+        : typography.bodyBold;
 
   return (
     <Pressable

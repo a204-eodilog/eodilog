@@ -4,12 +4,15 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { Button, ConfirmSheet } from '@/components/ui';
 import { ExpenseFormView } from '@/features/expense/components/expense-form-view';
 import { ExpenseListView } from '@/features/expense/components/expense-list-view';
+import { SettlementFailedView } from '@/features/expense/components/settlement-failed-view';
+import { SettlementHeader, SettlementView } from '@/features/expense/components/settlement-view';
 import { type ExpenseForm, toExpenseInput } from '@/features/expense/expense-rules';
-import type { Expense, SettlementState, TripMember } from '@/features/expense/types';
+import { recalculationReason } from '@/features/expense/settlement-rules';
+import type { Expense, Settlement, SettlementState, TripMember } from '@/features/expense/types';
 import { colors, layout, spacing } from '@/theme';
 
 /**
- * 개발용 S35 상태 보기. 서버 없이 값 문서(docs/design/screens/S35-expenses.md)의 예시 데이터로 그린다.
+ * 개발용 S35·S36 상태 보기. 서버 없이 값 문서(S35-expenses.md·S36-settlement.md)의 예시 데이터로 그린다.
  * 앱 흐름에는 안 나오고 /dev/expenses로만 들어온다.
  */
 
@@ -72,13 +75,48 @@ const NO_SETTLEMENT: SettlementState = {
   currentExpenseVersion: 3,
   recalculationRequired: false,
 };
+/** S36 값 문서 예시: 지우 98,500원 받아요, 민준 38,000원·서연 60,500원 보내요 */
+const SETTLEMENT: Settlement = {
+  id: 's1',
+  expenseVersion: 3,
+  stale: false,
+  totalAmountMinor: 234_000,
+  includedExpenses: EXPENSES.map((e) => ({
+    expenseId: e.id,
+    expenseVersion: e.version,
+    title: e.title,
+    amountMinor: e.amountMinor,
+    payerMemberId: e.payerMemberId,
+    shares: e.participantMemberIds.map((memberId) => ({ memberId, amountMinor: 0 })),
+  })),
+  members: [
+    { memberId: 'jiwoo', paidMinor: 180_000, owedMinor: 81_500, balanceMinor: 98_500 },
+    { memberId: 'seoyeon', paidMinor: 21_000, owedMinor: 81_500, balanceMinor: -60_500 },
+    { memberId: 'minjun', paidMinor: 33_000, owedMinor: 71_000, balanceMinor: -38_000 },
+  ],
+  transfers: [
+    { id: 't1', fromMemberId: 'minjun', toMemberId: 'jiwoo', amountMinor: 38_000 },
+    { id: 't2', fromMemberId: 'seoyeon', toMemberId: 'jiwoo', amountMinor: 60_500 },
+  ],
+  calculatedAt: new Date(2026, 10, 16, 21, 10).toISOString(),
+};
 const CHANGED: SettlementState = {
-  current: { id: 's1', includedExpenses: EXPENSES.map((e) => ({ expenseId: e.id })) },
+  current: { ...SETTLEMENT, stale: true },
   currentExpenseVersion: 4,
   recalculationRequired: true,
 };
 
-type Example = 'list' | 'empty' | 'changed' | 'create' | 'failed' | 'edit' | 'view';
+type Example =
+  | 'list'
+  | 'empty'
+  | 'changed'
+  | 'create'
+  | 'failed'
+  | 'edit'
+  | 'view'
+  | 'settlement'
+  | 'stale'
+  | 'calcFailed';
 
 export default function ExpenseStates() {
   const [view, setView] = useState<Example | null>(null);
@@ -90,6 +128,29 @@ export default function ExpenseStates() {
   });
   const [confirm, setConfirm] = useState(false);
   const back = () => setView(null);
+
+  if (view === 'settlement' || view === 'stale') {
+    return (
+      <SettlementView
+        tripTitle="겨울 여행"
+        members={MEMBERS}
+        myMemberId={ME}
+        settlement={SETTLEMENT}
+        stale={view === 'stale'}
+        staleReason={recalculationReason(SETTLEMENT, [TAXI, ...EXPENSES])}
+        onRecalculate={back}
+      />
+    );
+  }
+
+  if (view === 'calcFailed') {
+    return (
+      <View style={styles.screen}>
+        <SettlementHeader tripTitle="겨울 여행" members={MEMBERS} myMemberId={ME} />
+        <SettlementFailedView expenseCount={EXPENSES.length} onRetry={back} onBack={back} />
+      </View>
+    );
+  }
 
   if (view === 'list' || view === 'empty' || view === 'changed') {
     return (
@@ -154,6 +215,11 @@ export default function ExpenseStates() {
         <Button label="지출 저장 실패" variant="neutral" onPress={() => setView('failed')} />
         <Button label="내 지출 수정" variant="neutral" onPress={() => setView('edit')} />
         <Button label="남의 지출 보기" variant="neutral" onPress={() => setView('view')} />
+      </View>
+      <View style={styles.row}>
+        <Button label="정산 결과" variant="neutral" onPress={() => setView('settlement')} />
+        <Button label="재계산 필요" variant="neutral" onPress={() => setView('stale')} />
+        <Button label="계산 실패" variant="neutral" onPress={() => setView('calcFailed')} />
       </View>
     </ScrollView>
   );

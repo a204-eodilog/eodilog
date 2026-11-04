@@ -17,7 +17,7 @@ export function formatTotalShort(amount: number): string {
 }
 
 /** 이름 뒤에 붙는 '이/가'. 받침이 있으면 '이' */
-function subjectParticle(name: string): string {
+export function subjectParticle(name: string): string {
   const last = name.trim().charCodeAt(name.trim().length - 1);
   const isHangul = last >= 0xac00 && last <= 0xd7a3;
   return isHangul && (last - 0xac00) % 28 !== 0 ? '이' : '가';
@@ -30,12 +30,17 @@ export function payerLabel(name: string): string {
 
 /**
  * 나눌 사람 표시. 지금 여행에 있는 동행 모두면 "3명 똑같이", 일부면 "서연, 지우 2명"(참여 순).
+ * S36 포함한 지출은 "3명이 똑같이"라 모두일 때 붙는 말을 바꿔 쓴다.
  */
-export function splitLabel(participantIds: string[], members: TripMember[]): string {
+export function splitLabel(
+  participantIds: string[],
+  members: TripMember[],
+  everyoneSuffix = '명 똑같이',
+): string {
   const active = members.filter((m) => m.status === 'ACTIVE');
   const chosen = new Set(participantIds);
   const everyone = active.length > 0 && active.every((m) => chosen.has(m.id));
-  if (everyone && chosen.size === active.length) return `${chosen.size}명 똑같이`;
+  if (everyone && chosen.size === active.length) return `${chosen.size}${everyoneSuffix}`;
   const names = [...members]
     .sort((a, b) => a.joinOrder - b.joinOrder)
     .filter((m) => chosen.has(m.id))

@@ -40,9 +40,37 @@ export type ExpenseInput = {
   participantMemberIds: string[];
 };
 
-/** 정산 상태 (GET /trips/{tripId}/settlement). 경비 화면은 포함한 지출과 재계산 필요만 쓴다 */
+/**
+ * 정산 결과 (docs/api-spec.md Settlement, 백엔드 SettlementResponse). 금액은 원 단위 정수.
+ * owedMinor는 10원 단위로 올린 1명 부담액, balanceMinor = 낸 돈 - 부담(+면 받고 -면 보낸다)
+ */
+export type Settlement = {
+  id: string;
+  expenseVersion: number;
+  stale: boolean;
+  totalAmountMinor: number;
+  includedExpenses: {
+    expenseId: string;
+    expenseVersion: number;
+    title: string;
+    amountMinor: number;
+    payerMemberId: string;
+    shares: { memberId: string; amountMinor: number }[];
+  }[];
+  /** 경비에 결제자·분담자로 나온 멤버(나간 동행 포함), 참여 순 */
+  members: {
+    memberId: string;
+    paidMinor: number;
+    owedMinor: number;
+    balanceMinor: number;
+  }[];
+  transfers: { id: string; fromMemberId: string; toMemberId: string; amountMinor: number }[];
+  calculatedAt: string;
+};
+
+/** 정산 상태 (GET /trips/{tripId}/settlement). 계산한 적이 없으면 current가 null */
 export type SettlementState = {
-  current: { id: string; includedExpenses: { expenseId: string }[] } | null;
+  current: Settlement | null;
   currentExpenseVersion: number;
   recalculationRequired: boolean;
 };
