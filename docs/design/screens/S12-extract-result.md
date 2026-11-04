@@ -1,6 +1,6 @@
 # S12 추출 결과 확인
 
-담당 B · 시연 핵심 · 요구사항 WD-FR-05 · API: AI 장소 추출(작업 조회 `GET /jobs/{jobId}`), 결과 4종 `SUCCESS` `MULTIPLE_CANDIDATES` `NOT_FOUND` `FAILED`
+담당 B · 시연 핵심 · 요구사항 WD-FR-05 · API: AI 장소 추출(결과·진행 조회 `GET /extractions/{jobId}`, 취소 `DELETE /extractions/{jobId}`. `GET /jobs/{jobId}`는 공통 작업 상태만 주고 취소 API가 없다), 결과 4종 `SUCCESS` `MULTIPLE_CANDIDATES` `NOT_FOUND` `FAILED`
 
 화면 규칙은 [화면 목록](../../flow/screen-list.md) S12 줄: 진행 상태, 지도 핀 + 장소명·지역·키워드, 한 링크에서 찾은 여러 장소를 골라 저장, 수정·제거.
 
@@ -39,8 +39,8 @@
 3. **아래 영역** — 좌우 40·아래 34, 세로 간격 20, 가운데 정렬
    - "장소를 찾고 있어요" `typography.title1`, 간격 2, "보통 10초 안에 끝나요" `typography.caption` `colors.text.icon`
    - **진행 단계** 세로 목록(간격 14, 폭 148): 줄마다 동그라미 24(끝난 단계 `colors.status.successMid` 바탕 + 체크 16, 진행 중 `colors.brand.primary`, 남은 단계 `colors.line.default`) + 글자 `typography.body` `colors.text.icon` — "링크와 캡처 읽기 / 장소 이름 찾기 / 지도에 표시하기"
-   - 글자 버튼 "취소" `typography.bodyMedium` `colors.text.icon`(높이 48, 좌우 16). 누르면 작업을 취소하고 S11로
-4. 작업 조회는 `GET /jobs/{jobId}`를 주기적으로 읽는다. 단계는 작업 상태로 바꾼다
+   - 글자 버튼 "취소" `typography.bodyMedium` `colors.text.icon`(높이 48, 좌우 16). 누르면 `DELETE /extractions/{jobId}`로 작업을 취소하고 S11로
+4. 진행 중 조회는 `GET /extractions/{jobId}`를 주기적으로 읽는다(`GET /jobs/{jobId}`로 공통 작업 상태만 볼 수도 있다). 단계는 작업 상태로 바꾼다
 
 ## 복수 후보
 
@@ -73,8 +73,8 @@
 | 누르는 것 | 어디서 | 동작·이동 |
 | --- | --- | --- |
 | [뒤로] | 상단 바 | S11로. 진행 중이면 작업은 계속 돌고, 다시 들어오면 결과를 보여 줌 |
-| [취소] | 진행 중 | 작업 취소 후 S11 |
-| 진행 단계 | 진행 중 | `GET /jobs/{jobId}` 결과로 자동 갱신. 끝나면 결과 상태로 바뀜 |
+| [취소] | 진행 중 | `DELETE /extractions/{jobId}`(입력·후보 제거) 후 S11 |
+| 진행 단계 | 진행 중 | `GET /extractions/{jobId}` 결과로 자동 갱신. 끝나면 결과 상태로 바뀜 |
 | 장소 줄 [연필] | 성공 | S13 장소 직접 검색(A)으로 가서 이 장소를 바꿈 |
 | 장소 줄 [X] | 성공 | 그 장소를 목록에서 뺌. 다 빼면 저장 버튼 비활성 |
 | 지도 핀 | 성공·복수 후보 | 해당 장소 줄 강조 |
