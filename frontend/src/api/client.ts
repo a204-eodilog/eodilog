@@ -3,6 +3,7 @@ import { create, type AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import { env } from '@/config/env';
 import { useSessionStore } from '@/stores/session-store';
 
+import { devMockAdapter } from './dev-mock';
 import { API_BASE_PATH, refreshAccessToken } from './session';
 
 const API_TIMEOUT_MS = 10_000;
@@ -31,6 +32,8 @@ export const apiClient = create({
   baseURL: `${env.apiBaseUrl}${API_BASE_PATH}`,
   timeout: API_TIMEOUT_MS,
   headers: { 'Content-Type': 'application/json' },
+  // 개발용 테스트 모드면 서버 대신 테스트 데이터로 답한다(src/api/dev-mock.ts)
+  ...(env.devMock ? { adapter: devMockAdapter } : {}),
 });
 
 apiClient.interceptors.request.use((config) => {
