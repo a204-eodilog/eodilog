@@ -22,8 +22,11 @@ public class OwnMessageCleaner {
 	private final JdbcTemplate jdbcTemplate;
 
 	// 이 여행 채팅방에서 내가 보냈고 아직 지우지 않은 일반 메시지. 순번 순
+	// 메시지 전송은 방 행을 잠근 뒤 멤버십을 잠금 없이 확인하므로, 고르기 전에 같은 방 행을 잠가 전송과 순서를 맞춘다.
+	// 먼저 잠근 전송은 커밋된 뒤 여기서 보이고, 나중 전송은 나가기 커밋 뒤 LEFT를 보고 404가 된다(정책 §15 LC-3)
 	@Transactional(propagation = Propagation.MANDATORY)
 	public List<UUID> findOwnMessageIds(UUID tripId, UUID senderUserId) {
+		jdbcTemplate.queryForList("select id from chat_rooms where trip_id = ? for update", UUID.class, tripId);
 		return jdbcTemplate.queryForList("""
 				select m.id from messages m join chat_rooms r on r.id = m.room_id
 				where r.trip_id = ? and m.sender_user_id = ? and m.type = 'TEXT' and m.deleted_at is null
