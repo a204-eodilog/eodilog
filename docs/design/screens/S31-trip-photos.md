@@ -9,10 +9,10 @@
 | 상태 | 피그마 | 달라지는 점 |
 | --- | --- | --- |
 | 기본 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-17384) | 아래 "기본" 그대로 |
-| 분류 중 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-17604) | 칩 아래 안내 "사진을 주제별로 나누고 있어요", "32장 중 20장 나눴어요 · 끝나면 묶음이 보여요". 장소 묶음 대신 "올린 순서" 제목과 "아직 나누지 않았어요" 사진 격자(올린 사람 얼굴만) |
-| 사진 없음 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-17738) | 가운데 빈 화면: "아직 올린 사진이 없어요", "사진을 올리면 장소별로 나눠요", 주 버튼 [사진 올리기] |
-| 장소 미지정 묶음 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-17795) | 별도 화면(제목 "장소 미지정"). "위치와 날짜가 없는 사진을 장소에 연결해요", 사진 3장 격자("3장 선택"), "어디서 찍었나요?" 아래 코스 장소 목록(일차별, 번호 + 이름), [장소 검색] "코스에 없는 곳이면 찾아서 연결해요", 주 버튼 [연결하기] |
-| 자동 분류 실패 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-30488) | 분류 중과 같고 안내가 "사진을 주제별로 나누지 못했어요" + [다시 시도] |
+| 분류 중 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-17604) | 아래 "그 밖의 상태" 참고 |
+| 사진 없음 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-17738) | 아래 "그 밖의 상태" 참고 |
+| 장소 미지정 묶음 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-17795) | 아래 "장소 미지정 묶음 (별도 화면)" 참고 |
+| 자동 분류 실패 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-30488) | 아래 "그 밖의 상태" 참고 |
 
 ## 기본
 
@@ -28,6 +28,42 @@
       - 칸을 누르면 묶음이면 S32, 한 장이면 사진 크게 보기
 3. **아래 줄** — 왼쪽 "사진 32장 · 3명이 올렸어요" `typography.caption` `colors.text.icon`, 오른쪽 알약 주 버튼 48 "공동 피드 게시"(게시 아이콘 20) → S38
 
+## 장소 미지정 묶음 (별도 화면)
+
+상단 바 [뒤로], 제목 "장소 미지정" `typography.bodyBold` + "겨울 여행" `typography.caption`, 오른쪽 동행 얼굴 묶음 24. 본문 위 16, 좌우 20, 세로 간격 14.
+
+1. 안내 "위치와 날짜가 없는 사진을 장소에 연결해요" `typography.caption` `colors.text.sub2`
+2. **사진 묶음** — 제목 줄: "사진 3장" `typography.title3` + 오른쪽 "3장 선택" `typography.caption` `colors.text.icon`, 간격 12. 칸 82x88(둥글기 12) 3개 가로: 오른쪽 아래 올린 사람 얼굴 22, 고른 칸은 `colors.text.default` 막 흐림 0.38 + 흰 동그라미 24 체크 14. 기본은 모두 고른 상태
+3. **어디서 찍었나요?** — 제목 줄: "어디서 찍었나요?" `typography.title3` + 오른쪽 "코스 장소" `typography.caption`. 아래 일차별 목록(간격 2)
+   - 일차 머리 "1일차 · 11.14(토)" `typography.captionMedium` `colors.text.icon`(위 4)
+   - 장소 줄(높이 48, 좌우 12, 둥글기 14, 간격 14): 번호 동그라미 28(`colors.text.muted`, `typography.captionBold` 흰색) · 이름 `typography.body` · 오른쪽 라디오 24(안 고름 `colors.line.default` 동그라미). 고른 줄은 배경 `colors.brand.primaryBg`, 번호 `colors.brand.primary`, 라디오 `colors.brand.primary` + 체크 14
+4. **장소 검색 줄** — 배경 `colors.surface.default`, 둥글기 16, 안쪽 16/20, 간격 18: 검색 아이콘 20 · "장소 검색" `typography.bodyMedium` + "코스에 없는 곳이면 찾아서 연결해요" `typography.caption` · `Icon chevron-right` 16 → S13(A)
+5. **아래 버튼** — 오른쪽 알약 주 버튼 48 [링크 아이콘 20 + "연결하기"]. 고른 사진을 고른 장소에 붙이고 S31로 돌아간다
+
 ## 예시 데이터
 
 해운대 해변(1일차 · 9장: 지우 6장 묶음, 서연 1장, 민준 2장 묶음), 서면 돼지국밥집(1일차 · 6장), 감천문화마을(2일차 · 14장). 제목 표기는 "N일차 · N장"으로 통일했다(2026-11-03 피그마 수정).
+
+## 그 밖의 상태
+
+- **분류 중** — 주제 칩 대신 [README 상태 공통 모양](README.md#상태-공통-모양)의 **진행 상자(연파랑)**: 분류 아이콘, "사진을 주제별로 나누고 있어요" + "32장 중 20장 나눴어요 · 끝나면 묶음이 보여요", 진행 막대(20/32). 그 아래 섹션 제목 "올린 순서" + 오른쪽 "아직 나누지 않았어요", 3열 111x112 사진 격자(올린 사람 얼굴 22만, 묶음 표시 없음). 아래 [공동 피드 게시] 줄 없음. 작업 조회로 자동 갱신
+- **사진 없음** — [README 상태 공통 모양](README.md#상태-공통-모양)의 **가운데 안내 화면**: 사진 아이콘, "아직 올린 사진이 없어요", "사진을 올리면 장소별로 나눠요", 주 버튼 [올리기 아이콘 + "사진 올리기"] → S30
+- **자동 분류 실패** — 분류 중과 같은 배치인데 상자가 [README 상태 공통 모양](README.md#상태-공통-모양)의 **안내 상자(회색)**: "사진을 주제별로 나누지 못했어요" + 흰 알약 버튼 36 [새로고침 16 + "다시 시도"]. 진행 막대 없음
+
+## 버튼과 이동
+
+[사용자 흐름](../../flow/user-flow.md) 기준. 누르는 것마다 어디로 가는지와 어떤 API를 부르는지.
+
+| 누르는 것 | 어디서 | 동작·이동 |
+| --- | --- | --- |
+| [뒤로] | 상단 바 | S17 |
+| [사진 올리기] 상단 아이콘 / 빈 화면 버튼 | 기본 · 사진 없음 | S30 |
+| 주제 칩 | 기본 | 전체/풍경/음식/사람/기타로 거르기 |
+| 장소 미지정 안내 줄 [연결하기] | 기본 | 장소 미지정 묶음 화면 |
+| 묶음 칸 | 기본 | 묶음이면 S32, 한 장이면 사진 크게 보기(뒤로로 돌아옴) |
+| [공동 피드 게시] | 아래 버튼 | S38 내 여행 기록 (게시 확인) |
+| [다시 시도] | 자동 분류 실패 | 분류 작업 다시 요청 → 분류 중 |
+| 사진 칸 | 장소 미지정 묶음 | 연결할 사진 고르기·해제 |
+| 코스 장소 줄 | 장소 미지정 묶음 | 라디오로 장소 하나 고르기 |
+| [장소 검색] | 장소 미지정 묶음 | S13(A). 고른 장소를 안고 돌아옴 |
+| [연결하기] | 장소 미지정 묶음 | 고른 사진을 장소에 연결(`PATCH /trips/{tripId}/photos/{photoId}`의 placeId, 여러 장이면 `POST /trips/{tripId}/photos/batch`) → S31 기본으로 |
