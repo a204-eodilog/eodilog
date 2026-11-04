@@ -6,7 +6,7 @@
 
 **공통 확인 시트**: B가 틀을 만들고, 여행 나가기 문구는 C, 탈퇴 문구는 A가 채운다. 공통 `BottomSheet`의 `title` `description` `footer`로 만들 수 있다(`/dev/ui` 하단 시트 예시가 이 모양).
 
-API: 여행 나가기 `POST /trips/{tripId}/leave`(혼자 남은 사람은 202 + `tripDeleted:true`), 여행 삭제 `DELETE /trips/{tripId}`. 사진·메시지 지우기 옵션은 서버의 정리 작업이 생기기 전까지 `true`를 보내면 400이라, 그 전까지는 사진·채팅 체크 줄을 숨기거나 누를 수 없게 하고 항상 `false`를 보낸다(체크했는데 아무 일도 안 일어나는 상황을 막는다, 2026-11-04). 정리 작업이 생기면 체크를 연다.
+API: 여행 나가기 `POST /trips/{tripId}/leave`(혼자 남은 사람은 202 + `tripDeleted:true`), 여행 삭제 `DELETE /trips/{tripId}`. 사진·메시지 지우기 옵션은 서버의 정리 작업이 생기기 전까지 `true`를 보내면 400이라, 그 전까지는 기능 명세(`frontend/specs` trip-members-leave 가정)대로 체크를 끈 채로 보여 주고 줄 설명에 "지우기는 곧 지원돼요"를 붙이며 항상 `false`를 보낸다(2026-11-04). 정리 작업이 생기면 체크를 연다.
 
 ## 상태
 
@@ -18,6 +18,8 @@ API: 여행 나가기 `POST /trips/{tripId}/leave`(혼자 남은 사람은 202 +
 | 처리 실패 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-26401) | 아래 "그 밖의 상태" 참고 |
 | 사진 삭제 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-18079) | 아래 "그 밖의 상태" 참고 |
 | 탈퇴 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-24452) | 아래 "그 밖의 상태" 참고 |
+| 지출 삭제 | 피그마 없음 | 아래 "그 밖의 상태" 참고. 사진 삭제와 같은 짧은 시트 틀, 문구만 다름(2026-11-04 정함) |
+| 평가 삭제 | 피그마 없음 | 아래 "그 밖의 상태" 참고. 사진 삭제와 같은 짧은 시트 틀, 문구만 다름(2026-11-04 정함) |
 
 ## 여행 나가기
 
@@ -50,6 +52,8 @@ API: 여행 나가기 `POST /trips/{tripId}/leave`(혼자 남은 사람은 202 +
 - **처리 실패** — 기본 시트 그대로 두고 목록 아래(위 16) [README 상태 공통 모양](README.md#상태-공통-모양)의 **오류 띠**: "나가지 못했어요", "다시 시도해 주세요". 빨간 버튼이 [새로고침 + "다시 시도"]
 - **사진 삭제** — 짧은 시트(높이 200): "사진 2장을 지울까요?" `typography.title1`, 위 8 "휴대폰 원본은 그대로예요" `typography.body` `colors.text.icon`, 위 24 버튼 줄 [취소] [휴지통 + "지우기"]
 - **탈퇴** — 짧은 시트(높이 226): "어디로그를 탈퇴할까요?", "내 기록이 모두 지워져요.⏎함께 만든 여행은 동행에게 남아요" `typography.body` `colors.text.icon`, 버튼 줄 [취소] ["탈퇴하기"](아이콘 없음, 좌우 24)
+- **지출 삭제**(S35, 피그마 없음) — 사진 삭제와 같은 짧은 시트: "이 지출을 삭제할까요?", "{지출 이름} {금액}원이 목록과 합계에서 빠져요.⏎정산을 했다면 다시 계산해야 해요", 버튼 줄 [취소] [휴지통 + "삭제"](`Button variant="danger"`). 처리 실패는 "지출을 삭제하지 못했어요" 오류 띠 + [다시 시도]
+- **평가 삭제**(S34, 피그마 없음) — 같은 짧은 시트: "내 평가를 삭제할까요?", "{장소 이름}에 남긴 점수와 글이 지워져요.⏎다시 남길 수 있어요", 버튼 줄 [취소] [휴지통 + "삭제"]. 처리 실패는 "평가를 삭제하지 못했어요" 오류 띠 + [다시 시도]
 
 ## 버튼과 이동
 
@@ -58,10 +62,12 @@ API: 여행 나가기 `POST /trips/{tripId}/leave`(혼자 남은 사람은 202 +
 | 누르는 것 | 어디서 | 동작·이동 |
 | --- | --- | --- |
 | 어두운 막, 아래로 끌기, [취소] | 모든 상태 | 닫고 원래 화면. 처리 중에는 닫히지 않게 할 예정(공통 BottomSheet 잠금 옵션) |
-| 사진·채팅 체크 | 여행 나가기 | 지울지 고르기(`deleteOwnPhotos`·`deleteOwnMessages`). 서버 정리 작업이 생기기 전까지는 체크 줄을 숨기거나 누를 수 없게 하고 `false`로 보냄 |
+| 사진·채팅 체크 | 여행 나가기 | 지울지 고르기(`deleteOwnPhotos`·`deleteOwnMessages`). 서버 정리 작업이 생기기 전까지는 체크를 끈 채로 보여 주고 "지우기는 곧 지원돼요" 안내, `false`로 보냄 |
 | [다른 사람에게 넘기기] | 여행 나가기 · 방장일 때 | S19 방장 넘기기 대상 선택(C) |
 | [나가기] | 여행 나가기 | `POST /trips/{tripId}/leave`(본문 `expectedVersion` 포함) → 성공하면 S15 여행 목록(C). 실패하면 처리 실패 상태 |
 | [나가고 여행 삭제] | 혼자 남았을 때 | 같은 API, 202 + tripDeleted → S15 |
 | [다시 시도] | 처리 실패 | 같은 요청 다시 |
 | [지우기] | 사진 삭제 | `DELETE` 사진 → S31로, 토스트 "사진 N장을 지웠어요" |
 | [탈퇴하기] | 탈퇴 | `DELETE /me` → 로그아웃 후 S01 로그인 |
+| [삭제] | 지출 삭제 | `DELETE /trips/{tripId}/expenses/{expenseId}?expectedVersion=…` → S35로, 목록·합계 갱신 |
+| [삭제] | 평가 삭제 | `DELETE /trips/{tripId}/visits/{visitId}/review` → S34 작성 상태로 |

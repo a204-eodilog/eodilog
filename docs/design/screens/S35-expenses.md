@@ -106,6 +106,6 @@
 | [닫기] | 지출 추가 상단 바 | 입력 버리고 S35로 |
 | 낸 사람 칩 | 지출 추가 | 한 명 고르기 |
 | 나눌 사람 칩 | 지출 추가 | 여러 명 고르기·해제. 0명이면 [저장] 불가 |
-| [저장] | 지출 추가 | `POST /trips/{tripId}/expenses` (수정이면 `PATCH`) → S35로, 목록·합계 갱신. 금액 0·이름 없음이면 누를 수 없음 |
+| [저장] | 지출 추가 | `POST /trips/{tripId}/expenses`(헤더 `Idempotency-Key` 필수) · 수정이면 `PATCH /trips/{tripId}/expenses/{expenseId}`(본문 `expectedVersion` 필수) → S35로, 목록·합계 갱신. 금액 0·이름 없음이면 누를 수 없음 |
 | [다시 저장] | 지출 저장 실패 | 같은 입력 다시 보냄 |
 | [삭제] | 지출 수정(내 지출) | S50 확인 시트(`ConfirmSheet`, "지출 삭제" 상태)에서 확인 → `DELETE /trips/{tripId}/expenses/{expenseId}?expectedVersion=…` → S35로, 목록·합계 갱신. 지우면 이전 정산이 무효가 되어 "정산 후 지출 변경" 상태가 된다. (화면 목록 S50 진입에 S35가 있는 대로, 2026-11-04 정함) |
