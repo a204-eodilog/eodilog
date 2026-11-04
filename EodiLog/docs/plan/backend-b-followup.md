@@ -1,6 +1,6 @@
 # 백엔드 B 후속 작업 — 준비물 체크리스트·멤버 관리·경비·초대·정산·채팅·나가기·투표·코스
 
-작성일: 2026-10-29 · 상태: 체크리스트·멤버 관리 병합 완료(MR !49·!50), 경비·정산 상태 병합 완료(MR !56, 2026-10-30), 초대 링크 병합 완료(MR !58·!62), 정산 계산 병합 완료(MR !69), 채팅 REST 병합 완료(MR !71), 기본 나가기 병합 완료(MR !76), 투표 구현(EODI-161), 나가기 내 채팅 삭제·방문 기록 구현(2026-11-04, §15·§16)
+작성일: 2026-10-29 · 상태: 체크리스트·멤버 관리 병합 완료(MR !49·!50), 경비·정산 상태 병합 완료(MR !56, 2026-10-30), 초대 링크 병합 완료(MR !58·!62), 정산 계산 병합 완료(MR !69), 채팅 REST 병합 완료(MR !71), 기본 나가기 병합 완료(MR !76), 투표 구현(EODI-161), 나가기 내 채팅 삭제·방문 기록 구현(2026-11-04, §15·§16), 초대 링크 취소 구현(EODI-187, §9 I-11)
 
 [B 첫 작업](backend-b-trip-basic.md)(여행 생성·조회·수정)이 끝난 뒤 A의 카카오 로그인을 기다리는 동안 진행한 B 작업이다. [분담안](../../../docs/plan/backend-first-work-split.md) §6은 이 기능들을 "첫 통합 뒤 배분"으로 두었지만, 로그인 없이 개발할 수 있고 여행 패키지 안에서 끝나는 것부터 B가 먼저 맡았다. A와 겹치는 파일(`user`·`auth` 패키지, `SecurityConfig`)은 건드리지 않는다.
 
@@ -13,6 +13,7 @@
 | 준비물 체크리스트 | `GET/POST /trips/{tripId}/checklist`, `PATCH/DELETE /trips/{tripId}/checklist/{itemId}` | EODI-110 | 병합(MR !49) |
 | 멤버 관리 | `GET /trips/{tripId}/members`, `POST /trips/{tripId}/owner-transfer`, `DELETE /trips/{tripId}/members/{memberId}` | EODI-111 | 병합(MR !50) |
 | 초대 링크 | `POST /trips/{tripId}/invitations`, `GET /invitations/{token}`(공개), `POST /invitations/{token}/accept` | EODI-125, -128 | 병합(MR !58·!62, §9) |
+| 초대 링크 취소 | `DELETE /trips/{tripId}/invitations` | EODI-187 | 구현(§9 I-11) |
 | 경비·정산 상태 | `GET/POST /trips/{tripId}/expenses`, `PATCH/DELETE /trips/{tripId}/expenses/{expenseId}`, `GET /trips/{tripId}/settlement`, `POST /trips/{tripId}/settlements`(409) | EODI-122 | 병합(MR !56, §8) |
 | 정산 계산 | `POST /trips/{tripId}/settlements`, `GET /trips/{tripId}/settlements`, `GET /trips/{tripId}/settlements/{settlementId}`, `GET /trips/{tripId}/settlement` | EODI-134 | 병합(MR !69, §10) |
 | 채팅 REST | `GET /chat/rooms`, `GET /trips/{tripId}/chat-room`, `GET/POST /chat/rooms/{roomId}/messages` | EODI-136 | 병합(MR !71, §12) |
@@ -148,8 +149,9 @@ Q-4 기본값은 2026-10-30에 정했다(만료 7일, 정원 20명). 나머지�
 | I-8 | 수락의 부수 효과 | 멤버십·채팅 참여를 한 트랜잭션에서 만들고 여행 `version`을 1 올린다. 참여 알림은 아직 없다 | 응답 `members`가 바뀌므로 M-2와 같은 규칙. 알림 테이블이 없다 |
 | I-9 | 미리보기 인증 | 공개 경로(`SecurityConfig`의 `GET /api/v1/invitations/*`). `BearerFilter`는 그대로 거쳐서, 토큰을 보내면 `inviterUser` 회원 카드를 주고 안 보내면 null. 잘못된 토큰을 보내면 401, 가입 대기 토큰은 403 `PROFILE_INCOMPLETE` | 명세 InvitationPreview "익명 inviterUser=null". `shouldNotFilter`에 넣으면 로그인 사용자를 알 수 없다 |
 | I-10 | 이미 참여 표시 | 미리보기 응답 `alreadyMember`: 로그인한 사람이 그 여행의 ACTIVE 멤버면 true, 익명·비멤버는 false. true면 링크가 만료·무효여도 410 대신 200으로 미리보기를 준다. 앱은 true일 때 [참여하기] 대신 "이미 참여 중"을 보여 주고 수락 API로 여행을 받아 이동한다 | PRD WD-FR-04 검증 "무효/만료/이미 참여 구분", S04 상태 "이미 참여". 미리보기는 여행 ID를 숨기므로 앱이 스스로 판단할 수 없다 |
+| I-11 | 링크 취소 | `DELETE /trips/{tripId}/invitations` → 204. **여행 단위**로 지금 쓸 수 있는 링크(`revoked_at` 없음·만료 전)를 무효화하고 새 링크는 만들지 않는다. ACTIVE 멤버 누구나, 쓸 수 있는 링크가 없으면(이미 취소·만료·발급 이력 없음) 그대로 204. 판정은 경로 형식 400 → 여행 행 잠금 후 ACTIVE 멤버 404 → 무효화. 취소된 링크는 재발급과 같은 410 `INVITATION_REVOKED`(문구를 "더 이상 쓸 수 없는 초대 링크입니다. 동행에게 새 링크를 받아 주세요."로 바꿔 두 경우를 함께 덮는다). 여행 version·멱등키·알림 없음 | A 분담 제안(11/04) B-1, EODI-187. 토큰 원문이 없고 링크 ID는 발급자 응답에만 있어 여행 단위로 정했다. 발급이 멤버 누구나이고 재발급만으로도 이전 링크를 막을 수 있어 권한을 좁히지 않는다. 발급·수락과 같은 여행 행 잠금이라 동시 수락은 취소 전에 끝나거나 410이다 |
 
-남은 것: 새 발급 없이 링크만 끊는 취소 API, 참여 알림, 프론트 초대 화면 경로가 정해진 뒤의 `url` 설정.
+남은 것: 참여 알림, 프론트 초대 화면 경로가 정해진 뒤의 `url` 설정, 필요하면 지금 링크가 있는지 보는 조회(토큰 없이 `expiresAt`만).
 
 ## 10. 정산 계산 정책
 
