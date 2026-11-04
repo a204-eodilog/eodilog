@@ -20,11 +20,13 @@ export type BottomSheetProps = {
   children?: ReactNode;
   /** 맨 아래 버튼 줄. 보통 [취소] [확인] */
   footer?: ReactNode;
+  /** 서버 처리 중처럼 닫히면 안 될 때. 어두운 막을 눌러도, 아래로 끌어도 닫히지 않는다 */
+  locked?: boolean;
 };
 
 /**
  * 아래에서 올라오는 시트. 장소 추가, 투표 열기, 나가기 확인에 쓴다.
- * 어두운 막을 누르거나 아래로 끌면 닫힌다. 높이는 내용에 맞춰 잡힌다.
+ * 어두운 막을 누르거나 아래로 끌면 닫힌다(locked면 안 닫힌다). 높이는 내용에 맞춰 잡힌다.
  * 앱 시작 레이아웃(src/app/_layout.tsx)의 BottomSheetModalProvider 안에서만 동작한다.
  */
 export function BottomSheet({
@@ -34,6 +36,7 @@ export function BottomSheet({
   description,
   children,
   footer,
+  locked = false,
 }: BottomSheetProps) {
   const insets = useSafeAreaInsets();
   const ref = useRef<BottomSheetModal>(null);
@@ -57,10 +60,11 @@ export function BottomSheet({
         appearsOnIndex={0}
         disappearsOnIndex={-1}
         opacity={1}
+        pressBehavior={locked ? 'none' : 'close'}
         style={[props.style, styles.backdrop]}
       />
     ),
-    [],
+    [locked],
   );
 
   return (
@@ -68,7 +72,7 @@ export function BottomSheet({
       ref={ref}
       onDismiss={onClose}
       enableDynamicSizing
-      enablePanDownToClose
+      enablePanDownToClose={!locked}
       backdropComponent={renderBackdrop}
       backgroundStyle={styles.sheet}
       handleIndicatorStyle={styles.handle}

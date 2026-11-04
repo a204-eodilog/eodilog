@@ -22,6 +22,8 @@ import {
   TextField,
   toast,
 } from '@/components/ui';
+import { LeaveTripSheet } from '@/features/trip/components/leave-trip-sheet';
+import type { LeaveTripFailure } from '@/features/trip/hooks/use-leave-trip';
 import { formatThousands, parseAmount } from '@/lib/format-number';
 import { colors, layout, spacing, typography } from '@/theme';
 
@@ -51,10 +53,14 @@ const ICONS: IconName[] = [
   'calculator',
   'star',
   'trash',
+  'leave',
+  'image',
 ];
 
 /** 서버 상한 9,007,199,254,740,991원(16자리) + 쉼표 5개 */
 const AMOUNT_MAX_LENGTH = 21;
+
+type LeaveExample = 'member' | 'owner' | 'alone' | 'fail' | 'conflict';
 
 const TASTES = ['바다', '맛집', '카페', '산책', '야경', '사진'];
 
@@ -71,6 +77,9 @@ export default function UiCatalog() {
   const [confirm, setConfirm] = useState<'photo' | 'withdraw' | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [confirmError, setConfirmError] = useState<string>();
+  const [leave, setLeave] = useState<LeaveExample | null>(null);
+  const [leaving, setLeaving] = useState(false);
+  const [leaveFailure, setLeaveFailure] = useState<LeaveTripFailure>();
   const [loading, setLoading] = useState(false);
   const [view, setView] = useState<'catalog' | 'empty' | 'first' | 'error'>('catalog');
 
@@ -93,11 +102,30 @@ export default function UiCatalog() {
     setTimeout(() => {
       setConfirming(false);
       if (confirm === 'withdraw') {
-        setConfirmError('탈퇴하지 못했어요. 다시 시도해 주세요');
+        setConfirmError('탈퇴하지 못했어요');
         return;
       }
       setConfirm(null);
       toast.success('사진 2장을 지웠어요');
+    }, 1000);
+  };
+
+  const openLeave = (kind: LeaveExample) => {
+    setLeaveFailure(undefined);
+    setLeave(kind);
+  };
+
+  // 실패·충돌 예시만 1초 뒤 실패하고, 나머지는 나간 것처럼 닫는다
+  const fakeLeave = () => {
+    setLeaving(true);
+    setTimeout(() => {
+      setLeaving(false);
+      if (leave === 'fail' || leave === 'conflict') {
+        setLeaveFailure(leave === 'fail' ? 'error' : 'conflict');
+        return;
+      }
+      setLeave(null);
+      toast.success(leave === 'alone' ? '여행을 삭제했어요' : '여행에서 나왔어요');
     }, 1000);
   };
 
@@ -353,6 +381,17 @@ export default function UiCatalog() {
               onPress={() => openConfirm('withdraw')}
             />
           </Row>
+          <Row>
+            <Button label="여행 나가기" variant="neutral" onPress={() => openLeave('member')} />
+            <Button label="방장일 때" variant="neutral" onPress={() => openLeave('owner')} />
+            <Button label="혼자 남았을 때" variant="neutral" onPress={() => openLeave('alone')} />
+            <Button label="나가기 실패 예시" variant="neutral" onPress={() => openLeave('fail')} />
+            <Button
+              label="먼저 바뀐 예시"
+              variant="neutral"
+              onPress={() => openLeave('conflict')}
+            />
+          </Row>
         </Section>
 
         <Section title="짧은 알림 (토스트)">
@@ -438,8 +477,24 @@ export default function UiCatalog() {
         title="어디로그를 탈퇴할까요?"
         description={'내 기록이 모두 지워져요.\n함께 만든 여행은 동행에게 남아요'}
         confirmLabel={confirmError ? '다시 시도' : '탈퇴하기'}
+        confirmIcon={confirmError ? 'refresh' : undefined}
         loading={confirming}
         error={confirmError}
+        errorDescription="다시 시도해 주세요"
+      />
+      {/* 방장일 때는 서버가 지우기를 받게 된 뒤의 모습(체크를 고를 수 있음)을 미리 보여 준다 */}
+      <LeaveTripSheet
+        visible={leave !== null}
+        onClose={() => setLeave(null)}
+        onConfirm={fakeLeave}
+        tripTitle="겨울 여행"
+        nextOwnerName={leave === 'owner' ? '민준' : undefined}
+        alone={leave === 'alone'}
+        ownPhotoCount={12}
+        onHandOver={() => toast.show('S19 방장 넘기기로 가요')}
+        cleanupSupported={leave === 'owner'}
+        loading={leaving}
+        failure={leaveFailure}
       />
     </SafeAreaView>
   );

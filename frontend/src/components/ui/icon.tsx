@@ -28,7 +28,9 @@ export type IconName =
   | 'card'
   | 'calculator'
   | 'star'
-  | 'trash';
+  | 'trash'
+  | 'leave'
+  | 'image';
 
 type IconProps = {
   name: IconName;
@@ -68,6 +70,8 @@ const PATHS: Record<IconName, string> = {
     'M7 3.5H17A2 2 0 0 1 19 5.5V18.5A2 2 0 0 1 17 20.5H7A2 2 0 0 1 5 18.5V5.5A2 2 0 0 1 7 3.5ZM8.5 7.5H15.5M8.5 12H8.51M12 12H12.01M15.5 12H15.51M8.5 15.5H8.51M12 15.5H12.01M15.5 15.5H15.51',
   star: 'M12 3.5L14.6 8.8L20.4 9.6L16.2 13.7L17.2 19.5L12 16.8L6.8 19.5L7.8 13.7L3.6 9.6L9.4 8.8L12 3.5Z',
   trash: 'M4 7H20M9 7V4H15V7M6 7L7 20H17L18 7M10 11V16M14 11V16',
+  leave: 'M14 4H18A2 2 0 0 1 20 6V18A2 2 0 0 1 18 20H14M9 8L5 12L9 16M5 12H15',
+  image: 'M4 5H20V19H4V5ZM4 16L9 11L14 16M13 15L16 12L20 16M15.5 8.5V8.6',
 };
 
 /** 채워도 선으로만 남겨야 하는 부분. 가방 손잡이처럼 몸통과 따로 그린다. */

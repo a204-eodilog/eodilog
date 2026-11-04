@@ -24,6 +24,8 @@ export type { HeaderProps } from './header';
 export { Dot, Icon } from './icon';
 export type { IconName } from './icon';
 export { MascotTraveler } from './mascot';
+export { RoundCheck } from './round-check';
+export type { RoundCheckProps } from './round-check';
 export { TABS, TabBar } from './tab-bar';
 export type { TabBarProps, TabKey } from './tab-bar';
 export { Tag } from './tag';
