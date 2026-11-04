@@ -1,11 +1,18 @@
 /** 서버 공통 응답. 성공은 { data }, 실패는 { error } (docs/api-spec.md §1). */
 export type DataResponse<T> = { data: T };
 
+/** 목록 응답. 다음 쪽은 nextCursor를 cursor로 보내 받는다 */
+export type PageResponse<T> = {
+  data: T[];
+  page: { nextCursor: string | null; hasNext: boolean };
+};
+
 export type ApiErrorBody = {
   error: {
     code: string;
     message: string;
-    fields?: Record<string, string> | null;
+    /** 입력 칸별 오류. 없으면 빈 배열 */
+    fields?: { field: string; message: string }[] | null;
     traceId?: string;
   };
 };
