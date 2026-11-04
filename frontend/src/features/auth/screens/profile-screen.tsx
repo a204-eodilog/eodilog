@@ -57,7 +57,7 @@ export function ProfileScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={['left', 'right', 'bottom']}>
       <Header
         title="프로필 만들기"
         right={

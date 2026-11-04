@@ -11,7 +11,7 @@ import { colors, layout, spacing, typography } from '@/theme';
  */
 export function PreferencesScreen() {
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={['left', 'right', 'bottom']}>
       <Header title="취향 입력" hideBack />
       <View style={styles.body}>
         <Text style={[typography.body, styles.text]}>

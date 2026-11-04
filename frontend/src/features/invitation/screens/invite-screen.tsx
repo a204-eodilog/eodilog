@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, ErrorState, Header, Icon, type IconName, toast } from '@/components/ui';
+import { withRo } from '@/lib/korean';
 import { useSessionStore } from '@/stores/session-store';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -86,7 +87,7 @@ function InviteContent({ token, first }: { token: string; first: boolean }) {
 
   if (preview.isPending) {
     return (
-      <SafeAreaView style={styles.screen}>
+      <SafeAreaView style={styles.screen} edges={['left', 'right', 'bottom']}>
         <Header />
         <View style={styles.center}>
           <ActivityIndicator color={colors.brand.primary} />
@@ -97,7 +98,7 @@ function InviteContent({ token, first }: { token: string; first: boolean }) {
 
   if (preview.isError) {
     return (
-      <SafeAreaView style={styles.screen}>
+      <SafeAreaView style={styles.screen} edges={['left', 'right', 'bottom']}>
         <Header />
         <ErrorState
           title="초대를 불러오지 못했어요"
@@ -119,7 +120,7 @@ function InviteContent({ token, first }: { token: string; first: boolean }) {
           </View>
           <Text style={[typography.title1, styles.noticeTitle]}>이미 참여한 여행이에요</Text>
           <Text style={[typography.body, styles.noticeDescription]}>
-            {tripTitle}(으)로 바로 이동할게요.
+            {withRo(tripTitle)} 바로 이동할게요.
           </Text>
           <View style={styles.moving}>
             <ActivityIndicator size="small" color={colors.text.icon} />
@@ -131,7 +132,7 @@ function InviteContent({ token, first }: { token: string; first: boolean }) {
   }
 
   return (
-    <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={styles.screen} edges={['left', 'right']}>
       <Header title="여행 초대" onBack={() => leave('/home')} />
       <View style={styles.content}>
         <View style={styles.inviter}>
@@ -189,7 +190,7 @@ function Notice({
   onHome: () => void;
 }) {
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={['left', 'right', 'bottom']}>
       <Header onBack={onHome} />
       <View style={styles.notice}>
         <View style={styles.circle}>
