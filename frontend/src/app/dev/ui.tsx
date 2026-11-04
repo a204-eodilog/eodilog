@@ -62,7 +62,6 @@ const ICONS: IconName[] = [
   'image',
 ];
 
-
 type LeaveExample = 'member' | 'owner' | 'alone' | 'fail' | 'conflict';
 
 const TASTES = ['바다', '맛집', '카페', '산책', '야경', '사진'];
