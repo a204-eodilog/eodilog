@@ -89,8 +89,8 @@
 | PUT | `/me/preferences` | 본인 | `PreferencesWrite` | `Preferences` / 200 | 직접 입력 전체 교체, 추론 허용과 공유 범위 별도 |
 | PUT | `/trips/{tripId}/members/me/preference-consent` | 멤버 | `{scope:EXPLICIT_ONLY\|EXPLICIT_AND_INFERRED\|NONE\|INHERIT}` | `{scope:string,effectiveScope:string}` / 200 | D-17. 나만 보기는 NONE, 추론 허용을 대신하지 않음 |
 | DELETE | `/me/preferences/inferred/{key}` | 본인 | 없음 | 204 | 추론 항목 개별 제거·재추론 거부 표식. 재추론 기간 Q-5 |
-| GET | `/me/settings` | 본인 | 없음 | `UserSettings` / 200 | AI 기능·종류별 알림 설정 |
-| PATCH | `/me/settings` | 본인 | `SettingsPatch` | `UserSettings` / 200 | expectedVersion 검사, 실패 시 전체 이전 설정 유지 |
+| GET | `/me/settings` | 본인 | 없음 | `UserSettings` / 200 | 가입 완료 사용자만 접근. 첫 조회에서 기본 설정 행을 생성하고 version 1 반환 |
+| PATCH | `/me/settings` | 본인 | `SettingsPatch` | `UserSettings` / 200 | 가입 완료 사용자만 접근. expectedVersion 불일치 시 409 VERSION_CONFLICT 및 전체 이전 설정 유지. 제공한 필드만 원자적으로 저장하고 값이 실제 바뀔 때만 version 증가 |
 
 기능 설정은 자동 작업 시작과 결과 반영 모두에 적용한다. OFF면 새 자동 작업을 시작하지 않고, 명시적 사용자 재시도는 409 AI_FEATURE_DISABLED 제안으로 구분한다. AUTO는 허용된 범위의 결과만 반영하고, CONFIRM은 저장 전 사용자의 적용/확인 동작을 요구한다. 추출 후보 저장은 일반 장소/북마크 API, 준비물 채택은 sourceJobId·suggestionIndex를 담은 POST, 사진 분류는 apply, 방문은 후보 confirm으로 연결한다. 자동 적용할 판정 기준이 미합의인 기능은 기준 확정 전 AUTO 실행을 비활성화한다. 날씨는 항상 제안만이며 코스 변경안은 사용자 적용 시 서버가 기준 버전을 검사한다. 진행 중 설정 변경의 취소/유지 세부는 Q-11이다. 구체 모드/기본값은 D-19 제안이다.
 
@@ -370,8 +370,8 @@ jobs 공통 기반은 PostgreSQL 등록·실행·조회만 제공한다. kind별
 | ChatRoom | `id,type:TRIP,tripId:id,participants:UserCard[],lastMessage:Message\|null` |
 | Message | `id,roomId,sequence:integer,senderId:id\|null,type:TEXT\|SYSTEM,text:string\|null,clientMessageId:id\|null,eventId:id\|null,target:{type:string,id:id}\|null,eventReadAt:datetime\|null,createdAt:datetime,deletedAt:datetime\|null` |
 | Notification | `id,eventId,kind:string,message:string,target:{type:string,id:id},readAt:datetime\|null,createdAt:datetime` — 임의 이동 URL 대신 대상 타입·ID 반환 |
-| UserSettings | `version:integer,ai:{photoClassification:AiMode,visitDetection:AiMode,placeExtraction:AiMode,checklist:AiMode,weather:SUGGEST_ONLY\|OFF},notifications:{followRequests:boolean,voteCourse:boolean,tripChanges:boolean}`. AiMode=AUTO/CONFIRM/OFF. 초기값은 CONFIRM·날씨 SUGGEST_ONLY·알림 true 제안 |
-| SettingsPatch | `expectedVersion:integer,ai?:UserSettings.ai의 부분 필드,notifications?:UserSettings.notifications의 부분 필드`. 성공 시 원자 저장, 생략은 유지 |
+| UserSettings | `version:integer,ai:{photoClassification:AiMode,visitDetection:AiMode,placeExtraction:AiMode,checklist:AiMode,weather:SUGGEST_ONLY\|OFF},notifications:{followRequests:boolean,voteCourse:boolean,tripChanges:boolean}`. AiMode=AUTO/CONFIRM/OFF. 첫 조회 시 version 1, AI 네 필드 CONFIRM·날씨 SUGGEST_ONLY·알림 세 필드 true로 저장 |
+| SettingsPatch | `expectedVersion:integer,ai?:UserSettings.ai의 부분 필드,notifications?:UserSettings.notifications의 부분 필드`. 생략은 유지, null·알 수 없는 필드/모드는 400 VALIDATION_ERROR. 현재 version 일치 시 원자 저장하고 실제 값 변경 때만 version 증가; 불일치는 409 VERSION_CONFLICT |
 | SavedPlacePage | `{items:SavedPlace[],totals:{allPlaceCount:integer,overlapPlaceCount:integer,filteredCount:integer},page:{nextCursor:string\|null,hasNext:boolean}}` |
 | RegionDetail | `region:Region,introduction:string\|null,representativePlaces:Place[],partialErrors:string[]` |
 | PlaceSocialSummary | `place:Place,visitorCount:integer,visitors:UserCard[],averageScore:number\|null,reviewCount:integer,partialErrors:string[]`. 평균·표본은 허용된 게시 평가로만 계산 |
