@@ -30,6 +30,15 @@ export async function getMe(): Promise<MyProfile> {
   return data.data;
 }
 
+/**
+ * 닉네임으로 가입을 마친다. 서버 규칙: 앞뒤 공백을 뺀 1~50자. 다른 필드는 아직 받지 않는다.
+ * 가입 대기 토큰으로도 부를 수 있고, 성공하면 같은 토큰으로 바로 서비스를 쓸 수 있다.
+ */
+export async function updateNickname(nickname: string): Promise<MyProfile> {
+  const { data } = await apiClient.patch<DataResponse<MyProfile>>('/me', { nickname });
+  return data.data;
+}
+
 /** 현재 기기의 서버 세션만 끊는다. 다른 기기 로그인은 남는다 */
 export async function deleteCurrentSession(): Promise<void> {
   await apiClient.delete('/auth/session', { timeout: 5_000 });
