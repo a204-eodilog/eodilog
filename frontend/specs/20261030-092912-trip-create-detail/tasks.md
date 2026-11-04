@@ -152,3 +152,11 @@
 4. **S17**: T044~T053
 5. **검사**: T055·T056
 6. **기기 확인**: T057~T060. 결과는 측정값과 함께 남긴다(포트폴리오 기록용, 실제 값만)
+
+## Phase 8: Convergence
+
+2026-11-04 `/speckit-converge`로 명세와 지금 코드를 대조해 남은 일만 붙였다. 기기에서 확인할 일은 Phase 7에 있다.
+
+- [X] T061 [US3] `src/features/trip/components/trip-menu-grid.tsx`: 이미 있는 화면은 메뉴에서 이동하게 한다. 지금은 dev에서 들어온 경비 목록(`/trips/[tripId]/expenses`)이 있는데도 [경비]가 "준비 중이에요"를 띄운다. `TripMenuGrid`가 `tripId`를 받아, 메뉴에 갈 주소가 있으면 `router.push`하고 없으면 지금처럼 토스트를 띄운다. `src/features/trip/screens/trip-detail-screen.tsx`에서 `tripId`를 넘긴다 per US3/AC6, FR-020, FR-020a (contradicts)
+- [X] T062 [US1] `src/features/trip/screens/new-trip-screen.tsx`: 안드로이드 뒤로 버튼이나 뒤로 제스처로 나가도 입력을 버린다. 지금은 헤더 X(`close`)에서만 `reset()`해서, 다시 열면 이전 이름·기간·여행지가 남아 있다. 화면이 스택에서 빠질 때(언마운트) `reset()`하고, 여행지 검색 화면을 위에 쌓을 때는 입력이 그대로 남게 한다 per US1/AC12 (partial)
+- [ ] T063 [US1] 홈 첫 방문(S05)의 [+ 새 여행]을 `/trips/new`로 연결한다. 지금 홈(`src/features/home/screens/home-screen.tsx`)은 로그아웃 버튼만 있는 자리 화면이라 홈에서 새 여행으로 갈 길이 없다. S05는 A 담당이므로 A의 첫 방문 화면이 들어온 뒤 버튼의 이동만 붙인다 per US1/AC10, FR-009a (missing)
