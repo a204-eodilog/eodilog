@@ -30,7 +30,9 @@ export type IconName =
   | 'star'
   | 'trash'
   | 'camera'
-  | 'lock';
+  | 'lock'
+  | 'leave'
+  | 'image';
 
 type IconProps = {
   name: IconName;
@@ -73,6 +75,8 @@ const PATHS: Record<IconName, string> = {
   camera:
     'M4 8.5A1.5 1.5 0 0 1 5.5 7H8L9.5 4.5H14.5L16 7H18.5A1.5 1.5 0 0 1 20 8.5V17.5A1.5 1.5 0 0 1 18.5 19H5.5A1.5 1.5 0 0 1 4 17.5V8.5ZM12 16A3.5 3.5 0 1 0 12 9A3.5 3.5 0 0 0 12 16Z',
   lock: 'M6 11H18V20H6V11ZM8 11V8A4 4 0 0 1 16 8V11M12 14.5V16.5',
+  leave: 'M14 4H18A2 2 0 0 1 20 6V18A2 2 0 0 1 18 20H14M9 8L5 12L9 16M5 12H15',
+  image: 'M4 5H20V19H4V5ZM4 16L9 11L14 16M13 15L16 12L20 16M15.5 8.5V8.6',
 };
 
 /** 채워도 선으로만 남겨야 하는 부분. 가방 손잡이처럼 몸통과 따로 그린다. */

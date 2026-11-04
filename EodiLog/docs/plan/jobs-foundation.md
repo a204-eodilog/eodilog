@@ -22,13 +22,13 @@ public JobRef request(UUID authenticatedUserId, UUID tripId) {
 * `JobAccessPolicy`는 `canSubmit`, `canExecute`, `canComplete`, `canRead` 네 단계와 `publicResult` allowlist projection을 모두 구현한다. 일반 AI는 각 단계에서 현재 ACTIVE 멤버십·동의·기준 version을 도메인 소유자가 재검사한다. 실행/완료 정책 철회는 CANCELLED다. 권한 검사와 완료 hook이 공유할 도메인 행은 같은 트랜잭션에서 잠가 TOCTOU를 방지한다.
 * 동일 kind의 handler와 policy를 각각 정확히 하나 등록한다. 한쪽 누락·중복은 시작 실패다. 둘 다 없는 kind는 submit을 구성 오류로 거부한다.
 * `JobContext(jobId,executionId,attempt,submission)`의 **jobId를 외부 공급자의 멱등 키**로 사용한다. executionId는 재선점 때마다 바뀌므로 외부 멱등 키로 쓰지 않는다.
-* `complete`는 유효 executionId·미만료 임대를 확인하고 job 행을 잠근 뒤 호출된다. 결과 저장과 도메인 반영은 같은 짧은 트랜잭션이다. hook 실패 시 모두 롤백한다. 외부 I/O·자체 REQUIRES_NEW·별도 비동기 처리를 hook 안에서 하지 않는다. hook은 같은 jobId에 대해 도메인 차원에서도 멱등해야 한다.
+* `complete`는 유효 executionId·미만료 임대를 확인하고 job 행을 잠근 뒤 호출된다. 결과 저장과 도메인 반영은 같은 짧은 트랜잭션이다. hook 실패 시 모두 롤백하고, 작업은 `TEMPORARY_FAILURE`로 기록해 max-attempts 안에서 다시 선점·실행한다(상한을 넘기면 FAILED). 재시도는 execute부터 다시 돌므로 외부 I/O도 jobId 멱등 키에 기대야 한다(EODI-168 제안, B). 외부 I/O·자체 REQUIRES_NEW·별도 비동기 처리를 hook 안에서 하지 않는다. hook은 같은 jobId에 대해 도메인 차원에서도 멱등해야 한다.
 
 ## 실행·장애 보장
 
 PostgreSQL `FOR UPDATE SKIP LOCKED`로 한 번에 하나 선점하고 짧은 트랜잭션을 끝낸다. 선점 대상은 이 인스턴스에 handler가 등록된 kind로 한정한다. 따라서 롤링 배포 중 구버전 인스턴스가 모르는 kind를 선점해 취소하지 않는다. 네트워크 실행은 고정 크기 ThreadPoolExecutor(concurrency 기본 2)에서 수행한다. 실행 슬롯(Semaphore)을 먼저 확보한 뒤에만 선점하므로 선점이 실행 스레드 수를 넘지 않는다. 슬롯은 실행 스레드가 실제로 반환될 때 돌려준다. 별도 단일 poll 스레드는 실행 완료를 기다리지 않으며 Clock 기준 timeout·heartbeat를 처리한다. 완료 시 execution_started_at 기준 timeout도 다시 확인한다.
 
-정상 종료(@PreDestroy)로 interrupt된 실행은 실패로 확정하지 않고 RUNNING으로 남겨 둔다. 이 실행은 임대가 끝난 뒤 다른 인스턴스나 재시작한 인스턴스가 재선점한다. 이미 외부 부수 효과가 났을 수 있으므로 시도 횟수는 소모된 것으로 본다. 그래서 마지막 시도 중에 종료되면 FAILED(TIMEOUT)로 끝난다. 종료 시 실행은 최대 5초 기다린다. 선점은 했지만 실행이 시작되지 않은 경우(종료 중 실행 거부)에는 선점을 되돌리고 시도 횟수도 복구한다. 임대가 끝난 RUNNING은 새로운 executionId로 재선점하며 마지막 시도까지 소진한 행은 FAILED로 정리한다. 늦은 heartbeat·완료는 현재 executionId·임대가 다르면 무시하고 hook을 실행하지 않는다. 일시 장애와 timeout만 재시도하며 다음 실행 시각 전에는 선점하지 않는다. 영구 실패는 FAILED, 정책 철회는 CANCELLED다. 공개 오류는 JobFailure의 안전한 코드·문구만 사용하며 FAILED·CANCELLED 상태에서만 반환한다. 재시도 대기 중인 QUEUED 작업의 직전 오류는 공개하지 않는다. 입력·결과·외부 예외·DB 메시지·토큰을 worker가 로그로 출력하지 않는다.
+정상 종료(@PreDestroy)로 interrupt된 실행은 실패로 확정하지 않고 RUNNING으로 남겨 둔다. 이 실행은 임대가 끝난 뒤 다른 인스턴스나 재시작한 인스턴스가 재선점한다. 이미 외부 부수 효과가 났을 수 있으므로 시도 횟수는 소모된 것으로 본다. 그래서 마지막 시도 중에 종료되면 FAILED(TIMEOUT)로 끝난다. 종료 시 실행은 최대 5초 기다린다. 선점은 했지만 실행이 시작되지 않은 경우(종료 중 실행 거부)에는 선점을 되돌리고 시도 횟수도 복구한다. 임대가 끝난 RUNNING은 새로운 executionId로 재선점하며 마지막 시도까지 소진한 행은 FAILED로 정리한다. 늦은 heartbeat·완료는 현재 executionId·임대가 다르면 무시하고 hook을 실행하지 않는다. 일시 장애·timeout·완료 hook 실패만 재시도하며 다음 실행 시각 전에는 선점하지 않는다. 영구 실패는 FAILED, 정책 철회는 CANCELLED다. 공개 오류는 JobFailure의 안전한 코드·문구만 사용하며 FAILED·CANCELLED 상태에서만 반환한다. 재시도 대기 중인 QUEUED 작업의 직전 오류는 공개하지 않는다. 입력·결과·외부 예외·DB 메시지·토큰을 worker가 로그로 출력하지 않는다.
 
 **at-least-once** 기반이며 정확히 한 번의 외부 부수 효과를 보장하지 않는다. 프로세스 중단·응답 유실로 실행이 중복될 수 있다. timeout은 interrupt를 요청하며 이를 무시하는 실행은 계속 남을 수 있다. 이런 스레드는 executor 용량을 계속 차지해 새 외부 실행을 제한하고, 임대 fencing이 늦은 DB 완료를 차단한다. 외부 I/O 자체에도 공급자 timeout과 jobId 멱등성을 적용해야 한다. 모든 실행 스레드가 멈추면 해당 인스턴스의 새 실행은 진행하지 못하므로 운영 복구가 필요하다.
 

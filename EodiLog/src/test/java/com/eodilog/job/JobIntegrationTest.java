@@ -118,6 +118,35 @@ class JobIntegrationTest {
         assertThat(state(id)).isEqualTo("RUNNING");
         assertThat(jdbc.queryForObject("SELECT nickname FROM users WHERE id=?", String.class, user)).isEqualTo("original");
     }
+    @Test void completionHookFailureIsRetriedThenFailsAfterMaxAttempts() {
+        fixtures.throwHook = true;
+        var id = submit();
+        for (int attempt = 1; attempt <= properties.maxAttempts(); attempt++) {
+            assertThat(worker.pollOnce()).isTrue();
+            awaitState(id, attempt < properties.maxAttempts() ? "QUEUED" : "FAILED");
+            assertThat(jdbc.queryForObject("SELECT attempt FROM jobs WHERE id=?", Integer.class, id)).isEqualTo(attempt);
+            // The hook's own write rolled back with the result every time.
+            assertThat(jdbc.queryForObject("SELECT nickname FROM users WHERE id=?", String.class, user)).isEqualTo("original");
+            if (attempt < properties.maxAttempts()) {
+                assertThat(service.get(user, id).error()).isNull();
+                clock.advance(properties.retryDelay());
+            }
+        }
+        assertThat(service.get(user, id).error().code()).isEqualTo("TEMPORARY_FAILURE");
+        assertThat(fixtures.hooks).hasValue(0);
+    }
+    @Test void completionHookRecoversOnRetry() {
+        fixtures.throwHook = true;
+        var id = submit();
+        assertThat(worker.pollOnce()).isTrue();
+        awaitState(id, "QUEUED");
+        fixtures.throwHook = false;
+        clock.advance(properties.retryDelay());
+        assertThat(worker.pollOnce()).isTrue();
+        awaitState(id, "SUCCEEDED");
+        assertThat(fixtures.hooks).hasValue(1);
+        assertThat(jdbc.queryForObject("SELECT nickname FROM users WHERE id=?", String.class, user)).isEqualTo("completed");
+    }
     @Test void retriesAreDelayedAndBoundedToThreeAttempts() {
         var id = submit();
         for (int attempt = 1; attempt <= 3; attempt++) {

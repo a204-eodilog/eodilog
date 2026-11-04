@@ -11,10 +11,10 @@
 | 상태 | 피그마 | 달라지는 점 |
 | --- | --- | --- |
 | 기본 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-3621) | 아래 "기본" 그대로. "동행과 같이"가 골라져 있고 여행 두 개 중 첫 번째 선택 |
-| 참여 중인 여행 없음 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-3983) | 여행 목록 자리에 안내 "참여 중인 여행이 없어요⏎개인 즐겨찾기에만 저장돼요". 그룹 칸은 누를 수 없음 |
-| 저장 완료 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-4637) | 시트가 닫히고 토스트 "강릉 바다 여행에 담았어요" + 글자 버튼 [보기]. 공통 `toast`에 버튼 자리가 필요 |
+| 참여 중인 여행 없음 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-3983) | 아래 "그 밖의 상태" 참고 |
+| 저장 완료 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-4637) | 아래 "그 밖의 상태" 참고 |
 | 가져온 장소 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-7075) | S12 추출 결과에서 연 경우. 제목 아래 "장소 2곳", "나만 보기"가 골라져 있고 여행 목록 없음. 안내 "개인 즐겨찾기는 나만 볼 수 있어요" |
-| 저장 실패 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-27887) | 기본 화면 + 오류 문구 "저장하지 못했어요", "담지 못했어요. 다시 시도해 주세요" |
+| 저장 실패 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-27887) | 아래 "그 밖의 상태" 참고 |
 
 ## 기본
 
@@ -41,3 +41,22 @@
 ## 예시 데이터
 
 여행 "연말 강릉"(12.26 – 12.27, 민준·지우), "겨울 여행"(11.14 – 11.15, 서연·민준·지우). 피그마 예시 이름은 바꿨다.
+
+## 그 밖의 상태
+
+- **참여 중인 여행 없음** — "나만 보기"가 골라져 있고 "동행과 같이" 칸은 흐림 0.45로 누를 수 없음. 여행 목록 자리에 연회색 상자(`colors.surface.subtle`, 둥글기 24, 안쪽 18): 흰 동그라미 40 안에 여행 아이콘 20 + "참여 중인 여행이 없어요⏎개인 즐겨찾기에만 저장돼요" `typography.bodyBold`(간격 14). 그 아래 [저장] 버튼
+- **저장 완료** — 시트가 닫히고 [README 상태 공통 모양](README.md#상태-공통-모양)의 **버튼 있는 토스트**: 핀 아이콘 22 + "강릉 바다 여행에 담았어요" + [보기]
+- **저장 실패** — 기본 시트 그대로 두고 안내 줄 아래(위 16)에 [README 상태 공통 모양](README.md#상태-공통-모양)의 **오류 띠**: "저장하지 못했어요", "담지 못했어요. 다시 시도해 주세요". 저장 버튼이 [다시 저장](같은 동그라미)
+
+## 버튼과 이동
+
+[사용자 흐름](../../flow/user-flow.md) 기준. 누르는 것마다 어디로 가는지와 어떤 API를 부르는지.
+
+| 누르는 것 | 어디서 | 동작·이동 |
+| --- | --- | --- |
+| 어두운 막, [닫기], 아래로 끌기 | 모든 상태 | 시트 닫고 원래 화면(S07·N3·N7·S12·S47)으로 |
+| 나만 보기 / 동행과 같이 | 기본 | 저장 위치 바꾸기. '동행과 같이'를 고르면 담을 여행 목록이 펼쳐짐. 참여 중인 여행이 없으면 '동행과 같이'는 누를 수 없음 |
+| 담을 여행 줄 | 기본 | 여행 하나 고르기(라디오) |
+| [저장] 체크 동그라미 | 기본 | 나만 보기 → `PUT /me/bookmarks/{placeId}`, 동행과 같이 → `PUT /trips/{tripId}/saved-places/{placeId}/me`. 성공하면 시트 닫고 토스트 "OO 여행에 담았어요" + [보기]. 실패하면 저장 실패 상태 |
+| 토스트 [보기] | 저장 완료 | 담은 여행의 S20 그룹 즐겨찾기(개인이면 S10) |
+| [저장] | 가져온 장소(S12에서) | 찾은 장소 전부를 고른 위치에 저장. 성공하면 S10(개인) 또는 S20(그룹)으로 |

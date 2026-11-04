@@ -62,16 +62,23 @@ public class JobWorker {
         var c = row.get().context();
         var execution = new Execution(c, clock.instant(), properties);
         execution.task = new FutureTask<>(() -> {
+            JobOutcome outcome;
             try {
                 boolean allowed = Boolean.TRUE.equals(tx.execute(s -> permitted(c, false)));
-                JobOutcome outcome;
                 if (!allowed) outcome = JobOutcome.failed(JobFailure.POLICY_REVOKED);
                 else outcome = registry.handler(c.submission().kind()).execute(c);
-                finish(c, outcome);
             } catch (Exception ignored) {
                 // Exception messages may contain external payloads or credentials.
                 // An execution interrupted by shutdown is left RUNNING so lease expiry re-claims it.
                 if (!closing) failSafely(c, JobFailure.EXECUTION_FAILED);
+                running.remove(c.executionId(), execution);
+                return null;
+            }
+            try { finish(c, outcome); }
+            catch (Exception ignored) {
+                // A failing completion hook rolled back the result and its domain writes together. Hooks must be
+                // idempotent, so the job is retried as a transient failure within max-attempts instead of being lost.
+                if (!closing) failSafely(c, JobFailure.TEMPORARY_FAILURE);
             } finally { running.remove(c.executionId(), execution); }
             return null;
         });
