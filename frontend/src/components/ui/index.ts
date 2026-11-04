@@ -13,6 +13,8 @@ export { Button } from './button';
 export type { ButtonProps } from './button';
 export { Card } from './card';
 export type { CardProps } from './card';
+export { CenterNotice } from './center-notice';
+export type { CenterNoticeProps } from './center-notice';
 export { Chip } from './chip';
 export type { ChipProps } from './chip';
 export { ConfirmSheet } from './confirm-sheet';
