@@ -12,6 +12,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   slug: config.slug ?? 'eodilog',
   plugins: [
     ...(config.plugins ?? []),
+    './plugins/with-short-object-paths',
     [
       '@mj-studio/react-native-naver-map',
       {
