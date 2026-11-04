@@ -1,6 +1,6 @@
 # 백엔드 B 후속 작업 — 준비물 체크리스트·멤버 관리·경비·초대·정산·채팅·나가기·투표·코스
 
-작성일: 2026-10-29 · 상태: 체크리스트·멤버 관리 병합 완료(MR !49·!50), 경비·정산 상태 병합 완료(MR !56, 2026-10-30), 초대 링크 병합 완료(MR !58·!62), 정산 계산 병합 완료(MR !69), 채팅 REST 병합 완료(MR !71), 기본 나가기 병합 완료(MR !76), 투표 구현(EODI-161), 나가기 내 채팅 삭제 구현(2026-11-04, §15)
+작성일: 2026-10-29 · 상태: 체크리스트·멤버 관리 병합 완료(MR !49·!50), 경비·정산 상태 병합 완료(MR !56, 2026-10-30), 초대 링크 병합 완료(MR !58·!62), 정산 계산 병합 완료(MR !69), 채팅 REST 병합 완료(MR !71), 기본 나가기 병합 완료(MR !76), 투표 구현(EODI-161), 나가기 내 채팅 삭제·방문 기록 구현(2026-11-04, §15·§16)
 
 [B 첫 작업](backend-b-trip-basic.md)(여행 생성·조회·수정)이 끝난 뒤 A의 카카오 로그인을 기다리는 동안 진행한 B 작업이다. [분담안](../../../docs/plan/backend-first-work-split.md) §6은 이 기능들을 "첫 통합 뒤 배분"으로 두었지만, 로그인 없이 개발할 수 있고 여행 패키지 안에서 끝나는 것부터 B가 먼저 맡았다. A와 겹치는 파일(`user`·`auth` 패키지, `SecurityConfig`)은 건드리지 않는다.
 
@@ -21,6 +21,7 @@
 | 코스 수동 편집 | `GET/PUT /trips/{tripId}/itinerary` | EODI-164 | 병합(MR !85, §13-3) |
 | 여행 삭제·마지막 멤버 나가기 | `DELETE /trips/{tripId}`, `POST /trips/{tripId}/leave`(혼자 남은 사람) | EODI-167 | 구현(§14) |
 | 나가기 내 채팅 삭제 | `POST /trips/{tripId}/leave`(`deleteOwnMessages=true`), LEAVE_CLEANUP 작업 | EODI-182 | 구현(§15) |
+| 방문 기록 | `POST/GET /trips/{tripId}/visits`, `DELETE /trips/{tripId}/visits/{visitId}` | EODI-183 | 구현(§16) |
 
 검증은 B 첫 작업과 같이 테스트에서 `AuthUser` principal을 넣어 했다. A 로그인 병합 뒤 실제 카카오 계정 2개로 여행 API 통합 검증(B-7)을 마쳤다([계약 §8](backend-a-b-contract.md)).
 
@@ -374,3 +375,18 @@ D-10 "그룹 이탈 시 채팅 삭제는 여행 채팅방의 본인 메시지 �
 - A의 `JobIntegrationTest` 고정 실행기를 LEAVE_CLEANUP에서 PHOTO_DELETE로 바꿨다. 실제 LEAVE_CLEANUP 실행기가 생기면 같은 kind가 두 번 등록돼 컨텍스트가 시작하지 않기 때문이다(`JobRegistry` 중복 거부). 사진 삭제 실행기를 만들 때 다시 다른 kind로 옮겨야 한다.
 - LEAVE_CLEANUP handler·policy를 `trip.service`에 등록했다. 작업 `input`은 `{tripId}`, `cleanupScope`는 메시지 ID 목록 + cutoff, `baseVersion`은 없다.
 - 마이그레이션 `V202611041000`이 `messages.ck_messages_text`를 바꾸고 `ck_messages_deleted_body`를 더한다. 실시간 채팅을 붙일 때 지운 메시지 모양(text null)을 같이 다룬다.
+
+## 16. 방문 기록 정책 (2026-11-04 사용자 확정)
+
+명세 §6 `POST/GET /trips/{tripId}/visits`, `DELETE /trips/{tripId}/visits/{visitId}`를 EODI-183에서 `visit` 패키지로 구현했다(테이블 `V202611041100`). 장소 범위(VS-2)와 중복 처리(VS-1)는 사용자가 정했고 나머지는 기존 경비·준비물 규칙에 맞춰 B가 정했다. 평가(reviews)·사진 방문 후보(visit_candidates)는 범위 밖이다.
+
+| # | 질문 | 결정 | 근거 |
+| --- | --- | --- | --- |
+| VS-1 | 같은 장소를 여러 번 체크 | 여행·멤버·장소당 지우지 않은 방문은 하나. 다시 POST하면 새로 만들지 않고 기존 방문을 **200**으로 돌려준다(`visitedAt`도 바꾸지 않음). 처음 만들면 201. 그래서 `Idempotency-Key`를 요구하지 않는다. 부분 유일 인덱스 + 여행 행 잠금으로 동시 체크도 하나로 모인다 | 사용자 결정. '다녀옴' 체크박스처럼 동작하고 평가도 장소당 하나가 된다 |
+| VS-2 | 체크할 수 있는 장소 | `places`에 있는 아무 장소. 코스에 없어도 된다. 없는 장소는 400(필드 `placeId`) | 사용자 결정. S33 화면은 코스 장소를 보여 주지만 API는 제한하지 않는다. 장소 확인은 A의 `PlaceReader` |
+| VS-3 | `visitedAt` | 필수. 서버 시각 + 5분보다 미래면 400. 여행 기간과는 비교하지 않는다 | 날짜 없는 여행이 있고 기간은 날짜(시간대 없음)라 시각과 바로 비교할 수 없다. 5분은 기기 시계 차이 여유 |
+| VS-4 | `evidenceType` | 필수, `MANUAL`만. `PHOTO`는 400(사진 후보 확인 기능으로만 생김) | 명세 요청 `evidenceType:MANUAL` |
+| VS-5 | 판정 순서 | 생성: 입력 400 → 여행 행 잠금 후 ACTIVE 404 → 없는 장소 400 → 기존 방문 200 → 생성 201. 해제: 여행 행 잠금 후 ACTIVE 404 → 방문 404 `VISIT_NOT_FOUND` → 본인 아니면 403 | 경비(E-*)·준비물과 같은 순서. 장소 존재는 DB를 봐야 해 멤버 확인 뒤 |
+| VS-6 | 목록 | `memberId` 생략 시 본인. 같은 여행 멤버십(나간 멤버 포함)만, 아니면 400(필드 `memberId`). `placeId` 필터, 정렬 `createdAt DESC, id DESC` + 공통 커서. 평가 전이라 `reviewStatus=WRITTEN`은 빈 목록, UNWRITTEN은 ALL과 같고 `reviewId`·`reviewScore`는 null | 명세 §6 "기본 본인·ALL, 같은 여행 멤버만". 요청 ID 오류는 400(M-4) |
+| VS-7 | 체크 해제 | 방문한 본인만(방장도 남의 것은 403). `deleted_at` 논리 삭제, 되살리지 않고 다시 체크하면 새 행. 평가가 생기면 평가 있는 방문은 409 `REVIEW_EXISTS`(평가 기능 때) | 명세 §6. ERD `deleted_at` |
+| VS-8 | 이탈·여행 삭제 | 나가거나 내보내져도 방문은 남고 다른 멤버가 `memberId`로 본다. 나간 사람은 404. 여행 삭제 작업(TRIP_DELETE)이 `visits`를 물리 삭제한다. 방문은 여행 version과 무관 | 정산처럼 여행이 있는 동안 기록을 남긴다(D-6) |
