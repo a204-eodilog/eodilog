@@ -14,7 +14,8 @@ export function HomeScreen() {
         <Text style={[typography.body, styles.text]}>
           로그인했어요. 친구 여행 지도는 다음 작업에서 만들어요.
         </Text>
-        <Button label="로그아웃" variant="neutral" onPress={signOut} />
+        {/* Button은 기본이 왼쪽 정렬(alignSelf flex-start)이라 가운데에 두려면 직접 정한다 */}
+        <Button label="로그아웃" variant="neutral" onPress={signOut} style={styles.logout} />
       </View>
     </SafeAreaView>
   );
@@ -31,4 +32,5 @@ const styles = StyleSheet.create({
   },
   title: { color: colors.text.default },
   text: { color: colors.text.sub, textAlign: 'center' },
+  logout: { alignSelf: 'center' },
 });

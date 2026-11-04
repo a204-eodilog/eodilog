@@ -1,7 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
-import { isAxiosError } from 'axios';
 
-import type { ApiErrorBody } from '@/api/types';
+import { apiErrorCode as errorCode } from '@/api/errors';
 
 import { leaveTrip } from '../api';
 import type { LeaveResult } from '../types';
@@ -15,11 +14,6 @@ type LeaveTripInput = {
 
 /** 나가기 실패 종류. conflict면 그 사이 다른 동행이 여행을 바꾼 것이라 여행을 다시 불러와야 한다 */
 export type LeaveTripFailure = 'conflict' | 'error';
-
-function errorCode(error: unknown): string | undefined {
-  if (!isAxiosError<ApiErrorBody>(error)) return undefined;
-  return error.response?.data?.error?.code;
-}
 
 export function leaveTripFailure(error: unknown): LeaveTripFailure {
   return errorCode(error) === 'VERSION_CONFLICT' ? 'conflict' : 'error';

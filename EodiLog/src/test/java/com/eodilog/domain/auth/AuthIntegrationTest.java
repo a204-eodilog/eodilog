@@ -232,6 +232,8 @@ class AuthIntegrationTest {
         var authorization=start();
         var session=service.exchange("KAKAO",request(authorization));
         var claims=tokens.verify(session.accessToken());
+        assertThat(claims.expiresAt()).isAfter(Instant.now());
+        assertThat(claims.expiresAt()).isBefore(Instant.now().plusSeconds(session.expiresIn()+5));
         for(String table:List.of("oauth_attempts","users","oauth_accounts","sessions")) {
             var id=jdbc.queryForObject("SELECT id FROM "+table,UUID.class);
             assertThat(id.version()).as(table).isEqualTo(7);

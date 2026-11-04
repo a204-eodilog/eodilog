@@ -103,7 +103,7 @@ class TripDeleteApiTest {
 
 		// 하위 자료는 모두 지워지고 여행 행만 tombstone으로 남는다
 		for (String table : List.of("trip_members", "trip_destinations", "chat_rooms", "itineraries",
-				"checklist_items", "expenses", "trip_invitations", "settlements", "polls")) {
+				"checklist_items", "expenses", "trip_invitations", "settlements", "polls", "visits")) {
 			assertThat(count("select count(*) from " + table + " where trip_id = ?", tripId)).as(table).isZero();
 		}
 		assertThat(count("select count(*) from messages m join chat_rooms r on r.id = m.room_id where r.trip_id = ?",
@@ -179,6 +179,11 @@ class TripDeleteApiTest {
 								+ "\"legs\":[{\"day\":1,\"fromOrder\":1,\"toOrder\":2,\"transportMode\":\"WALK\"}]}")
 								.formatted(place, place)))
 				.andExpect(status().isOk());
+		mockMvc.perform(post("/api/v1/trips/{tripId}/visits", tripId).with(authUser(friendId))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"placeId\":\"%s\",\"visitedAt\":\"2026-11-01T10:00:00Z\",\"evidenceType\":\"MANUAL\"}"
+								.formatted(place)))
+				.andExpect(status().isCreated());
 		mockMvc.perform(post("/api/v1/trips/{tripId}/checklist", tripId).with(authUser(ownerId))
 						.contentType(MediaType.APPLICATION_JSON).content("{\"label\":\"여권\"}"))
 				.andExpect(status().isCreated());

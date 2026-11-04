@@ -74,6 +74,7 @@ public class TripDeleteJobHandler implements JobHandler {
 		jdbcTemplate.update("delete from route_legs where itinerary_id in (select id from itineraries where trip_id = ?)", tripId);
 		jdbcTemplate.update("delete from itinerary_items where itinerary_id in (select id from itineraries where trip_id = ?)", tripId);
 		jdbcTemplate.update("delete from itineraries where trip_id = ?", tripId);
+		jdbcTemplate.update("delete from visits where trip_id = ?", tripId);
 		jdbcTemplate.update("delete from checklist_items where trip_id = ?", tripId);
 		jdbcTemplate.update("delete from trip_invitations where trip_id = ?", tripId);
 		jdbcTemplate.update("delete from messages where room_id in (select id from chat_rooms where trip_id = ?)", tripId);
