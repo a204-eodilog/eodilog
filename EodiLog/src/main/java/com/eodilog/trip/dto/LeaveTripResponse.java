@@ -3,7 +3,8 @@ package com.eodilog.trip.dto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.UUID;
 
-// 명세 §10 LeaveResult. 일반 나가기는 정리 작업이 없어 cleanupJobId null·status LEFT(200),
+// 명세 §10 LeaveResult. 일반 나가기는 정리 작업이 없어 cleanupJobId null·status LEFT(200), 내 채팅 삭제를 고르고
+// 지울 메시지가 있으면 status LEFT·cleanupJobId(LEAVE_CLEANUP 작업)(202, 정책 §15),
 // 혼자 남은 사람의 나가기는 여행 삭제 접수라 tripDeleted true·status TRIP_DELETED·cleanupJobId(TRIP_DELETE 작업)이다(202, 정책 §14)
 public record LeaveTripResponse(
 		@Schema(description = "나간 여행 ID", example = "0193c2a1-7e2b-7c4d-9a1e-2f3b4c5d6e70",
@@ -19,7 +20,8 @@ public record LeaveTripResponse(
 				requiredMode = Schema.RequiredMode.REQUIRED)
 		UUID newOwnerMemberId,
 
-		@Schema(description = "자료 정리 작업 ID. 여행이 삭제됐을 때만 TRIP_DELETE 작업 ID, 아니면 null", nullable = true,
+		@Schema(description = "자료 정리 작업 ID. 여행이 삭제됐으면 TRIP_DELETE, 내 채팅 삭제를 골랐고 지울 메시지가 있으면 LEAVE_CLEANUP 작업 ID, 아니면 null",
+				nullable = true,
 				requiredMode = Schema.RequiredMode.REQUIRED)
 		UUID cleanupJobId,
 
@@ -31,8 +33,8 @@ public record LeaveTripResponse(
 	public static final String STATUS_LEFT = "LEFT";
 	public static final String STATUS_TRIP_DELETED = "TRIP_DELETED";
 
-	public static LeaveTripResponse left(UUID tripId, UUID newOwnerMemberId) {
-		return new LeaveTripResponse(tripId, false, newOwnerMemberId, null, STATUS_LEFT);
+	public static LeaveTripResponse left(UUID tripId, UUID newOwnerMemberId, UUID cleanupJobId) {
+		return new LeaveTripResponse(tripId, false, newOwnerMemberId, cleanupJobId, STATUS_LEFT);
 	}
 
 	public static LeaveTripResponse tripDeleted(UUID tripId, UUID cleanupJobId) {

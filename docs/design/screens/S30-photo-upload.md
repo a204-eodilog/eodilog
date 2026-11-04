@@ -59,9 +59,9 @@
 | [뒤로] | 상단 바 | S17 또는 S31로. 업로드 진행 중이면 '올리기 취소'와 같은 확인 |
 | 보기 범위 칩 | 사진 선택 | 여행 기간 사진 / 모든 사진 전환 |
 | 사진 칸 | 사진 선택 | 고르기·해제. 최대 50장, 넘으면 토스트 "한 번에 50장까지 올릴 수 있어요" |
-| [올리기] | 사진 선택 | `POST /trips/{tripId}/photos/batch`로 배치 만든 뒤 사진마다 올려 `POST /trips/{tripId}/photos` → 업로드 진행 중. 고른 사진이 없으면 누를 수 없음 |
+| [올리기] | 사진 선택 | `POST /trips/{tripId}/photo-upload-batches`(fileCount, Idempotency-Key) → 사진마다 `POST /assets/upload-intents`(TRIP_PHOTO, batchId) → 받은 주소로 PUT → `POST /assets/{assetId}/complete` → `POST /trips/{tripId}/photos`(batchId, assetId) → 업로드 진행 중. 고른 사진이 없으면 누를 수 없음. (`photos/batch`는 올린 사진을 한꺼번에 수정·이동·삭제하는 API라 업로드에는 쓰지 않는다) |
 | [설정으로 이동] | 사진 권한 거절 | 기기 앱 설정 열기 |
 | [나중에] | 사진 권한 거절 · 일부 실패 | S31로 |
-| [올리기 취소] | 업로드 진행 중 | 남은 업로드 중단. 이미 올린 사진은 남김 → S31 |
+| [올리기 취소] | 업로드 진행 중 | 남은 업로드 중단. 아직 안 올라간(PENDING) 자산은 `DELETE /assets/{assetId}`로 지움. 이미 등록한 사진은 남김 → S31 |
 | [N장 다시 시도] | 일부 실패 | 실패한 사진만 다시 업로드 → 진행 중 |
 | 업로드 완료 | 업로드 진행 중 | 자동으로 S31 (분류 중 상태) |

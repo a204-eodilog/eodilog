@@ -49,4 +49,4 @@
 | [저장] | 작성 | `PUT /trips/{tripId}/visits/{visitId}/review` (점수 1~5 정수, 글) → 남긴 뒤 상태 + 토스트 "평가를 남겼어요" |
 | [다시 저장] | 저장 실패 | 같은 내용 다시 저장 |
 | [수정] | 남긴 뒤 · 내 평가 카드 | 작성 상태로 돌아가 내 점수·글을 채워 둠 → 같은 `PUT`(expectedVersion 포함) |
-| [삭제] | 남긴 뒤 · 내 평가 카드 | `DELETE /trips/{tripId}/visits/{visitId}/review`. 확인창(S50)을 띄울지는 화면 목록에 없어 결정 필요. 지우면 작성 상태로 |
+| [삭제] | 남긴 뒤 · 내 평가 카드 | S50 확인 시트(`ConfirmSheet`, "평가 삭제" 상태)에서 확인 → `DELETE /trips/{tripId}/visits/{visitId}/review`. 지우면 작성 상태로. (화면 목록 12번 표 "S34 평가 삭제 확인(S50에 상태 추가)"대로, 2026-11-04 정함) |

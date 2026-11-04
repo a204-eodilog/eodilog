@@ -125,7 +125,8 @@ public class ChatService {
 				request.clientMessageId());
 		if (existing.isPresent()) {
 			Message message = existing.get();
-			if (!message.getRoomId().equals(roomId) || !message.getText().equals(request.text())) {
+			// 나가기로 본문을 지운 메시지(text null)의 ID는 다시 쓸 수 없다(정책 §15)
+			if (!message.getRoomId().equals(roomId) || !request.text().equals(message.getText())) {
 				throw new BusinessException(ChatErrorCode.CLIENT_MESSAGE_ID_REUSED);
 			}
 			return MessageResponse.of(message);
