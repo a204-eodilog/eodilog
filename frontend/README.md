@@ -14,6 +14,7 @@ npm start
   - Android: `npm run build:android`
   - iOS: `npx eas-cli@latest build --profile development --platform ios`
 - 레포는 `C:\dev\EODI`처럼 **짧은 영문 경로**에 클론한다. 경로에 한글이 있거나 길면 Android 빌드가 실패한다.
+  - 짧은 경로에서도 C++ 목적 파일 경로가 260자를 넘어 막히는 것은 `plugins/with-short-object-paths.js`가 처리한다(CMake 3.31로 긴 경로를 줄여 만든다). 처음 빌드할 때 CMake 3.31이 없으면 SDK에서 내려받는다.
 - `.env`에는 비밀 키를 넣지 않는다. `EXPO_PUBLIC_` 값은 앱에 그대로 들어간다.
 - 네이버 지도 키는 `.env`의 `NAVER_MAP_CLIENT_ID`에 넣는다(네이버 클라우드 Maps, 패키지 `com.eodilog.app` 등록). 비워 두면 빌드는 되지만 지도가 안 뜬다. 키를 바꾸면 개발 빌드를 다시 만든다(빌드할 때 앱 설정에 들어간다).
 
