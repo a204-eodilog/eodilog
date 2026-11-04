@@ -19,10 +19,13 @@ const DEFAULT_CONFIG_SNIPPET = `
         externalNativeBuild { cmake { arguments "-D${MARKER}=230" } }`;
 
 /**
- * android/app/build.gradle에 CMake 버전과 목적 파일 경로 상한을 넣는다.
- * 레포를 짧은 경로에 두어도 안 되던 Windows 빌드 실패를 막는다. 맥·리눅스에는 영향 없다.
+ * 윈도우에서 prebuild할 때만 android/app/build.gradle에 CMake 버전과 목적 파일 경로 상한을 넣는다.
+ * 레포를 짧은 경로에 두어도 안 되던 Windows 빌드 실패를 막는다.
+ * 맥·리눅스와 EAS 클라우드 빌드(리눅스)에서는 아무것도 넣지 않아 기본 CMake를 그대로 쓴다.
+ * android/는 커밋하지 않고(CNG) 빌드하는 곳에서 매번 만들어지므로, 만든 곳의 OS 기준으로 정해도 된다.
  */
 module.exports = function withShortObjectPaths(config) {
+  if (process.platform !== 'win32') return config;
   return withAppBuildGradle(config, (c) => {
     let contents = c.modResults.contents;
     if (!contents.includes(MARKER)) {
