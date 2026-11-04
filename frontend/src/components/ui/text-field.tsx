@@ -1,5 +1,13 @@
 import { type ReactNode, useState } from 'react';
-import { StyleSheet, Text, TextInput, type TextInputProps, View } from 'react-native';
+import {
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  type TextInputProps,
+  type TextStyle,
+  View,
+} from 'react-native';
 
 import { colors, radius, spacing, typography } from '@/theme';
 
@@ -90,6 +98,7 @@ export function TextField({
             style={[
               large ? styles.boxInputLarge : styles.boxInput,
               inputProps.multiline && styles.boxInputMultiline,
+              styles.noWebFocusRing,
               inputProps.style,
             ]}
           />
@@ -111,6 +120,7 @@ export function TextField({
           style={[
             large ? styles.inputLarge : styles.input,
             { borderBottomColor: lineColor, borderBottomWidth: focused || error ? 2 : 1 },
+            styles.noWebFocusRing,
             inputProps.style,
           ]}
         />
@@ -167,9 +177,27 @@ const styles = StyleSheet.create({
   },
   boxLarge: { minHeight: 56 },
   boxMultiline: { alignItems: 'flex-start', minHeight: 88, paddingVertical: spacing[14] },
-  boxInput: { ...typography.body, flex: 1, color: colors.text.default, paddingVertical: 0 },
-  boxInputLarge: { ...typography.title1, flex: 1, color: colors.text.default, paddingVertical: 0 },
+  // 웹 입력칸은 기본 폭이 있어 줄어들지 않는다. 최소 폭 0이어야 trailing("원", 붙여넣기)이 밀려나지 않는다
+  boxInput: {
+    ...typography.body,
+    flex: 1,
+    minWidth: 0,
+    color: colors.text.default,
+    paddingVertical: 0,
+  },
+  boxInputLarge: {
+    ...typography.title1,
+    flex: 1,
+    minWidth: 0,
+    color: colors.text.default,
+    paddingVertical: 0,
+  },
   boxInputMultiline: { textAlignVertical: 'top' },
+  // 웹 미리보기에서 브라우저가 입력칸에 기본 포커스 테두리(주황)를 그린다. 디자인에 없고 앱(안드로이드)에도 없다.
+  // 입력 중 표시는 밑줄·상자 테두리 색(brand.primary)으로 한다
+  // RN 스타일 타입은 outlineStyle에 'none'이 없지만 웹(react-native-web)은 그대로 CSS로 넘긴다.
+  // outline: auto는 폭 0을 무시해서 'none'이어야 사라진다
+  noWebFocusRing: (Platform.OS === 'web' ? { outlineStyle: 'none' } : {}) as TextStyle,
   footer: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing[8] },
   message: { flex: 1 },
   helper: { color: colors.text.muted },

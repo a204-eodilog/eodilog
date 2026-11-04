@@ -7,8 +7,8 @@ export type AvatarProps = {
   /** 닉네임. 사진이 없으면 첫 글자를 보여 준다 */
   name: string;
   imageUrl?: string | null;
-  /** sm 24 / md 28 / lg 40 */
-  size?: 'sm' | 'md' | 'lg';
+  /** sm 24 / md 28 / lg 40. 토큰에 없는 지름은 숫자로(S35·S36 줄 얼굴 36) */
+  size?: 'sm' | 'md' | 'lg' | number;
   /** 나. Figma처럼 연파랑 바탕에 진파랑 글자로 다른 동행과 구분한다 */
   me?: boolean;
 };
@@ -18,8 +18,10 @@ export type AvatarProps = {
  * 다른 동행은 회색, 나는 연파랑(Figma S31·S35·S36).
  */
 export function Avatar({ name, imageUrl, size: sz = 'md', me = false }: AvatarProps) {
-  const dim = size.avatar[sz];
+  const dim = typeof sz === 'number' ? sz : size.avatar[sz];
   const base = { width: dim, height: dim, borderRadius: radius.full };
+  // 36 이상은 굵은 본문, 그보다 작으면 굵은 캡션(Figma S35 얼굴 글자)
+  const letterStyle = dim >= 36 ? typography.bodyBold : typography.captionBold;
 
   if (imageUrl) {
     return (
@@ -29,12 +31,7 @@ export function Avatar({ name, imageUrl, size: sz = 'md', me = false }: AvatarPr
 
   return (
     <View style={[styles.fallback, me && styles.fallbackMe, base]} accessibilityLabel={name}>
-      <Text
-        style={[
-          sz === 'lg' ? typography.bodyBold : typography.captionBold,
-          me ? styles.letterMe : styles.letter,
-        ]}
-      >
+      <Text style={[letterStyle, me ? styles.letterMe : styles.letter]}>
         {name.trim().charAt(0)}
       </Text>
     </View>

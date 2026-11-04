@@ -15,6 +15,8 @@ export type TagProps = {
   tone?: Tone;
   /** 글자 앞 작은 아이콘(14) */
   icon?: IconName;
+  /** 줄 안 이름 옆에 붙는 작은 태그. 높이 20·좌우 6(S35 "정산 후 추가") */
+  small?: boolean;
 };
 
 const BG: Record<Tone, string> = {
@@ -37,9 +39,16 @@ const FG: Record<Tone, string> = {
  * 작은 상태·키워드 표시. 누를 수 없다(누르는 것은 `Chip`).
  * Figma S12·S14 키워드, S33 확인 표시, N4·S38·S41 공개 상태. 높이 24, 둥글기 8.
  */
-export function Tag({ label, tone = 'neutral', icon }: TagProps) {
+export function Tag({ label, tone = 'neutral', icon, small = false }: TagProps) {
   return (
-    <View style={[styles.tag, { backgroundColor: BG[tone] }, tone === 'outline' && styles.outline]}>
+    <View
+      style={[
+        styles.tag,
+        small && styles.small,
+        { backgroundColor: BG[tone] },
+        tone === 'outline' && styles.outline,
+      ]}
+    >
       {icon ? <Icon name={icon} size={14} color={FG[tone]} /> : null}
       <Text style={[typography.captionMedium, { color: FG[tone] }]}>{label}</Text>
     </View>
@@ -56,5 +65,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[8],
     borderRadius: radius.sm,
   },
+  small: { height: 20, paddingHorizontal: spacing[6] },
   outline: { borderWidth: 1, borderColor: colors.line.default },
 });

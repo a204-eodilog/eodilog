@@ -5,12 +5,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, layout, spacing, typography } from '@/theme';
 
-import { Icon } from './icon';
+import { Icon, type IconName } from './icon';
 
 export type HeaderProps = {
   title?: string;
   /** 제목 아래 작은 줄. "부산 1박 2일" */
   subtitle?: string;
+  /** 작은 줄 앞 아이콘(16). 있으면 글자도 아이콘 색(text.icon)으로 맞춘다(Figma S35 여행 이름) */
+  subtitleIcon?: IconName;
   /** 뒤로 대신 닫기(X)를 쓸 때. 시트·전체 화면 입력에 쓴다 */
   close?: boolean;
   /** 왼쪽 버튼을 아예 없앨 때 */
@@ -24,6 +26,7 @@ export type HeaderProps = {
 export function Header({
   title,
   subtitle,
+  subtitleIcon,
   close = false,
   hideBack = false,
   onBack,
@@ -54,7 +57,14 @@ export function Header({
               {title}
             </Text>
           ) : null}
-          {subtitle ? (
+          {subtitle && subtitleIcon ? (
+            <View style={styles.subtitleRow}>
+              <Icon name={subtitleIcon} size={16} color={colors.text.icon} />
+              <Text style={[typography.caption, styles.subtitleWithIcon]} numberOfLines={1}>
+                {subtitle}
+              </Text>
+            </View>
+          ) : subtitle ? (
             <Text style={[typography.caption, styles.subtitle]} numberOfLines={1}>
               {subtitle}
             </Text>
@@ -85,4 +95,6 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center' },
   title: { color: colors.text.default },
   subtitle: { color: colors.text.sub, marginTop: -2 },
+  subtitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[4], marginTop: -2 },
+  subtitleWithIcon: { color: colors.text.icon },
 });

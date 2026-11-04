@@ -1,6 +1,9 @@
 /** 서버 공통 응답. 성공은 { data }, 실패는 { error } (docs/api-spec.md §1). */
 export type DataResponse<T> = { data: T };
 
+/** 목록 응답. 다음 페이지는 page.nextCursor를 cursor로 보낸다 (docs/api-spec.md §1) */
+export type PageResponse<T> = { data: T[]; page: { nextCursor: string | null; hasNext: boolean } };
+
 export type ApiErrorBody = {
   error: {
     code: string;
