@@ -29,7 +29,6 @@ import {
   SUGGESTED_KEYWORDS,
   addKeyword,
   fromExplicitItems,
-  normalizeKeyword,
   toExplicitItems,
 } from '../preference-rules';
 import type { PreferenceItem, Preferences } from '../types';
@@ -85,11 +84,8 @@ function PreferencesForm({
   tripId?: string;
 }) {
   const queryClient = useQueryClient();
-  // 내 취향에 보이는 칩(순서 유지)과 그중 체크를 푼 것. 저장은 체크된 것만 한다.
-  // 체크를 풀어도 칩은 남아서 다시 누르면 되돌릴 수 있다
-  const [listed, setListed] = useState<string[]>(() => fromExplicitItems(initial?.explicitItems));
-  const [unchecked, setUnchecked] = useState<string[]>([]);
-  const chosen = listed.filter((w) => !unchecked.includes(w));
+  // 내가 고른 취향(순서 유지). 내 취향 칩의 X로 빼고, 저장은 이 목록 그대로 한다
+  const [chosen, setChosen] = useState<string[]>(() => fromExplicitItems(initial?.explicitItems));
   const [inferred, setInferred] = useState<PreferenceItem[]>(initial?.inferredItems ?? []);
   const [draft, setDraft] = useState('');
   const [draftError, setDraftError] = useState<string>();
@@ -137,31 +133,22 @@ function PreferencesForm({
     },
   });
 
-  const setChecked = (word: string, checked: boolean) =>
-    setUnchecked((list) => (checked ? list.filter((w) => w !== word) : [...list, word]));
-
-  const add = (input: string) => {
-    // 체크를 풀어 둔 칩을 다시 쓰거나 고르면 새로 만들지 않고 체크만 되돌린다
-    const word = normalizeKeyword(input);
-    const existing = word && listed.find((w) => w.toLowerCase() === word.toLowerCase());
-    if (existing && unchecked.includes(existing)) {
-      setChecked(existing, true);
-      setDraftError(undefined);
-      return true;
-    }
-    const result = addKeyword(listed, input);
+  const add = (word: string) => {
+    const result = addKeyword(chosen, word);
     if (!result.ok) {
       setDraftError(ADD_PROBLEM[result.reason]);
       return false;
     }
-    setListed(result.keywords);
+    setChosen(result.keywords);
     setDraftError(undefined);
     return true;
   };
 
-  const toggle = (word: string) =>
-    listed.includes(word) ? setChecked(word, unchecked.includes(word)) : add(word);
-  const suggestions = SUGGESTED_KEYWORDS.filter((w) => !listed.includes(w));
+  const remove = (word: string) => setChosen((list) => list.filter((w) => w !== word));
+  // 추천 직전 화면의 고르기 칩만 켜고 끈다
+  const toggle = (word: string) => (chosen.includes(word) ? remove(word) : add(word));
+  // 뺀 추천 취향은 다시 "이런 취향은 어때요?"에 나온다
+  const suggestions = SUGGESTED_KEYWORDS.filter((w) => !chosen.includes(w));
 
   return (
     <SafeAreaView style={styles.screen} edges={['left', 'right', 'bottom']}>
@@ -202,7 +189,7 @@ function PreferencesForm({
           {forRecommendation ? (
             <>
               <View style={styles.chips}>
-                {[...QUICK_KEYWORDS, ...listed.filter((w) => !QUICK_KEYWORDS.includes(w))].map(
+                {[...QUICK_KEYWORDS, ...chosen.filter((w) => !QUICK_KEYWORDS.includes(w))].map(
                   (word) => (
                     <ToggleChip
                       key={word}
@@ -264,15 +251,10 @@ function PreferencesForm({
 
               <View style={styles.section}>
                 <Text style={[typography.bodyBold, styles.text]}>내 취향</Text>
-                {listed.length || inferred.length ? (
+                {chosen.length || inferred.length ? (
                   <View style={styles.chips}>
-                    {listed.map((word) => (
-                      <ChosenChip
-                        key={word}
-                        label={word}
-                        selected={!unchecked.includes(word)}
-                        onToggle={() => setChecked(word, unchecked.includes(word))}
-                      />
+                    {chosen.map((word) => (
+                      <ChosenChip key={word} label={word} onRemove={() => remove(word)} />
                     ))}
                     {inferred.map((item) => (
                       <InferredChip

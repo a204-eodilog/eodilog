@@ -6,47 +6,23 @@ import { colors, radius, spacing, typography } from '@/theme';
 const CHIP_HEIGHT = 40;
 
 /**
- * 내가 고른 취향. 체크되면 연파랑 + 오른쪽 체크(Figma S03 "내 취향" 바다·맛집·카페),
- * 누르면 체크만 풀려 회색으로 남고 다시 누르면 돌아온다. 저장은 체크된 것만 한다.
- * 체크가 풀린 모양은 피그마에 없어 추천 직전 화면의 회색 칩과 같게 했다.
+ * "내 취향" 칩. 목록에서 할 일은 빼기뿐이라 오른쪽에 X만 둔다. 칩 자체는 누르지 않는다.
+ * chosen: 내가 고른 취향(연파랑, Figma S03 바다·맛집·카페)
+ * inferred: 저장한 장소로 찾은 취향(아주 연한 파랑, 골목·국밥)
  */
-export function ChosenChip({
+function MyPreferenceChip({
   label,
-  selected,
-  onToggle,
+  tone,
+  onRemove,
 }: {
   label: string;
-  selected: boolean;
-  onToggle: () => void;
+  tone: 'chosen' | 'inferred';
+  onRemove: () => void;
 }) {
   return (
-    <Pressable
-      accessibilityRole="checkbox"
-      accessibilityLabel={label}
-      accessibilityState={{ checked: selected }}
-      aria-checked={selected}
-      onPress={onToggle}
-      style={({ pressed }) => [
-        styles.chip,
-        selected ? styles.chosen : styles.idle,
-        pressed && styles.pressed,
-      ]}
+    <View
+      style={[styles.chip, styles.removable, tone === 'chosen' ? styles.chosen : styles.inferred]}
     >
-      <Text style={[typography.bodyMedium, selected ? styles.chosenText : styles.idleText]}>
-        {label}
-      </Text>
-      {selected ? <Icon name="check" size={16} color={colors.brand.primaryDark} /> : null}
-    </Pressable>
-  );
-}
-
-/**
- * 저장한 장소로 찾은 취향(아주 연한 파랑 + 오른쪽 빼기). 칩 자체는 누르지 않고 X만 누른다.
- * Figma S03 "내 취향" 골목·국밥
- */
-export function InferredChip({ label, onRemove }: { label: string; onRemove: () => void }) {
-  return (
-    <View style={[styles.chip, styles.inferred]}>
       <Text style={[typography.bodyMedium, styles.chosenText]}>{label}</Text>
       <Pressable
         accessibilityRole="button"
@@ -59,6 +35,16 @@ export function InferredChip({ label, onRemove }: { label: string; onRemove: () 
       </Pressable>
     </View>
   );
+}
+
+/** 내가 고른 취향. X를 누르면 뺀다 */
+export function ChosenChip({ label, onRemove }: { label: string; onRemove: () => void }) {
+  return <MyPreferenceChip label={label} tone="chosen" onRemove={onRemove} />;
+}
+
+/** 저장한 장소로 찾은 취향. X를 누르면 서버에서도 뺀다 */
+export function InferredChip({ label, onRemove }: { label: string; onRemove: () => void }) {
+  return <MyPreferenceChip label={label} tone="inferred" onRemove={onRemove} />;
 }
 
 /** 더할 수 있는 추천 취향(흰 바탕 테두리 "+ 산"). Figma S03 "이런 취향은 어때요?" */
@@ -120,12 +106,9 @@ const styles = StyleSheet.create({
   },
   chosen: { backgroundColor: colors.brand.primaryLight },
   chosenText: { color: colors.brand.primaryDark },
-  inferred: {
-    backgroundColor: colors.brand.primaryBg,
-    paddingLeft: spacing[12],
-    paddingRight: spacing[4],
-    gap: 0,
-  },
+  // X 버튼이 오른쪽 여백을 차지해서 왼쪽 12, 오른쪽 4(Figma 골목·국밥 칩)
+  removable: { paddingLeft: spacing[12], paddingRight: spacing[4], gap: 0 },
+  inferred: { backgroundColor: colors.brand.primaryBg },
   removeButton: {
     width: 32,
     height: 32,
