@@ -24,7 +24,12 @@ import {
 } from '@/components/ui';
 import { LeaveTripSheet } from '@/features/trip/components/leave-trip-sheet';
 import type { LeaveTripFailure } from '@/features/trip/hooks/use-leave-trip';
-import { formatThousands, parseAmount } from '@/lib/format-number';
+import {
+  AMOUNT_MAX_LENGTH,
+  exceedsAmountMax,
+  formatThousands,
+  parseAmount,
+} from '@/lib/format-number';
 import { colors, layout, spacing, typography } from '@/theme';
 
 const ICONS: IconName[] = [
@@ -57,8 +62,6 @@ const ICONS: IconName[] = [
   'image',
 ];
 
-/** 서버 상한 9,007,199,254,740,991원(16자리) + 쉼표 5개 */
-const AMOUNT_MAX_LENGTH = 21;
 
 type LeaveExample = 'member' | 'owner' | 'alone' | 'fail' | 'conflict';
 
@@ -260,7 +263,13 @@ export default function UiCatalog() {
             trailing={<Text style={[typography.title1, styles.text]}>원</Text>}
             maxLength={AMOUNT_MAX_LENGTH}
             hideCount
-            error={parseAmount(amount) ? undefined : '금액을 입력해 주세요'}
+            error={
+              parseAmount(amount)
+                ? undefined
+                : exceedsAmountMax(amount)
+                  ? '금액이 너무 커요'
+                  : '금액을 입력해 주세요'
+            }
             helper="서버 규칙: 1원 이상 정수, 0은 저장할 수 없어요"
           />
           <TextField
@@ -288,11 +297,12 @@ export default function UiCatalog() {
             <Tag label="계획 중" tone="brandSoft" icon="calendar" />
             <Tag label="사진으로 확인됨" tone="success" icon="check" />
             <Tag label="지도 핀 없음" tone="outline" icon="map-pin" />
+            <Tag label="이전 정산 · 지금과 달라요" tone="line" />
           </Row>
         </Section>
 
         <Section title="카드">
-          <Card variant="filled" rounded="lg">
+          <Card variant="filled" rounded="xl">
             <Text style={[typography.caption, styles.muted]}>함께 쓴 돈</Text>
             <Text style={[typography.title1, styles.text]}>23.4만 원</Text>
           </Card>

@@ -1,5 +1,12 @@
 import { type ReactNode, useState } from 'react';
-import { StyleSheet, Text, TextInput, type TextInputProps, View } from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  TextInput,
+  type TextInputProps,
+  View,
+  type ViewStyle,
+} from 'react-native';
 
 import { colors, radius, spacing, typography } from '@/theme';
 
@@ -27,6 +34,8 @@ export type TextFieldProps = TextInputProps & {
   variant?: 'underline' | 'filled';
   /** filled 칸 안 오른쪽에 붙는 것. 금액의 "원", 붙여넣기 버튼 */
   trailing?: ReactNode;
+  /** filled 회색 상자 자체의 스타일. 높이를 바꿀 때(S11 링크 칸 52) 쓴다. `style`은 안쪽 글자 입력에 붙는다 */
+  boxStyle?: ViewStyle;
 };
 
 /** 입력칸. 기본은 밑줄 모양, `variant="filled"`면 회색 상자 모양이다. */
@@ -40,6 +49,7 @@ export function TextField({
   hideCount = false,
   variant = 'underline',
   trailing,
+  boxStyle,
   onFocus,
   onBlur,
   ...inputProps
@@ -73,6 +83,7 @@ export function TextField({
             large && styles.boxLarge,
             inputProps.multiline && styles.boxMultiline,
             { borderColor: lineColor },
+            boxStyle,
           ]}
         >
           <TextInput
