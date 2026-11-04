@@ -18,4 +18,11 @@ export const env = {
    * 이 주소가 code·state를 eodilog://oauth/kakao로 넘겨 줘야 한다. 웹 미리보기는 비워 두면 현재 주소/oauth/kakao를 쓴다.
    */
   kakaoRedirectUri: process.env.EXPO_PUBLIC_KAKAO_REDIRECT_URI || null,
+  /**
+   * 개발용 테스트 모드. 로그인을 건너뛰고 서버 대신 src/api/dev-mock.ts의 테스트 데이터로 화면을 띄운다.
+   * 로컬·개발 환경에서만 켜진다. 실제 API 연결 확인에는 쓰지 않는다.
+   */
+  devMock:
+    process.env.EXPO_PUBLIC_DEV_MOCK === 'true' &&
+    ['local', 'development'].includes(process.env.EXPO_PUBLIC_APP_ENV ?? 'local'),
 } as const;
