@@ -6,20 +6,36 @@ import { colors, radius, spacing, typography } from '@/theme';
 const CHIP_HEIGHT = 40;
 
 /**
- * 내가 고른 취향(연파랑 + 오른쪽 체크). 누르면 뺀다.
- * Figma S03 "내 취향" 바다·맛집·카페
+ * 내가 고른 취향. 체크되면 연파랑 + 오른쪽 체크(Figma S03 "내 취향" 바다·맛집·카페),
+ * 누르면 체크만 풀려 회색으로 남고 다시 누르면 돌아온다. 저장은 체크된 것만 한다.
+ * 체크가 풀린 모양은 피그마에 없어 추천 직전 화면의 회색 칩과 같게 했다.
  */
-export function ChosenChip({ label, onRemove }: { label: string; onRemove: () => void }) {
+export function ChosenChip({
+  label,
+  selected,
+  onToggle,
+}: {
+  label: string;
+  selected: boolean;
+  onToggle: () => void;
+}) {
   return (
     <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${label} 빼기`}
-      accessibilityState={{ selected: true }}
-      onPress={onRemove}
-      style={({ pressed }) => [styles.chip, styles.chosen, pressed && styles.pressed]}
+      accessibilityRole="checkbox"
+      accessibilityLabel={label}
+      accessibilityState={{ checked: selected }}
+      aria-checked={selected}
+      onPress={onToggle}
+      style={({ pressed }) => [
+        styles.chip,
+        selected ? styles.chosen : styles.idle,
+        pressed && styles.pressed,
+      ]}
     >
-      <Text style={[typography.bodyMedium, styles.chosenText]}>{label}</Text>
-      <Icon name="check" size={16} color={colors.brand.primaryDark} />
+      <Text style={[typography.bodyMedium, selected ? styles.chosenText : styles.idleText]}>
+        {label}
+      </Text>
+      {selected ? <Icon name="check" size={16} color={colors.brand.primaryDark} /> : null}
     </Pressable>
   );
 }
