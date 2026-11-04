@@ -269,7 +269,7 @@
 
 ## 9. 채팅·알림·작업 조회
 
-근거: WD-FR-33~34, WD-NFR-02. 여행 그룹 채팅만 제공한다. 아래 REST는 조회/전송 계약이며 채팅 실시간 전송은 Q-13, 코스 공동 편집 프로토콜은 Q-15에서 합의한다. 2026-11-02 Q-13 확정(REST 범위): 신규·재참여 ACTIVE 멤버 모두 여행 채팅의 처음부터 전체 대화를 보고(이탈 기간 포함), LEFT·REMOVED는 조회·전송할 수 없다. 첨부·일반 메시지 편집/삭제·대화 읽음 규격은 추가하지 않는다. 방 참여 권한은 현재 여행 ACTIVE 멤버십이며, `/chat/rooms/{roomId}/**`에서 삭제된 여행·비참여·이탈한 방은 모두 404 `CHAT_ROOM_NOT_FOUND`(여행 경로인 `GET /trips/{tripId}/chat-room`은 404 `TRIP_NOT_FOUND`).
+근거: WD-FR-33~34, WD-NFR-02. 여행 그룹 채팅만 제공한다. 아래 REST는 조회/전송 계약이고, 새 메시지의 실시간 전달은 아래 「채팅 실시간 전달」(2026-11-04 A·B 합의, 보내기는 REST 그대로)을 따른다. 코스 공동 편집 프로토콜은 Q-15에서 합의한다. 2026-11-02 Q-13 확정(REST 범위): 신규·재참여 ACTIVE 멤버 모두 여행 채팅의 처음부터 전체 대화를 보고(이탈 기간 포함), LEFT·REMOVED는 조회·전송할 수 없다. 첨부·일반 메시지 편집/삭제·대화 읽음 규격은 추가하지 않는다. 방 참여 권한은 현재 여행 ACTIVE 멤버십이며, `/chat/rooms/{roomId}/**`에서 삭제된 여행·비참여·이탈한 방은 모두 404 `CHAT_ROOM_NOT_FOUND`(여행 경로인 `GET /trips/{tripId}/chat-room`은 404 `TRIP_NOT_FOUND`).
 
 | Method | URL | 권한 | 요청 | 성공 data / 상태 | 주요 규칙 |
 | --- | --- | --- | --- | --- | --- |
@@ -301,6 +301,24 @@ jobs 공통 기반은 PostgreSQL 등록·실행·조회만 제공한다. kind별
 사용자가 임의 알림·시스템 메시지를 만드는 API는 없다. 서버 이벤트로 알림과 시스템 메시지를 생성하고 `eventId`로 중복을 막는다. 전송 시점과 링크 진입 시점에 모두 권한을 검사한다. 팔로우 요청/수락·투표 마감/자동 결과·여행 참여·코스 변경 이벤트를 포함한다. 정산 완료·사진 동의·코스 승인 이벤트는 제거한다. 코스 연속 변경의 묶음 키/시간창·최종 상태·시스템 카드 연동은 Q-16 합의 전 확정하지 않는다. 실제 송금 확인·푸시·채팅 첨부·일반 메시지 수정/삭제·대화 전체 읽음 규격은 추가하지 않았다. 시스템 카드 읽음은 event_receipts를 통해 알림과 연결한다. 그룹 이탈 시 삭제 선택은 §4 이탈 API로 제공한다.
 
 2026-11-04 A의 알림 기반 단계에서는 `events`·`notifications`·`event_receipts`, 위 조회·읽음 API, 업무 트랜잭션 안에서 호출하는 `NotificationEventRegistrar.register(EventCommand, recipientUserIds)`를 제공한다. 등록은 동일 `deduplicationKey`에 멱등이며 여행 수신자는 등록 시와 조회 시 현재 ACTIVE 멤버십을 검사한다. 기존 `TripInfoChangedEvent`만 동기 리스너로 연결했다. 나머지 이벤트 생산자, 설정별 수신 차단, 푸시·채팅 시스템 카드는 각 기능 연동 단계에서 붙인다. 알림 목록은 `createdAt DESC, id DESC` 커서, 기본 20·최대 100개다. 미래 `through`는 400이다.
+
+### 채팅 실시간 전달
+
+STOMP over WebSocket으로 서버 → 앱 전달만 한다. 메시지 보내기는 위 `POST /chat/rooms/{roomId}/messages`이고 WebSocket `SEND`는 받지 않는다.
+
+| 항목 | 규칙 |
+| --- | --- |
+| 연결 | `GET /ws`(`/api/v1` 밖, SockJS 없음). 핸드셰이크는 인증 없이 열린다 |
+| 인증 | STOMP `CONNECT` 프레임 헤더 `Authorization: Bearer <access>`. REST와 같은 검사로 잘못된·만료 토큰·폐기된 세션은 `UNAUTHENTICATED`, 가입 대기는 `PROFILE_INCOMPLETE`. URL에 토큰을 싣지 않는다 |
+| 구독 | `/user/queue/chat` 하나만. 다른 목적지 구독·`SEND`는 `FORBIDDEN` |
+| 오류 | STOMP `ERROR` 프레임. `message` 헤더에 오류 코드, 본문은 §2 실패 형식(`{"error":{code,message,fields,traceId}}`). ERROR 뒤 서버가 연결을 닫는다 |
+| 토큰 만료 | 연결에 쓴 access 토큰의 만료 시각에 `ERROR UNAUTHENTICATED`로 닫는다. 앱은 갱신 API로 새 토큰을 받아 다시 연결한다 |
+| 하트비트 | 서버·앱 10초(`10000,10000`) |
+| 이벤트 | `{"type":"MESSAGE_CREATED","roomId":id,"message":Message}`. 메시지 저장이 커밋된 뒤 그 방 여행의 지금 ACTIVE 멤버 전원(보낸 사람 포함)에게 보낸다. 이탈·내보내기·여행 삭제 뒤에는 받지 않는다. 같은 `clientMessageId` 재전송은 다시 보내지 않는다. 보낸 사람은 REST 201과 이벤트를 둘 다 받으므로 `message.id`로 하나만 남긴다 |
+| 전달 보장 | 최선 노력. REST가 기준이다 |
+| 재접속 복구 | 연결 → `/user/queue/chat` 구독을 먼저 → 열린 방마다 최신 메시지 페이지를 다시 받고 기억하던 마지막 sequence까지 `beforeSequence`로 이어 받는다. 이벤트 sequence가 마지막+1보다 크면 같은 방법으로 빈칸을 채우고, 같은 sequence는 덮어쓴다 |
+
+나가기 "내 채팅 삭제"로 지운 본문, 참여자 변경, 입력 중·읽음은 실시간으로 보내지 않는다. 다시 불러오면 반영된다.
 
 ### 실시간 공동 편집·기간·알림의 공통 동작
 

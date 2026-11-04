@@ -7,6 +7,7 @@ import com.eodilog.chat.dto.MessagePageResponse;
 import com.eodilog.chat.dto.MessageResponse;
 import com.eodilog.chat.dto.SendMessageRequest;
 import com.eodilog.chat.exception.ChatErrorCode;
+import com.eodilog.chat.realtime.ChatMessageCreatedEvent;
 import com.eodilog.chat.repository.ChatRoomRepository;
 import com.eodilog.chat.repository.MessageRepository;
 import com.eodilog.global.common.error.BusinessException;
@@ -36,12 +37,14 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 // 여행 그룹 채팅 REST(명세 §9). 방 참여 권한은 지금의 여행 ACTIVE 멤버십이다(채팅 참여 행은 멤버십과 함께 바뀐다)
-// ACTIVE 멤버는 신규·재참여 모두 처음부터 전체 대화를 본다(Q-13, 2026-11-02). 실시간 전송·첨부·편집·삭제·읽음은 없다
+// ACTIVE 멤버는 신규·재참여 모두 처음부터 전체 대화를 본다(Q-13, 2026-11-02). 첨부·편집·삭제·읽음은 없다
+// 새 메시지는 커밋 뒤 WebSocket으로도 전달한다(chat.realtime). 저장·순번 발급은 이 REST 경로 하나뿐이다
 @Service
 @RequiredArgsConstructor
 public class ChatService {
@@ -57,6 +60,7 @@ public class ChatService {
 	private final TripAccessChecker tripAccessChecker;
 	private final UserCardReader userCardReader;
 	private final EntityManager entityManager;
+	private final ApplicationEventPublisher eventPublisher;
 	private final Clock clock;
 
 	// 지금 ACTIVE 멤버인 여행의 방만. 방이 만들어진 순서의 역순(createdAt DESC, id DESC) 커서 페이지
@@ -134,7 +138,10 @@ public class ChatService {
 		Message message = messageRepository.save(Message.text(roomId, userId, room.takeNextSequence(),
 				request.text(), request.clientMessageId(), now()));
 		messageRepository.flush();
-		return MessageResponse.of(message);
+		MessageResponse response = MessageResponse.of(message);
+		// 재전송(위의 처음 메시지 반환)은 새 메시지가 아니므로 이벤트를 내지 않는다(후속 문서 §12-1 RT-8)
+		eventPublisher.publishEvent(new ChatMessageCreatedEvent(room.getTripId(), response));
+		return response;
 	}
 
 	// 트랜잭션이 끝나면 풀린다. 해시가 겹치면 서로 다른 키도 잠깐 기다릴 뿐 결과는 같다

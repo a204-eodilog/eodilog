@@ -1,6 +1,6 @@
 # 백엔드 B 후속 작업 — 준비물 체크리스트·멤버 관리·경비·초대·정산·채팅·나가기·투표·코스
 
-작성일: 2026-10-29 · 상태: 체크리스트·멤버 관리 병합 완료(MR !49·!50), 경비·정산 상태 병합 완료(MR !56, 2026-10-30), 초대 링크 병합 완료(MR !58·!62), 정산 계산 병합 완료(MR !69), 채팅 REST 병합 완료(MR !71), 기본 나가기 병합 완료(MR !76), 투표 구현(EODI-161), 나가기 내 채팅 삭제·방문 기록 구현(2026-11-04, §15·§16), 초대 링크 취소 구현(EODI-187, §9 I-11)
+작성일: 2026-10-29 · 상태: 체크리스트·멤버 관리 병합 완료(MR !49·!50), 경비·정산 상태 병합 완료(MR !56, 2026-10-30), 초대 링크 병합 완료(MR !58·!62), 정산 계산 병합 완료(MR !69), 채팅 REST 병합 완료(MR !71), 기본 나가기 병합 완료(MR !76), 투표 구현(EODI-161), 나가기 내 채팅 삭제·방문 기록 구현(2026-11-04, §15·§16), 초대 링크 취소 병합 완료(MR !108, §9 I-11), 채팅 실시간 전달 구현(EODI-192, §12-1)
 
 [B 첫 작업](backend-b-trip-basic.md)(여행 생성·조회·수정)이 끝난 뒤 A의 카카오 로그인을 기다리는 동안 진행한 B 작업이다. [분담안](../../../docs/plan/backend-first-work-split.md) §6은 이 기능들을 "첫 통합 뒤 배분"으로 두었지만, 로그인 없이 개발할 수 있고 여행 패키지 안에서 끝나는 것부터 B가 먼저 맡았다. A와 겹치는 파일(`user`·`auth` 패키지, `SecurityConfig`)은 건드리지 않는다.
 
@@ -13,10 +13,11 @@
 | 준비물 체크리스트 | `GET/POST /trips/{tripId}/checklist`, `PATCH/DELETE /trips/{tripId}/checklist/{itemId}` | EODI-110 | 병합(MR !49) |
 | 멤버 관리 | `GET /trips/{tripId}/members`, `POST /trips/{tripId}/owner-transfer`, `DELETE /trips/{tripId}/members/{memberId}` | EODI-111 | 병합(MR !50) |
 | 초대 링크 | `POST /trips/{tripId}/invitations`, `GET /invitations/{token}`(공개), `POST /invitations/{token}/accept` | EODI-125, -128 | 병합(MR !58·!62, §9) |
-| 초대 링크 취소 | `DELETE /trips/{tripId}/invitations` | EODI-187 | 구현(§9 I-11) |
+| 초대 링크 취소 | `DELETE /trips/{tripId}/invitations` | EODI-187 | 병합(MR !108, §9 I-11) |
 | 경비·정산 상태 | `GET/POST /trips/{tripId}/expenses`, `PATCH/DELETE /trips/{tripId}/expenses/{expenseId}`, `GET /trips/{tripId}/settlement`, `POST /trips/{tripId}/settlements`(409) | EODI-122 | 병합(MR !56, §8) |
 | 정산 계산 | `POST /trips/{tripId}/settlements`, `GET /trips/{tripId}/settlements`, `GET /trips/{tripId}/settlements/{settlementId}`, `GET /trips/{tripId}/settlement` | EODI-134 | 병합(MR !69, §10) |
 | 채팅 REST | `GET /chat/rooms`, `GET /trips/{tripId}/chat-room`, `GET/POST /chat/rooms/{roomId}/messages` | EODI-136 | 병합(MR !71, §12) |
+| 채팅 실시간 전달 | STOMP `GET /ws`, 구독 `/user/queue/chat` | EODI-192 | 구현(§12-1) |
 | 기본 나가기 | `POST /trips/{tripId}/leave` | EODI-140 | 병합(MR !76, §11) |
 | 투표 | `GET/POST /trips/{tripId}/polls`, `GET /trips/{tripId}/polls/{pollId}`, `PUT .../ballot`, `POST .../candidates` | EODI-161 | 구현(§13) |
 | 코스 수동 편집 | `GET/PUT /trips/{tripId}/itinerary` | EODI-164 | 병합(MR !85, §13-3) |
@@ -188,7 +189,7 @@ A 답변(11/02) §5에 따라 사진·메시지를 남기는 **기본 나가기�
 
 ## 12. 채팅 REST 정책
 
-Q-13의 REST 범위는 2026-11-02에 확정됐다([A 답변](to-B-backend-decisions-2026-11-02.md) §4). 실시간 전송 방식은 REST와 분리해 이후 A와 정한다.
+Q-13의 REST 범위는 2026-11-02에 확정됐다([A 답변](to-B-backend-decisions-2026-11-02.md) §4). 실시간 전달은 11/04 A·B 합의로 §12-1에 정했다(보내기는 이 REST 그대로).
 
 | # | 질문 | 결정 | 근거 |
 | --- | --- | --- | --- |
@@ -201,6 +202,32 @@ Q-13의 REST 범위는 2026-11-02에 확정됐다([A 답변](to-B-backend-decisi
 | CH-7 | 메시지 목록 | sequence 내림차순, `beforeSequence` 미포함, limit 기본 20·최대 100. 응답은 공통 `PageResponse`가 아니라 `{data, page:{nextBeforeSequence, hasNext}}`(nextBeforeSequence는 이 페이지의 최소 sequence, 더 없으면 null). 공통 `cursor`를 함께 보내면 400 | 명세 §9 메시지 페이지 문단 |
 | CH-8 | 채팅방 목록·응답 | ACTIVE 멤버인 삭제 안 된 여행의 방만, 방 생성 역순 커서. `participants`는 지금 ACTIVE인 동행(참여 순), `lastMessage`는 가장 큰 sequence | 명세 §9 "현재 접근 가능한 방만" |
 | CH-9 | 범위 밖 | 첨부·일반 메시지 편집/삭제·읽음(`eventReadAt`)·시스템 카드(`type=SYSTEM`, `eventId`, `target`)는 만들지 않는다. 응답 필드는 명세대로 두고 값은 null. 이탈 시 본문 제거(D-10)를 할 때는 `ck_messages_text`(TEXT의 text NOT NULL)를 바꾸는 마이그레이션이 필요 | Q-13 "이번 결정으로 추가하지 않음". 시스템 카드는 events 기능과 함께 |
+
+### 12-1. 실시간 전달 (EODI-192)
+
+A 분담 제안(11/04) B-2. 11/04 B 회신 계약안을 A가 확인했고(회신 문서는 저장소 밖), A가 선행 작업 EODI-186(`SecurityConfig`의 `GET /ws` 공개, `Tokens.Claims.expiresAt`)을 병합했다. 프론트는 11/03에 `@stomp/stompjs`로 정했다.
+
+| # | 질문 | 결정 | 근거 |
+| --- | --- | --- | --- |
+| RT-1 | 전송 방식 | STOMP over WebSocket, `GET /ws`(SockJS 없음). **보내기는 기존 REST**이고 WebSocket은 서버 → 앱 전달만 한다. 저장·sequence·`clientMessageId` 판별·오류 응답이 REST 한 경로에만 있다 | A 제안 "저장·sequence 발급은 REST 한 경로", 프론트 기술 정리(11/03) |
+| RT-2 | 인증 | 핸드셰이크는 인증 없이 열고 **CONNECT 프레임의 `Authorization: Bearer`** 로 인증한다. REST의 `BearerFilter`와 같은 순서(`Tokens.verify` → `AuthService.authenticate` → 가입 완료). 잘못된·만료 토큰·폐기된 세션은 `UNAUTHENTICATED`, 가입 대기는 `PROFILE_INCOMPLETE`. URL에 토큰을 싣지 않는다 | `connectHeaders`가 stompjs 표준이고 브라우저 WebSocket은 핸드셰이크 헤더를 못 붙인다. 쿼리 토큰은 접속 로그에 남는다 |
+| RT-3 | origin | 막지 않는다(`*`) | 인증이 쿠키가 아니라 CONNECT 헤더 토큰이라 다른 사이트가 대신 연결해도 얻는 것이 없다. 앱은 Origin을 안 보내거나 프록시 뒤에서 서버 주소와 달라질 수 있다 |
+| RT-4 | 토큰 만료 | 연결 때 access 토큰 만료 시각을 예약해 그 시각에 ERROR `UNAUTHENTICATED`를 보내고 서버가 닫는다. 앱은 갱신 후 다시 연결하고 RT-10대로 복구. 연결 뒤 로그아웃한 세션도 늦어도 이 시각(최대 1시간)에는 끊긴다 | 연결이 토큰보다 오래 살지 않게 한다 |
+| RT-5 | 구독·보내기 제한 | 인증된 세션의 `SUBSCRIBE /user/queue/chat`만 허용. 다른 목적지 구독과 `SEND`는 ERROR `FORBIDDEN` 후 연결 종료. CONNECT 없이 온 프레임은 `UNAUTHENTICATED` | 방별 토픽이 없어 구독 시점의 방 권한 검사가 필요 없다(RT-7) |
+| RT-6 | ERROR 프레임 | `message` 헤더에 오류 코드, 본문은 REST와 같은 `{"error":{code,message,fields,traceId}}`. `traceId`는 오류마다 새로 만들어 서버 로그(내부 오류만)와 같게 쓴다. ERROR 뒤에는 Spring이 연결을 닫는다. 하트비트는 서버·앱 10초 | REST 오류 처리 코드를 그대로 쓰게 한다 |
+| RT-7 | 받는 사람 | 커밋 뒤 그 방 여행의 **지금 ACTIVE 멤버 전원(보낸 사람 포함)** 의 개인 큐. 삭제된 여행이면 보내지 않는다. 받는 사람을 보낼 때마다 다시 읽으므로 나가기·내보내기·여행 삭제가 커밋되면 다음 메시지부터 받지 않는다 | 구독 중인 연결을 찾아 끊는 처리가 필요 없다. 여행당 최대 20명 |
+| RT-8 | 이벤트 | `{"type":"MESSAGE_CREATED","roomId","message":Message}`(REST `Message`와 같은 모양). 같은 `clientMessageId` 재전송(201로 처음 메시지)은 새로 저장한 것이 아니라 보내지 않는다. 보낸 사람은 REST 201과 이벤트를 둘 다 받으므로 앱은 `message.id`로 하나만 남긴다 | 같은 메시지를 두 번 보내지 않는다 |
+| RT-9 | 전달 보장 | 최선 노력. 이벤트를 저장하지 않고, 한 사람에게 실패해도 나머지에게 보낸다. 대기열(1,000건)이 차면 버리고 경고 로그 | REST가 기준이다 |
+| RT-10 | 재접속 복구(앱) | 연결 → `/user/queue/chat` 구독을 **먼저** → 열려 있던 방마다 최신 메시지 페이지를 다시 받고, 기억하던 마지막 sequence까지 이어지지 않으면 `beforeSequence`로 이어 받는다. 이벤트 sequence가 마지막 + 1보다 크면 같은 방법으로 빈칸을 채운다. 같은 sequence는 덮어쓴다 | 방 안 sequence에 빈틈이 없다(CH-3). 새 REST API 없음 |
+| RT-11 | 범위 밖 | WebSocket으로 보내기, 나가기 "내 채팅 삭제"로 지운 본문의 실시간 반영(다시 불러오기 전까지 이미 받은 화면에는 남음), 참여자 변경·입력 중·읽음, 서버 여러 대(외부 브로커 릴레이로 바꾸면 이벤트 형식은 그대로), 즐겨찾기·투표·코스 실시간(Q-15) | 11/04 합의에서 뒤로 미룸 |
+
+구현 메모:
+
+- 코드는 `global.websocket`(엔드포인트·브로커·CONNECT 인증·ERROR 형식·만료 종료)과 `chat.realtime`(커밋 뒤 전달)에 있다. `ChatService.sendMessage`가 새로 저장했을 때만 `ChatMessageCreatedEvent`를 낸다.
+- 전달은 `@TransactionalEventListener(AFTER_COMMIT)`에서 **별도 스레드 하나**로 넘긴다. AFTER_COMMIT의 요청 스레드는 끝난 트랜잭션의 DB 연결을 아직 쥐고 있어, 거기서 새 연결로 받는 사람을 읽으면 동시 전송이 커넥션 풀 크기를 넘을 때 서로 연결을 기다리며 멈출 수 있다. 스레드 하나라 메시지는 커밋 순서대로 나간다.
+- `spring-security-messaging`(`@EnableWebSocketSecurity`)은 쓰지 않는다. CONNECT에 CSRF 토큰을 요구해 토큰 인증과 맞지 않는다. STOMP 세션 사용자는 `StompUser`(이름 = 사용자 ID)다.
+- `@EnableWebSocketMessageBroker`가 만드는 `messageBrokerTaskScheduler`(하트비트·만료 종료에 사용)가 있어 Boot의 기본 `TaskScheduler`가 만들어지지 않는다. 투표 주기 마감(`@Scheduled`)도 이 스케줄러에서 돈다. 같은 이유로 브로커 채널 실행기들 때문에 Boot의 `applicationTaskExecutor`도 만들어지지 않는다(지금 쓰는 곳 없음). 나중에 `@Async`나 MVC 비동기 응답을 쓰면 실행기를 직접 지정한다.
+- 테스트는 `ChatRealtimeTest`가 실제 포트에 STOMP로 연결해 확인한다(전달·재전송 미전송·외부인 미수신, 나간 멤버 미수신, CONNECT 거부 5종, 구독·SEND 거부, 토큰 만료 종료).
 
 ## 13. 투표·코스 정책 (B-4)
 
