@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Button, Header, Icon, type IconName, TextField, toast } from '@/components/ui';
+import { Button, ErrorState, Header, Icon, type IconName, TextField, toast } from '@/components/ui';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 import {
@@ -42,17 +42,21 @@ const ADD_PROBLEM: Record<'empty' | 'duplicate' | 'full', string> = {
 };
 
 /**
- * S03 취향 입력. 두 곳에서 연다.
- * - 가입 흐름: S02 저장 뒤, 또는 S04 참여 뒤(첫 가입). [완료]·[나중에] 모두 홈(S05)으로.
- *   초대로 왔으면 S17 여행 상세로 가야 하지만 아직 화면이 없어 홈으로 간다
+ * S03 취향 입력. 세 곳에서 연다.
+ * - 가입 흐름: S02 저장 뒤, 또는 S04 참여 뒤(첫 가입, `?tripId=`). [완료]·[나중에] 모두 홈(S05)으로.
+ *   초대로 왔으면 그 여행(S17)으로 가야 하지만 아직 화면이 없어 홈으로 간다. 생기면 `tripId`로 보낸다
  * - 추천 직전: `?from=recommendation&tripId=…`. 동행 추천에 쓸지도 고르고 [추천 보기]로 돌아간다
- * 상태: 기본 / 추천 직전 / 저장 실패(토스트 + [다시 시도])
+ * - 설정(S45): `?from=settings`. 끝나면 설정으로 돌아간다
+ * 상태: 기본 / 추천 직전 / 불러오기 실패 / 저장 실패(토스트 + [다시 시도])
+ * 기본 상태에는 추천에 쓸 범위를 고르는 칸이 없다(피그마). 여행별 동의는 추천 직전에서만 묻는다
  *
  * 2026-11-04 기준 백엔드에 /me/preferences가 없어 불러오기는 빈 취향으로 시작하고 저장은 실패한다.
  */
 export function PreferencesScreen() {
   const { from, tripId } = useLocalSearchParams<{ from?: string; tripId?: string }>();
   const forRecommendation = from === 'recommendation' && Boolean(tripId);
+  // 추천 직전과 설정에서 왔으면 끝나고 그 화면으로 돌아간다
+  const returnsBack = forRecommendation || from === 'settings';
   const prefs = useQuery({ queryKey: PREFERENCES_KEY, queryFn: getPreferences, retry: false });
 
   if (prefs.isPending) {
@@ -64,11 +68,22 @@ export function PreferencesScreen() {
     );
   }
 
-  // 불러오지 못해도(네트워크 등) 빈 취향으로 고를 수 있게 한다. 저장할 때 다시 알린다
+  // 아직 저장한 적이 없으면(404) null로 와서 빈 취향으로 시작한다.
+  // 그 밖의 실패에서 저장하면 PUT이 기존 취향을 통째로 덮어쓰니, 다시 불러올 때까지 막는다
+  if (prefs.isError) {
+    return (
+      <SafeAreaView style={styles.screen} edges={['left', 'right', 'bottom']}>
+        <Header title="취향 입력" />
+        <ErrorState title="취향을 불러오지 못했어요" onRetry={() => prefs.refetch()} />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <PreferencesForm
       initial={prefs.data ?? null}
       forRecommendation={forRecommendation}
+      returnsBack={returnsBack}
       tripId={tripId}
     />
   );
@@ -77,10 +92,12 @@ export function PreferencesScreen() {
 function PreferencesForm({
   initial,
   forRecommendation,
+  returnsBack,
   tripId,
 }: {
   initial: Preferences | null;
   forRecommendation: boolean;
+  returnsBack: boolean;
   tripId?: string;
 }) {
   const queryClient = useQueryClient();
@@ -92,9 +109,10 @@ function PreferencesForm({
   // 추천 직전: 동행 추천에 쓸지. 기본은 함께 쓰기(피그마)
   const [shareWithCompanions, setShareWithCompanions] = useState(true);
 
-  // 추천 직전이면 추천 화면으로 돌아간다. 링크로 바로 열어 돌아갈 곳이 없으면 홈으로
+  // 추천 직전·설정이면 온 화면으로 돌아간다. 링크로 바로 열어 돌아갈 곳이 없으면 홈으로.
+  // 가입 흐름은 홈. 초대로 왔으면(tripId) S17 여행 상세가 생길 때 그 여행으로 바꾼다
   const leave = () => {
-    if (forRecommendation && router.canGoBack()) router.back();
+    if (returnsBack && router.canGoBack()) router.back();
     else router.replace('/home');
   };
 
