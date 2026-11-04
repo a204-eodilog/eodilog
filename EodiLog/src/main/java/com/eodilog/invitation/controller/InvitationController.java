@@ -20,13 +20,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "초대", description = "여행 초대 링크 생성·미리보기·수락")
+@Tag(name = "초대", description = "여행 초대 링크 생성·취소·미리보기·수락")
 @RestController
 @RequestMapping("/api/v1")
 @RequiredArgsConstructor
@@ -51,10 +52,27 @@ public class InvitationController {
 		return ResponseEntity.status(HttpStatus.CREATED).body(DataResponse.of(invitation));
 	}
 
+	@Operation(summary = "초대 링크 취소", description = """
+			여행의 ACTIVE 멤버라면 누구나 취소한다. 새 링크를 만들지 않고 이 여행에서 지금 쓸 수 있는 링크를 무효로 한다.
+			링크 ID가 아니라 여행 단위로 동작하며, 쓸 수 있는 링크가 없으면(이미 취소·만료됐거나 발급한 적 없음) 바뀌는 것 없이 204다.
+			취소된 링크로 미리보기·수락하면 410 INVITATION_REVOKED이고, 이미 동행인 사람은 지금처럼 이미 참여 중으로 본다.
+			여행 version은 바뀌지 않는다.""")
+	@ApiResponse(responseCode = "204", description = "취소 성공 또는 취소할 링크 없음")
+	@ApiResponse(responseCode = "404", description = "TRIP_NOT_FOUND: 없거나 볼 수 없는 여행",
+			content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+	@DeleteMapping("/trips/{tripId}/invitations")
+	public ResponseEntity<Void> cancelInvitations(
+			@Parameter(hidden = true) @AuthenticationPrincipal AuthUser authUser,
+			@Parameter(description = "여행 ID(UUID)", example = "0193c2a1-7e2b-7c4d-9a1e-2f3b4c5d6e70")
+			@PathVariable UUID tripId) {
+		invitationService.cancelInvitations(CurrentUser.requireUserId(authUser), tripId);
+		return ResponseEntity.noContent().build();
+	}
+
 	@Operation(summary = "초대 미리보기", description = """
 			토큰 없이 조회한다. 여행 이름·기간·초대한 사람·만료 시각만 반환하고 동행 명단과 경비는 담지 않는다.
 			로그인한 상태로 조회하면 inviterUser에 초대한 사람의 회원 카드를 담고, 로그인하지 않으면 null이다.
-			이미 이 여행의 동행이면 alreadyMember=true이며, 링크가 만료되었거나 새 링크로 바뀌었어도 410 대신 조회된다.
+			이미 이 여행의 동행이면 alreadyMember=true이며, 링크가 만료·취소되었거나 새 링크로 바뀌었어도 410 대신 조회된다.
 			Authorization 헤더를 보내면 검증하므로, 잘못되거나 만료된 토큰은 401, 가입 대기 토큰은 403이다.""")
 	@SecurityRequirements
 	@ApiResponse(responseCode = "200", description = "조회 성공")
@@ -65,7 +83,7 @@ public class InvitationController {
 	@ApiResponse(responseCode = "404", description = "NOT_FOUND: 초대 토큰 형식이 아님",
 			content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
 	@ApiResponse(responseCode = "410",
-			description = "INVITATION_REVOKED: 새 링크 발급으로 무효가 된 링크 / INVITATION_EXPIRED: 없거나 기간이 지난 링크, 삭제된 여행, 초대한 사람이 여행을 나간 링크",
+			description = "INVITATION_REVOKED: 새 링크 발급이나 취소로 무효가 된 링크 / INVITATION_EXPIRED: 없거나 기간이 지난 링크, 삭제된 여행, 초대한 사람이 여행을 나간 링크",
 			content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
 	@GetMapping("/invitations/{token}")
 	public ResponseEntity<DataResponse<InvitationPreviewResponse>> getInvitation(
@@ -86,7 +104,7 @@ public class InvitationController {
 	@ApiResponse(responseCode = "409", description = "TRIP_FULL: 여행 인원(20명)이 가득 참",
 			content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
 	@ApiResponse(responseCode = "410",
-			description = "INVITATION_REVOKED: 새 링크 발급으로 무효가 된 링크 / INVITATION_EXPIRED: 없거나 기간이 지난 링크, 삭제된 여행, 초대한 사람이 여행을 나간 링크",
+			description = "INVITATION_REVOKED: 새 링크 발급이나 취소로 무효가 된 링크 / INVITATION_EXPIRED: 없거나 기간이 지난 링크, 삭제된 여행, 초대한 사람이 여행을 나간 링크",
 			content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
 	@PostMapping("/invitations/{token}/accept")
 	public ResponseEntity<DataResponse<TripResponse>> acceptInvitation(

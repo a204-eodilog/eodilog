@@ -68,6 +68,14 @@ public class InvitationService {
 		return new InvitationSecretResponse(invitation.getId(), token, linkBaseUrl + token, invitation.getExpiresAt());
 	}
 
+	// 새 링크 없이 이 여행에서 지금 쓸 수 있는 링크를 끊는다. ACTIVE 멤버면 누구나, 쓸 수 있는 링크가 없어도 그대로 성공한다(멱등)
+	// 발급·수락과 같은 여행 행 잠금을 잡아, 동시에 들어온 수락은 취소 전에 끝나거나 취소 뒤 INVITATION_REVOKED를 받는다
+	@Transactional
+	public void cancelInvitations(UUID userId, UUID tripId) {
+		tripAccessChecker.requireActiveMemberForUpdate(tripId, userId);
+		tripInvitationRepository.revokeAllByTripId(tripId, now());
+	}
+
 	// 로그인하지 않아도 본다. 로그인했으면 viewerId 기준 관계 상태가 담긴 회원 카드를 함께 준다
 	// 이미 ACTIVE 멤버면 링크가 만료·무효여도 alreadyMember=true로 보여 준다. 링크 만료·재발급은 기존 참여자에게 영향이 없다
 	@Transactional(readOnly = true)
@@ -135,7 +143,7 @@ public class InvitationService {
 		return new LinkedTrip(invitation, trip);
 	}
 
-	// 새 링크로 바뀌었으면 INVITATION_REVOKED, 기간이 지났거나 초대한 사람이 나갔으면 INVITATION_EXPIRED
+	// 새 링크로 바뀌었거나 취소됐으면 INVITATION_REVOKED, 기간이 지났거나 초대한 사람이 나갔으면 INVITATION_EXPIRED
 	// 무효화는 만료 전 링크에만 하므로, 무효가 된 링크는 나중에 기간이 지나도 먼저 일어난 무효 사유로 알린다
 	private void requireUsable(TripInvitation invitation, boolean lockedTrip) {
 		// 잠금을 기다리는 사이 새 링크가 발급됐을 수 있어 잠근 뒤에는 DB에서 다시 확인한다

@@ -27,6 +27,7 @@ public class SecurityConfig {
             .requestCache(c->c.disable()).formLogin(f->f.disable()).httpBasic(b->b.disable())
             .authorizeHttpRequests(a->{
                 a.requestMatchers(SWAGGER_PATHS).permitAll()
+                    .requestMatchers(HttpMethod.GET,"/ws").permitAll()
                     .requestMatchers(HttpMethod.POST,"/api/v1/auth/oauth/*/authorization-requests","/api/v1/auth/oauth/*/sessions","/api/v1/auth/sessions/refresh").permitAll()
                     // 초대 미리보기는 공개. BearerFilter는 그대로 거쳐서 로그인한 사용자는 회원 카드를 받는다
                     .requestMatchers(HttpMethod.GET,"/api/v1/invitations/*").permitAll();

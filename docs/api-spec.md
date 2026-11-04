@@ -52,7 +52,7 @@
 | --- | --- |
 | 404 | `TRIP_NOT_FOUND`, `FEED_NOT_FOUND`, `JOB_NOT_FOUND` — 존재를 공개할 수 없는 자료도 같은 응답. 여행 안의 하위 자료는 `MEMBER_NOT_FOUND`(없거나 이탈한 멤버십), `CHECKLIST_ITEM_NOT_FOUND`(없거나 삭제된 준비물), `EXPENSE_NOT_FOUND`(없거나 삭제된 경비), `SETTLEMENT_NOT_FOUND`(없거나 다른 여행의 정산 계산), `CHAT_ROOM_NOT_FOUND`(없거나 삭제된 여행·참여하지 않았거나 나간 채팅방), `POLL_NOT_FOUND`(없거나 다른 여행의 투표), `VISIT_NOT_FOUND`(없거나 체크 해제한·다른 여행의 방문) |
 | 409 | `VERSION_CONFLICT`, `POLL_CLOSED`, `ALREADY_MEMBER`, `ALREADY_APPLIED`, `TRIP_FULL`(여행 ACTIVE 멤버 정원 초과), `CLIENT_MESSAGE_ID_REUSED`(같은 clientMessageId를 다른 방·본문에 재사용) |
-| 410 | `INVITATION_EXPIRED`·`INVITATION_REVOKED` — 사용자가 제시한 유효 형식의 초대 토큰 검증 결과. 새 링크 발급으로 무효가 된 링크만 `INVITATION_REVOKED`, 없는 토큰·기간 지남·삭제된 여행·초대자 이탈은 `INVITATION_EXPIRED` |
+| 410 | `INVITATION_EXPIRED`·`INVITATION_REVOKED` — 사용자가 제시한 유효 형식의 초대 토큰 검증 결과. 새 링크 발급이나 취소로 무효가 된 링크만 `INVITATION_REVOKED`, 없는 토큰·기간 지남·삭제된 여행·초대자 이탈은 `INVITATION_EXPIRED` |
 | 422 | `INSUFFICIENT_DATA`, `CURRENCY_MISMATCH`, `INVALID_PARTICIPANTS`, `UNSUPPORTED_INPUT`, `INVALID_ROUTE_LEGS`(코스 구간이 빠지거나 겹치거나 인접하지 않음) |
 | 503 | `PROVIDER_UNAVAILABLE` — 지도·날씨·장소 공급자 장애. 결과 없음과 구분 |
 
@@ -89,8 +89,8 @@
 | PUT | `/me/preferences` | 본인 | `PreferencesWrite` | `Preferences` / 200 | 직접 입력 전체 교체, 추론 허용과 공유 범위 별도 |
 | PUT | `/trips/{tripId}/members/me/preference-consent` | 멤버 | `{scope:EXPLICIT_ONLY\|EXPLICIT_AND_INFERRED\|NONE\|INHERIT}` | `{scope:string,effectiveScope:string}` / 200 | D-17. 나만 보기는 NONE, 추론 허용을 대신하지 않음 |
 | DELETE | `/me/preferences/inferred/{key}` | 본인 | 없음 | 204 | 추론 항목 개별 제거·재추론 거부 표식. 재추론 기간 Q-5 |
-| GET | `/me/settings` | 본인 | 없음 | `UserSettings` / 200 | AI 기능·종류별 알림 설정 |
-| PATCH | `/me/settings` | 본인 | `SettingsPatch` | `UserSettings` / 200 | expectedVersion 검사, 실패 시 전체 이전 설정 유지 |
+| GET | `/me/settings` | 본인 | 없음 | `UserSettings` / 200 | 가입 완료 사용자만 접근. 첫 조회에서 기본 설정 행을 생성하고 version 1 반환 |
+| PATCH | `/me/settings` | 본인 | `SettingsPatch` | `UserSettings` / 200 | 가입 완료 사용자만 접근. expectedVersion 불일치 시 409 VERSION_CONFLICT 및 전체 이전 설정 유지. 제공한 필드만 원자적으로 저장하고 값이 실제 바뀔 때만 version 증가 |
 
 기능 설정은 자동 작업 시작과 결과 반영 모두에 적용한다. OFF면 새 자동 작업을 시작하지 않고, 명시적 사용자 재시도는 409 AI_FEATURE_DISABLED 제안으로 구분한다. AUTO는 허용된 범위의 결과만 반영하고, CONFIRM은 저장 전 사용자의 적용/확인 동작을 요구한다. 추출 후보 저장은 일반 장소/북마크 API, 준비물 채택은 sourceJobId·suggestionIndex를 담은 POST, 사진 분류는 apply, 방문은 후보 confirm으로 연결한다. 자동 적용할 판정 기준이 미합의인 기능은 기준 확정 전 AUTO 실행을 비활성화한다. 날씨는 항상 제안만이며 코스 변경안은 사용자 적용 시 서버가 기준 버전을 검사한다. 진행 중 설정 변경의 취소/유지 세부는 Q-11이다. 구체 모드/기본값은 D-19 제안이다.
 
@@ -109,13 +109,14 @@
 | DELETE | `/trips/{tripId}` | 방장 | `expectedVersion:integer`(query) | `JobRef` / 202 | **Q-11 2026-11-03 확정**: 요청 트랜잭션에서 논리 삭제(`deleted_at`)해 모든 멤버에게 즉시 404(내 여행·채팅방 목록에서도 제외)가 되고, 같은 트랜잭션에 등록한 `TRIP_DELETE` 작업이 투표·코스·경비·정산·채팅·초대·준비물·멤버 행을 물리 삭제한다. 여행 행만 tombstone으로 남긴다(jobs FK·404 유지). 되돌리기·보존 기간 없음. 방장 아니면 403, version 다르면 409, 누락 400. 멱등키 대상 아님(재요청은 404). 작업 조회는 요청한 방장만. 사진 파일 삭제는 사진 기능 때 같은 작업의 execute에 추가 |
 | GET | `/trips/{tripId}/members` | 멤버 | `includeInactive?:boolean`(query, 기본 false) | `{members:Member[]}` / 200 | 기본 ACTIVE만 joinOrder 순. `includeInactive=true`면 정산에 남는 이탈(LEFT·REMOVED) 멤버도 포함 |
 | POST | `/trips/{tripId}/invitations` | 멤버 | 없음 | `InvitationSecret` / 201 | 만료는 생성 후 7일(Q-4, 2026-10-30 결정). 링크별 사용 횟수 없음. 새로 만들면 같은 여행의 이전 링크는 모두 무효(여행당 쓸 수 있는 링크 하나), 화면 진입마다 호출하지 않음. 토큰 원문 1회 반환, 서버는 해시만 보관 |
+| DELETE | `/trips/{tripId}/invitations` | 멤버 | 없음 | 204 | 새 링크 없이 이 여행에서 지금 쓸 수 있는 링크를 무효화(여행 단위, 링크 ID 없음). 쓸 수 있는 링크가 없으면(이미 취소·만료·발급 이력 없음) 바뀌는 것 없이 204. 취소된 링크는 410 `INVITATION_REVOKED`(이미 ACTIVE 멤버는 미리보기·수락 200 유지). 여행 version 변화·멱등키·알림 없음 |
 | GET | `/invitations/{token}` | 공개(D-1) | 없음 | `InvitationPreview` / 200 | 여행명·기간·초대한 사람만, 내부 명단/경비 반환 안 함. 형식이 틀린 토큰 404, 링크가 쓸 수 없으면 410(사유는 §2). 로그인한 사람이 이미 ACTIVE 멤버면 링크가 만료·무효여도 200, `alreadyMember=true`. Authorization 헤더를 보내면 검증(잘못된 토큰 401, 가입 대기 403) |
-| POST | `/invitations/{token}/accept` | 로그인 | 없음 | `Trip` / 200 | 유효 링크로 관계 없이 참여. 이미 ACTIVE 멤버면 링크가 만료·무효여도 바뀌는 것 없이 같은 여행 반환. 그 밖에는 새 발급으로 무효(410 `INVITATION_REVOKED`)·만료·초대자 이탈(410 `INVITATION_EXPIRED`) 검사 후, 정원은 여행당 ACTIVE 멤버 20명(방장 포함, Q-4)으로 넘으면 409 `TRIP_FULL`. 이탈 멤버는 기존 멤버십으로 재참여하고 joinOrder를 새로 받음. 채팅 참여와 함께 처리하고 여행 version 증가 |
+| POST | `/invitations/{token}/accept` | 로그인 | 없음 | `Trip` / 200 | 유효 링크로 관계 없이 참여. 이미 ACTIVE 멤버면 링크가 만료·무효여도 바뀌는 것 없이 같은 여행 반환. 그 밖에는 새 발급·취소로 무효(410 `INVITATION_REVOKED`)·만료·초대자 이탈(410 `INVITATION_EXPIRED`) 검사 후, 정원은 여행당 ACTIVE 멤버 20명(방장 포함, Q-4)으로 넘으면 409 `TRIP_FULL`. 이탈 멤버는 기존 멤버십으로 재참여하고 joinOrder를 새로 받음. 채팅 참여와 함께 처리하고 여행 version 증가 |
 | POST | `/trips/{tripId}/owner-transfer` | 방장 | `{targetMemberId:id,expectedVersion:integer}` | `Trip` / 200 | 같은 여행의 다른 ACTIVE 멤버만, 아니면 400. 방장 아닌 멤버 403. 알림 없음 |
 | POST | `/trips/{tripId}/leave` | 멤버 | `{deleteOwnPhotos:boolean,deleteOwnMessages:boolean,expectedVersion:integer}` | `LeaveResult` / 200(삭제 작업이 있으면 202) | 일반 이탈은 경비 유지·방장 자동 양도. **1단계(2026-11-02 확정)**: 경비·사진·메시지를 남기는 기본 나가기. 성공은 200 + `LeaveResult{tripId,tripDeleted:false,newOwnerMemberId(방장이 나갔을 때만, 아니면 null),cleanupJobId:null,status:LEFT}`. **내 채팅 삭제(2026-11-04 확정)**: `deleteOwnMessages=true`면 나가는 순간 이 여행 채팅방의 본인 TEXT 메시지 ID를 고정해 LEAVE_CLEANUP 작업을 등록하고 202 + `LeaveResult{tripDeleted:false,status:LEFT,cleanupJobId}`. 작업은 본문만 지운다(`text:null`·`deletedAt`, 순번 유지). 지울 메시지가 없으면 작업 없이 200. `deleteOwnPhotos=true`는 사진 기능 전까지 400 `VALIDATION_ERROR`(필드 deleteOwnPhotos). **혼자 남은 사람의 나가기(2026-11-03 확정)**: 여행 삭제와 같게 처리(위 DELETE 행)하고 202 + `LeaveResult{tripDeleted:true,newOwnerMemberId:null,cleanupJobId:TRIP_DELETE 작업 ID,status:TRIP_DELETED}`. 멤버십은 LEFT로 남겼다가 작업이 지운다. 여행 version 다르면 409, 성공 시 version 1 증가. 멱등키 대상이 아니므로 성공 뒤 재시도는 404 |
 | DELETE | `/trips/{tripId}/members/{memberId}` | 방장 | `expectedVersion:integer`(query) | 204 | 본인·방장 내보내기 금지(400). 없거나 이탈한 대상 404 `MEMBER_NOT_FOUND`. 멤버십 REMOVED·채팅 참여 해제를 한 트랜잭션으로. 강제 이탈 시 타인 자료 삭제 여부는 Q-11 |
 
-2026-10-30 사용자 확정: 여행 정원은 방장 포함 ACTIVE 멤버 최대 20명이다. 이탈·내보내기로 빈자리가 생기면 다시 참여할 수 있다. 초대 링크는 발급 시각부터 7일(168시간) 유효하며, 만료 시각부터 참여할 수 없다. ACTIVE 멤버 누구나 재발급할 수 있고 재발급하면 이전 링크는 즉시 무효화한다. 링크 만료·재발급은 기존 참여자에게 영향을 주지 않는다. 수락 시 정원 확인과 참여 반영을 원자적으로 처리해 동시 수락으로 20명을 초과하지 않게 한다. 만료는 410 INVITATION_EXPIRED, 정원 초과는 409 TRIP_FULL이다. 재발급 시 이전 링크 무효화는 EODI-128에서 반영했다(여행 행 잠금으로 동시 발급에도 쓸 수 있는 링크는 하나, 무효가 된 링크는 410 INVITATION_REVOKED). 기존 ACTIVE 멤버는 만료·무효 링크로 열어도 미리보기 `alreadyMember=true`, 수락은 같은 여행을 받는다.
+2026-10-30 사용자 확정: 여행 정원은 방장 포함 ACTIVE 멤버 최대 20명이다. 이탈·내보내기로 빈자리가 생기면 다시 참여할 수 있다. 초대 링크는 발급 시각부터 7일(168시간) 유효하며, 만료 시각부터 참여할 수 없다. ACTIVE 멤버 누구나 재발급할 수 있고 재발급하면 이전 링크는 즉시 무효화한다. 링크 만료·재발급은 기존 참여자에게 영향을 주지 않는다. 수락 시 정원 확인과 참여 반영을 원자적으로 처리해 동시 수락으로 20명을 초과하지 않게 한다. 만료는 410 INVITATION_EXPIRED, 정원 초과는 409 TRIP_FULL이다. 재발급 시 이전 링크 무효화는 EODI-128에서 반영했다(여행 행 잠금으로 동시 발급에도 쓸 수 있는 링크는 하나, 무효가 된 링크는 410 INVITATION_REVOKED). 새 링크 없이 링크만 끊는 취소(`DELETE /trips/{tripId}/invitations`)는 EODI-187에서 추가했다. 기존 ACTIVE 멤버는 만료·무효 링크로 열어도 미리보기 `alreadyMember=true`, 수락은 같은 여행을 받는다.
 
 방장 양도·멤버 내보내기의 `expectedVersion`은 여행의 `version`(`Trip.version`)이다(이탈·여행 삭제도 같은 version을 쓰는 제안). 입력 형식 400을 먼저 검사한 뒤 비참여자 404, 방장 전용 동작을 멤버가 요청하면 403, 버전이 다르면 409, 끝으로 대상(양도 대상이 동행이 아니거나 이미 방장이면 400, 내보낼 멤버가 없거나 이탈했으면 404 `MEMBER_NOT_FOUND`, 방장 자신이면 400) 순으로 판정한다. 양도·내보내기가 성공하면 `Trip`의 `ownerMemberId`·`members`가 바뀌므로 여행 version을 올리고, 그 전 version으로 보낸 여행 정보 수정(PATCH)은 409가 된다.
 
@@ -268,7 +269,7 @@
 
 ## 9. 채팅·알림·작업 조회
 
-근거: WD-FR-33~34, WD-NFR-02. 여행 그룹 채팅만 제공한다. 아래 REST는 조회/전송 계약이며 채팅 실시간 전송은 Q-13, 코스 공동 편집 프로토콜은 Q-15에서 합의한다. 2026-11-02 Q-13 확정(REST 범위): 신규·재참여 ACTIVE 멤버 모두 여행 채팅의 처음부터 전체 대화를 보고(이탈 기간 포함), LEFT·REMOVED는 조회·전송할 수 없다. 첨부·일반 메시지 편집/삭제·대화 읽음 규격은 추가하지 않는다. 방 참여 권한은 현재 여행 ACTIVE 멤버십이며, `/chat/rooms/{roomId}/**`에서 삭제된 여행·비참여·이탈한 방은 모두 404 `CHAT_ROOM_NOT_FOUND`(여행 경로인 `GET /trips/{tripId}/chat-room`은 404 `TRIP_NOT_FOUND`).
+근거: WD-FR-33~34, WD-NFR-02. 여행 그룹 채팅만 제공한다. 아래 REST는 조회/전송 계약이고, 새 메시지의 실시간 전달은 아래 「채팅 실시간 전달」(2026-11-04 A·B 합의, 보내기는 REST 그대로)을 따른다. 코스 공동 편집 프로토콜은 Q-15에서 합의한다. 2026-11-02 Q-13 확정(REST 범위): 신규·재참여 ACTIVE 멤버 모두 여행 채팅의 처음부터 전체 대화를 보고(이탈 기간 포함), LEFT·REMOVED는 조회·전송할 수 없다. 첨부·일반 메시지 편집/삭제·대화 읽음 규격은 추가하지 않는다. 방 참여 권한은 현재 여행 ACTIVE 멤버십이며, `/chat/rooms/{roomId}/**`에서 삭제된 여행·비참여·이탈한 방은 모두 404 `CHAT_ROOM_NOT_FOUND`(여행 경로인 `GET /trips/{tripId}/chat-room`은 404 `TRIP_NOT_FOUND`).
 
 | Method | URL | 권한 | 요청 | 성공 data / 상태 | 주요 규칙 |
 | --- | --- | --- | --- | --- | --- |
@@ -298,6 +299,26 @@
 jobs 공통 기반은 PostgreSQL 등록·실행·조회만 제공한다. kind별 실행기와 등록·실행·완료·조회 정책이 모두 등록된 기능만 활성화하며, 현재 운영 실행기는 정리 작업 TRIP_DELETE·LEAVE_CLEANUP뿐이다. 공개 생성·재시도·취소 API는 제공하지 않는다. 조회 불가·없는 작업은 모두 404 `JOB_NOT_FOUND`다. 정리 result는 `{scope:LEAVE_CLEANUP|PHOTO_DELETE|TRIP_DELETE,completedCount:integer,failedCount:integer}`만 공개한다. `scope`는 작업 종류이며 대상 ID·본문·파일은 반환하지 않는다. 내부 SPI와 재시도·임대 보장은 [jobs 기반 문서](../EodiLog/docs/plan/jobs-foundation.md)를 따른다.
 
 사용자가 임의 알림·시스템 메시지를 만드는 API는 없다. 서버 이벤트로 알림과 시스템 메시지를 생성하고 `eventId`로 중복을 막는다. 전송 시점과 링크 진입 시점에 모두 권한을 검사한다. 팔로우 요청/수락·투표 마감/자동 결과·여행 참여·코스 변경 이벤트를 포함한다. 정산 완료·사진 동의·코스 승인 이벤트는 제거한다. 코스 연속 변경의 묶음 키/시간창·최종 상태·시스템 카드 연동은 Q-16 합의 전 확정하지 않는다. 실제 송금 확인·푸시·채팅 첨부·일반 메시지 수정/삭제·대화 전체 읽음 규격은 추가하지 않았다. 시스템 카드 읽음은 event_receipts를 통해 알림과 연결한다. 그룹 이탈 시 삭제 선택은 §4 이탈 API로 제공한다.
+
+2026-11-04 A의 알림 기반 단계에서는 `events`·`notifications`·`event_receipts`, 위 조회·읽음 API, 업무 트랜잭션 안에서 호출하는 `NotificationEventRegistrar.register(EventCommand, recipientUserIds)`를 제공한다. 등록은 동일 `deduplicationKey`에 멱등이며 여행 수신자는 등록 시와 조회 시 현재 ACTIVE 멤버십을 검사한다. 기존 `TripInfoChangedEvent`만 동기 리스너로 연결했다. 나머지 이벤트 생산자, 설정별 수신 차단, 푸시·채팅 시스템 카드는 각 기능 연동 단계에서 붙인다. 알림 목록은 `createdAt DESC, id DESC` 커서, 기본 20·최대 100개다. 미래 `through`는 400이다.
+
+### 채팅 실시간 전달
+
+STOMP over WebSocket으로 서버 → 앱 전달만 한다. 메시지 보내기는 위 `POST /chat/rooms/{roomId}/messages`이고 WebSocket `SEND`는 받지 않는다.
+
+| 항목 | 규칙 |
+| --- | --- |
+| 연결 | `GET /ws`(`/api/v1` 밖, SockJS 없음). 핸드셰이크는 인증 없이 열린다 |
+| 인증 | STOMP `CONNECT` 프레임 헤더 `Authorization: Bearer <access>`. REST와 같은 검사로 잘못된·만료 토큰·폐기된 세션은 `UNAUTHENTICATED`, 가입 대기는 `PROFILE_INCOMPLETE`. URL에 토큰을 싣지 않는다 |
+| 구독 | `/user/queue/chat` 하나만. 다른 목적지 구독·`SEND`는 `FORBIDDEN` |
+| 오류 | STOMP `ERROR` 프레임. `message` 헤더에 오류 코드, 본문은 §2 실패 형식(`{"error":{code,message,fields,traceId}}`). ERROR 뒤 서버가 연결을 닫는다 |
+| 토큰 만료 | 연결에 쓴 access 토큰의 만료 시각에 `ERROR UNAUTHENTICATED`로 닫는다. 앱은 갱신 API로 새 토큰을 받아 다시 연결한다 |
+| 하트비트 | 서버·앱 10초(`10000,10000`) |
+| 이벤트 | `{"type":"MESSAGE_CREATED","roomId":id,"message":Message}`. 메시지 저장이 커밋된 뒤 그 방 여행의 지금 ACTIVE 멤버 전원(보낸 사람 포함)에게 보낸다. 이탈·내보내기·여행 삭제 뒤에는 받지 않는다. 같은 `clientMessageId` 재전송은 다시 보내지 않는다. 보낸 사람은 REST 201과 이벤트를 둘 다 받으므로 `message.id`로 하나만 남긴다 |
+| 전달 보장 | 최선 노력. REST가 기준이다 |
+| 재접속 복구 | 연결 → `/user/queue/chat` 구독을 먼저 → 열린 방마다 최신 메시지 페이지를 다시 받고 기억하던 마지막 sequence까지 `beforeSequence`로 이어 받는다. 이벤트 sequence가 마지막+1보다 크면 같은 방법으로 빈칸을 채우고, 같은 sequence는 덮어쓴다 |
+
+나가기 "내 채팅 삭제"로 지운 본문, 참여자 변경, 입력 중·읽음은 실시간으로 보내지 않는다. 다시 불러오면 반영된다.
 
 ### 실시간 공동 편집·기간·알림의 공통 동작
 
@@ -369,8 +390,8 @@ jobs 공통 기반은 PostgreSQL 등록·실행·조회만 제공한다. kind별
 | ChatRoom | `id,type:TRIP,tripId:id,participants:UserCard[],lastMessage:Message\|null` |
 | Message | `id,roomId,sequence:integer,senderId:id\|null,type:TEXT\|SYSTEM,text:string\|null,clientMessageId:id\|null,eventId:id\|null,target:{type:string,id:id}\|null,eventReadAt:datetime\|null,createdAt:datetime,deletedAt:datetime\|null` |
 | Notification | `id,eventId,kind:string,message:string,target:{type:string,id:id},readAt:datetime\|null,createdAt:datetime` — 임의 이동 URL 대신 대상 타입·ID 반환 |
-| UserSettings | `version:integer,ai:{photoClassification:AiMode,visitDetection:AiMode,placeExtraction:AiMode,checklist:AiMode,weather:SUGGEST_ONLY\|OFF},notifications:{followRequests:boolean,voteCourse:boolean,tripChanges:boolean}`. AiMode=AUTO/CONFIRM/OFF. 초기값은 CONFIRM·날씨 SUGGEST_ONLY·알림 true 제안 |
-| SettingsPatch | `expectedVersion:integer,ai?:UserSettings.ai의 부분 필드,notifications?:UserSettings.notifications의 부분 필드`. 성공 시 원자 저장, 생략은 유지 |
+| UserSettings | `version:integer,ai:{photoClassification:AiMode,visitDetection:AiMode,placeExtraction:AiMode,checklist:AiMode,weather:SUGGEST_ONLY\|OFF},notifications:{followRequests:boolean,voteCourse:boolean,tripChanges:boolean}`. AiMode=AUTO/CONFIRM/OFF. 첫 조회 시 version 1, AI 네 필드 CONFIRM·날씨 SUGGEST_ONLY·알림 세 필드 true로 저장 |
+| SettingsPatch | `expectedVersion:integer,ai?:UserSettings.ai의 부분 필드,notifications?:UserSettings.notifications의 부분 필드`. 생략은 유지, null·알 수 없는 필드/모드는 400 VALIDATION_ERROR. 현재 version 일치 시 원자 저장하고 실제 값 변경 때만 version 증가; 불일치는 409 VERSION_CONFLICT |
 | SavedPlacePage | `{items:SavedPlace[],totals:{allPlaceCount:integer,overlapPlaceCount:integer,filteredCount:integer},page:{nextCursor:string\|null,hasNext:boolean}}` |
 | RegionDetail | `region:Region,introduction:string\|null,representativePlaces:Place[],partialErrors:string[]` |
 | PlaceSocialSummary | `place:Place,visitorCount:integer,visitors:UserCard[],averageScore:number\|null,reviewCount:integer,partialErrors:string[]`. 평균·표본은 허용된 게시 평가로만 계산 |

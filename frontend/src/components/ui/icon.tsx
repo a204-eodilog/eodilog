@@ -35,6 +35,7 @@ export type IconName =
   | 'image'
   | 'arrow-right'
   | 'map';
+  | 'bulb';
 
 type IconProps = {
   name: IconName;
@@ -81,6 +82,7 @@ const PATHS: Record<IconName, string> = {
   image: 'M4 5H20V19H4V5ZM4 16L9 11L14 16M13 15L16 12L20 16M15.5 8.5V8.6',
   'arrow-right': 'M5 12H19M13 6L19 12L13 18',
   map: 'M9 4.5L3.5 6.5V19.5L9 17.5L15 19.5L20.5 17.5V4.5L15 6.5L9 4.5ZM9 4.5V17.5M15 6.5V19.5',
+  bulb: 'M9.5 18.5H14.5M10.5 21H13.5M12 3A6 6 0 0 0 8.5 13.9V16H15.5V13.9A6 6 0 0 0 12 3Z',
 };
 
 /** 채워도 선으로만 남겨야 하는 부분. 가방 손잡이처럼 몸통과 따로 그린다. */

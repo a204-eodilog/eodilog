@@ -3,6 +3,7 @@ import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
 
+import { DEV_MOCK_SESSION } from '@/api/dev-mock';
 import type { Session } from '@/api/types';
 import { env } from '@/config/env';
 
@@ -81,6 +82,9 @@ export function prepareKakaoLogin(): Promise<Prepared> {
 
 /** 카카오 로그인 한 번. 준비 정보는 한 번만 쓸 수 있어 끝나면 비운다 */
 export async function loginWithKakao(): Promise<KakaoLoginResult> {
+  // 개발용 테스트 모드: 카카오를 거치지 않고 바로 로그인한 것으로 본다(src/api/dev-mock.ts)
+  if (env.devMock) return { type: 'success', session: DEV_MOCK_SESSION };
+
   const ready = await prepareKakaoLogin();
   prepared = null;
 
