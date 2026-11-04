@@ -17,12 +17,15 @@ import { useSessionStore } from '@/stores/session-store';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 import { getMe, updateNickname } from '../api';
+import { signOut } from '../logout';
 import { AGE_BANDS, type AgeBand, NICKNAME_MAX_LENGTH, normalizeNickname } from '../profile-rules';
 
 /**
  * S02 프로필·연령 입력. 닉네임을 넣어 가입을 마친다.
  * 상태: 기본 / 필수 항목 누락 / 저장 실패. 프로필 사진·연령대는 저장 API가 아직 없어 화면에서만 고른다.
  * 저장 뒤에는 S03 취향 입력으로 간다(초대로 온 경우 S04는 초대 화면 작업 때 붙인다).
+ * 주소는 (auth) 묶음 밖에 둔다. 가입을 마쳐 signedIn이 되는 순간 (auth) 레이아웃이 홈으로 보내 S03 이동과 겹치기 때문이다.
+ * 피그마에는 없지만 가입 대기 중 다른 계정으로 바꿀 길이 없어 상단 오른쪽에 [로그아웃]을 둔다.
  */
 export function ProfileScreen() {
   const markProfileCompleted = useSessionStore((s) => s.markProfileCompleted);
@@ -52,7 +55,18 @@ export function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.screen}>
-      <Header title="프로필 만들기" />
+      <Header
+        title="프로필 만들기"
+        right={
+          <Pressable
+            accessibilityRole="button"
+            onPress={signOut}
+            style={({ pressed }) => [styles.logout, pressed && styles.pressed]}
+          >
+            <Text style={[typography.captionMedium, styles.sub]}>로그아웃</Text>
+          </Pressable>
+        }
+      />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -163,7 +177,10 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[24],
     gap: spacing[28],
   },
-  failCard: { gap: 0, backgroundColor: colors.status.dangerBg },
+  // 안내 상자(회색). 피그마 S02 저장 실패: 바탕 grey 98, 둥글기 20, 안쪽 20
+  failCard: { gap: 0, padding: spacing[20], backgroundColor: colors.surface.subtle },
+  logout: { paddingHorizontal: spacing[8], paddingVertical: spacing[12] },
+  pressed: { opacity: 0.6 },
   failRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[14] },
   failIcon: {
     width: 44,
