@@ -61,6 +61,7 @@ const ICONS: IconName[] = [
   'leave',
   'image',
   'arrow-right',
+  'map',
 ];
 
 type LeaveExample = 'member' | 'owner' | 'alone' | 'fail' | 'conflict';

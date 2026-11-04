@@ -33,7 +33,8 @@ export type IconName =
   | 'lock'
   | 'leave'
   | 'image'
-  | 'arrow-right';
+  | 'arrow-right'
+  | 'map';
 
 type IconProps = {
   name: IconName;
@@ -79,6 +80,7 @@ const PATHS: Record<IconName, string> = {
   leave: 'M14 4H18A2 2 0 0 1 20 6V18A2 2 0 0 1 18 20H14M9 8L5 12L9 16M5 12H15',
   image: 'M4 5H20V19H4V5ZM4 16L9 11L14 16M13 15L16 12L20 16M15.5 8.5V8.6',
   'arrow-right': 'M5 12H19M13 6L19 12L13 18',
+  map: 'M9 4.5L3.5 6.5V19.5L9 17.5L15 19.5L20.5 17.5V4.5L15 6.5L9 4.5ZM9 4.5V17.5M15 6.5V19.5',
 };
 
 /** 채워도 선으로만 남겨야 하는 부분. 가방 손잡이처럼 몸통과 따로 그린다. */
