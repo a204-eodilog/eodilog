@@ -70,7 +70,7 @@ export type HomeRecommendation = {
   id: string;
   kind: 'trip' | 'place';
   title: string;
-  /** "세은" 또는 "강릉 명주동" */
+  /** 여행이면 함께 간 사람·지역("하늘"), 장소면 위치("강릉 명주동") */
   meta: string;
   /** "2박 3일". 장소는 없음 */
   nights: string | null;
