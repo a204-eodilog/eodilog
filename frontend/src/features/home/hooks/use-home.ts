@@ -6,7 +6,8 @@ import { getDiscovery, getHomeMap, getUnreadCount, hasAnyFollowing, hasAnyTrip }
 import { homeState, toRecommendations, toRegionMarks } from '../home-rules';
 
 const KEYS = {
-  trip: ['home', 'has-trip'] as const,
+  // 내 여행 목록(['me', 'trips'])과 같은 머리를 써서, 여행을 만들거나 나가면 함께 새로 받는다
+  trip: ['me', 'trips', 'home-has-trip'] as const,
   map: ['home', 'map'] as const,
   following: ['home', 'has-following'] as const,
   discovery: ['home', 'discovery'] as const,
