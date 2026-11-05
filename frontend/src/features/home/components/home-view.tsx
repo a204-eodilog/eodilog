@@ -17,7 +17,7 @@ import {
 import { findMapRegion, type MapPoint } from '@/lib/korea-map';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
-import { clusterMarks, fillStepsFor, groupBySido, isGroup } from '../home-rules';
+import { clusterMarks, fillStepsFor, groupBySido, isGroup, placePhotoPins } from '../home-rules';
 import type { HomeRecommendation, HomeState, RegionGroup, RegionMark } from '../types';
 
 import { GroupPill, InviteSpot, LockedFace, PhotoPin, RegionPill } from './map-pins';
@@ -46,8 +46,8 @@ export type HomeViewProps = {
 
 // 핀이 화면에서 차지하는 크기(겹침 판단). 이름표는 알약+점, 사진 카드는 점 옆 카드
 const PILL_ROOM = { width: 86, height: 40 };
-// 사진 카드는 점 왼쪽·오른쪽에 번갈아 놓여 이웃끼리 가로로는 잘 안 겹친다. 세로 높이가 주로 겹친다
-const CARD_ROOM = { width: 90, height: 64 };
+// 사진 카드 한 장의 화면 크기(점 16 + 카드). 겹침은 placePhotoPins가 카드 네모로 본다
+const CARD = { width: 176, height: 64, gap: 6 };
 /** 이 단계부터 사진 카드 (0부터: 4단계) */
 const PHOTO_STAGE = 3;
 
@@ -60,9 +60,8 @@ function roomInMap(index: number, pxPerUnit: number) {
   let width = Infinity;
   let height = Infinity;
   for (let i = 1; i <= index; i += 1) {
-    const room = i >= PHOTO_STAGE ? CARD_ROOM : PILL_ROOM;
-    width = Math.min(width, room.width / (fit * MAP_STAGES[i]));
-    height = Math.min(height, room.height / (fit * MAP_STAGES[i]));
+    width = Math.min(width, PILL_ROOM.width / (fit * MAP_STAGES[i]));
+    height = Math.min(height, PILL_ROOM.height / (fit * MAP_STAGES[i]));
   }
   return { width, height };
 }
@@ -160,15 +159,6 @@ function MapBody(props: HomeViewProps) {
     }
     setZoomTo((prev) => ({ key: (prev?.key ?? 0) + 1, point: g.point, scale: next + 0.1 }));
   };
-  // 확대 카드는 북쪽부터 왼쪽·오른쪽을 번갈아 놓아 이웃 카드끼리 덜 겹치게 한다
-  const sides = useMemo(() => {
-    const byY = [...marks]
-      .map((m) => ({ code: m.regionCode, y: findMapRegion(m.regionCode)?.point[1] ?? 0 }))
-      .sort((a, b) => a.y - b.y);
-    return new Map(
-      byY.map((m, i) => [m.code, i % 2 === 0 ? ('left' as const) : ('right' as const)]),
-    );
-  }, [marks]);
 
   const pins = useMemo<KoreaMapPin[]>(() => {
     if (state === 'no-friends') {
@@ -192,17 +182,20 @@ function MapBody(props: HomeViewProps) {
           : [];
       });
     }
-    // 1단계는 시도로, 2단계부터는 그 단계 크기에서 겹치는 핀끼리 묶는다
+    // 1단계는 시도로, 2~3단계는 이름표끼리 겹치면 묶고, 4단계부터는 사진 카드 네모가 겹치지 않게 놓는다
     const items =
       index === 0 || !stage
         ? groupBySido(marks)
-        : clusterMarks(marks, 1, roomInMap(index, stage.pxPerUnit));
-    return items.flatMap((item): KoreaMapPin[] => {
-      if (!isGroup(item)) {
+        : detail
+          ? placePhotoPins(marks, stage.pxPerUnit, CARD)
+          : clusterMarks(marks, 1, roomInMap(index, stage.pxPerUnit));
+    return items.flatMap((entry): KoreaMapPin[] => {
+      if (!isGroup(entry)) {
+        const item = 'mark' in entry ? entry.mark : entry;
+        const side = 'mark' in entry ? entry.side : 'right';
         const r = findMapRegion(item.regionCode);
         if (!r) return [];
         const press = () => props.onRegion(item);
-        const side = sides.get(item.regionCode) ?? 'right';
         return [
           {
             key: detail ? `${item.regionCode}-photo` : item.regionCode,
@@ -218,6 +211,7 @@ function MapBody(props: HomeViewProps) {
           },
         ];
       }
+      const item = entry;
       const last = item.marks.reduce((a, b) =>
         (order.get(b.regionCode) ?? 0) > (order.get(a.regionCode) ?? 0) ? b : a,
       );
@@ -238,7 +232,7 @@ function MapBody(props: HomeViewProps) {
       ];
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state, marks, stage, props, fillSteps, order, top, sides, entered]);
+  }, [state, marks, stage, props, fillSteps, order, top, entered]);
 
   const focus = props.initialZoom ? findMapRegion(props.initialZoom.regionCode) : undefined;
   const ready = state === 'ready';

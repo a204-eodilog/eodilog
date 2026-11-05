@@ -6,6 +6,8 @@ import {
   fillStepsFor,
   clusterMarks,
   groupBySido,
+  isGroup,
+  placePhotoPins,
   fillsFor,
   homeState,
   nightsLabel,
@@ -189,6 +191,40 @@ describe('clusterMarks', () => {
   });
   it('크게 보면 모두 따로', () => {
     expect(clusterMarks(marks, 50, { width: 100, height: 44 })).toHaveLength(3);
+  });
+});
+
+describe('placePhotoPins', () => {
+  const m = (regionCode: string, name: string, n: number) => ({
+    regionCode,
+    name,
+    memberCount: n,
+    memberIds: Array.from({ length: n }, (_, i) => `${regionCode}-${i}`),
+    memberNames: [],
+    coverUrl: null,
+    visitCount: 1,
+    feedIds: [],
+  });
+  // 강릉(584,153)·평창(530,178)·동해(612,190)·춘천(428,123)
+  const marks = [
+    m('5115000000', '강릉', 3),
+    m('5176000000', '평창', 4),
+    m('5117000000', '동해', 2),
+    m('5111000000', '춘천', 1),
+  ];
+  const card = { width: 176, height: 64, gap: 6 };
+  it('카드 네모가 겹치지 않는 쪽을 고르고, 양쪽 다 막히면 가까운 카드와 묶는다', () => {
+    const items = placePhotoPins(marks, 1, card);
+    // 가까운 세 곳 중 하나는 묶이고 춘천은 따로
+    const groups = items.filter(isGroup);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].label).toMatch(/외 /);
+    expect(items.some((i) => !isGroup(i) && i.mark.name === '춘천')).toBe(true);
+  });
+  it('충분히 크게 보면 모두 따로 놓이고 겹치지 않는다', () => {
+    const items = placePhotoPins(marks, 6, card);
+    expect(items.filter(isGroup)).toHaveLength(0);
+    expect(items).toHaveLength(4);
   });
 });
 
