@@ -196,10 +196,26 @@ function MapCanvas({
   });
   const gesture = useSimultaneousGestures(pinch, pan, doubleTap);
 
+  // 확대 단계. 전국 보기에서는 시군구 선을 거의 숨겨 지도가 복잡해 보이지 않게 한다
+  const [detail, setDetail] = useState(start.s >= detailScale);
+  // 지도를 통째로 키우므로 선도 같이 두꺼워진다. 배율을 0.5 단위로 받아 선 굵기를 나눠 화면에서 같게 둔다
+  const [zoom, setZoom] = useState(start.s);
+  useAnimatedReaction(
+    () => Math.round(scale.value * 2) / 2,
+    (next, prev) => {
+      if (next !== prev) runOnJS(setZoom)(next);
+    },
+  );
+  /** 화면 px → viewBox 단위 */
+  const px = (n: number) => n / (fit * zoom);
+  const report = (next: boolean) => {
+    setDetail(next);
+    onDetailChange?.(next);
+  };
   useAnimatedReaction(
     () => scale.value >= detailScale,
-    (detail, prev) => {
-      if (prev !== null && detail !== prev && onDetailChange) runOnJS(onDetailChange)(detail);
+    (next, prev) => {
+      if (prev !== null && next !== prev) runOnJS(report)(next);
     },
     [detailScale, onDetailChange],
   );
@@ -217,7 +233,7 @@ function MapCanvas({
     () => (
       <Svg width={baseW} height={baseH} viewBox={`0 0 ${KOREA_MAP.width} ${KOREA_MAP.height}`}>
         {/* 땅 아래 옅은 그림자와 흰 빛 (Figma S05) */}
-        <G transform="translate(0 4)">
+        <G transform={`translate(0 ${px(2)})`}>
           {KOREA_MAP.sido.map((r) => (
             <Path key={r.code} d={r.d} fill={colors.shadow} />
           ))}
@@ -228,7 +244,7 @@ function MapCanvas({
             d={r.d}
             fill={LAND}
             stroke={LAND}
-            strokeWidth={10}
+            strokeWidth={px(5)}
             strokeLinejoin="round"
             strokeOpacity={0.8}
           />
@@ -238,9 +254,8 @@ function MapCanvas({
             key={r.code}
             d={r.d}
             fill={fills[r.code] ?? fills[r.parent] ?? LAND}
-            stroke={colors.line.default}
-            strokeWidth={0.6}
-            vectorEffect="non-scaling-stroke"
+            stroke={detail ? colors.line.default : 'none'}
+            strokeWidth={px(0.8)}
           />
         ))}
         {KOREA_MAP.sido.map((r) => (
@@ -248,14 +263,14 @@ function MapCanvas({
             key={r.code}
             d={r.d}
             fill="none"
-            stroke={colors.line.strong}
-            strokeWidth={1}
-            vectorEffect="non-scaling-stroke"
+            stroke={detail ? colors.line.strong : colors.line.default}
+            strokeWidth={px(detail ? 1.2 : 0.8)}
           />
         ))}
       </Svg>
     ),
-    [baseW, baseH, fills],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [baseW, baseH, fills, detail, zoom],
   );
 
   return (
