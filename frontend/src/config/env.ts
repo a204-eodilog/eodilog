@@ -25,4 +25,12 @@ export const env = {
   devMock:
     process.env.EXPO_PUBLIC_DEV_MOCK === 'true' &&
     ['local', 'development'].includes(process.env.EXPO_PUBLIC_APP_ENV ?? 'local'),
+  /**
+   * 테스트 모드를 '신규 가입자'로 시작한다(EXPO_PUBLIC_DEV_MOCK_NEW_USER=true).
+   * 처음 화면 → 로그인 → 프로필(S02) → 취향(S03) → 첫 방문 홈 순서를 서버 없이 확인한다
+   */
+  devMockNewUser:
+    process.env.EXPO_PUBLIC_DEV_MOCK === 'true' &&
+    process.env.EXPO_PUBLIC_DEV_MOCK_NEW_USER === 'true' &&
+    ['local', 'development'].includes(process.env.EXPO_PUBLIC_APP_ENV ?? 'local'),
 } as const;

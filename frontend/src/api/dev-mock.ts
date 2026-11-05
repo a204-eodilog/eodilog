@@ -66,9 +66,13 @@ const ME: MyProfile = {
   ...user('user-me', '영광'),
   ageBand: null,
   ageUseConsent: false,
-  profileCompleted: true,
+  // 신규 가입자 모드: 카카오 닉네임만 있고 프로필(S02)은 아직
+  profileCompleted: !env.devMockNewUser,
   profileUrl: '',
 };
+
+/** 신규 가입자 모드에서 S03에 저장한 취향. 저장 전에는 404 */
+let myPreferences: unknown = null;
 
 const FRIENDS = ['세은', '승기', '인경', '수철', '성환'].map((name, i) =>
   user(`user-${i + 1}`, name),
@@ -197,7 +201,7 @@ function makeTrip(input: {
 }
 
 /** 상태 표 5행과 목록 묶음을 한 번에 볼 수 있게 고른 여행들. 만든 순서 최신부터 */
-let trips: Trip[] = [
+const SAMPLE_TRIPS: Trip[] = [
   makeTrip({ title: '부산 바다 여행', start: -1, days: 2, regions: ['region-busan'], friends: 2 }),
   makeTrip({
     title: '강릉 커피 투어',
@@ -227,6 +231,8 @@ let trips: Trip[] = [
   makeTrip({ title: '세은이 만든 여행', start: 20, days: 1, friends: 2, meAsMember: true }),
   makeTrip({ title: '스무 명 워크숍', start: 40, days: 1, crowd: true }),
 ];
+// 신규 가입자 모드는 여행 없이 시작해 첫 방문 홈을 본다
+let trips: Trip[] = env.devMockNewUser ? [] : SAMPLE_TRIPS;
 
 /** 이 여행에서 지금 쓸 수 있는 초대 링크의 토큰. 새로 만들거나 취소하면 바뀐다 */
 const inviteTokens = new Map<string, string>();
@@ -353,6 +359,21 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
   }
 
   if (method === 'get' && url === '/me') return ok(config, { data: ME });
+  if (method === 'patch' && url === '/me') {
+    const body = JSON.parse(String(config.data ?? '{}')) as { nickname?: string };
+    if (body.nickname) ME.nickname = body.nickname;
+    ME.profileCompleted = true;
+    return ok(config, { data: ME });
+  }
+  if (method === 'get' && url === '/me/preferences') {
+    if (!myPreferences) throw fail(config, 404, 'NOT_FOUND', '아직 저장한 취향이 없어요');
+    return ok(config, { data: myPreferences });
+  }
+  if (method === 'put' && url === '/me/preferences') {
+    const body = JSON.parse(String(config.data ?? '{}')) as Record<string, unknown>;
+    myPreferences = { inferredItems: [], ...body, updatedAt: new Date().toISOString() };
+    return ok(config, { data: myPreferences });
+  }
   if (method === 'get' && url === '/me/trips') return ok(config, page(trips));
 
   if (method === 'post' && url === '/trips') {
@@ -694,5 +715,5 @@ export const DEV_MOCK_SESSION: Session = {
   ...DEV_MOCK_TOKENS,
   expiresIn: 3600,
   user: ME,
-  isNewUser: false,
+  isNewUser: env.devMockNewUser,
 };
