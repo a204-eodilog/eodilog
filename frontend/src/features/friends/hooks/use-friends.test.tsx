@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it, jest } from '@jest/globals';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
-import { AxiosError, AxiosHeaders } from 'axios';
 import { toast } from '@/components/ui';
 import { useFriends, type FriendsService } from '@/features/friends/hooks/use-friends';
 import { PREVIEW_BOARD } from '@/features/friends/preview-data';
@@ -123,45 +122,6 @@ describe('친구 목록 낙관적 변경', () => {
     });
     expect(result.current.board).toEqual(PREVIEW_BOARD);
     expect(toast.error).toHaveBeenCalled();
-    await unmount();
-  });
-  it('409는 이전 목록 복원 대신 서버의 새 목록을 읽는다', async () => {
-    const config = { headers: new AxiosHeaders() };
-    const conflict = new AxiosError('conflict', undefined, config, undefined, {
-      status: 409,
-      statusText: '',
-      headers: {},
-      config,
-      data: { error: { code: 'VERSION_CONFLICT', message: '' } },
-    });
-    const fresh = { ...PREVIEW_BOARD, requests: [] };
-    const client = new QueryClient({
-      defaultOptions: {
-        queries: { retry: false, staleTime: Infinity, gcTime: Infinity },
-        mutations: { retry: false, gcTime: Infinity },
-      },
-    });
-    clients.push(client);
-    client.setQueryData(['conflict'], PREVIEW_BOARD);
-    const load = jest.fn<FriendsService['load']>().mockResolvedValue(fresh);
-    const service: FriendsService = {
-      load,
-      execute: async () => {
-        throw conflict;
-      },
-    };
-    const wrapper = ({ children }: { children: ReactNode }) => (
-      <QueryClientProvider client={client}>{children}</QueryClientProvider>
-    );
-    const { result, unmount } = await renderHook(() => useFriends(service, ['conflict']), {
-      wrapper,
-    });
-    await act(async () => {
-      await result.current.run({ kind: 'accept', follow: PREVIEW_BOARD.requests[0], at: '' });
-    });
-    expect(load).toHaveBeenCalled();
-    expect(result.current.board.requests).toHaveLength(0);
-    expect(result.current.board.followers).toHaveLength(5);
     await unmount();
   });
 });

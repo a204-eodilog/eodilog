@@ -77,7 +77,7 @@ function Preview({ state, onState }: { state: State; onState: (state: State) => 
     <FriendsView
       board={friends.board}
       loading={friends.isPending}
-      error={friends.isError}
+      error={friends.isError && !friends.data}
       retry={() => void friends.refetch()}
       pendingIds={friends.pendingIds}
       accepted={accepted}

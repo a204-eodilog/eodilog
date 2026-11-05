@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
-import { hasErrorCode } from '@/api/errors';
 import { toast } from '@/components/ui';
 import {
   acceptFollowRequest,
@@ -56,7 +55,6 @@ export function useFriends(service: FriendsService = SERVER, queryKey: QueryKey 
     queryKey,
     queryFn: ({ signal }) => service.load(signal),
     enabled: pending.length === 0,
-    retry: false,
     refetchOnWindowFocus: pending.length === 0,
   });
   const mutation = useMutation({ mutationFn: service.execute, retry: false });
@@ -74,7 +72,6 @@ export function useFriends(service: FriendsService = SERVER, queryKey: QueryKey 
     if (!source?.some((f) => f.id === action.follow.id)) return false;
     locks.current.set(userId, action);
     setPending([...locks.current.values()]);
-    let conflict = false;
     try {
       await client.cancelQueries({ queryKey, exact: true });
       const result = await mutation.mutateAsync(action);
@@ -94,30 +91,11 @@ export function useFriends(service: FriendsService = SERVER, queryKey: QueryKey 
         toast.success(message);
       }
       return true;
-    } catch (error) {
-      conflict = hasErrorCode(error, 'VERSION_CONFLICT');
-      if (conflict) {
-        // 버전 충돌은 오래된 값으로 복원하지 않고 새 서버 상태를 읽는다.
-        await client.invalidateQueries({ queryKey, exact: true, refetchType: 'none' });
-        try {
-          await client.fetchQuery({
-            queryKey,
-            queryFn: ({ signal }) => service.load(signal),
-            staleTime: 0,
-          });
-        } catch {
-          /* 조회 오류는 화면에서 표시한다. */
-        }
-      }
+    } catch {
+      // 팔로우 API는 버전을 주고받지 않아 실패는 모두 되돌린 뒤 같은 작업으로 다시 시도한다
       if (mounted.current)
-        toast.error(conflict ? '목록이 바뀌었어요. 다시 확인해 주세요' : FAILURE[action.kind], {
-          action: {
-            label: '다시 시도',
-            onPress: () => {
-              if (conflict) void query.refetch();
-              else void run(action);
-            },
-          },
+        toast.error(FAILURE[action.kind], {
+          action: { label: '다시 시도', onPress: () => void run(action) },
         });
       return false;
     } finally {

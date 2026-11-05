@@ -5,11 +5,9 @@ import {
   type InternalAxiosRequestConfig,
 } from 'axios';
 
-import type { Follow } from '@/features/friends';
-
 import { addDays, seoulToday } from '@/lib/seoul-date';
 
-import type { MyProfile, Session, UserCard } from './types';
+import type { Follow, MyProfile, Session, UserCard } from './types';
 
 /**
  * 개발용 테스트 모드(env.devMock)의 가짜 서버. 로그인 없이 여행 화면을 기기에서 확인하려고 쓴다.
