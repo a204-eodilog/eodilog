@@ -75,4 +75,4 @@ export function koreaBbox(): string {
  * 처음 화면에 맞출 범위(본토 + 제주). 울릉도·독도·옹진 섬은 넣으면 지도가 너무 작아져서 뺀다.
  * 손가락으로 옮기면 볼 수 있다. korea-regions.json이 바뀌면 다시 계산한다
  */
-export const MAINLAND_BOUNDS = { x0: 66, y0: 0, x1: 686, y1: 929 } as const;
+export const MAINLAND_BOUNDS = { x0: 175, y0: 0, x1: 686, y1: 929 } as const;

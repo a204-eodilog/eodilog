@@ -108,6 +108,15 @@ function MapBody(props: HomeViewProps) {
   const fillSteps = useMemo(() => fillStepsFor(marks), [marks]);
   const order = useMemo(() => new Map(fillSteps.map((f, i) => [f.code, i])), [fillSteps]);
   const top = fillSteps[fillSteps.length - 1]?.code;
+  // 확대 카드는 북쪽부터 왼쪽·오른쪽을 번갈아 놓아 이웃 카드끼리 덜 겹치게 한다
+  const sides = useMemo(() => {
+    const byY = [...marks]
+      .map((m) => ({ code: m.regionCode, y: findMapRegion(m.regionCode)?.point[1] ?? 0 }))
+      .sort((a, b) => a.y - b.y);
+    return new Map(
+      byY.map((m, i) => [m.code, i % 2 === 0 ? ('left' as const) : ('right' as const)]),
+    );
+  }, [marks]);
 
   const pins = useMemo<KoreaMapPin[]>(() => {
     if (state === 'no-friends') {
@@ -139,19 +148,20 @@ function MapBody(props: HomeViewProps) {
         {
           key: m.regionCode,
           point: r.point,
-          anchor: 'bottom',
+          // 카드가 점 왼쪽이면 핀 오른쪽 끝이 점에 닿는다
+          anchor: detail ? (sides.get(m.regionCode) === 'left' ? 'right' : 'left') : 'bottom',
           enterDelayMs:
             pinEnterStartMs(fillSteps.length) +
             (order.get(m.regionCode) ?? 0) * MAP_MOTION.pinStaggerMs,
           children: detail ? (
-            <PhotoPin mark={m} onPress={press} />
+            <PhotoPin mark={m} side={sides.get(m.regionCode) ?? 'right'} onPress={press} />
           ) : (
             <RegionPill mark={m} onPress={press} pulse={m.regionCode === top} />
           ),
         },
       ];
     });
-  }, [state, marks, detail, props, fillSteps, order, top]);
+  }, [state, marks, detail, props, fillSteps, order, top, sides]);
 
   const focus = props.initialZoom ? findMapRegion(props.initialZoom.regionCode) : undefined;
   const ready = state === 'ready';
@@ -204,7 +214,7 @@ function MapBody(props: HomeViewProps) {
 
 const EMPTY_CARD_HEIGHT = 168;
 /** 위 "요즘 뜨는 여행지" 알약이 차지하는 높이 */
-const TREND_SPACE = 64;
+const TREND_SPACE = 28;
 
 /** 친구 없음·공개된 기록 없음일 때 아래 안내 카드 */
 function EmptyCard(props: HomeViewProps) {

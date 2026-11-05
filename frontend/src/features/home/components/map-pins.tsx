@@ -15,6 +15,7 @@ import Animated, {
 import { Icon } from '@/components/ui';
 import { colors, radius, spacing, typography } from '@/theme';
 
+import { markFill } from '../home-rules';
 import type { RegionMark } from '../types';
 
 const SHADOW = `0 2px 10px ${colors.shadow}`;
@@ -42,6 +43,8 @@ export function RegionPill({
         <Text style={styles.pillCount}>{mark.memberCount}</Text>
       </View>
       <View style={styles.dotWrap}>
+        {/* 시군구가 작으면(전주·해운대) 칠한 면적이 안 보여서 점 둘레에도 같은 색을 깐다 */}
+        <View style={[styles.halo, { backgroundColor: markFill(mark.memberCount) }]} />
         {pulse ? <Ripple /> : null}
         <View style={styles.dot} />
       </View>
@@ -73,16 +76,25 @@ function Ripple() {
   return <Animated.View style={[styles.ripple, style]} pointerEvents="none" />;
 }
 
-/** 확대 보기 핀. 표지 사진 + 지역 이름 + 다녀간 친구 얼굴 */
-export function PhotoPin({ mark, onPress }: { mark: RegionMark; onPress?: () => void }) {
+/** 확대 보기 핀. 지역 점 옆에 표지 사진 + 지역 이름 + 다녀간 친구 얼굴 카드. side는 카드가 놓일 쪽 */
+export function PhotoPin({
+  mark,
+  side,
+  onPress,
+}: {
+  mark: RegionMark;
+  side: 'left' | 'right';
+  onPress?: () => void;
+}) {
   const faces = mark.memberNames.slice(0, 3);
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`${mark.name}, 친구 ${mark.memberCount}명`}
-      style={styles.photoWrap}
+      style={[styles.photoWrap, side === 'left' ? styles.photoWrapLeft : styles.photoWrapRight]}
     >
+      <View style={styles.ringDot} />
       <View style={styles.photoCard}>
         {mark.coverUrl ? (
           <Image source={{ uri: mark.coverUrl }} style={styles.photo} contentFit="cover" />
@@ -109,7 +121,6 @@ export function PhotoPin({ mark, onPress }: { mark: RegionMark; onPress?: () => 
           )}
         </View>
       </View>
-      <View style={styles.dot} />
     </Pressable>
   );
 }
@@ -150,6 +161,7 @@ const styles = StyleSheet.create({
   pillName: { ...typography.captionBold, color: colors.text.default, marginRight: spacing[2] },
   pillCount: { ...typography.captionBold, color: colors.brand.primary },
   dotWrap: { width: 12, height: 12, alignItems: 'center', justifyContent: 'center' },
+  halo: { position: 'absolute', width: 30, height: 30, borderRadius: radius.full, opacity: 0.55 },
   ripple: {
     position: 'absolute',
     width: 20,
@@ -165,7 +177,18 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.surface.white,
   },
-  photoWrap: { alignItems: 'center', gap: spacing[4], marginBottom: -6 },
+  // 점(16)의 가운데가 지도 위 지역 자리에 오게 반 칸(8)만큼 바깥으로 민다
+  photoWrap: { flexDirection: 'row', alignItems: 'center', gap: spacing[6] },
+  photoWrapRight: { marginLeft: -8 },
+  photoWrapLeft: { flexDirection: 'row-reverse', marginRight: -8 },
+  ringDot: {
+    width: 16,
+    height: 16,
+    borderRadius: radius.full,
+    backgroundColor: colors.surface.white,
+    borderWidth: 3,
+    borderColor: colors.brand.primary,
+  },
   photoCard: {
     flexDirection: 'row',
     alignItems: 'center',

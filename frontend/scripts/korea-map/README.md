@@ -37,4 +37,4 @@ const y = (-lat - projection.minY) * projection.scale;
 
 ## 다시 만들기 (경계가 바뀔 때만)
 
-`scripts/` 순서: `map-codes.mjs`(읍면동 → 우리 시군구 코드) → mapshaper로 합치기·단순화(1.5%, keep-shapes, 2km² 미만 섬 제거) → `add-dokdo.mjs` → 시도로 합치기·안쪽 점 → `build-svg.mjs`. mapshaper는 프로젝트 의존성에 넣지 않는다(임시로만 설치).
+`scripts/` 순서: `map-codes.mjs`(읍면동 → 우리 시군구 코드) → mapshaper로 합치기·단순화(1.5%, keep-shapes, 40km² 미만 섬 제거(잔 섬이 많으면 지도가 지저분해 보여서)) → `add-dokdo.mjs` → 시도로 합치기·안쪽 점 → `build-svg.mjs`. mapshaper는 프로젝트 의존성에 넣지 않는다(임시로만 설치).

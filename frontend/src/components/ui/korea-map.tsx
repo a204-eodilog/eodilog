@@ -28,8 +28,8 @@ export type KoreaMapPin = {
   key: string;
   /** 지도 좌표. 지역 핀은 findMapRegion(code).point, 위경도는 projectLatLng */
   point: MapPoint;
-  /** bottom: 핀 아래 끝이 점에 닿음(말풍선), center: 가운데가 점 */
-  anchor?: 'bottom' | 'center';
+  /** bottom: 핀 아래 끝이 점에 닿음(말풍선), center: 가운데가 점, left·right: 핀의 왼쪽·오른쪽 끝(세로 가운데)이 점 */
+  anchor?: 'bottom' | 'center' | 'left' | 'right';
   /** 처음 나타날 때 기다릴 시간(ms). 있으면 아래에서 올라오며 나타난다(Figma S05 핀 등장) */
   enterDelayMs?: number;
   children: ReactNode;
@@ -170,7 +170,7 @@ function MapCanvas({
   // 본토 + 제주가 덮이지 않는 영역에 들어오는 크기(배율 1)와 그 가운데
   const b = MAINLAND_BOUNDS;
   const visibleH = Math.max(1, box.height - insetTop - insetBottom);
-  const fit = Math.min(box.width / (b.x1 - b.x0), visibleH / (b.y1 - b.y0)) * 0.92;
+  const fit = Math.min(box.width / (b.x1 - b.x0), visibleH / (b.y1 - b.y0)) * 0.9;
   const baseW = KOREA_MAP.width * fit;
   const baseH = KOREA_MAP.height * fit;
   const centerY = insetTop + visibleH / 2;
@@ -403,18 +403,26 @@ function PinView({
   // 크기 0인 자리에 놓고 안쪽을 가운데·아래 기준으로 맞춘다(핀 크기를 몰라도 됨)
   return (
     <Animated.View
-      style={[styles.pin, pin.anchor === 'center' ? styles.center : styles.bottom, style]}
+      style={[
+        styles.pin,
+        pin.anchor === 'bottom' || !pin.anchor ? styles.bottom : styles.center,
+        style,
+      ]}
       pointerEvents="box-none"
     >
-      <View
-        style={pin.anchor === 'center' ? styles.centerInner : styles.bottomInner}
-        pointerEvents="box-none"
-      >
+      <View style={styles[INNER[pin.anchor ?? 'bottom']]} pointerEvents="box-none">
         {pin.children}
       </View>
     </Animated.View>
   );
 }
+
+const INNER = {
+  bottom: 'bottomInner',
+  center: 'centerInner',
+  left: 'leftInner',
+  right: 'rightInner',
+} as const;
 
 const styles = StyleSheet.create({
   box: { flex: 1, overflow: 'hidden', backgroundColor: colors.map.seaEdge },
@@ -424,6 +432,8 @@ const styles = StyleSheet.create({
   bottom: { justifyContent: 'flex-end' },
   centerInner: { position: 'absolute', width: PIN_ROOM, alignItems: 'center' },
   bottomInner: { position: 'absolute', bottom: 0, width: PIN_ROOM, alignItems: 'center' },
+  leftInner: { position: 'absolute', left: 0, width: PIN_ROOM, alignItems: 'flex-start' },
+  rightInner: { position: 'absolute', right: 0, width: PIN_ROOM, alignItems: 'flex-end' },
   credit: {
     ...typography.micro,
     fontFamily: typography.caption.fontFamily,
