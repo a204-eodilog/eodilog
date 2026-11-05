@@ -167,12 +167,14 @@ function MapCard(props: MyPageViewProps & { summary: MyPageSummary }) {
  * 핀들이 모인 곳으로 처음 화면을 맞춘다(Figma S37은 남쪽을 확대해서 보여 줌).
  * 핀 범위가 넓을수록 덜 확대한다. 전국에 흩어져 있으면 배율 1(전국)
  */
-function focusOn(pins: readonly MyTripPin[]) {
+export function focusOn(pins: readonly MyTripPin[]) {
   const pts = pins.flatMap((p) => {
     const r = findMapRegion(p.regionCode);
     return r ? [r.point] : [];
   });
   if (pts.length === 0) return undefined;
+  // 핀이 하나면 그 둘레(시도 몇 개)가 보이게 조금만 확대한다
+  if (pts.length === 1) return { point: pts[0], scale: 1.4 };
   const xs = pts.map((p) => p[0]);
   const ys = pts.map((p) => p[1]);
   const spanX = Math.max(...xs) - Math.min(...xs);
@@ -189,7 +191,7 @@ function focusOn(pins: readonly MyTripPin[]) {
 }
 
 /** 지도 핀. 게시한 여행은 파란 알약(사람 아이콘), 게시 전은 흰 알약(자물쇠) */
-function TripPin({ pin, onPress }: { pin: MyTripPin; onPress: () => void }) {
+export function TripPin({ pin, onPress }: { pin: MyTripPin; onPress: () => void }) {
   return (
     <Pressable
       onPress={onPress}

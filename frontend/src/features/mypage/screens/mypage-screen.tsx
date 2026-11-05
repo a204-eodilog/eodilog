@@ -5,7 +5,7 @@ import { toast } from '@/components/ui';
 import { MyPageView } from '../components/mypage-view';
 import { useMyPage } from '../hooks/use-mypage';
 
-// S41 타임라인(다른 담당)·S45 설정(!122)·S40은 아직 연결 전
+// S41 타임라인(다른 담당)·S45 설정(!122)은 아직 연결 전
 const soon = () => toast.show('준비 중이에요');
 
 /** S37 마이페이지 탭 */
@@ -16,7 +16,7 @@ export function MyPageScreen() {
       state={page.state}
       summary={page.summary}
       onRetry={page.retry}
-      onPreview={soon}
+      onPreview={() => router.push('/visible-to')}
       onTrips={() => router.push('/my-trips')}
       onNewTrip={() => router.push('/trips/new')}
       onTimeline={soon}
