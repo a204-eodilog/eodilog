@@ -306,3 +306,8 @@ B 담당 화면 17개 전부와 A 담당 S13. 다른 화면은 필요할 때 같
 | S50 | 삭제·나가기·탈퇴 확인 · 처리 실패 | B | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-26401) |
 | S50 | 삭제 확인 · 사진 | B | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-18079) |
 | S50 | 삭제 확인 · 탈퇴 | B | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-24452) |
+
+
+## S45 구현 보충
+
+[S45 설정 화면 및 Figma 수정 전달문](S45-settings.md)을 참고한다. AI 상세와 편집 미리보기는 Figma 반영 전이며, 기존 링크를 새 화면으로 오해하지 않는다.
