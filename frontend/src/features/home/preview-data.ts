@@ -10,6 +10,7 @@ const mark = (
   regionCode,
   name,
   memberCount: memberNames.length,
+  memberIds: memberNames,
   memberNames,
   coverUrl: null,
   visitCount,

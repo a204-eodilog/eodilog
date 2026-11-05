@@ -57,6 +57,21 @@ export function sidoCodeOf(code: string): string | undefined {
   return SIGUNGU.get(code)?.parent ?? (SIDO.has(code) ? code : undefined);
 }
 
+const SIDO_SHORT: Record<string, string> = {
+  경기도: '경기',
+  충청북도: '충북',
+  충청남도: '충남',
+  경상북도: '경북',
+  경상남도: '경남',
+};
+
+/** 시도 짧은 이름. "강원특별자치도" → "강원", "경상북도" → "경북", "전남광주통합특별시" → "전남광주" */
+export function shortSidoName(name: string): string {
+  return (
+    SIDO_SHORT[name] ?? name.replace(/(통합특별시|특별자치시|특별자치도|특별시|광역시|도)$/, '')
+  );
+}
+
 /** 이름표용 짧은 이름. "강원특별자치도 강릉시" → "강릉" */
 export function shortRegionName(name: string): string {
   const last = name.split(' ').pop() ?? name;

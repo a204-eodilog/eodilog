@@ -4,6 +4,7 @@ import { colors } from '@/theme';
 
 import {
   fillStepsFor,
+  groupBySido,
   fillsFor,
   homeState,
   nightsLabel,
@@ -92,6 +93,7 @@ describe('fillsFor', () => {
         regionCode: 'a',
         name: 'a',
         memberCount: 1,
+        memberIds: [],
         memberNames: [],
         coverUrl: null,
         visitCount: 1,
@@ -101,6 +103,7 @@ describe('fillsFor', () => {
         regionCode: 'b',
         name: 'b',
         memberCount: 5,
+        memberIds: [],
         memberNames: [],
         coverUrl: null,
         visitCount: 1,
@@ -117,6 +120,7 @@ describe('fillStepsFor', () => {
       regionCode,
       name: regionCode,
       memberCount,
+      memberIds: [],
       memberNames: [],
       coverUrl: null,
       visitCount: 1,
@@ -130,6 +134,34 @@ describe('fillStepsFor', () => {
         colors: [colors.map.step1, colors.map.step2, colors.map.step3, colors.map.step4],
       },
     ]);
+  });
+});
+
+describe('groupBySido', () => {
+  const m = (regionCode: string, memberIds: string[]) => ({
+    regionCode,
+    name: regionCode,
+    memberCount: memberIds.length,
+    memberIds,
+    memberNames: [],
+    coverUrl: null,
+    visitCount: 1,
+    feedIds: [],
+  });
+  it('같은 시도 여러 곳은 묶고 친구는 한 번만, 혼자면 그대로', () => {
+    const items = groupBySido([
+      m('5115000000', ['a', 'b']),
+      m('5121000000', ['b', 'c']),
+      m('4713000000', ['d']),
+    ]);
+    expect(items).toHaveLength(2);
+    expect(items[0]).toMatchObject({
+      sidoCode: '5100000000',
+      name: '강원',
+      placeCount: 2,
+      memberCount: 3,
+    });
+    expect(items[1]).toMatchObject({ regionCode: '4713000000' });
   });
 });
 
@@ -181,6 +213,7 @@ describe('homeState', () => {
       regionCode: 'a',
       name: 'a',
       memberCount: 1,
+      memberIds: [],
       memberNames: [],
       coverUrl: null,
       visitCount: 1,

@@ -47,8 +47,13 @@ export type KoreaMapProps = {
   /** 이 배율을 넘으면 onDetailChange(true). 홈은 시군 사진 핀으로 바꾼다 */
   detailScale?: number;
   onDetailChange?: (detail: boolean) => void;
+  /** 배율이 0.5 단위로 바뀔 때마다 알린다. 홈은 이 값으로 핀 묶기 단계를 정한다 */
+  onZoomChange?: (zoom: number) => void;
   /** 처음 볼 곳. 없으면 전국 */
   initialFocus?: { point: MapPoint; scale: number };
+  /** key가 바뀔 때마다 그곳으로 부드럽게 확대해 옮긴다(묶인 핀을 눌렀을 때) */
+  focus?: { key: string | number; point: MapPoint; scale: number };
+  /** 최대 배율. 경계를 단순하게 줄여 두어 더 키우면 선이 각져 보이고, 홈은 시군까지만 보면 된다 */
   maxScale?: number;
   /** 지도 위를 덮는 것(위 버튼·아래 시트)의 높이. 처음 맞출 때 이 영역을 피한다 */
   inset?: { top?: number; bottom?: number };
@@ -99,8 +104,10 @@ export function KoreaMap({
   pins = [],
   detailScale = 2.2,
   onDetailChange,
+  onZoomChange,
   initialFocus,
-  maxScale = 8,
+  focus,
+  maxScale = 5,
   inset,
   creditBottom = spacing[8],
   style,
@@ -133,7 +140,9 @@ export function KoreaMap({
           pins={pins}
           detailScale={detailScale}
           onDetailChange={onDetailChange}
+          onZoomChange={onZoomChange}
           initialFocus={initialFocus}
+          focus={focus}
           maxScale={maxScale}
           insetTop={inset?.top ?? 0}
           insetBottom={inset?.bottom ?? 0}
@@ -149,7 +158,7 @@ export function KoreaMap({
 type CanvasProps = Required<
   Pick<KoreaMapProps, 'fills' | 'fillSteps' | 'pins' | 'detailScale' | 'maxScale'>
 > &
-  Pick<KoreaMapProps, 'onDetailChange' | 'initialFocus'> & {
+  Pick<KoreaMapProps, 'onDetailChange' | 'onZoomChange' | 'initialFocus' | 'focus'> & {
     box: { width: number; height: number };
     insetTop: number;
     insetBottom: number;
@@ -162,7 +171,9 @@ function MapCanvas({
   pins,
   detailScale,
   onDetailChange,
+  onZoomChange,
   initialFocus,
+  focus,
   maxScale,
   insetTop,
   insetBottom,
@@ -254,7 +265,11 @@ function MapCanvas({
   // 확대 단계. 전국 보기에서는 시군구 선을 거의 숨겨 지도가 복잡해 보이지 않게 한다
   const [detail, setDetail] = useState(start.s >= detailScale);
   // 지도를 통째로 키우므로 선도 같이 두꺼워진다. 배율을 0.5 단위로 받아 선 굵기를 나눠 화면에서 같게 둔다
-  const [zoom, setZoom] = useState(start.s);
+  const [zoom, setZoomState] = useState(start.s);
+  const setZoom = (next: number) => {
+    setZoomState(next);
+    onZoomChange?.(next);
+  };
   useAnimatedReaction(
     () => Math.round(scale.value * 2) / 2,
     (next, prev) => {
@@ -279,6 +294,24 @@ function MapCanvas({
     if (start.s >= detailScale) onDetailChange?.(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!focus) return;
+    const next = Math.min(maxScale, Math.max(MIN_SCALE, focus.scale));
+    const visTop = insetTop;
+    const visBottom = box.height - insetBottom;
+    const target = clamp(
+      next,
+      box.width / 2 - focus.point[0] * fit * next,
+      (visTop + visBottom) / 2 - focus.point[1] * fit * next,
+    );
+    const timing = { duration: 450, easing: Easing.out(Easing.cubic) };
+    scale.set(withTiming(next, timing));
+    tx.set(withTiming(target.x, timing));
+    ty.set(withTiming(target.y, timing));
+    // focus.key가 바뀔 때만 움직인다
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus?.key]);
 
   const mapStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: tx.value }, { translateY: ty.value }, { scale: scale.value }],

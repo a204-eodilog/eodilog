@@ -1,7 +1,14 @@
-import { findMapRegion, shortRegionName } from '@/lib/korea-map';
+import { findMapRegion, shortRegionName, shortSidoName, sidoCodeOf } from '@/lib/korea-map';
 import { colors } from '@/theme';
 
-import type { DiscoveryItem, HomeRecommendation, HomeState, MapResult, RegionMark } from './types';
+import type {
+  DiscoveryItem,
+  HomeRecommendation,
+  HomeState,
+  MapResult,
+  RegionGroup,
+  RegionMark,
+} from './types';
 
 /**
  * GET /home/map 응답 → 화면용 지역 표시. 백엔드 응답이 바뀌면 이 함수만 고친다.
@@ -31,12 +38,40 @@ export function toRegionMarks(result: MapResult): RegionMark[] {
       regionCode,
       name: v.name,
       memberCount: v.members.size,
+      memberIds: [...v.members],
       memberNames: [],
       coverUrl: null,
       visitCount: v.visits,
       feedIds: [...v.feeds],
     }))
     .sort((a, b) => b.memberCount - a.memberCount);
+}
+
+/**
+ * 전국 보기 핀 묶기(WD-FR-24). 같은 시도에 지역이 둘 이상이면 시도 하나로 묶고, 하나뿐이면 그대로 둔다.
+ * 친구 수는 같은 친구를 한 번만 센다
+ */
+export function groupBySido(marks: readonly RegionMark[]): (RegionMark | RegionGroup)[] {
+  const bySido = new Map<string, RegionMark[]>();
+  for (const m of marks) {
+    const sido = sidoCodeOf(m.regionCode) ?? m.regionCode;
+    bySido.set(sido, [...(bySido.get(sido) ?? []), m]);
+  }
+  return [...bySido.entries()].map(([sidoCode, list]) => {
+    if (list.length === 1) return list[0];
+    const sido = findMapRegion(sidoCode);
+    return {
+      sidoCode,
+      name: shortSidoName(sido?.name ?? sidoCode),
+      placeCount: list.length,
+      memberCount: new Set(list.flatMap((m) => m.memberIds)).size,
+      marks: list,
+    };
+  });
+}
+
+export function isGroup(item: RegionMark | RegionGroup): item is RegionGroup {
+  return 'sidoCode' in item;
 }
 
 const STEPS = [colors.map.step1, colors.map.step2, colors.map.step3, colors.map.step4];

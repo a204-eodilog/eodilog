@@ -16,7 +16,7 @@ import { Icon } from '@/components/ui';
 import { colors, radius, spacing, typography } from '@/theme';
 
 import { markFill } from '../home-rules';
-import type { RegionMark } from '../types';
+import type { RegionGroup, RegionMark } from '../types';
 
 const SHADOW = `0 2px 10px ${colors.shadow}`;
 
@@ -45,6 +45,39 @@ export function RegionPill({
       <View style={styles.dotWrap}>
         {/* 시군구가 작으면(전주·해운대) 칠한 면적이 안 보여서 점 둘레에도 같은 색을 깐다 */}
         <View style={[styles.halo, { backgroundColor: markFill(mark.memberCount) }]} />
+        {pulse ? <Ripple /> : null}
+        <View style={styles.dot} />
+      </View>
+    </Pressable>
+  );
+}
+
+/** 전국 보기에서 같은 시도의 여러 지역을 묶은 핀. "강원 7곳 · 친구 5". 누르면 그 시도로 확대 */
+export function GroupPill({
+  group,
+  onPress,
+  pulse = false,
+}: {
+  group: RegionGroup;
+  onPress?: () => void;
+  pulse?: boolean;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${group.name} ${group.placeCount}곳, 친구 ${group.memberCount}명. 눌러서 확대`}
+      style={styles.pillWrap}
+    >
+      <View style={styles.pill}>
+        <Text style={styles.pillName}>
+          {group.name} {group.placeCount}곳
+        </Text>
+        <Icon name="people" size={14} color={colors.text.icon} />
+        <Text style={styles.pillCount}>{group.memberCount}</Text>
+      </View>
+      <View style={styles.dotWrap}>
+        <View style={[styles.halo, { backgroundColor: markFill(group.memberCount) }]} />
         {pulse ? <Ripple /> : null}
         <View style={styles.dot} />
       </View>

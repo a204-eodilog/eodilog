@@ -57,12 +57,26 @@ export type RegionMark = {
   name: string;
   /** 다녀간 친구 수 */
   memberCount: number;
+  /** 다녀간 친구 ID. 시도로 묶을 때 같은 친구를 한 번만 센다 */
+  memberIds: string[];
   /** 친구 이름(얼굴 글자). 서버 응답에 없으면 빈 배열 */
   memberNames: string[];
   /** 확대했을 때 사진 핀 표지. 서버 응답에 아직 없다 */
   coverUrl: string | null;
   visitCount: number;
   feedIds: string[];
+};
+
+/** 전국 보기에서 같은 시도의 여러 지역을 묶은 핀 */
+export type RegionGroup = {
+  sidoCode: string;
+  /** "강원" */
+  name: string;
+  /** 묶인 지역 수 */
+  placeCount: number;
+  /** 다녀간 친구 수(겹치지 않게) */
+  memberCount: number;
+  marks: RegionMark[];
 };
 
 /** 아래 추천 시트 한 줄 */

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -12,13 +12,13 @@ import {
   MascotTraveler,
   pinEnterStartMs,
 } from '@/components/ui';
-import { findMapRegion } from '@/lib/korea-map';
+import { findMapRegion, type MapPoint } from '@/lib/korea-map';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
-import { fillStepsFor } from '../home-rules';
+import { fillStepsFor, groupBySido, isGroup } from '../home-rules';
 import type { HomeRecommendation, HomeState, RegionMark } from '../types';
 
-import { InviteSpot, LockedFace, PhotoPin, RegionPill } from './map-pins';
+import { GroupPill, InviteSpot, LockedFace, PhotoPin, RegionPill } from './map-pins';
 import { RecommendSheet, SHEET_COLLAPSED } from './recommend-sheet';
 
 export type HomeViewProps = {
@@ -104,10 +104,28 @@ export function HomeView(props: HomeViewProps) {
 function MapBody(props: HomeViewProps) {
   const { state, marks } = props;
   const [detail, setDetail] = useState(false);
+  const [zoom, setZoom] = useState(1);
+  const [zoomTo, setZoomTo] = useState<{ key: number; point: MapPoint; scale: number }>();
+  // 처음 등장 애니메이션이 끝나면, 확대하며 새로 생기는 핀은 기다리지 않고 바로 보인다
+  const [entered, setEntered] = useState(false);
   // 적게 다녀간 곳부터 차례로 물들고, 핀도 같은 순서로 나타난다(Figma S05 모션)
   const fillSteps = useMemo(() => fillStepsFor(marks), [marks]);
   const order = useMemo(() => new Map(fillSteps.map((f, i) => [f.code, i])), [fillSteps]);
   const top = fillSteps[fillSteps.length - 1]?.code;
+  useEffect(() => {
+    const total =
+      pinEnterStartMs(fillSteps.length) +
+      fillSteps.length * MAP_MOTION.pinStaggerMs +
+      MAP_MOTION.pinRiseMs;
+    const t = setTimeout(() => setEntered(true), total);
+    return () => clearTimeout(t);
+  }, [fillSteps.length]);
+  // 전국 크기(1.5배 미만)에서는 같은 시도를 묶어 핀이 겹치지 않게 한다
+  const grouped = !detail && zoom < 1.5;
+  const enterDelay = (code: string) =>
+    entered
+      ? undefined
+      : pinEnterStartMs(fillSteps.length) + (order.get(code) ?? 0) * MAP_MOTION.pinStaggerMs;
   // 확대 카드는 북쪽부터 왼쪽·오른쪽을 번갈아 놓아 이웃 카드끼리 덜 겹치게 한다
   const sides = useMemo(() => {
     const byY = [...marks]
@@ -140,6 +158,49 @@ function MapBody(props: HomeViewProps) {
           : [];
       });
     }
+    if (grouped) {
+      return groupBySido(marks).flatMap((item): KoreaMapPin[] => {
+        if (!isGroup(item)) {
+          const r = findMapRegion(item.regionCode);
+          if (!r) return [];
+          return [
+            {
+              key: item.regionCode,
+              point: r.point,
+              anchor: 'bottom',
+              enterDelayMs: enterDelay(item.regionCode),
+              children: (
+                <RegionPill
+                  mark={item}
+                  onPress={() => props.onRegion(item)}
+                  pulse={item.regionCode === top}
+                />
+              ),
+            },
+          ];
+        }
+        const sido = findMapRegion(item.sidoCode);
+        if (!sido) return [];
+        const last = item.marks.reduce((a, b) =>
+          (order.get(b.regionCode) ?? 0) > (order.get(a.regionCode) ?? 0) ? b : a,
+        );
+        return [
+          {
+            key: `group-${item.sidoCode}`,
+            point: sido.point,
+            anchor: 'bottom',
+            enterDelayMs: enterDelay(last.regionCode),
+            children: (
+              <GroupPill
+                group={item}
+                pulse={item.marks.some((m) => m.regionCode === top)}
+                onPress={() => setZoomTo({ key: Date.now(), point: sido.point, scale: 1.9 })}
+              />
+            ),
+          },
+        ];
+      });
+    }
     return marks.flatMap((m) => {
       const r = findMapRegion(m.regionCode);
       if (!r) return [];
@@ -150,9 +211,7 @@ function MapBody(props: HomeViewProps) {
           point: r.point,
           // 카드가 점 왼쪽이면 핀 오른쪽 끝이 점에 닿는다
           anchor: detail ? (sides.get(m.regionCode) === 'left' ? 'right' : 'left') : 'bottom',
-          enterDelayMs:
-            pinEnterStartMs(fillSteps.length) +
-            (order.get(m.regionCode) ?? 0) * MAP_MOTION.pinStaggerMs,
+          enterDelayMs: enterDelay(m.regionCode),
           children: detail ? (
             <PhotoPin mark={m} side={sides.get(m.regionCode) ?? 'right'} onPress={press} />
           ) : (
@@ -161,7 +220,8 @@ function MapBody(props: HomeViewProps) {
         },
       ];
     });
-  }, [state, marks, detail, props, fillSteps, order, top, sides]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, marks, detail, props, fillSteps, order, top, sides, grouped, entered]);
 
   const focus = props.initialZoom ? findMapRegion(props.initialZoom.regionCode) : undefined;
   const ready = state === 'ready';
@@ -181,6 +241,8 @@ function MapBody(props: HomeViewProps) {
         fillSteps={fillSteps}
         pins={pins}
         onDetailChange={setDetail}
+        onZoomChange={setZoom}
+        focus={zoomTo}
         initialFocus={
           focus && props.initialZoom
             ? { point: focus.point, scale: props.initialZoom.scale }
