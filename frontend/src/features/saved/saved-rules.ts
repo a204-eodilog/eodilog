@@ -123,3 +123,34 @@ export function syncedAtLabel(updatedAt: number): string {
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${pad(d.getHours())}:${pad(d.getMinutes())} 기준이에요`;
 }
+
+/** 지도 범위(라이브러리 Region 규칙: 위도·경도는 남서쪽 꼭짓점, delta만큼 북동쪽으로 넓어진다) */
+export type MapRegion = {
+  latitude: number;
+  longitude: number;
+  latitudeDelta: number;
+  longitudeDelta: number;
+};
+
+/** 장소가 한 곳뿐이어도 너무 확대되지 않게 잡는 최소 범위(동네 몇 개 정도) */
+const MIN_SPAN = 0.02;
+
+/**
+ * 지역 묶음 마커를 눌렀을 때 그 지역 장소가 모두 보이는 범위. 둘레에 여유를 두고,
+ * 아래쪽은 화면 아래 가로 카드가 가리므로 더 넓게 둬 핀이 카드 위에 오게 한다
+ */
+export function regionFor(items: SavedItem[]): MapRegion | null {
+  if (items.length === 0) return null;
+  const lats = items.map((i) => i.latitude);
+  const lngs = items.map((i) => i.longitude);
+  const minLat = Math.min(...lats);
+  const minLng = Math.min(...lngs);
+  const latSpan = Math.max(Math.max(...lats) - minLat, MIN_SPAN);
+  const lngSpan = Math.max(Math.max(...lngs) - minLng, MIN_SPAN);
+  return {
+    latitude: minLat - latSpan * 0.8,
+    longitude: minLng - lngSpan * 0.3,
+    latitudeDelta: latSpan * 2.1,
+    longitudeDelta: lngSpan * 1.6,
+  };
+}

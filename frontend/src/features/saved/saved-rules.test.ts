@@ -6,6 +6,7 @@ import {
   findBookmark,
   cityGroups,
   masonryColumns,
+  regionFor,
   syncedAtLabel,
   toSavedItem,
 } from './saved-rules';
@@ -136,5 +137,34 @@ describe('S14 즐겨찾기 찾기', () => {
     expect(bookmarkSource(kept)).toBe('feed');
     expect(bookmarkSource(lost)).toBe('lost');
     expect(bookmarkSource(bookmark('a', null))).toBe('none');
+  });
+});
+
+describe('regionFor', () => {
+  it('지역 장소가 모두 들어가고 아래쪽(카드 자리)을 더 넓게 둔다', () => {
+    const items = [
+      toSavedItem(bookmark('a', null, 35.08, 129.04)),
+      toSavedItem(bookmark('b', null, 35.16, 129.12)),
+    ];
+    const r = regionFor(items);
+    expect(r).not.toBeNull();
+    if (!r) return;
+    // 모든 장소가 범위 안
+    for (const i of items) {
+      expect(i.latitude).toBeGreaterThan(r.latitude);
+      expect(i.latitude).toBeLessThan(r.latitude + r.latitudeDelta);
+      expect(i.longitude).toBeGreaterThan(r.longitude);
+      expect(i.longitude).toBeLessThan(r.longitude + r.longitudeDelta);
+    }
+    // 아래 여유가 위 여유보다 크다
+    const below = 35.08 - r.latitude;
+    const above = r.latitude + r.latitudeDelta - 35.16;
+    expect(below).toBeGreaterThan(above);
+  });
+
+  it('한 곳뿐이면 최소 범위로, 없으면 null', () => {
+    const r = regionFor([toSavedItem(bookmark('a', null, 37, 128))]);
+    expect(r?.latitudeDelta).toBeCloseTo(0.042);
+    expect(regionFor([])).toBeNull();
   });
 });
