@@ -34,7 +34,11 @@ export type IconName =
   | 'leave'
   | 'image'
   | 'arrow-right'
-  | 'bulb';
+  | 'bulb'
+  | 'settings'
+  | 'person-plus'
+  | 'person-minus'
+  | 'crown';
 
 type IconProps = {
   name: IconName;
@@ -81,6 +85,17 @@ const PATHS: Record<IconName, string> = {
   image: 'M4 5H20V19H4V5ZM4 16L9 11L14 16M13 15L16 12L20 16M15.5 8.5V8.6',
   'arrow-right': 'M5 12H19M13 6L19 12L13 18',
   bulb: 'M9.5 18.5H14.5M10.5 21H13.5M12 3A6 6 0 0 0 8.5 13.9V16H15.5V13.9A6 6 0 0 0 12 3Z',
+  // 여행 설정(피그마 S17 오른쪽 위). 가운데 원과 바퀴살
+  settings:
+    'M12 15A3 3 0 1 0 12 9A3 3 0 0 0 12 15ZM12 3V5M12 19V21M3 12H5M19 12H21M5.6 5.6L7 7M17 17L18.4 18.4M5.6 18.4L7 17M17 7L18.4 5.6',
+  // 동행 초대(피그마 S17 동행 줄 오른쪽). 사람 + 더하기
+  'person-plus':
+    'M10 12A4 4 0 1 0 10 4A4 4 0 0 0 10 12ZM3 20C3 16.7 6.2 15 10 15C11.4 15 12.7 15.2 13.8 15.7M18 14V20M15 17H21',
+  // 동행 내보내기(S19 방장 메뉴). 사람 + 빼기
+  'person-minus':
+    'M10 12A4 4 0 1 0 10 4A4 4 0 0 0 10 12ZM3 20C3 16.7 6.2 15 10 15C11.4 15 12.7 15.2 13.8 15.7M15 17H21',
+  // 방장 넘기기(S19 방장 메뉴). 왕관
+  crown: 'M4 8L8 12L12 5L16 12L20 8L18.5 18H5.5L4 8Z',
 };
 
 /** 채워도 선으로만 남겨야 하는 부분. 가방 손잡이처럼 몸통과 따로 그린다. */
