@@ -25,6 +25,9 @@ export const PREVIEW_MARKS: RegionMark[] = [
   mark('5011000000', '제주', ['나래', '다온']),
 ];
 
+/** 강원 내륙 한 곳(묶음 확인용) */
+export const PREVIEW_CHUNCHEON: RegionMark = mark('5111000000', '춘천', ['다온']);
+
 /** 확대 보기(강원 동해안). Figma S05 '지도 확대'와 같은 세 곳 */
 export const PREVIEW_ZOOM_MARKS: RegionMark[] = [
   mark('5121000000', '속초', ['하늘']),
