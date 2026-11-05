@@ -236,6 +236,7 @@ export function toRecommendations(items: readonly DiscoveryItem[]): HomeRecommen
       return [
         {
           id: `feed-${item.feed.id}`,
+          targetId: item.feed.id,
           kind: 'trip',
           title: item.feed.title,
           meta: region ? shortRegionName(region.name) : item.reason,
@@ -248,6 +249,7 @@ export function toRecommendations(items: readonly DiscoveryItem[]): HomeRecommen
       return [
         {
           id: `place-${item.place.id}`,
+          targetId: item.place.id,
           kind: 'place',
           title: item.place.name,
           meta: item.place.address ?? item.reason,

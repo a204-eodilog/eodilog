@@ -6,6 +6,7 @@ import {
 } from 'axios';
 
 import { env } from '@/config/env';
+import { sampleFeed } from '@/features/feed/preview-data';
 import { addDays, seoulToday } from '@/lib/seoul-date';
 
 import type { Follow, MyProfile, Session, UserCard } from './types';
@@ -70,6 +71,9 @@ const ME: MyProfile = {
   profileCompleted: !env.devMockNewUser,
   profileUrl: '',
 };
+
+/** S07 공동 피드 좋아요(테스트 모드 메모리) */
+const feedLikes = new Map<string, { liked: boolean; count: number }>();
 
 /** 신규 가입자 모드에서 S03에 저장한 취향. 저장 전에는 404 */
 let myPreferences: unknown = null;
@@ -439,6 +443,27 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
     });
   }
   // 좋아요 기반 추천(백엔드 아직 없음). 휴대폰 테스트에서 시트 카드가 보이게 예시를 준다
+  // S07 공동 피드: 어떤 ID든 예시 피드를 돌려준다. 좋아요는 메모리에 남는다
+  const feedMatch = /^\/feeds\/([^/]+)(\/like)?$/.exec(url);
+  if (feedMatch) {
+    const [, feedId, like] = feedMatch;
+    const cur = feedLikes.get(feedId) ?? { liked: false, count: 12 };
+    if (!like && method === 'get') {
+      return ok(config, {
+        data: { ...sampleFeed(feedId), likedByMe: cur.liked, likeCount: cur.count },
+      });
+    }
+    if (like && method === 'put') {
+      const next = { liked: true, count: cur.liked ? cur.count : cur.count + 1 };
+      feedLikes.set(feedId, next);
+      return ok(config, { data: next });
+    }
+    if (like && method === 'delete') {
+      feedLikes.set(feedId, { liked: false, count: cur.liked ? cur.count - 1 : cur.count });
+      return ok(config, undefined, 204);
+    }
+  }
+
   if (method === 'get' && url === '/me/discovery-recommendations') {
     const region = (code: string, name: string) => ({
       id: `home-${code}`,

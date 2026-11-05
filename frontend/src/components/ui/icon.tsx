@@ -46,7 +46,10 @@ export type IconName =
   | 'crown'
   | 'trending'
   | 'heart'
-  | 'moon';
+  | 'moon'
+  | 'walk'
+  | 'car'
+  | 'bus';
 
 type IconProps = {
   name: IconName;
@@ -116,6 +119,10 @@ const PATHS: Record<IconName, string> = {
   trending: 'M3 17L9 11L13 15L21 7M15 7H21V13',
   heart: 'M12 20S4 14.6 4 9.2A4.2 4.2 0 0 1 12 7A4.2 4.2 0 0 1 20 9.2C20 14.6 12 20 12 20Z',
   moon: 'M20 14.5A8 8 0 1 1 9.5 4A6.5 6.5 0 0 0 20 14.5Z',
+  // S07 장소 사이 이동 수단
+  walk: 'M13 5.5A1.5 1.5 0 1 0 13 2.5A1.5 1.5 0 0 0 13 5.5ZM10 21L12 15L14.5 17V21M8 11L10.5 8H14L16 12L18 13M10.5 8L9.5 13L12 15',
+  car: 'M5 16V12L7 7H17L19 12V16H5ZM5 16V18M19 16V18M5 12H19M8 14H8.5M15.5 14H16',
+  bus: 'M6 4H18A1 1 0 0 1 19 5V17H5V5A1 1 0 0 1 6 4ZM5 11H19M8 17V19M16 17V19M8 14H8.5M15.5 14H16',
 };
 
 /** 채워도 선으로만 남겨야 하는 부분. 가방 손잡이처럼 몸통과 따로 그린다. */

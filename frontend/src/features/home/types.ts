@@ -93,6 +93,8 @@ export type HomeRecommendation = {
   /** "2박 3일". 장소는 없음 */
   nights: string | null;
   imageUrl: string | null;
+  /** 누르면 갈 곳의 서버 ID. 여행이면 피드 ID(S07), 장소면 장소 ID(N7) */
+  targetId: string;
 };
 
 /** 홈 상태 (screen-list S05). 지도 확대·시트 펼침은 같은 ready 안의 보기 상태 */

@@ -23,7 +23,7 @@ export function HomeScreen() {
       onFindFriends={soon}
       onNewTrip={() => router.push('/trips/new')}
       onRegion={soon}
-      onRecommendation={soon}
+      onRecommendation={(r) => (r.kind === 'trip' ? router.push(`/feeds/${r.targetId}`) : soon())}
     />
   );
 }
