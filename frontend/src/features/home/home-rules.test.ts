@@ -214,7 +214,7 @@ describe('placePhotoPins', () => {
   ];
   const card = { width: 176, height: 64, gap: 6 };
   it('카드 네모가 겹치지 않는 쪽을 고르고, 양쪽 다 막히면 가까운 카드와 묶는다', () => {
-    const items = placePhotoPins(marks, 1, card);
+    const items = placePhotoPins(marks, 2, card);
     // 가까운 세 곳 중 하나는 묶이고 춘천은 따로
     const groups = items.filter(isGroup);
     expect(groups).toHaveLength(1);

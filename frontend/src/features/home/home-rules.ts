@@ -148,6 +148,8 @@ export function placePhotoPins(
   marks: readonly RegionMark[],
   pxPerUnit: number,
   card: { width: number; height: number; gap: number },
+  /** 묶이면 카드 대신 점 위에 알약이 놓인다. 그 자리까지 미리 잡아 두어 다른 카드가 올라타지 않게 한다 */
+  pill = { width: 120, height: 48 },
 ): (PlacedPhoto | RegionGroup)[] {
   const placed: { rect: Rect; x: number; y: number; list: RegionMark[]; side: 'left' | 'right' }[] =
     [];
@@ -158,9 +160,9 @@ export function placePhotoPins(
     const x = p[0] * pxPerUnit;
     const y = p[1] * pxPerUnit;
     const rectOf = (side: 'left' | 'right'): Rect => ({
-      x0: side === 'right' ? x : x - card.width,
-      x1: side === 'right' ? x + card.width : x,
-      y0: y - card.height / 2,
+      x0: Math.min(side === 'right' ? x : x - card.width, x - pill.width / 2),
+      x1: Math.max(side === 'right' ? x + card.width : x, x + pill.width / 2),
+      y0: y - Math.max(card.height / 2, pill.height),
       y1: y + card.height / 2,
     });
     const free = (['right', 'left'] as const).find((side) => {
