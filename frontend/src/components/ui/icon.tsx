@@ -40,6 +40,7 @@ export type IconName =
   | 'globe'
   | 'settings'
   | 'route'
+  | 'pencil'
   | 'gear'
   | 'person-plus'
   | 'person-minus'
@@ -100,6 +101,8 @@ const PATHS: Record<IconName, string> = {
   // 양 끝 동그라미를 S자 길로 잇는 경로. S33 '계획에만 있어요'
   route:
     'M6 21A2 2 0 1 0 6 17A2 2 0 0 0 6 21ZM18 7A2 2 0 1 0 18 3A2 2 0 0 0 18 7ZM8 19H16.5A3.5 3.5 0 0 0 16.5 12H7.5A3.5 3.5 0 0 1 7.5 5H16',
+  // S34 내 평가 [수정]
+  pencil: 'M4 20H8L18.5 9.5A2.1 2.1 0 0 0 15.5 6.5L5 17V20M13.5 8.5L16.5 11.5',
   // 여행 설정(피그마 S17 오른쪽 위). 가운데 원과 바퀴살. dev의 settings(조절 막대, S38)와 겹치지 않게 gear로 둔다
   gear: 'M12 15A3 3 0 1 0 12 9A3 3 0 0 0 12 15ZM12 3V5M12 19V21M3 12H5M19 12H21M5.6 5.6L7 7M17 17L18.4 18.4M5.6 18.4L7 17M17 7L18.4 5.6',
   // 동행 초대(피그마 S17 동행 줄 오른쪽). 사람 + 더하기
