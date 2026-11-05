@@ -5,6 +5,8 @@ import { expenseFailure } from './use-expense-mutations';
 
 // 훅이 불러오는 api.ts가 expo-crypto·axios 인스턴스를 만들어서, 판단 함수만 시험하도록 막아 둔다
 jest.mock('../api', () => ({}));
+// 목록 훅이 쓰는 useMe(@/hooks/use-me)가 apiClient를 만들면서 환경 변수를 읽어서 함께 막아 둔다
+jest.mock('@/api/client', () => ({ apiClient: {} }));
 
 function apiError(status: number, code: string) {
   const config = { headers: new AxiosHeaders() };

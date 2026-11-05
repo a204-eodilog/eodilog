@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { getAllExpenses, getExpenseTrip, getMe, getSettlementState, getTripMembers } from '../api';
+import { useMe } from '@/hooks/use-me';
+
+import { getAllExpenses, getExpenseTrip, getSettlementState, getTripMembers } from '../api';
 
 export const expenseKeys = {
   trip: (tripId: string) => ['trips', tripId] as const,
@@ -27,7 +29,7 @@ export function useExpenseBoard(tripId: string) {
     queryKey: expenseKeys.settlement(tripId),
     queryFn: () => getSettlementState(tripId),
   });
-  const me = useQuery({ queryKey: ['me'], queryFn: getMe });
+  const me = useMe();
 
   const queries = [trip, members, expenses, settlement, me];
   const myMemberId = members.data?.find((m) => m.user.id === me.data?.id)?.id ?? null;
