@@ -63,7 +63,7 @@ public class VisitController {
 	@Operation(summary = "방문 목록", description = """
 			여행의 ACTIVE 멤버만 조회한다. memberId를 생략하면 내 방문, 보내면 같은 여행 동행(나간 동행 포함)의 방문이다.
 			placeId로 한 장소만 볼 수 있다. 최근 등록 순(createdAt DESC, id DESC)이며 체크를 해제한 방문은 뺀다.
-			reviewStatus는 평가 기능 전이라 WRITTEN이면 빈 목록, UNWRITTEN은 ALL과 같다. reviewId·reviewScore는 항상 null이다.""")
+			reviewStatus로 평가를 쓴 방문(WRITTEN)·아직 안 쓴 방문(UNWRITTEN)만 고른다. 평가를 쓰지 않은 방문은 reviewId·reviewScore가 null이다.""")
 	@ApiResponse(responseCode = "200", description = "조회 성공")
 	@ApiResponse(responseCode = "404", description = "TRIP_NOT_FOUND: 없거나 볼 수 없는 여행",
 			content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
@@ -89,12 +89,15 @@ public class VisitController {
 
 	@Operation(summary = "다녀옴 체크 해제", description = """
 			방문을 기록한 본인이 ACTIVE 멤버일 때만 지운다. 방장이라도 다른 사람의 방문은 지울 수 없다(403).
+			평가가 있는 방문은 평가를 먼저 지워야 한다(409 REVIEW_EXISTS).
 			지운 방문은 목록에서 빠지고 되살리지 않는다. 다시 체크하면 새 방문이 생긴다.""")
 	@ApiResponse(responseCode = "204", description = "체크 해제 성공")
 	@ApiResponse(responseCode = "403", description = "FORBIDDEN: 내 방문이 아님",
 			content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
 	@ApiResponse(responseCode = "404",
 			description = "TRIP_NOT_FOUND: 없거나 볼 수 없는 여행 / VISIT_NOT_FOUND: 없거나 이미 해제한 방문",
+			content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+	@ApiResponse(responseCode = "409", description = "REVIEW_EXISTS: 평가가 있는 방문. 평가를 먼저 지운다",
 			content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
 	@DeleteMapping("/{visitId}")
 	public ResponseEntity<Void> deleteVisit(

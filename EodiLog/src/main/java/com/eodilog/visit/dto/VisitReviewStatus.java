@@ -1,6 +1,6 @@
 package com.eodilog.visit.dto;
 
-// GET /trips/{tripId}/visits의 reviewStatus 필터. 평가 기능 전이라 WRITTEN은 늘 빈 목록, UNWRITTEN은 ALL과 같다
+// GET /trips/{tripId}/visits의 reviewStatus 필터. WRITTEN: 평가를 쓴 방문, UNWRITTEN: 아직 쓰지 않은 방문
 public enum VisitReviewStatus {
 	ALL, WRITTEN, UNWRITTEN
 }
