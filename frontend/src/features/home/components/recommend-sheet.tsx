@@ -1,9 +1,13 @@
-import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import BottomSheet, {
+  BottomSheetScrollView,
+  useBottomSheetTimingConfigs,
+} from '@gorhom/bottom-sheet';
 import { Image } from 'expo-image';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 // 시트 안 가로 목록은 제스처 핸들러 스크롤이어야 시트 끌기와 손가락을 나눠 가진다(안드로이드)
 import { ScrollView } from 'react-native-gesture-handler';
+import Animated, { Easing, FadeInDown } from 'react-native-reanimated';
 
 import { Icon } from '@/components/ui';
 import { colors, layout, radius, spacing, typography } from '@/theme';
@@ -20,16 +24,39 @@ type Props = {
   onPress: (item: HomeRecommendation) => void;
 };
 
+/**
+ * 시트 펼침 모션. 시트가 0.32초 동안 올라오는 사이 목록이 위에서부터 한 줄씩(0.05초 간격)
+ * 아래에서 살짝 올라오며 나타난다. '동작 줄이기'가 켜져 있으면 reanimated가 바로 보여 준다
+ */
+const SHEET_MOTION = {
+  sheetMs: 320,
+  rowStartMs: 60,
+  rowGapMs: 50,
+  rowMs: 260,
+  maxRows: 8,
+} as const;
+
+const rowEntering = (i: number) =>
+  FadeInDown.duration(SHEET_MOTION.rowMs)
+    .delay(SHEET_MOTION.rowStartMs + Math.min(i, SHEET_MOTION.maxRows) * SHEET_MOTION.rowGapMs)
+    .easing(Easing.out(Easing.cubic));
+
 /** S05 아래 시트 "좋아요한 여행과 비슷해요". 접으면 가로 카드, 펼치면 세로 목록 */
 export function RecommendSheet({ items, initialExpanded = false, onPress }: Props) {
   const snapPoints = useMemo(() => [SHEET_COLLAPSED, '80%'], []);
   const [expanded, setExpanded] = useState(initialExpanded);
+  // 시트가 튕기지 않고 목록 모션과 같은 속도로 올라오게 한다
+  const animationConfigs = useBottomSheetTimingConfigs({
+    duration: SHEET_MOTION.sheetMs,
+    easing: Easing.out(Easing.cubic),
+  });
 
   return (
     <BottomSheet
       index={initialExpanded ? 1 : 0}
       snapPoints={snapPoints}
       enableDynamicSizing={false}
+      animationConfigs={animationConfigs}
       onChange={(i) => setExpanded(i > 0)}
       // 시트는 위아래로 끌 때만 움직인다. 옆으로 밀면 시트 끌기를 포기해 가로 카드가 넘어간다
       activeOffsetY={[-10, 10]}
@@ -44,23 +71,27 @@ export function RecommendSheet({ items, initialExpanded = false, onPress }: Prop
       {items.length === 0 ? (
         <Text style={styles.empty}>여행에 좋아요를 누르면 비슷한 곳을 추천해 드려요</Text>
       ) : expanded ? (
-        <BottomSheetScrollView contentContainerStyle={styles.list}>
-          {items.map((item) => (
-            <Pressable
-              key={item.id}
-              onPress={() => onPress(item)}
-              style={styles.row}
-              accessibilityRole="button"
-            >
-              <Thumb item={item} size={64} />
-              <View style={styles.rowText}>
-                <Text style={styles.name} numberOfLines={1}>
-                  {item.title}
-                </Text>
-                <Meta item={item} />
-              </View>
-              <Icon name="chevron-right" size={20} color={colors.text.muted} />
-            </Pressable>
+        <BottomSheetScrollView
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+        >
+          {items.map((item, i) => (
+            <Animated.View key={item.id} entering={initialExpanded ? undefined : rowEntering(i)}>
+              <Pressable
+                onPress={() => onPress(item)}
+                style={styles.row}
+                accessibilityRole="button"
+              >
+                <Thumb item={item} size={64} />
+                <View style={styles.rowText}>
+                  <Text style={styles.name} numberOfLines={1}>
+                    {item.title}
+                  </Text>
+                  <Meta item={item} />
+                </View>
+                <Icon name="chevron-right" size={20} color={colors.text.muted} />
+              </Pressable>
+            </Animated.View>
           ))}
         </BottomSheetScrollView>
       ) : (
