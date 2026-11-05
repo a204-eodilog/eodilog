@@ -72,6 +72,13 @@ const ME: MyProfile = {
   profileUrl: '',
 };
 
+/** S39 내 노출 설정(테스트 모드 메모리). 처음엔 아무도 숨기지 않음 */
+let feedVisibility = {
+  hiddenViewerUserIds: [] as string[],
+  version: 1,
+  updatedAt: '2026-11-01T00:00:00Z',
+};
+
 /** S07 공동 피드 좋아요(테스트 모드 메모리) */
 const feedLikes = new Map<string, { liked: boolean; count: number }>();
 
@@ -392,6 +399,9 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
                 tripId: posted.id,
                 title: '봄 경주',
                 regions: [{ id: 'region-gyeongju', code: '4713000000', name: '경상북도 경주시' }],
+                startDate: posted.startDate,
+                endDate: posted.endDate,
+                visibility: { feedId: `feed-${posted.id}`, ...feedVisibility },
               },
             ]
           : [],
@@ -463,6 +473,22 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
   }
   // 좋아요 기반 추천(백엔드 아직 없음). 휴대폰 테스트에서 시트 카드가 보이게 예시를 준다
   // S07 공동 피드: 어떤 ID든 예시 피드를 돌려준다. 좋아요는 메모리에 남는다
+  const visibilityMatch = /^\/feeds\/([^/]+)\/visibility\/me$/.exec(url);
+  if (method === 'put' && visibilityMatch) {
+    const body = JSON.parse(String(config.data ?? '{}')) as {
+      hiddenViewerUserIds: string[];
+      expectedVersion: number;
+    };
+    if (body.expectedVersion !== feedVisibility.version) {
+      throw fail(config, 409, 'VERSION_CONFLICT', '다른 곳에서 바뀌었어요');
+    }
+    feedVisibility = {
+      hiddenViewerUserIds: body.hiddenViewerUserIds,
+      version: feedVisibility.version + 1,
+      updatedAt: new Date().toISOString(),
+    };
+    return ok(config, { data: { feedId: visibilityMatch[1], ...feedVisibility } });
+  }
   const feedMatch = /^\/feeds\/([^/]+)(\/like)?$/.exec(url);
   if (feedMatch) {
     const [, feedId, like] = feedMatch;

@@ -51,7 +51,8 @@ export type IconName =
   | 'car'
   | 'bus'
   | 'eye'
-  | 'list';
+  | 'list'
+  | 'send';
 
 type IconProps = {
   name: IconName;
@@ -128,6 +129,8 @@ const PATHS: Record<IconName, string> = {
   // S37 친구에게 보이는 모습, 내 여행 목록
   eye: 'M2.5 12C4.5 7.8 8 5.5 12 5.5C16 5.5 19.5 7.8 21.5 12C19.5 16.2 16 18.5 12 18.5C8 18.5 4.5 16.2 2.5 12ZM12 15A3 3 0 1 0 12 9A3 3 0 0 0 12 15Z',
   list: 'M9 6H20M9 12H20M9 18H20M4.5 6H5M4.5 12H5M4.5 18H5',
+  // S39 저장(보내기)
+  send: 'M20 4L10 14M20 4L14 20L10 14L4 10L20 4Z',
 };
 
 /** 채워도 선으로만 남겨야 하는 부분. 가방 손잡이처럼 몸통과 따로 그린다. */
