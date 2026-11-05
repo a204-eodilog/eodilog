@@ -20,6 +20,11 @@ export type HeaderProps = {
   onBack?: () => void;
   /** 오른쪽 끝 버튼들 */
   right?: ReactNode;
+  /**
+   * 큰 제목(title1, 23). 피그마 S18 동행 초대·S19 여행 설정처럼 제목만 크게 쓰는 화면.
+   * 기본은 bodyBold(16)로 S35 경비·S36 정산 문서 기준이다
+   */
+  largeTitle?: boolean;
 };
 
 /** 상세·입력 화면 상단 바. 56 높이, 왼쪽 뒤로, 가운데 제목, 오른쪽 버튼. */
@@ -31,6 +36,7 @@ export function Header({
   hideBack = false,
   onBack,
   right,
+  largeTitle = false,
 }: HeaderProps) {
   const insets = useSafeAreaInsets();
   const goBack = onBack ?? (() => (router.canGoBack() ? router.back() : router.replace('/')));
@@ -53,7 +59,10 @@ export function Header({
         </View>
         <View style={styles.center}>
           {title ? (
-            <Text style={[typography.bodyBold, styles.title]} numberOfLines={1}>
+            <Text
+              style={[largeTitle ? typography.title1 : typography.bodyBold, styles.title]}
+              numberOfLines={1}
+            >
               {title}
             </Text>
           ) : null}

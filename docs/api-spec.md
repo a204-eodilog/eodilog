@@ -50,8 +50,8 @@
 
 | 상태 | 대표 업무 오류 |
 | --- | --- |
-| 404 | `TRIP_NOT_FOUND`, `FEED_NOT_FOUND`, `JOB_NOT_FOUND` — 존재를 공개할 수 없는 자료도 같은 응답. 여행 안의 하위 자료는 `MEMBER_NOT_FOUND`(없거나 이탈한 멤버십), `CHECKLIST_ITEM_NOT_FOUND`(없거나 삭제된 준비물), `EXPENSE_NOT_FOUND`(없거나 삭제된 경비), `SETTLEMENT_NOT_FOUND`(없거나 다른 여행의 정산 계산), `CHAT_ROOM_NOT_FOUND`(없거나 삭제된 여행·참여하지 않았거나 나간 채팅방), `POLL_NOT_FOUND`(없거나 다른 여행의 투표), `VISIT_NOT_FOUND`(없거나 체크 해제한·다른 여행의 방문) |
-| 409 | `VERSION_CONFLICT`, `POLL_CLOSED`, `ALREADY_MEMBER`, `ALREADY_APPLIED`, `TRIP_FULL`(여행 ACTIVE 멤버 정원 초과), `CLIENT_MESSAGE_ID_REUSED`(같은 clientMessageId를 다른 방·본문에 재사용) |
+| 404 | `TRIP_NOT_FOUND`, `FEED_NOT_FOUND`, `JOB_NOT_FOUND` — 존재를 공개할 수 없는 자료도 같은 응답. 여행 안의 하위 자료는 `MEMBER_NOT_FOUND`(없거나 이탈한 멤버십), `CHECKLIST_ITEM_NOT_FOUND`(없거나 삭제된 준비물), `EXPENSE_NOT_FOUND`(없거나 삭제된 경비), `SETTLEMENT_NOT_FOUND`(없거나 다른 여행의 정산 계산), `CHAT_ROOM_NOT_FOUND`(없거나 삭제된 여행·참여하지 않았거나 나간 채팅방), `POLL_NOT_FOUND`(없거나 다른 여행의 투표), `VISIT_NOT_FOUND`(없거나 체크 해제한·다른 여행의 방문), `REVIEW_NOT_FOUND`(평가를 쓰지 않았거나 지운 방문) |
+| 409 | `VERSION_CONFLICT`, `POLL_CLOSED`, `ALREADY_MEMBER`, `ALREADY_APPLIED`, `TRIP_FULL`(여행 ACTIVE 멤버 정원 초과), `CLIENT_MESSAGE_ID_REUSED`(같은 clientMessageId를 다른 방·본문에 재사용), `REVIEW_EXISTS`(평가가 있는 방문의 체크 해제) |
 | 410 | `INVITATION_EXPIRED`·`INVITATION_REVOKED` — 사용자가 제시한 유효 형식의 초대 토큰 검증 결과. 새 링크 발급이나 취소로 무효가 된 링크만 `INVITATION_REVOKED`, 없는 토큰·기간 지남·삭제된 여행·초대자 이탈은 `INVITATION_EXPIRED` |
 | 422 | `INSUFFICIENT_DATA`, `CURRENCY_MISMATCH`, `INVALID_PARTICIPANTS`, `UNSUPPORTED_INPUT`, `INVALID_ROUTE_LEGS`(코스 구간이 빠지거나 겹치거나 인접하지 않음) |
 | 503 | `PROVIDER_UNAVAILABLE` — 지도·날씨·장소 공급자 장애. 결과 없음과 구분 |
@@ -179,8 +179,8 @@
 | POST | `/trips/{tripId}/itinerary/undo` | 멤버 | `{expectedVersion:integer,appliedJobId:id}` | `Itinerary` / 200 | 직전 AI 적용 1회만 되돌림. 적용 후 다른 쓰기면 409 UNDO_UNAVAILABLE 제안, 복원도 새 version. 시간 제한은 Q-15 |
 | POST | `/trips/{tripId}/itinerary/routes/recalculate` | 멤버 | `{expectedVersion:integer}` | `JobRef` / 202 | 실패 구간 재조회, 변경된 코스에는 자동 반영하지 않음 |
 | POST | `/trips/{tripId}/visits` | 멤버 | `{placeId:id,visitedAt:datetime,evidenceType:MANUAL}` | `Visit` / 201(이미 체크한 장소는 기존 `Visit` / 200) | 실제 방문 수동 기록. 자동 위치 수집 추가 안 함. 존재하는 장소면 코스 밖도 허용(없으면 400 필드 placeId), `visitedAt`이 서버 시각+5분보다 미래면 400, `evidenceType`은 MANUAL만. 여행·멤버·장소당 체크 하나라 재요청은 기존 방문을 그대로 반환하며 `Idempotency-Key` 불필요(2026-11-04) |
-| GET | `/trips/{tripId}/visits` | 멤버 | `memberId?:id,placeId?:id,reviewStatus?:ALL\|WRITTEN\|UNWRITTEN` + 페이지 | `Visit[]` / 200 | 기본 본인·ALL. 같은 여행 멤버(나간 멤버 포함)만 필터 가능, 다른 여행·없는 memberId는 400. 정렬 createdAt DESC. 평가할 visitId 복원. 평가 기능 전에는 WRITTEN이 빈 목록, `reviewId`·`reviewScore` null |
-| DELETE | `/trips/{tripId}/visits/{visitId}` | 본인 방문 작성자 | 없음 | 204 | 방문 체크 되돌리기(논리 삭제, 다시 체크하면 새 방문). 남의 방문 403, 없거나 해제한 방문 404 `VISIT_NOT_FOUND`. 평가가 있으면 409 REVIEW_EXISTS 제안(평가 기능 때 추가) |
+| GET | `/trips/{tripId}/visits` | 멤버 | `memberId?:id,placeId?:id,reviewStatus?:ALL\|WRITTEN\|UNWRITTEN` + 페이지 | `Visit[]` / 200 | 기본 본인·ALL. 같은 여행 멤버(나간 멤버 포함)만 필터 가능, 다른 여행·없는 memberId는 400. 정렬 createdAt DESC. 평가할 visitId 복원. WRITTEN은 평가를 쓴 방문, UNWRITTEN은 아직 안 쓴 방문. 평가가 없으면 `reviewId`·`reviewScore` null |
+| DELETE | `/trips/{tripId}/visits/{visitId}` | 본인 방문 작성자 | 없음 | 204 | 방문 체크 되돌리기(논리 삭제, 다시 체크하면 새 방문). 남의 방문 403, 없거나 해제한 방문 404 `VISIT_NOT_FOUND`. 평가가 있으면 409 `REVIEW_EXISTS`(평가를 먼저 지운다) |
 | POST | `/trips/{tripId}/visit-detections` | 멤버 | `{photoIds:id[]}` | `JobRef` / 202 | 허용된 사진 메타데이터로 후보만 제안, 실제 체크와 구분 |
 | POST | `/trips/{tripId}/visit-candidates/{candidateId}/confirm` | 후보 본인 | `{expectedVersion:integer}` | `Visit` / 201 | 동일 후보 중복 확정은 기존 visit 반환. 사진 속 타인을 자동 방문자로 지정하지 않음 |
 | GET | `/trips/{tripId}/weather` | 멤버 | `date:date,placeId:id` | `Weather` / 200 | 관측/예보 구분, 조회 시점·유효성 |
@@ -217,9 +217,9 @@
 | GET | `/trips/{tripId}/photo-summary` | 멤버 | 없음 | `PhotoSummary` / 200 | 필터와 독립적인 전체·주제/장소별 건수·미지정 수 |
 | POST | `/trips/{tripId}/photos/batch` | 업로더(D-16) | `PhotoBatchWrite` | `{photos:Photo[],deletedPhotoIds:id[]}` / 200 | 수정·이동·묶음 해제·삭제 중 하나. 검증 실패 시 전체 변경 없음 제안 |
 | POST | `/trips/{tripId}/photo-classifications/{jobId}/apply` | 멤버 | `{expectedPhotoVersions:{photoId:id,version:integer}[]}` | `{photos:Photo[]}` / 200 | 확인 후 모드의 성공 결과만 명시 반영. 변경된 사진/수동 보정은 409 |
-| GET | `/trips/{tripId}/reviews` | 멤버 | 페이지 | `Review[]` / 200 | 실제 방문 기록 참조 |
-| PUT | `/trips/{tripId}/visits/{visitId}/review` | 방문 기록 작성자 | `{score:integer,body:string,expectedVersion?:integer}` | `Review` / 200 | 1~5 정수 필수, 반 점 거부·확인한 본인 방문만 작성 |
-| DELETE | `/trips/{tripId}/visits/{visitId}/review` | 평가 작성자 | 없음 | 204 | 타인 평가 변경 불가 |
+| GET | `/trips/{tripId}/reviews` | 멤버 | `memberId?:id` + 페이지 | `Review[]` / 200 | 실제 방문 기록 참조. 기본은 여행 전체(동행 평가 포함), memberId는 같은 여행 멤버십(나간 멤버 포함)만, 아니면 400. 정렬 createdAt DESC. 항목마다 `visit`·`place` 요약 포함. 나간 멤버의 평가도 남는다 |
+| PUT | `/trips/{tripId}/visits/{visitId}/review` | 방문 기록 작성자 | `{score:integer,body:string,expectedVersion?:integer}` | `Review` / 200 | 1~5 정수 필수, 반 점·문자열 거부·확인한 본인 방문만 작성(남의 방문 403, 없거나 해제한 방문 404 `VISIT_NOT_FOUND`). 방문 하나에 평가 하나, 처음이면 생성·있으면 수정(모두 200). body는 공백만 불가·1,000자(코드 포인트) 이하, 받은 그대로 저장. expectedVersion은 다르면 409 `VERSION_CONFLICT`, 생략하면 덮어쓰기, 평가가 없는데 보내면 400. 값이 바뀔 때만 version 증가 |
+| DELETE | `/trips/{tripId}/visits/{visitId}/review` | 평가 작성자 | 없음 | 204 | 타인 평가 변경 불가(403). 물리 삭제, 다시 쓰면 새 평가(version 1). 없는 평가 404 `REVIEW_NOT_FOUND` |
 | GET | `/trips/{tripId}/expenses` | 멤버 | 페이지 | `Expense[]` / 200 | 원본 내역, 이탈자도 과거 분담자로 표시 |
 | POST | `/trips/{tripId}/expenses` | 멤버 | `ExpenseWrite` | `Expense` / 201 | 등록자 서버 지정, 같은 여행 결제자/분담자·KRW 정수 검증, 외화 422 |
 | PATCH | `/trips/{tripId}/expenses/{expenseId}` | 활성 멤버인 등록자 | `ExpensePatch` | `Expense` / 200 | 방장·결제자라도 등록자가 아니면 403 |
@@ -326,6 +326,7 @@ STOMP over WebSocket으로 서버 → 앱 전달만 한다. 메시지 보내기�
 - 여행 상태는 기간에 따라 자동 전환한다. 날짜 미정은 PLANNING, 시작/종료 경계의 현지 시간대·서버 작업 시점은 Q-4에서 합의한다. status 직접 쓰기를 받지 않으며 날짜 수정 시 파생 상태를 다시 계산한다.
 - 투표 기본 마감은 화면에서 서버 시각 기준 +24시간으로 제안하고 명시적 closesAt을 제출한다. 마감 1시간 전 현재 미투표자만 알린다. 짧은 마감/마감 변경·재개 정책은 Q-6이다. 결과는 여러 지역을 날짜별 배분 가능하게 반환하고 확정 장소는 후보 상단에 표시한다.
 - 알림 종류는 FOLLOW_REQUESTED/ACCEPTED, TRIP_MEMBER_JOINED, TRIP_INFO_CHANGED, POLL_OPENED/CANDIDATE_ADDED/REMINDER/FINALIZED/CLOSED_NO_VOTES, AI_PROPOSAL_READY, COURSE_CHANGED, FEED_DELETED 제안이다. 후보 추가는 현재 투표한 멤버, reminder는 미투표자에게만. 게시·방장 양도·승인 요청·사진 동의·정산 완료 이벤트는 생성하지 않는다.
+- 현재 서버가 남기는 알림(2026-11-05): `TRIP_INFO_CHANGED`(여행 수정·지역 투표 확정), `TRIP_MEMBER_JOINED`(초대 수락으로 멤버십이 새로 생기거나 재참여, 이미 참여 중인 재수락은 제외), `POLL_OPENED`, `POLL_CANDIDATE_ADDED`(그 투표에 표를 낸 멤버만), `POLL_FINALIZED`·`POLL_CLOSED_NO_VOTES`(투표당 한 번, 서버 마감이라 행동한 사람 없음), `POLL_REMINDER`(마감까지 1시간 이하로 남은 OPEN 투표의 미투표 멤버에게 투표당 한 번, 1분 주기), `COURSE_CHANGED`(코스 version이 오른 저장마다 1건, 묶음은 Q-16). 수신자는 그 여행의 지금 ACTIVE 멤버이며 행동한 본인은 받지 않는다. `target`은 투표 알림이 `POLL`/pollId, 참여 알림이 `TRIP`/tripId, 코스 알림이 `ITINERARY`/tripId다.
 - 팝업은 POLL_OPENED/REMINDER, FOLLOW_REQUESTED, AI_PROPOSAL_READY처럼 내 행동이 필요한 이벤트만, 나머지는 목록으로 제공한다. 여행 이벤트는 해당 여행 그룹 시스템 카드에 연결하고 팔로우 이벤트는 여행 채팅에 넣지 않는다. 코스 변경 묶음 키/시간창·건수/최종 상태·읽음/카드 갱신은 Q-16이며 임의 수치를 확정하지 않는다.
 
 ## 10. 요청·응답 DTO
@@ -374,7 +375,7 @@ STOMP over WebSocket으로 서버 → 앱 전달만 한다. 메시지 보내기�
 | Asset | `id,purpose:string,status:PENDING\|READY\|DELETING\|DELETED\|CANCELLED,contentType:string,byteSize:integer,tripId:id\|null` |
 | PhotoUploadBatch | `id,tripId:id,fileCount:integer,registeredCount:integer,createdAt:datetime`. fileCount 1~50, 소유자/여행별 등록 예약 상한으로 중복 재시도 방지 |
 | Photo | `id,assetId,tripId,batchId:id,uploaderMemberId:id,placeId:id\|null,capturedAt:datetime\|null,topics:string[],groupId:id\|null,version:integer` |
-| Review | `id,visitId,authorMemberId:id,score:integer,body:string,version:integer,createdAt:datetime,updatedAt:datetime` |
+| Review | `id,visitId,authorMemberId:id,score:integer,body:string,version:integer,createdAt:datetime,updatedAt:datetime,visit:{placeId:id,visitedAt:datetime},place:{name:string,address:string\|null}\|null`. visit·place는 평가 목록 화면용 요약(2026-11-05) |
 | ExpenseWrite | `title:string,memo?:string\|null,amountMinor:integer,currency:KRW,payerMemberId:id,participantMemberIds:id[],spentAt:datetime`. 양수 원화 정수, 균등 원금 분담. 정산 올림과 구분. 빈 memo는 null로 저장하고 응답 memo도 null일 수 있다 |
 | ExpensePatch | ExpenseWrite의 변경 필드 + 필수 `expectedVersion:integer`. 분담자 변경은 전체 배열 교체. `memo:null`은 메모 삭제, 생략은 유지 |
 | Expense | ExpenseWrite + `id,registeredByMemberId:id,shares:{memberId:id,amountMinor:integer}[],version:integer` |

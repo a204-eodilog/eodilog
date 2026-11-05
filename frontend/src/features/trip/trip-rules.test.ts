@@ -1,5 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 import {
+  stayLabel,
   companionsLabel,
   dayIndex,
   dDay,
@@ -352,5 +353,13 @@ describe('tripDetailView', () => {
 
     expect(view.headline).toBe('부산 여행 1일차예요');
     expect(view.action?.target).toBe('today');
+  });
+});
+
+describe('stayLabel', () => {
+  it('0박은 당일, 그 밖은 N박 N+1일이다', () => {
+    expect(stayLabel(0)).toBe('당일');
+    expect(stayLabel(1)).toBe('1박 2일');
+    expect(stayLabel(8)).toBe('8박 9일');
   });
 });

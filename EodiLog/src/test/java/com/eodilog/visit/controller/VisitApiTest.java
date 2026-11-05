@@ -146,7 +146,7 @@ class VisitApiTest {
 		getVisits(friendId, "?placeId=" + otherPlace)
 				.andExpect(jsonPath("$.data", hasSize(1)))
 				.andExpect(jsonPath("$.data[0].id").value(second.toString()));
-		// 평가 기능 전: WRITTEN은 빈 목록, UNWRITTEN은 전체
+		// 아직 평가를 쓰지 않았으므로 WRITTEN은 빈 목록, UNWRITTEN은 전체(평가가 있을 때는 ReviewApiTest)
 		getVisits(friendId, "?reviewStatus=WRITTEN").andExpect(jsonPath("$.data", hasSize(0)));
 		getVisits(friendId, "?reviewStatus=UNWRITTEN").andExpect(jsonPath("$.data", hasSize(2)));
 		getVisits(friendId, "?reviewStatus=MAYBE").andExpect(status().isBadRequest());

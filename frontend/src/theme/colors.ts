@@ -78,6 +78,11 @@ export const colors = {
   },
   /** 하단 시트·확인창 뒤 어두운 막 */
   overlay: 'rgba(0, 0, 0, 0.32)',
+  /** 파랑 블록 위 반투명 흰색(피그마 S15·S17). 칩 바탕 18%, 보조 글자 85% */
+  onBrand: {
+    chip: 'rgba(255, 255, 255, 0.18)',
+    textSoft: 'rgba(255, 255, 255, 0.85)',
+  },
 } as const;
 
 export type Colors = typeof colors;

@@ -42,6 +42,7 @@ public class PollCloser {
 	private final PollResultRepository pollResultRepository;
 	private final TripMemberRepository tripMemberRepository;
 	private final TripDestinationRepository tripDestinationRepository;
+	private final PollNotifier pollNotifier;
 	private final ApplicationEventPublisher eventPublisher;
 	private final EntityManager entityManager;
 	private final Clock clock;
@@ -49,13 +50,15 @@ public class PollCloser {
 
 	public PollCloser(PollTallyRepository pollTallyRepository, PollCandidateRepository pollCandidateRepository,
 			PollResultRepository pollResultRepository, TripMemberRepository tripMemberRepository,
-			TripDestinationRepository tripDestinationRepository, ApplicationEventPublisher eventPublisher,
+			TripDestinationRepository tripDestinationRepository, PollNotifier pollNotifier,
+			ApplicationEventPublisher eventPublisher,
 			EntityManager entityManager, Clock clock, PlatformTransactionManager transactionManager) {
 		this.pollTallyRepository = pollTallyRepository;
 		this.pollCandidateRepository = pollCandidateRepository;
 		this.pollResultRepository = pollResultRepository;
 		this.tripMemberRepository = tripMemberRepository;
 		this.tripDestinationRepository = tripDestinationRepository;
+		this.pollNotifier = pollNotifier;
 		this.eventPublisher = eventPublisher;
 		this.entityManager = entityManager;
 		this.clock = clock;
@@ -116,6 +119,7 @@ public class PollCloser {
 
 		if (votedMemberCount == 0) {
 			poll.closeWithoutVotes(eligibleMemberCount, now);
+			pollNotifier.closed(poll, false);
 			return;
 		}
 		int maxVotes = candidates.stream().mapToInt(PollCandidate::getVoteCount).max().orElse(0);
@@ -124,6 +128,7 @@ public class PollCloser {
 				.toList();
 		selected.forEach(candidate -> pollResultRepository.save(PollResult.of(candidate.getId(), now)));
 		poll.finalizeResult(eligibleMemberCount, votedMemberCount, now);
+		pollNotifier.closed(poll, true);
 		if (poll.getType() == PollType.REGION) {
 			addDestinations(trip, selected, now);
 		}

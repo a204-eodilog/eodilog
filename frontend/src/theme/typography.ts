@@ -43,6 +43,26 @@ export const typography = {
   caption: style(fontFamily.regular, 12, 20),
   /** 알림 숫자처럼 아주 작은 글자 */
   micro: style(fontFamily.bold, 11, 16),
+
+  // 아래는 여행 화면(S15·S16·S17) 피그마가 위 토큰과 다른 크기로 그린 글자. 2026-11-05 피그마 값 그대로
+  /** 여행 목록 카드 D-day "D-17"(S15) */
+  display: style(fontFamily.bold, 32, 43),
+  /** 여행 상세 파랑 블록 큰 제목 "두근두근, 부산 여행 D-17"(S17) */
+  hero: style(fontFamily.bold, 30, 39),
+  /** 새 여행 큰 질문 "어떤 여행을 떠나시나요?"(S16) */
+  question: style(fontFamily.bold, 28, 38),
+  /** 새 여행 이름 입력(S16) */
+  heading: style(fontFamily.bold, 22, 30),
+  /** 새 여행 줄 값 "나중에 정할게요"(S16) */
+  bodyLarge: style(fontFamily.regular, 17, 26),
+  /** 새 여행 안내 "이름만 정하면 바로 시작할 수 있어요"(S16) */
+  bodySmall: style(fontFamily.regular, 15, 22),
+  /** 새 여행 줄 이름 "언제"(S16) */
+  sub: style(fontFamily.regular, 14, 22),
+  /** 여행 상세 작은 굵은 글자: 여행 이름, "세은·승기와 함께"(S17) */
+  subBold: style(fontFamily.bold, 14, 20),
+  /** 여행 상세 단계 버튼 "코스 짜기"(S17) */
+  subMedium: style(fontFamily.medium, 14, 22),
 } as const;
 
 export type TypographyVariant = keyof typeof typography;

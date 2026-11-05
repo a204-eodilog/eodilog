@@ -32,6 +32,7 @@ B 담당 화면 17개 전부와 A 담당 S13·S45. 다른 화면은 필요할 �
 | S38 내 여행 기록·공동 피드 게시 | [S38-my-trip-record.md](S38-my-trip-record.md) |
 | S41 타임라인 | [S41-timeline.md](S41-timeline.md) |
 | S42 여행 요약 카드 | [S42-trip-summary-card.md](S42-trip-summary-card.md) |
+| S43 친구 목록 | [S43-friends.md](S43-friends.md) |
 | S45 프로필·취향·설정 (AI 상세·편집안 포함) | [S45-settings.md](S45-settings.md) |
 | S50 삭제·나가기·탈퇴 확인 | [S50-confirm.md](S50-confirm.md) |
 

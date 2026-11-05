@@ -1,6 +1,6 @@
 import { expect, it } from '@jest/globals';
 
-import { withRo } from './korean';
+import { withRo, withWa } from './korean';
 
 it('받침이 있으면 으로, 없거나 ㄹ 받침이면 로', () => {
   expect(withRo('겨울 여행')).toBe('겨울 여행으로');
@@ -11,4 +11,11 @@ it('받침이 있으면 으로, 없거나 ㄹ 받침이면 로', () => {
 
 it('한글로 끝나지 않으면 (으)로', () => {
   expect(withRo('Trip 2')).toBe('Trip 2(으)로');
+});
+
+it('받침이 있으면 과, 없으면 와', () => {
+  expect(withWa('민준')).toBe('민준과');
+  expect(withWa('지우')).toBe('지우와');
+  expect(withWa('하늘')).toBe('하늘과');
+  expect(withWa('Ann')).toBe('Ann와(과)');
 });

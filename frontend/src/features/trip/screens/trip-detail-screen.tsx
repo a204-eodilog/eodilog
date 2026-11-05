@@ -1,13 +1,14 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { EmptyState, ErrorState, Header, toast } from '@/components/ui';
+import { ErrorState, Header, toast } from '@/components/ui';
 import { useMe } from '@/hooks/use-me';
 import { useSeoulToday } from '@/hooks/use-seoul-today';
 import { colors, layout, spacing } from '@/theme';
 
 import { TodoSteps } from '../components/todo-steps';
+import { TripGoneState } from '../components/trip-gone-state';
 import { TripHero } from '../components/trip-hero';
 import { TripMenuGrid } from '../components/trip-menu-grid';
 import { useRegionNames } from '../hooks/use-region-names';
@@ -38,17 +39,7 @@ export function TripDetailScreen() {
     return (
       <SafeAreaView edges={['bottom']} style={styles.screen}>
         <Header />
-        {notFound ? (
-          <EmptyState
-            icon="alert"
-            title="볼 수 없는 여행이에요"
-            description="참여하지 않았거나 이미 나간 여행이에요"
-            actionLabel="여행 목록으로"
-            onAction={() => router.replace('/trips')}
-          />
-        ) : (
-          <ErrorState onRetry={() => refetch()} />
-        )}
+        {notFound ? <TripGoneState /> : <ErrorState onRetry={() => refetch()} />}
       </SafeAreaView>
     );
   }
@@ -85,5 +76,6 @@ const styles = StyleSheet.create({
   scroll: { paddingBottom: spacing[32] },
   screen: { flex: 1, backgroundColor: colors.surface.white },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  body: { paddingHorizontal: layout.screenPaddingX, paddingTop: spacing[24], gap: spacing[32] },
+  // 피그마 S17: 파랑 블록 아래 28, 묶음 사이 28
+  body: { paddingHorizontal: layout.screenPaddingX, paddingTop: spacing[28], gap: spacing[28] },
 });

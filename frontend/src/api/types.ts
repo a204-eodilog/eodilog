@@ -28,6 +28,16 @@ export type UserCard = {
   followedByStatus: FollowStatus;
 };
 
+/** 팔로우 관계 (docs/api-spec.md Follow). 방향별로 독립 */
+export type Follow = {
+  id: string;
+  follower: UserCard;
+  followee: UserCard;
+  status: 'REQUESTED' | 'ACCEPTED';
+  requestedAt: string;
+  acceptedAt: string | null;
+};
+
 export type MyProfile = UserCard & {
   ageBand: string | null;
   ageUseConsent: boolean;

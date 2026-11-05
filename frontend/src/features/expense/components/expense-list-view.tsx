@@ -116,7 +116,13 @@ export function ExpenseListView({
               );
             }}
           />
-          <View style={[styles.bottom, { paddingBottom: Math.max(insets.bottom, BOTTOM_GAP) }]}>
+          {/* 안드로이드 하단 버튼 줄(내비게이션 바) 높이만 주면 버튼이 바에 붙는다. 바 위로 16을 더 띄우고, 바가 없을 때는 원래 최소 여백을 쓴다 */}
+          <View
+            style={[
+              styles.bottom,
+              { paddingBottom: Math.max(insets.bottom + spacing[16], BOTTOM_GAP) },
+            ]}
+          >
             <Button
               label={changed ? '다시 계산' : '정산 계산'}
               weight="medium"
