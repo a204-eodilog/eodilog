@@ -63,6 +63,7 @@ const ICONS: IconName[] = [
   'leave',
   'image',
   'arrow-right',
+  'map',
   'bulb',
 ];
 
