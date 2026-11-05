@@ -35,7 +35,9 @@ export type IconName =
   | 'image'
   | 'arrow-right'
   | 'bulb'
-  | 'upload';
+  | 'upload'
+  | 'globe'
+  | 'settings';
 
 type IconProps = {
   name: IconName;
@@ -83,6 +85,11 @@ const PATHS: Record<IconName, string> = {
   'arrow-right': 'M5 12H19M13 6L19 12L13 18',
   bulb: 'M9.5 18.5H14.5M10.5 21H13.5M12 3A6 6 0 0 0 8.5 13.9V16H15.5V13.9A6 6 0 0 0 12 3Z',
   upload: 'M12 15V4M7 9L12 4L17 9M5 15V19A1 1 0 0 0 6 20H18A1 1 0 0 0 19 19V15',
+  globe:
+    'M21 12A9 9 0 1 1 3 12A9 9 0 0 1 21 12ZM3.5 9H20.5M3.5 15H20.5M12 3C14.3 5.5 15.5 8.6 15.5 12C15.5 15.4 14.3 18.5 12 21C9.7 18.5 8.5 15.4 8.5 12C8.5 8.6 9.7 5.5 12 3Z',
+  // 내 노출 설정(S38). 톱니 대신 조절 막대 모양
+  settings:
+    'M4 7H13M17 7H20M4 17H7M11 17H20M15 9A2 2 0 1 0 15 5A2 2 0 0 0 15 9ZM9 19A2 2 0 1 0 9 15A2 2 0 0 0 9 19Z',
 };
 
 /** 채워도 선으로만 남겨야 하는 부분. 가방 손잡이처럼 몸통과 따로 그린다. */
