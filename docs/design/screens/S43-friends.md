@@ -27,7 +27,7 @@
 | 받은 요청 | 맨 위 친구 찾기 아래. title3 제목, 개수 표시                                                                           |
 | 요청 카드 | colors.brand.primaryBg, radius.lg, 안쪽 20, 내용·버튼 간격 20. Avatar lg(40), 닉네임 bodyBold, 요청일 caption          |
 | 수락·거절 | Button sm, 터치 높이는 layout.minTouchTarget(44)로 확장. 거절 흰 바탕, 수락 brand.primary + 흰 체크                    |
-| 공개 안내 | lock 아이콘 16 + caption. 비공개 수락과 여행 그룹·채팅 접근이 별개임을 안내                                            |
+| 공개 안내 | lock 아이콘 16 + caption. “수락해도 여행 그룹·채팅은 공개되지 않아요”로 안내                                           |
 | 탭        | 가로 동등 폭, 간격 8, 최소 높이 44, radius.md. 선택 brand.primaryLight + primaryDark, 미선택 surface.default           |
 | 사람 줄   | Avatar lg(40), 간격 14, 닉네임 bodyBold, 여행 설명 caption. 줄 간격 20(사용자 검토 후 확대). 우측 더 보기 44 터치 영역 |
 | 수락 후   | 팔로워 탭으로 이동. 새 팔로워 Tag, 수락일 표시, 그룹·채팅이 자동으로 열리지 않는 안내 Card                             |

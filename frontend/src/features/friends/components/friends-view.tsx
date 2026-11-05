@@ -154,7 +154,7 @@ export function FriendsView({
               <View style={styles.notice}>
                 <Icon name="lock" size={size.icon.sm} color={colors.text.icon} />
                 <Text style={[styles.caption, styles.flex]}>
-                  비공개 계정이라 수락해야 팔로우돼요{'\n'}여행 그룹과 채팅은 보이지 않아요
+                  수락해도 여행 그룹·채팅은 공개되지 않아요
                 </Text>
               </View>
             </View>
