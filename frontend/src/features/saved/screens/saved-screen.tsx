@@ -21,9 +21,21 @@ export function SavedScreen() {
   const [view, setView] = useSavedView();
 
   if (!bookmarks.data) {
+    // 받아 둔 목록 없이 연결이 끊기면 조회가 멈춘(paused) 채 isError가 되지 않아 로딩만 돈다.
+    // 연결 안내를 보여 주고, 연결이 돌아오면 TanStack Query가 멈춘 조회를 자동으로 다시 보낸다
+    const offline = !online || bookmarks.fetchStatus === 'paused';
     return (
       <View style={[styles.screen, { paddingTop: insets.top }]}>
-        {bookmarks.isError ? (
+        {offline ? (
+          <CenterNotice
+            icon="wifi-off"
+            title="인터넷에 연결되지 않았어요"
+            description="연결되면 저장한 장소를 자동으로 불러와요"
+            actionLabel="다시 시도"
+            actionIcon="refresh"
+            onAction={() => void bookmarks.refetch()}
+          />
+        ) : bookmarks.isError ? (
           <CenterNotice
             icon="alert"
             title="저장한 장소를 불러오지 못했어요"

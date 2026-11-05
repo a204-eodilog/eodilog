@@ -1,15 +1,13 @@
 import { useMemo, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, type ScrollViewInstance, StyleSheet, View } from 'react-native';
 
 import { MapMarker, MapView, type MapViewRef } from '@/components/map';
 import { layout, spacing } from '@/theme';
 
-import { cityGroups, type SavedItem } from '../saved-rules';
+import { cityGroups, regionFor, type SavedItem } from '../saved-rules';
 
 import { MAP_CARD_WIDTH, MapPlaceCard } from './map-place-card';
 
-/** 지역 하나를 눌렀을 때 보여 줄 범위(도·광역시 안 한 도시 정도) */
-const CITY_DELTA = 0.12;
 const CARD_GAP = spacing[10];
 
 type SavedMapProps = {
@@ -25,21 +23,20 @@ type SavedMapProps = {
  */
 export function SavedMap({ items, onOpen, bottomInset }: SavedMapProps) {
   const map = useRef<MapViewRef>(null);
+  const cards = useRef<ScrollViewInstance>(null);
   const groups = useMemo(() => cityGroups(items), [items]);
   const [city, setCity] = useState<string | null>(null);
   const [focused, setFocused] = useState(0);
 
   const shown = city ? (groups.find((g) => g.city === city)?.items ?? []) : items;
 
-  const openCity = (name: string, latitude: number, longitude: number) => {
+  const openCity = (name: string) => {
     setCity(name);
     setFocused(0);
-    map.current?.animateRegionTo?.({
-      latitude: latitude - CITY_DELTA / 2,
-      longitude: longitude - CITY_DELTA / 2,
-      latitudeDelta: CITY_DELTA,
-      longitudeDelta: CITY_DELTA,
-    });
+    // 카드를 넘긴 뒤 다른 지역을 눌러도 첫 카드가 보이게 가로 위치도 처음으로 돌린다(강조 핀과 맞춘다)
+    cards.current?.scrollTo({ x: 0, animated: false });
+    const region = regionFor(groups.find((g) => g.city === name)?.items ?? []);
+    if (region) map.current?.animateRegionTo?.(region);
   };
 
   return (
@@ -57,7 +54,7 @@ export function SavedMap({ items, onOpen, bottomInset }: SavedMapProps) {
             dot="brand"
             highlighted={g.city === city}
             accessibilityLabel={`${g.city}, 저장 ${g.items.length}곳`}
-            onPress={() => openCity(g.city, g.latitude, g.longitude)}
+            onPress={() => openCity(g.city)}
           />
         ))}
         {city
@@ -78,6 +75,7 @@ export function SavedMap({ items, onOpen, bottomInset }: SavedMapProps) {
       </MapView>
 
       <ScrollView
+        ref={cards}
         horizontal
         showsHorizontalScrollIndicator={false}
         snapToInterval={MAP_CARD_WIDTH + CARD_GAP}
