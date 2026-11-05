@@ -29,6 +29,10 @@ export const PREVIEW_ZOOM_MARKS: RegionMark[] = [
   mark('5121000000', '속초', ['하늘']),
   mark('5183000000', '양양', ['나래']),
   mark('5115000000', '강릉', ['하늘', '가람', '나래']),
+  mark('5182000000', '고성', ['다온']),
+  mark('5117000000', '동해', ['가람', '다온']),
+  mark('5123000000', '삼척', ['하늘']),
+  mark('5176000000', '평창', ['하늘', '가람', '나래', '다온']),
 ];
 
 export const PREVIEW_RECOMMENDATIONS: HomeRecommendation[] = [

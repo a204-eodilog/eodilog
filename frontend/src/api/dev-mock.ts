@@ -226,6 +226,14 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
       data: {
         markers: [
           marker('5115000000', '강원특별자치도 강릉시', ['user-1', 'user-2', 'user-3']),
+          // 강원 주변(확대 확인용)
+          marker('5121000000', '강원특별자치도 속초시', ['user-1', 'user-4']),
+          marker('5183000000', '강원특별자치도 양양군', ['user-2']),
+          marker('5182000000', '강원특별자치도 고성군', ['user-5']),
+          marker('5117000000', '강원특별자치도 동해시', ['user-3', 'user-4']),
+          marker('5123000000', '강원특별자치도 삼척시', ['user-1']),
+          marker('5176000000', '강원특별자치도 평창군', ['user-2', 'user-3', 'user-4', 'user-5']),
+          marker('5111000000', '강원특별자치도 춘천시', ['user-5']),
           marker('4713000000', '경상북도 경주시', ['user-2', 'user-4']),
           marker('1213000000', '전남광주통합특별시 여수시', ['user-1']),
           marker('5011000000', '제주특별자치도 제주시', ['user-3', 'user-5']),

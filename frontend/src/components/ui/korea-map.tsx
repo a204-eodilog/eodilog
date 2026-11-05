@@ -187,15 +187,28 @@ function MapCanvas({
   const tx = useSharedValue(start.x);
   const ty = useSharedValue(start.y);
 
-  // 지도가 화면 밖으로 나가 사라지지 않게, 지도의 가운데 40%가 늘 화면 안에 걸치도록 묶는다
+  // 국내 여행만 다루므로 지도를 한국 밖으로 옮기지 못하게 묶는다.
+  // 처음 크기(배율 1)에서는 본토가 화면 안에 다 들어와 움직이지 않고, 확대하면 그 범위 안에서만 옮긴다.
+  // 2배 이상 확대하면 동쪽 끝(울릉도·독도)까지 갈 수 있다
   const clamp = (s: number, x: number, y: number) => {
     'worklet';
-    const w = baseW * s;
-    const h = baseH * s;
-    return {
-      x: Math.min(box.width * 0.5, Math.max(box.width * 0.5 - w, x)),
-      y: Math.min(box.height * 0.5, Math.max(box.height * 0.5 - h, y)),
-    };
+    const k = fit * s;
+    const pad = 24;
+    const left = b.x0 * k;
+    const right = (s >= 2 ? KOREA_MAP.width : b.x1) * k;
+    const top = b.y0 * k;
+    const bottom = b.y1 * k;
+    const visTop = insetTop;
+    const visBottom = box.height - insetBottom;
+    const cx =
+      right - left <= box.width
+        ? box.width / 2 - (left + right) / 2
+        : Math.min(pad - left, Math.max(box.width - pad - right, x));
+    const cy =
+      bottom - top <= visBottom - visTop
+        ? (visTop + visBottom) / 2 - (top + bottom) / 2
+        : Math.min(visTop + pad - top, Math.max(visBottom - pad - bottom, y));
+    return { x: cx, y: cy };
   };
 
   const zoomAt = (fx: number, fy: number, ratio: number) => {

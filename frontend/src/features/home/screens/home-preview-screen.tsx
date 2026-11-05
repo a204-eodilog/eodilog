@@ -38,7 +38,7 @@ export function HomePreviewScreen() {
   const byState: Record<PreviewState, Partial<HomeViewProps>> = {
     basic: {},
     zoom: {
-      marks: [...PREVIEW_MARKS, ...PREVIEW_ZOOM_MARKS.slice(0, 2)],
+      marks: [...PREVIEW_MARKS.filter((m) => m.regionCode !== '5115000000'), ...PREVIEW_ZOOM_MARKS],
       initialZoom: { regionCode: '5115000000', scale: 4.2 },
     },
     sheet: { initialSheetExpanded: true },
