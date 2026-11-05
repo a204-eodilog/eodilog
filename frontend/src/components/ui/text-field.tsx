@@ -199,6 +199,8 @@ const styles = StyleSheet.create({
     minWidth: 0,
     color: colors.text.default,
     paddingVertical: 0,
+    // 상자 높이를 꽉 채워야 입력한 글자가 위로 밀려 사라지지 않는다(안드로이드)
+    alignSelf: 'stretch',
     includeFontPadding: false,
     textAlignVertical: 'center',
   },
@@ -209,6 +211,8 @@ const styles = StyleSheet.create({
     minWidth: 0,
     color: colors.text.default,
     paddingVertical: 0,
+    // 상자 높이를 꽉 채워야 입력한 글자가 위로 밀려 사라지지 않는다(안드로이드)
+    alignSelf: 'stretch',
     includeFontPadding: false,
     textAlignVertical: 'center',
   },
