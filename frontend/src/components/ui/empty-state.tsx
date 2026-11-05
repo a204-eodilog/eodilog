@@ -92,7 +92,8 @@ const styles = StyleSheet.create({
   },
   title: { color: colors.text.default, textAlign: 'center', marginTop: spacing[16] },
   description: { color: colors.text.icon, textAlign: 'center' },
-  action: { marginTop: spacing[16] },
+  // Button은 기본이 왼쪽 붙음(alignSelf flex-start)이라 가운데로 다시 맞춘다
+  action: { alignSelf: 'center', marginTop: spacing[16] },
   iconCircle: {
     width: 64,
     height: 64,

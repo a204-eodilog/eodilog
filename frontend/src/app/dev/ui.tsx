@@ -521,7 +521,7 @@ export default function UiCatalog() {
         deleting={confirming}
         failed={confirmError !== undefined}
       />
-      {/* 방장일 때는 서버가 지우기를 받게 된 뒤의 모습(체크를 고를 수 있음)을 미리 보여 준다 */}
+      {/* 방장일 때는 사진 기능이 생긴 뒤의 모습(사진 줄이 보임)을 미리 보여 준다. 채팅 지우기는 지금도 고를 수 있다 */}
       <LeaveTripSheet
         visible={leave !== null}
         onClose={() => setLeave(null)}
@@ -531,7 +531,7 @@ export default function UiCatalog() {
         alone={leave === 'alone'}
         ownPhotoCount={12}
         onHandOver={() => toast.show('S19 방장 넘기기로 가요')}
-        cleanupSupported={leave === 'owner'}
+        showPhotos={leave === 'owner'}
         loading={leaving}
         failure={leaveFailure}
       />
