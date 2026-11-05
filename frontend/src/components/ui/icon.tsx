@@ -43,7 +43,6 @@ export type IconName =
   | 'trending'
   | 'heart'
   | 'moon'
-  | 'map'
   | 'person-add';
 
 type IconProps = {
@@ -104,7 +103,6 @@ const PATHS: Record<IconName, string> = {
   trending: 'M3 17L9 11L13 15L21 7M15 7H21V13',
   heart: 'M12 20S4 14.6 4 9.2A4.2 4.2 0 0 1 12 7A4.2 4.2 0 0 1 20 9.2C20 14.6 12 20 12 20Z',
   moon: 'M20 14.5A8 8 0 1 1 9.5 4A6.5 6.5 0 0 0 20 14.5Z',
-  map: 'M9 5L3 7V19L9 17L15 19L21 17V5L15 7L9 5ZM9 5V17M15 7V19',
   'person-add':
     'M10 12A4 4 0 1 0 10 4A4 4 0 0 0 10 12ZM3 20C3 16.7 6.1 15 10 15C11.4 15 12.7 15.2 13.8 15.7M18 14V20M15 17H21',
 };
