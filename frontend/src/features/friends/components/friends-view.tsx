@@ -186,7 +186,7 @@ export function FriendsView({
               </Pressable>
             ))}
           </View>
-          <View style={styles.section}>
+          <View style={styles.peopleSection}>
             <View style={styles.listHeading}>
               <Text style={styles.heading}>
                 {tab === 'following' ? '팔로잉' : '팔로워'} {rows.length}
@@ -312,6 +312,7 @@ const styles = StyleSheet.create({
   heading: { ...typography.title3, color: colors.text.default },
   caption: { ...typography.caption, color: colors.text.icon },
   section: { gap: spacing[12] },
+  peopleSection: { gap: spacing[20] },
   request: {
     backgroundColor: colors.brand.primaryBg,
     borderRadius: radius.lg,

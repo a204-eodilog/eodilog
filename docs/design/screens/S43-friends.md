@@ -19,21 +19,21 @@
 
 ## 화면 구성과 값
 
-| 영역      | 값·부품                                                                                                       |
-| --------- | ------------------------------------------------------------------------------------------------------------- |
-| 바탕·상단 | colors.surface.white, 공통 Header('친구'), 상단 안전 영역은 Header에서 적용                                   |
-| 본문      | 좌우 layout.screenPaddingX(20), 위 spacing[16], 영역 간 spacing[24], 아래 안전 영역과 spacing[24] 중 큰 값    |
-| 친구 찾기 | Card outline, radius.lg(16), 40 원형 연파랑 아이콘, bodyBold 제목 + caption 설명, chevron-right               |
-| 받은 요청 | 맨 위 친구 찾기 아래. title3 제목, 개수 표시                                                                  |
-| 요청 카드 | colors.brand.primaryBg, radius.lg, 안쪽 20, 내용·버튼 간격 20. Avatar lg(40), 닉네임 bodyBold, 요청일 caption |
-| 수락·거절 | Button sm, 터치 높이는 layout.minTouchTarget(44)로 확장. 거절 흰 바탕, 수락 brand.primary + 흰 체크           |
-| 공개 안내 | lock 아이콘 16 + caption. 비공개 수락과 여행 그룹·채팅 접근이 별개임을 안내                                   |
-| 탭        | 가로 동등 폭, 간격 8, 최소 높이 44, radius.md. 선택 brand.primaryLight + primaryDark, 미선택 surface.default  |
-| 사람 줄   | Avatar lg(40), 간격 14, 닉네임 bodyBold, 여행 설명 caption. 줄 간격 12. 우측 더 보기 44 터치 영역             |
-| 수락 후   | 팔로워 탭으로 이동. 새 팔로워 Tag, 수락일 표시, 그룹·채팅이 자동으로 열리지 않는 안내 Card                    |
-| 확인창    | 공통 ConfirmSheet. 취소 / 팔로우 해제. 팔로워 탭의 삭제도 같은 부품                                           |
-| 없음·실패 | 공통 EmptyState / ErrorState. 조회 실패는 예시 데이터로 대체하지 않는다                                       |
-| 알림      | 공통 toast.success/error, 실패에는 다시 시도 버튼                                                             |
+| 영역      | 값·부품                                                                                                                |
+| --------- | ---------------------------------------------------------------------------------------------------------------------- |
+| 바탕·상단 | colors.surface.white, 공통 Header('친구'), 상단 안전 영역은 Header에서 적용                                            |
+| 본문      | 좌우 layout.screenPaddingX(20), 위 spacing[16], 영역 간 spacing[24], 아래 안전 영역과 spacing[24] 중 큰 값             |
+| 친구 찾기 | Card outline, radius.lg(16), 40 원형 연파랑 아이콘, bodyBold 제목 + caption 설명, chevron-right                        |
+| 받은 요청 | 맨 위 친구 찾기 아래. title3 제목, 개수 표시                                                                           |
+| 요청 카드 | colors.brand.primaryBg, radius.lg, 안쪽 20, 내용·버튼 간격 20. Avatar lg(40), 닉네임 bodyBold, 요청일 caption          |
+| 수락·거절 | Button sm, 터치 높이는 layout.minTouchTarget(44)로 확장. 거절 흰 바탕, 수락 brand.primary + 흰 체크                    |
+| 공개 안내 | lock 아이콘 16 + caption. 비공개 수락과 여행 그룹·채팅 접근이 별개임을 안내                                            |
+| 탭        | 가로 동등 폭, 간격 8, 최소 높이 44, radius.md. 선택 brand.primaryLight + primaryDark, 미선택 surface.default           |
+| 사람 줄   | Avatar lg(40), 간격 14, 닉네임 bodyBold, 여행 설명 caption. 줄 간격 20(사용자 검토 후 확대). 우측 더 보기 44 터치 영역 |
+| 수락 후   | 팔로워 탭으로 이동. 새 팔로워 Tag, 수락일 표시, 그룹·채팅이 자동으로 열리지 않는 안내 Card                             |
+| 확인창    | 공통 ConfirmSheet. 취소 / 팔로우 해제. 팔로워 탭의 삭제도 같은 부품                                                    |
+| 없음·실패 | 공통 EmptyState / ErrorState. 조회 실패는 예시 데이터로 대체하지 않는다                                                |
+| 알림      | 공통 toast.success/error, 실패에는 다시 시도 버튼                                                                      |
 
 ## API와 상태 변경
 
