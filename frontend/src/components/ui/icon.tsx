@@ -35,7 +35,8 @@ export type IconName =
   | 'image'
   | 'arrow-right'
   | 'bulb'
-  | 'upload';
+  | 'upload'
+  | 'route';
 
 type IconProps = {
   name: IconName;
@@ -83,6 +84,9 @@ const PATHS: Record<IconName, string> = {
   'arrow-right': 'M5 12H19M13 6L19 12L13 18',
   bulb: 'M9.5 18.5H14.5M10.5 21H13.5M12 3A6 6 0 0 0 8.5 13.9V16H15.5V13.9A6 6 0 0 0 12 3Z',
   upload: 'M12 15V4M7 9L12 4L17 9M5 15V19A1 1 0 0 0 6 20H18A1 1 0 0 0 19 19V15',
+  // 양 끝 동그라미를 S자 길로 잇는 경로. S33 '계획에만 있어요'
+  route:
+    'M6 21A2 2 0 1 0 6 17A2 2 0 0 0 6 21ZM18 7A2 2 0 1 0 18 3A2 2 0 0 0 18 7ZM8 19H16.5A3.5 3.5 0 0 0 16.5 12H7.5A3.5 3.5 0 0 1 7.5 5H16',
 };
 
 /** 채워도 선으로만 남겨야 하는 부분. 가방 손잡이처럼 몸통과 따로 그린다. */

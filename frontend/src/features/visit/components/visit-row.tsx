@@ -46,7 +46,7 @@ export function VisitRow({ row, checking = false, onCheck, onReview }: VisitRowP
           <Tag label="직접 체크함" tone="success" icon="check" />
         ) : (
           <View style={styles.planned}>
-            <Icon name="calendar" size={14} color={colors.text.sub} />
+            <Icon name="route" size={14} color={colors.text.sub} />
             <Text style={[typography.caption, styles.plannedText]}>계획에만 있어요</Text>
           </View>
         )}
