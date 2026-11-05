@@ -1,4 +1,10 @@
-import { findMapRegion, shortRegionName, shortSidoName, sidoCodeOf } from '@/lib/korea-map';
+import {
+  findMapRegion,
+  type MapPoint,
+  shortRegionName,
+  shortSidoName,
+  sidoCodeOf,
+} from '@/lib/korea-map';
 import { colors } from '@/theme';
 
 import type {
@@ -47,8 +53,31 @@ export function toRegionMarks(result: MapResult): RegionMark[] {
     .sort((a, b) => b.memberCount - a.memberCount);
 }
 
+const pointOf = (m: RegionMark): MapPoint | undefined => findMapRegion(m.regionCode)?.point;
+
+/** 묶인 지역들의 가운데. 도 전체 가운데가 아니라 실제로 다녀간 곳 쪽에 핀이 꽂힌다 */
+function centerOf(list: readonly RegionMark[]): MapPoint {
+  const pts = list.flatMap((m) => {
+    const p = pointOf(m);
+    return p ? [p] : [];
+  });
+  const sum = pts.reduce<MapPoint>((a, p) => [a[0] + p[0], a[1] + p[1]], [0, 0]);
+  return [sum[0] / pts.length, sum[1] / pts.length];
+}
+
+function toGroup(key: string, label: string, list: RegionMark[], point?: MapPoint): RegionGroup {
+  return {
+    key,
+    label,
+    placeCount: list.length,
+    memberCount: new Set(list.flatMap((m) => m.memberIds)).size,
+    point: point ?? centerOf(list),
+    marks: list,
+  };
+}
+
 /**
- * 전국 보기 핀 묶기(WD-FR-24). 같은 시도에 지역이 둘 이상이면 시도 하나로 묶고, 하나뿐이면 그대로 둔다.
+ * 전국 보기(1단계) 핀 묶기(WD-FR-24). 같은 시도에 지역이 둘 이상이면 시도 하나로 묶고, 하나뿐이면 그대로 둔다.
  * 친구 수는 같은 친구를 한 번만 센다
  */
 export function groupBySido(marks: readonly RegionMark[]): (RegionMark | RegionGroup)[] {
@@ -59,19 +88,53 @@ export function groupBySido(marks: readonly RegionMark[]): (RegionMark | RegionG
   }
   return [...bySido.entries()].map(([sidoCode, list]) => {
     if (list.length === 1) return list[0];
-    const sido = findMapRegion(sidoCode);
-    return {
-      sidoCode,
-      name: shortSidoName(sido?.name ?? sidoCode),
-      placeCount: list.length,
-      memberCount: new Set(list.flatMap((m) => m.memberIds)).size,
-      marks: list,
-    };
+    const name = shortSidoName(findMapRegion(sidoCode)?.name ?? sidoCode);
+    return toGroup(`sido-${sidoCode}`, `${name} ${list.length}곳`, list);
+  });
+}
+
+/**
+ * 확대 단계(2~5단계) 핀 묶기. 그 단계 배율에서 핀끼리 화면에서 겹치면(room 안) 하나로 묶는다.
+ * 친구가 많은 지역이 대표가 되어 "강릉 외 2곳"이 된다. pxPerUnit은 지도 좌표 1이 화면에서 몇 px인지
+ */
+export function clusterMarks(
+  marks: readonly RegionMark[],
+  pxPerUnit: number,
+  room: { width: number; height: number },
+): (RegionMark | RegionGroup)[] {
+  // 겹침은 대표 지역(친구가 가장 많은 곳) 자리로 판단한다. 가운데로 재면 묶음이 점점 넓어진다
+  const clusters: { list: RegionMark[]; at: MapPoint; x: number; y: number }[] = [];
+  const sorted = [...marks].sort((a, b) => b.memberCount - a.memberCount);
+  for (const m of sorted) {
+    const p = pointOf(m);
+    if (!p) continue;
+    const hit = clusters.find(
+      (c) =>
+        Math.abs(c.at[0] - p[0]) * pxPerUnit < room.width &&
+        Math.abs(c.at[1] - p[1]) * pxPerUnit < room.height,
+    );
+    if (!hit) {
+      clusters.push({ list: [m], at: p, x: p[0], y: p[1] });
+      continue;
+    }
+    hit.list.push(m);
+    hit.x += (p[0] - hit.x) / hit.list.length;
+    hit.y += (p[1] - hit.y) / hit.list.length;
+  }
+  return clusters.map((c) => {
+    if (c.list.length === 1) return c.list[0];
+    const codes = c.list.map((m) => m.regionCode).sort();
+    return toGroup(
+      `near-${codes.join('-')}`,
+      `${c.list[0].name} 외 ${c.list.length - 1}곳`,
+      c.list,
+      [c.x, c.y],
+    );
   });
 }
 
 export function isGroup(item: RegionMark | RegionGroup): item is RegionGroup {
-  return 'sidoCode' in item;
+  return 'marks' in item;
 }
 
 const STEPS = [colors.map.step1, colors.map.step2, colors.map.step3, colors.map.step4];

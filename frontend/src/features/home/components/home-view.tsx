@@ -9,14 +9,16 @@ import {
   KoreaMap,
   type KoreaMapPin,
   MAP_MOTION,
+  MAP_STAGES,
+  type MapStage,
   MascotTraveler,
   pinEnterStartMs,
 } from '@/components/ui';
 import { findMapRegion, type MapPoint } from '@/lib/korea-map';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
-import { fillStepsFor, groupBySido, isGroup } from '../home-rules';
-import type { HomeRecommendation, HomeState, RegionMark } from '../types';
+import { clusterMarks, fillStepsFor, groupBySido, isGroup } from '../home-rules';
+import type { HomeRecommendation, HomeState, RegionGroup, RegionMark } from '../types';
 
 import { GroupPill, InviteSpot, LockedFace, PhotoPin, RegionPill } from './map-pins';
 import { RecommendSheet, SHEET_COLLAPSED } from './recommend-sheet';
@@ -41,6 +43,29 @@ export type HomeViewProps = {
   onRegion: (mark: RegionMark) => void;
   onRecommendation: (item: HomeRecommendation) => void;
 };
+
+// 핀이 화면에서 차지하는 크기(겹침 판단). 이름표는 알약+점, 사진 카드는 점 옆 카드
+const PILL_ROOM = { width: 86, height: 40 };
+// 사진 카드는 점 왼쪽·오른쪽에 번갈아 놓여 이웃끼리 가로로는 잘 안 겹친다. 세로 높이가 주로 겹친다
+const CARD_ROOM = { width: 90, height: 64 };
+/** 이 단계부터 사진 카드 (0부터: 4단계) */
+const PHOTO_STAGE = 3;
+
+/**
+ * 그 단계에서 핀끼리 겹친다고 볼 거리(지도 좌표). 확대할수록 묶음이 풀리기만 하도록
+ * 앞 단계들의 거리보다 커지지 않게 한다(사진 카드가 이름표보다 넓어도 다시 묶이지 않음)
+ */
+function roomInMap(index: number, pxPerUnit: number) {
+  const fit = pxPerUnit / MAP_STAGES[index];
+  let width = Infinity;
+  let height = Infinity;
+  for (let i = 1; i <= index; i += 1) {
+    const room = i >= PHOTO_STAGE ? CARD_ROOM : PILL_ROOM;
+    width = Math.min(width, room.width / (fit * MAP_STAGES[i]));
+    height = Math.min(height, room.height / (fit * MAP_STAGES[i]));
+  }
+  return { width, height };
+}
 
 // 친구 없음 화면의 빈 자리 (Figma: 수도권·경북 동해안·여수 근처)
 const INVITE_SPOTS = ['4100000000', '4711000000', '1213000000'];
@@ -103,8 +128,7 @@ export function HomeView(props: HomeViewProps) {
 
 function MapBody(props: HomeViewProps) {
   const { state, marks } = props;
-  const [detail, setDetail] = useState(false);
-  const [zoom, setZoom] = useState(1);
+  const [stage, setStage] = useState<MapStage>();
   const [zoomTo, setZoomTo] = useState<{ key: number; point: MapPoint; scale: number }>();
   // 처음 등장 애니메이션이 끝나면, 확대하며 새로 생기는 핀은 기다리지 않고 바로 보인다
   const [entered, setEntered] = useState(false);
@@ -120,12 +144,22 @@ function MapBody(props: HomeViewProps) {
     const t = setTimeout(() => setEntered(true), total);
     return () => clearTimeout(t);
   }, [fillSteps.length]);
-  // 전국 크기(1.5배 미만)에서는 같은 시도를 묶어 핀이 겹치지 않게 한다
-  const grouped = !detail && zoom < 1.5;
+  const index = stage?.index ?? 0;
+  const detail = index >= PHOTO_STAGE;
+  // 처음에는 Figma 순서대로, 그 뒤 단계가 바뀌어 새로 생긴 핀은 바로 올라오며 나타난다
   const enterDelay = (code: string) =>
     entered
-      ? undefined
+      ? 0
       : pinEnterStartMs(fillSteps.length) + (order.get(code) ?? 0) * MAP_MOTION.pinStaggerMs;
+  // 묶음 핀을 누르면 그 자리로 한 단계 더 확대. 마지막 단계에서도 겹치면 친구가 가장 많은 곳으로 간다
+  const openGroup = (g: RegionGroup) => {
+    const next = MAP_STAGES[index + 1];
+    if (next === undefined) {
+      props.onRegion(g.marks[0]);
+      return;
+    }
+    setZoomTo((prev) => ({ key: (prev?.key ?? 0) + 1, point: g.point, scale: next + 0.1 }));
+  };
   // 확대 카드는 북쪽부터 왼쪽·오른쪽을 번갈아 놓아 이웃 카드끼리 덜 겹치게 한다
   const sides = useMemo(() => {
     const byY = [...marks]
@@ -158,70 +192,53 @@ function MapBody(props: HomeViewProps) {
           : [];
       });
     }
-    if (grouped) {
-      return groupBySido(marks).flatMap((item): KoreaMapPin[] => {
-        if (!isGroup(item)) {
-          const r = findMapRegion(item.regionCode);
-          if (!r) return [];
-          return [
-            {
-              key: item.regionCode,
-              point: r.point,
-              anchor: 'bottom',
-              enterDelayMs: enterDelay(item.regionCode),
-              children: (
-                <RegionPill
-                  mark={item}
-                  onPress={() => props.onRegion(item)}
-                  pulse={item.regionCode === top}
-                />
-              ),
-            },
-          ];
-        }
-        const sido = findMapRegion(item.sidoCode);
-        if (!sido) return [];
-        const last = item.marks.reduce((a, b) =>
-          (order.get(b.regionCode) ?? 0) > (order.get(a.regionCode) ?? 0) ? b : a,
-        );
+    // 1단계는 시도로, 2단계부터는 그 단계 크기에서 겹치는 핀끼리 묶는다
+    const items =
+      index === 0 || !stage
+        ? groupBySido(marks)
+        : clusterMarks(marks, 1, roomInMap(index, stage.pxPerUnit));
+    return items.flatMap((item): KoreaMapPin[] => {
+      if (!isGroup(item)) {
+        const r = findMapRegion(item.regionCode);
+        if (!r) return [];
+        const press = () => props.onRegion(item);
+        const side = sides.get(item.regionCode) ?? 'right';
         return [
           {
-            key: `group-${item.sidoCode}`,
-            point: sido.point,
-            anchor: 'bottom',
-            enterDelayMs: enterDelay(last.regionCode),
-            children: (
-              <GroupPill
-                group={item}
-                pulse={item.marks.some((m) => m.regionCode === top)}
-                onPress={() => setZoomTo({ key: Date.now(), point: sido.point, scale: 1.9 })}
-              />
+            key: detail ? `${item.regionCode}-photo` : item.regionCode,
+            point: r.point,
+            // 카드가 점 왼쪽이면 핀 오른쪽 끝이 점에 닿는다
+            anchor: detail ? (side === 'left' ? 'right' : 'left') : 'bottom',
+            enterDelayMs: enterDelay(item.regionCode),
+            children: detail ? (
+              <PhotoPin mark={item} side={side} onPress={press} />
+            ) : (
+              <RegionPill mark={item} onPress={press} pulse={item.regionCode === top} />
             ),
           },
         ];
-      });
-    }
-    return marks.flatMap((m) => {
-      const r = findMapRegion(m.regionCode);
-      if (!r) return [];
-      const press = () => props.onRegion(m);
+      }
+      const last = item.marks.reduce((a, b) =>
+        (order.get(b.regionCode) ?? 0) > (order.get(a.regionCode) ?? 0) ? b : a,
+      );
       return [
         {
-          key: m.regionCode,
-          point: r.point,
-          // 카드가 점 왼쪽이면 핀 오른쪽 끝이 점에 닿는다
-          anchor: detail ? (sides.get(m.regionCode) === 'left' ? 'right' : 'left') : 'bottom',
-          enterDelayMs: enterDelay(m.regionCode),
-          children: detail ? (
-            <PhotoPin mark={m} side={sides.get(m.regionCode) ?? 'right'} onPress={press} />
-          ) : (
-            <RegionPill mark={m} onPress={press} pulse={m.regionCode === top} />
+          key: item.key,
+          point: item.point,
+          anchor: 'bottom',
+          enterDelayMs: enterDelay(last.regionCode),
+          children: (
+            <GroupPill
+              group={item}
+              pulse={item.marks.some((m) => m.regionCode === top)}
+              onPress={() => openGroup(item)}
+            />
           ),
         },
       ];
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state, marks, detail, props, fillSteps, order, top, sides, grouped, entered]);
+  }, [state, marks, stage, props, fillSteps, order, top, sides, entered]);
 
   const focus = props.initialZoom ? findMapRegion(props.initialZoom.regionCode) : undefined;
   const ready = state === 'ready';
@@ -240,8 +257,7 @@ function MapBody(props: HomeViewProps) {
       <KoreaMap
         fillSteps={fillSteps}
         pins={pins}
-        onDetailChange={setDetail}
-        onZoomChange={setZoom}
+        onStageChange={setStage}
         focus={zoomTo}
         initialFocus={
           focus && props.initialZoom

@@ -44,11 +44,10 @@ export type KoreaMapProps = {
   /** 화면에 들어올 때 배열 순서대로 차례차례 물드는 지역(Figma S05 모션). 한 번만 재생 */
   fillSteps?: readonly KoreaMapFillStep[];
   pins?: readonly KoreaMapPin[];
-  /** 이 배율을 넘으면 onDetailChange(true). 홈은 시군 사진 핀으로 바꾼다 */
-  detailScale?: number;
-  onDetailChange?: (detail: boolean) => void;
-  /** 배율이 0.5 단위로 바뀔 때마다 알린다. 홈은 이 값으로 핀 묶기 단계를 정한다 */
-  onZoomChange?: (zoom: number) => void;
+  /** 확대 단계가 시작하는 배율. 기본 MAP_STAGES(5단계) */
+  stages?: readonly number[];
+  /** 확대 단계가 바뀔 때 알린다. 지도 선은 단계가 바뀔 때만 다시 그려 확대 중에 깜빡이지 않는다 */
+  onStageChange?: (stage: MapStage) => void;
   /** 처음 볼 곳. 없으면 전국 */
   initialFocus?: { point: MapPoint; scale: number };
   /** key가 바뀔 때마다 그곳으로 부드럽게 확대해 옮긴다(묶인 핀을 눌렀을 때) */
@@ -61,6 +60,15 @@ export type KoreaMapProps = {
   creditBottom?: number;
   style?: ViewStyle;
 };
+
+/**
+ * 확대 5단계가 시작하는 배율. 1 전국(시도 묶음) · 2 권역 · 3 시군 이름표 · 4 사진 카드 · 5 가장 가까이.
+ * 단계 안에서는 핀 모양과 선 굵기가 그대로라 확대하는 동안 화면이 바뀌지 않는다
+ */
+export const MAP_STAGES = [1, 1.6, 2.4, 3.2, 4.2] as const;
+
+/** index: 0부터 단계 번호, pxPerUnit: 그 단계가 시작하는 배율에서 지도 좌표 1이 화면 몇 px인지(핀 겹침 계산용) */
+export type MapStage = { index: number; pxPerUnit: number };
 
 const MIN_SCALE = 1;
 /** 핀 내용이 꺾이지 않고 놓일 너비. 이보다 넓은 핀은 없다 */
@@ -102,9 +110,8 @@ export function KoreaMap({
   fills = {},
   fillSteps = [],
   pins = [],
-  detailScale = 2.2,
-  onDetailChange,
-  onZoomChange,
+  stages = MAP_STAGES,
+  onStageChange,
   initialFocus,
   focus,
   maxScale = 5,
@@ -138,9 +145,8 @@ export function KoreaMap({
           fills={fills}
           fillSteps={fillSteps}
           pins={pins}
-          detailScale={detailScale}
-          onDetailChange={onDetailChange}
-          onZoomChange={onZoomChange}
+          stages={stages}
+          onStageChange={onStageChange}
           initialFocus={initialFocus}
           focus={focus}
           maxScale={maxScale}
@@ -156,9 +162,9 @@ export function KoreaMap({
 }
 
 type CanvasProps = Required<
-  Pick<KoreaMapProps, 'fills' | 'fillSteps' | 'pins' | 'detailScale' | 'maxScale'>
+  Pick<KoreaMapProps, 'fills' | 'fillSteps' | 'pins' | 'stages' | 'maxScale'>
 > &
-  Pick<KoreaMapProps, 'onDetailChange' | 'onZoomChange' | 'initialFocus' | 'focus'> & {
+  Pick<KoreaMapProps, 'onStageChange' | 'initialFocus' | 'focus'> & {
     box: { width: number; height: number };
     insetTop: number;
     insetBottom: number;
@@ -169,9 +175,8 @@ function MapCanvas({
   fills,
   fillSteps,
   pins,
-  detailScale,
-  onDetailChange,
-  onZoomChange,
+  stages,
+  onStageChange,
   initialFocus,
   focus,
   maxScale,
@@ -262,38 +267,33 @@ function MapCanvas({
   });
   const gesture = useSimultaneousGestures(pinch, pan, doubleTap);
 
-  // 확대 단계. 전국 보기에서는 시군구 선을 거의 숨겨 지도가 복잡해 보이지 않게 한다
-  const [detail, setDetail] = useState(start.s >= detailScale);
-  // 지도를 통째로 키우므로 선도 같이 두꺼워진다. 배율을 0.5 단위로 받아 선 굵기를 나눠 화면에서 같게 둔다
-  const [zoom, setZoomState] = useState(start.s);
-  const setZoom = (next: number) => {
-    setZoomState(next);
-    onZoomChange?.(next);
+  // 확대 단계. 1단계(전국)에서는 시군구 선을 숨겨 지도가 복잡해 보이지 않게 하고,
+  // 지도를 통째로 키우면 선도 두꺼워지므로 단계 배율로 선 굵기를 나눈다. 둘 다 단계가 바뀔 때만 바뀐다
+  const stageOf = (s: number) => {
+    'worklet';
+    let i = 0;
+    while (i + 1 < stages.length && s >= stages[i + 1]) i += 1;
+    return i;
+  };
+  const [stage, setStageState] = useState(() => stageOf(start.s));
+  const setStage = (next: number) => {
+    setStageState(next);
+    onStageChange?.({ index: next, pxPerUnit: fit * stages[next] });
   };
   useAnimatedReaction(
-    () => Math.round(scale.value * 2) / 2,
+    () => stageOf(scale.value),
     (next, prev) => {
-      if (next !== prev) runOnJS(setZoom)(next);
+      if (prev !== null && next !== prev) runOnJS(setStage)(next);
     },
   );
-  /** 화면 px → viewBox 단위 */
-  const px = (n: number) => n / (fit * zoom);
-  const report = (next: boolean) => {
-    setDetail(next);
-    onDetailChange?.(next);
-  };
-  useAnimatedReaction(
-    () => scale.value >= detailScale,
-    (next, prev) => {
-      if (prev !== null && next !== prev) runOnJS(report)(next);
-    },
-    [detailScale, onDetailChange],
-  );
-  // 처음부터 확대해서 열면(initialFocus) 한 번 알려 준다
   useEffect(() => {
-    if (start.s >= detailScale) onDetailChange?.(true);
+    onStageChange?.({ index: stage, pxPerUnit: fit * stages[stage] });
+    // 처음 한 번 알려 준다
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  /** 화면 px → viewBox 단위 */
+  const px = (n: number) => n / (fit * stages[stage]);
+  const detail = stage > 0;
 
   useEffect(() => {
     if (!focus) return;
@@ -338,14 +338,16 @@ function MapCanvas({
           />
         ))}
         {KOREA_MAP.sigungu.map((r) => (
-          <Path
-            key={r.code}
-            d={r.d}
-            fill={fills[r.code] ?? fills[r.parent] ?? LAND}
-            stroke={detail ? colors.line.default : 'none'}
-            strokeWidth={px(0.6)}
-          />
+          <Path key={r.code} d={r.d} fill={fills[r.code] ?? fills[r.parent] ?? LAND} />
         ))}
+        {/* 시군구 선은 칠한 면과 따로 그려, 단계가 바뀌어도 면은 다시 그리지 않는다 */}
+        {detail ? (
+          <G fill="none" stroke={colors.line.default} strokeWidth={px(0.6)}>
+            {KOREA_MAP.sigungu.map((r) => (
+              <Path key={r.code} d={r.d} />
+            ))}
+          </G>
+        ) : null}
         {fillSteps.map((step, i) => {
           const shape = SHAPE.get(step.code);
           if (!shape) return null;
@@ -374,7 +376,7 @@ function MapCanvas({
       </Svg>
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [baseW, baseH, fills, fillSteps, detail, zoom],
+    [baseW, baseH, fills, fillSteps, stage],
   );
 
   return (

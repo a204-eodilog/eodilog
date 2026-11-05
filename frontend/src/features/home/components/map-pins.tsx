@@ -52,7 +52,7 @@ export function RegionPill({
   );
 }
 
-/** 전국 보기에서 같은 시도의 여러 지역을 묶은 핀. "강원 7곳 · 친구 5". 누르면 그 시도로 확대 */
+/** 여러 지역을 묶은 핀. "강원 8곳 · 친구 5", "강릉 외 2곳 · 친구 6". 누르면 그곳으로 한 단계 확대 */
 export function GroupPill({
   group,
   onPress,
@@ -66,13 +66,11 @@ export function GroupPill({
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${group.name} ${group.placeCount}곳, 친구 ${group.memberCount}명. 눌러서 확대`}
+      accessibilityLabel={`${group.label}, 친구 ${group.memberCount}명. 눌러서 확대`}
       style={styles.pillWrap}
     >
       <View style={styles.pill}>
-        <Text style={styles.pillName}>
-          {group.name} {group.placeCount}곳
-        </Text>
+        <Text style={styles.pillName}>{group.label}</Text>
         <Icon name="people" size={14} color={colors.text.icon} />
         <Text style={styles.pillCount}>{group.memberCount}</Text>
       </View>

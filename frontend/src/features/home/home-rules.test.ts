@@ -4,6 +4,7 @@ import { colors } from '@/theme';
 
 import {
   fillStepsFor,
+  clusterMarks,
   groupBySido,
   fillsFor,
   homeState,
@@ -156,12 +157,38 @@ describe('groupBySido', () => {
     ]);
     expect(items).toHaveLength(2);
     expect(items[0]).toMatchObject({
-      sidoCode: '5100000000',
-      name: '강원',
+      key: 'sido-5100000000',
+      label: '강원 2곳',
       placeCount: 2,
       memberCount: 3,
     });
     expect(items[1]).toMatchObject({ regionCode: '4713000000' });
+  });
+});
+
+describe('clusterMarks', () => {
+  const m = (regionCode: string, name: string, n: number) => ({
+    regionCode,
+    name,
+    memberCount: n,
+    memberIds: Array.from({ length: n }, (_, i) => `${regionCode}-${i}`),
+    memberNames: [],
+    coverUrl: null,
+    visitCount: 1,
+    feedIds: [],
+  });
+  const marks = [
+    m('5115000000', '강릉', 3),
+    m('5117000000', '동해', 2),
+    m('4713000000', '경주', 1),
+  ];
+  it('작게 보면 가까운 강릉·동해가 묶이고 친구 많은 강릉이 대표', () => {
+    const items = clusterMarks(marks, 1, { width: 100, height: 44 });
+    expect(items).toHaveLength(2);
+    expect(items[0]).toMatchObject({ label: '강릉 외 1곳', placeCount: 2, memberCount: 5 });
+  });
+  it('크게 보면 모두 따로', () => {
+    expect(clusterMarks(marks, 50, { width: 100, height: 44 })).toHaveLength(3);
   });
 });
 
