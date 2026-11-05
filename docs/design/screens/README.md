@@ -11,7 +11,7 @@
 
 ## 값 문서가 있는 화면
 
-B 담당 화면 17개 전부. 다른 담당 화면은 필요할 때 같은 모양으로 추가한다.
+B 담당 화면 17개 전부와 A 담당 S13. 다른 화면은 필요할 때 같은 모양으로 추가한다.
 
 | 화면 | 문서 |
 | --- | --- |
@@ -19,6 +19,7 @@ B 담당 화면 17개 전부. 다른 담당 화면은 필요할 때 같은 모�
 | S10 개인 즐겨찾기 | [S10-bookmarks.md](S10-bookmarks.md) |
 | S11 링크·캡처 등록 | [S11-link-capture.md](S11-link-capture.md) |
 | S12 추출 결과 확인 | [S12-extract-result.md](S12-extract-result.md) |
+| S13 장소 직접 검색·지정 (수동 장소 규칙 포함) | [S13-place-search.md](S13-place-search.md) |
 | S14 저장 장소 상세 | [S14-saved-place.md](S14-saved-place.md) |
 | S30 사진 선택·업로드 | [S30-photo-upload.md](S30-photo-upload.md) |
 | S31 여행 사진 목록 | [S31-trip-photos.md](S31-trip-photos.md) |
