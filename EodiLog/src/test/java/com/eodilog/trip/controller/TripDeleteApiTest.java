@@ -99,6 +99,9 @@ class TripDeleteApiTest {
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.error.code").value("JOB_NOT_FOUND"));
 
+		// 평가가 방문을 가리키므로(FK) 작업이 평가를 먼저 지워야 방문이 지워진다
+		assertThat(count("select count(*) from reviews r join visits v on v.id = r.visit_id where v.trip_id = ?", tripId))
+				.isEqualTo(1);
 		runJob(jobId);
 
 		// 하위 자료는 모두 지워지고 여행 행만 tombstone으로 남는다
@@ -179,11 +182,15 @@ class TripDeleteApiTest {
 								+ "\"legs\":[{\"day\":1,\"fromOrder\":1,\"toOrder\":2,\"transportMode\":\"WALK\"}]}")
 								.formatted(place, place)))
 				.andExpect(status().isOk());
-		mockMvc.perform(post("/api/v1/trips/{tripId}/visits", tripId).with(authUser(friendId))
+		UUID visitId = UUID.fromString(data(mockMvc.perform(post("/api/v1/trips/{tripId}/visits", tripId)
+						.with(authUser(friendId))
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"placeId\":\"%s\",\"visitedAt\":\"2026-11-01T10:00:00Z\",\"evidenceType\":\"MANUAL\"}"
 								.formatted(place)))
-				.andExpect(status().isCreated());
+				.andExpect(status().isCreated())).get("id").asString());
+		mockMvc.perform(put("/api/v1/trips/{tripId}/visits/{visitId}/review", tripId, visitId).with(authUser(friendId))
+						.contentType(MediaType.APPLICATION_JSON).content("{\"score\":5,\"body\":\"좋았어요\"}"))
+				.andExpect(status().isOk());
 		mockMvc.perform(post("/api/v1/trips/{tripId}/checklist", tripId).with(authUser(ownerId))
 						.contentType(MediaType.APPLICATION_JSON).content("{\"label\":\"여권\"}"))
 				.andExpect(status().isCreated());
