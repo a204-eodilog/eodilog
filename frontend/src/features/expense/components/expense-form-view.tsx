@@ -170,7 +170,12 @@ export function ExpenseFormView({
         </ScrollView>
 
         {readOnly ? null : (
-          <View style={[styles.bottom, { paddingBottom: Math.max(insets.bottom, spacing[20]) }]}>
+          <View
+            style={[
+              styles.bottom,
+              { paddingBottom: Math.max(insets.bottom + spacing[16], spacing[20]) },
+            ]}
+          >
             {onDelete ? (
               <Pressable
                 accessibilityRole="button"

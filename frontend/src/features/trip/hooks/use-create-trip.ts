@@ -6,7 +6,7 @@ import { createIdempotencyKeyStore } from '@/api/idempotency';
 
 import { createTrip } from '../api';
 import type { CreateTripBody, Trip } from '../types';
-import { MY_TRIPS_KEY } from './use-my-trips';
+import { invalidateTripLists } from './trip-cache';
 import { tripKey } from './use-trip';
 
 const IN_PROGRESS_RETRY_MS = 1_000;
@@ -47,7 +47,7 @@ export function useCreateTrip({ onCreated }: { onCreated: (trip: Trip) => void }
       keys.clear();
       setProblem(null);
       queryClient.setQueryData(tripKey(trip.id), trip);
-      queryClient.invalidateQueries({ queryKey: MY_TRIPS_KEY });
+      invalidateTripLists(queryClient);
       onCreated(trip);
     },
     onError: (e) => {

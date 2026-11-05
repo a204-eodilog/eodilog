@@ -58,7 +58,7 @@ export function TripMenuGrid({ tripId }: { tripId: string }) {
             style={({ pressed }) => [styles.cell, pressed && styles.pressed]}
           >
             <View style={styles.iconBox}>
-              <Icon name={item.icon} color={colors.brand.primary} />
+              <Icon name={item.icon} size={22} color={colors.text.default} />
             </View>
             <Text style={[typography.captionMedium, styles.label]}>{item.label}</Text>
           </Pressable>
@@ -69,18 +69,20 @@ export function TripMenuGrid({ tripId }: { tripId: string }) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { gap: spacing[12] },
+  // 피그마 S17 여행 메뉴: 제목과 격자 사이 20, 줄 사이 20, 아이콘과 이름 사이 8
+  wrap: { gap: spacing[20] },
   title: { color: colors.text.default },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', rowGap: spacing[16] },
-  cell: { width: '20%', alignItems: 'center', gap: spacing[6] },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', rowGap: spacing[20] },
+  cell: { width: '20%', alignItems: 'center', gap: spacing[8] },
   pressed: { opacity: 0.6 },
   iconBox: {
     width: 48,
     height: 48,
-    borderRadius: radius.lg,
+    // 피그마: 회색 동그라미 48(새 소식이 있는 메뉴만 연파랑, 새 소식 점은 기능이 생긴 뒤)
+    borderRadius: radius.full,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.brand.primaryBg,
+    backgroundColor: colors.surface.default,
   },
-  label: { color: colors.text.sub },
+  label: { color: colors.text.default },
 });

@@ -11,6 +11,10 @@ export const API_ERROR = {
   REQUEST_IN_PROGRESS: 'REQUEST_IN_PROGRESS',
   IDEMPOTENCY_KEY_REUSED: 'IDEMPOTENCY_KEY_REUSED',
   VERSION_CONFLICT: 'VERSION_CONFLICT',
+  /** 방장만 할 수 있는 일(넘기기·내보내기·여행 삭제)을 방장이 아닌 사람이 했다 */
+  FORBIDDEN: 'FORBIDDEN',
+  /** 내보낼 동행이 참여 중이 아니다 */
+  MEMBER_NOT_FOUND: 'MEMBER_NOT_FOUND',
 } as const;
 
 /**
