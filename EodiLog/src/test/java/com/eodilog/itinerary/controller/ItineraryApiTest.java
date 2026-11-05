@@ -354,6 +354,40 @@ class ItineraryApiTest {
 				.andExpect(jsonPath("$.components.schemas.ItineraryItemResponse.properties.place").exists());
 	}
 
+	@Test
+	void notifiesOtherMembersOnlyWhenCourseChanges() throws Exception {
+		JsonNode saved = data(replace(friendId, 1, items(item(null, insertPlace(), 1, 1, null, null)), legs())
+				.andExpect(status().isOk()));
+		// 같은 내용을 다시 저장하면 version이 그대로라 알리지 않는다
+		replace(friendId, 2, items(item(itemId(saved, 0), UUID.fromString(saved.get("items").get(0).get("place")
+				.get("id").asString()), 1, 1, null, null)), legs())
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.version").value(2));
+		// 예전 version이면 409로 롤백되고 알림도 남지 않는다
+		replace(ownerId, 1, items(), legs()).andExpect(status().isConflict());
+
+		assertThat(courseNotifications(ownerId)).containsExactly("동행님이 코스를 수정했어요.");
+		assertThat(courseNotifications(friendId)).isEmpty();
+		assertThat(jdbcTemplate.queryForMap("""
+				select actor_user_id, target_type, target_id, deduplication_key from events
+				where trip_id = ? and type = 'COURSE_CHANGED'""", tripId))
+				.containsEntry("actor_user_id", friendId)
+				.containsEntry("target_type", "ITINERARY")
+				.containsEntry("target_id", tripId)
+				.containsEntry("deduplication_key", "COURSE_CHANGED:" + tripId + ":2");
+
+		replace(ownerId, 2, items(), legs()).andExpect(status().isOk());
+		assertThat(courseNotifications(friendId)).containsExactly("방장님이 코스를 수정했어요.");
+		assertThat(courseNotifications(ownerId)).hasSize(1);
+	}
+
+	private List<String> courseNotifications(UUID userId) {
+		return jdbcTemplate.queryForList("""
+				select e.payload_json->>'message' from notifications n join events e on e.id = n.event_id
+				where n.recipient_user_id = ? and e.trip_id = ? and e.type = 'COURSE_CHANGED'
+				order by e.created_at, e.id""", String.class, userId, tripId);
+	}
+
 	private ResultActions getItinerary(UUID userId) throws Exception {
 		return mockMvc.perform(get("/api/v1/trips/{tripId}/itinerary", tripId).with(authUser(userId)));
 	}

@@ -14,3 +14,13 @@ export type MyTrip = {
   /** ACTIVE 멤버만, 참여 순 */
   members: { id: string; user: UserCard; joinOrder: number }[];
 };
+
+/** S38에 필요한 여행 정보 (GET /trips/{tripId}의 일부) */
+export type RecordTrip = {
+  id: string;
+  title: string;
+  startDate: string | null;
+  endDate: string | null;
+  /** 참여 중인 동행만, 참여 순 */
+  members: MyTrip['members'];
+};

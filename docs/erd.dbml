@@ -292,10 +292,12 @@ Table polls {
   finalized_at timestamp
   eligible_member_count integer [note: '마감 때의 ACTIVE 멤버 수. OPEN이면 null']
   voted_member_count integer [note: '마감 때 한 표 이상 던진 ACTIVE 멤버 수. OPEN이면 null']
+  reminder_sent_at timestamp [note: '마감 1시간 전 알림(POLL_REMINDER)을 보낸 시각. version과 무관']
   created_at timestamp [not null]
   indexes {
     (trip_id, created_at)
     closes_at [note: 'status=OPEN 부분 인덱스. 주기 마감용']
+    closes_at [name: 'idx_polls_reminder_due', note: 'status=OPEN AND reminder_sent_at IS NULL 부분 인덱스. 리마인더용']
   }
   Note: '참여 대상은 그때그때의 ACTIVE 멤버(2026-11-02 B 결정). 나간 멤버의 표는 집계에서 빼고 마감 때 집계를 고정한다. version은 후보 추가·마감 때만 증가. 지역 확정은 trip_destinations 끝에 추가하고 trips.version 증가.'
 }

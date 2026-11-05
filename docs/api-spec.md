@@ -326,6 +326,7 @@ STOMP over WebSocket으로 서버 → 앱 전달만 한다. 메시지 보내기�
 - 여행 상태는 기간에 따라 자동 전환한다. 날짜 미정은 PLANNING, 시작/종료 경계의 현지 시간대·서버 작업 시점은 Q-4에서 합의한다. status 직접 쓰기를 받지 않으며 날짜 수정 시 파생 상태를 다시 계산한다.
 - 투표 기본 마감은 화면에서 서버 시각 기준 +24시간으로 제안하고 명시적 closesAt을 제출한다. 마감 1시간 전 현재 미투표자만 알린다. 짧은 마감/마감 변경·재개 정책은 Q-6이다. 결과는 여러 지역을 날짜별 배분 가능하게 반환하고 확정 장소는 후보 상단에 표시한다.
 - 알림 종류는 FOLLOW_REQUESTED/ACCEPTED, TRIP_MEMBER_JOINED, TRIP_INFO_CHANGED, POLL_OPENED/CANDIDATE_ADDED/REMINDER/FINALIZED/CLOSED_NO_VOTES, AI_PROPOSAL_READY, COURSE_CHANGED, FEED_DELETED 제안이다. 후보 추가는 현재 투표한 멤버, reminder는 미투표자에게만. 게시·방장 양도·승인 요청·사진 동의·정산 완료 이벤트는 생성하지 않는다.
+- 현재 서버가 남기는 알림(2026-11-05): `TRIP_INFO_CHANGED`(여행 수정·지역 투표 확정), `TRIP_MEMBER_JOINED`(초대 수락으로 멤버십이 새로 생기거나 재참여, 이미 참여 중인 재수락은 제외), `POLL_OPENED`, `POLL_CANDIDATE_ADDED`(그 투표에 표를 낸 멤버만), `POLL_FINALIZED`·`POLL_CLOSED_NO_VOTES`(투표당 한 번, 서버 마감이라 행동한 사람 없음), `POLL_REMINDER`(마감까지 1시간 이하로 남은 OPEN 투표의 미투표 멤버에게 투표당 한 번, 1분 주기), `COURSE_CHANGED`(코스 version이 오른 저장마다 1건, 묶음은 Q-16). 수신자는 그 여행의 지금 ACTIVE 멤버이며 행동한 본인은 받지 않는다. `target`은 투표 알림이 `POLL`/pollId, 참여 알림이 `TRIP`/tripId, 코스 알림이 `ITINERARY`/tripId다.
 - 팝업은 POLL_OPENED/REMINDER, FOLLOW_REQUESTED, AI_PROPOSAL_READY처럼 내 행동이 필요한 이벤트만, 나머지는 목록으로 제공한다. 여행 이벤트는 해당 여행 그룹 시스템 카드에 연결하고 팔로우 이벤트는 여행 채팅에 넣지 않는다. 코스 변경 묶음 키/시간창·건수/최종 상태·읽음/카드 갱신은 Q-16이며 임의 수치를 확정하지 않는다.
 
 ## 10. 요청·응답 DTO

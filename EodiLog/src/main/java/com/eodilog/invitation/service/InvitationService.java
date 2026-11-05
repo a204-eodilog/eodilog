@@ -49,6 +49,7 @@ public class InvitationService {
 	private final ChatParticipationService chatParticipationService;
 	private final UserCardReader userCardReader;
 	private final PollCloser pollCloser;
+	private final InvitationNotifier invitationNotifier;
 	private final Clock clock;
 
 	// 프론트 초대 화면 경로가 정해지면 환경별로 바꾼다. 기본은 앱 스킴(frontend/app.json)
@@ -120,12 +121,15 @@ public class InvitationService {
 		pollCloser.closeDuePolls(trip.getId());
 		Instant now = now();
 		long joinOrder = tripMemberRepository.findMaxJoinOrder(trip.getId()) + 1;
-		existing.ifPresentOrElse(member -> member.rejoin(joinOrder, now),
-				() -> tripMemberRepository.save(TripMember.join(trip.getId(), userId, joinOrder, now)));
+		TripMember member = existing.map(left -> {
+			left.rejoin(joinOrder, now);
+			return left;
+		}).orElseGet(() -> tripMemberRepository.save(TripMember.join(trip.getId(), userId, joinOrder, now)));
 		chatParticipationService.joinTripRoom(trip.getId(), userId, now);
 		// 응답의 members가 바뀌므로 멤버 관리(M-2)처럼 여행 version을 올린다
 		trip.markMembersChanged(now);
 		tripRepository.flush();
+		invitationNotifier.memberJoined(member);
 		return tripResponseAssembler.assemble(userId, trip);
 	}
 
