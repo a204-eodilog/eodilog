@@ -8,7 +8,7 @@ import {
 import { env } from '@/config/env';
 import { addDays, seoulToday } from '@/lib/seoul-date';
 
-import type { MyProfile, Session, UserCard } from './types';
+import type { Follow, MyProfile, Session, UserCard } from './types';
 
 /**
  * 개발용 테스트 모드(env.devMock)의 가짜 서버. 로그인 없이 여행 화면을 기기에서 확인하려고 쓴다.
@@ -73,6 +73,61 @@ const ME: MyProfile = {
 const FRIENDS = ['세은', '승기', '인경', '수철', '성환'].map((name, i) =>
   user(`user-${i + 1}`, name),
 );
+
+/** S43 모의 데이터는 개발 테스트 모드에서만 반환한다. */
+const FOLLOW_ME: UserCard = { ...ME, nickname: '여행자' };
+const FOLLOW_PEOPLE = ['하늘', '바다', '가람', '나래'].map((name, index) =>
+  user('follow-user-' + index, name),
+);
+function follow(
+  id: string,
+  follower: UserCard,
+  followee: UserCard,
+  status: Follow['status'],
+): Follow {
+  return {
+    id,
+    follower,
+    followee,
+    status,
+    requestedAt: '2026-11-01T00:00:00Z',
+    acceptedAt: status === 'ACCEPTED' ? '2026-11-01T00:00:00Z' : null,
+  };
+}
+let follows: Follow[] = [
+  follow('following-1', FOLLOW_ME, FOLLOW_PEOPLE[0], 'ACCEPTED'),
+  follow('following-2', FOLLOW_ME, FOLLOW_PEOPLE[1], 'ACCEPTED'),
+  follow('follower-1', FOLLOW_PEOPLE[0], FOLLOW_ME, 'ACCEPTED'),
+  follow('request-1', FOLLOW_PEOPLE[2], FOLLOW_ME, 'REQUESTED'),
+  follow('request-2', FOLLOW_PEOPLE[3], FOLLOW_ME, 'REQUESTED'),
+];
+
+function followCard(person: UserCard): UserCard {
+  return {
+    ...person,
+    followingStatus:
+      follows.find((f) => f.follower.id === ME.id && f.followee.id === person.id)?.status ?? 'NONE',
+    followedByStatus:
+      follows.find((f) => f.followee.id === ME.id && f.follower.id === person.id)?.status ?? 'NONE',
+  };
+}
+function followResponse(row: Follow): Follow {
+  return { ...row, follower: followCard(row.follower), followee: followCard(row.followee) };
+}
+function followPage(config: InternalAxiosRequestConfig, rows: Follow[]) {
+  const params = config.params ?? {};
+  const limit = Number(params.limit ?? 20);
+  const start = params.cursor ? rows.findIndex((row) => row.id === params.cursor) + 1 : 0;
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100 || (params.cursor && start === 0)) {
+    throw fail(config, 400, 'VALIDATION_ERROR', '페이지 조건을 확인해 주세요.');
+  }
+  const data = rows.slice(start, start + limit).map(followResponse);
+  const hasNext = start + data.length < rows.length;
+  return ok(config, {
+    data,
+    page: { hasNext, nextCursor: hasNext ? data[data.length - 1].id : null },
+  });
+}
 
 /** 정원(20명)이 찬 여행을 만들 때 쓰는 동행. 나 + 19명 */
 const CROWD = Array.from({ length: 19 }, (_, i) =>
@@ -236,6 +291,66 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
   const method = (config.method ?? 'get').toLowerCase();
   const url = config.url ?? '';
   const params = (config.params ?? {}) as Record<string, string>;
+
+  if (method === 'get' && url === '/me/following') {
+    return followPage(
+      config,
+      follows.filter((f) => f.follower.id === ME.id && f.status === 'ACCEPTED'),
+    );
+  }
+  if (method === 'get' && url === '/me/followers') {
+    return followPage(
+      config,
+      follows.filter((f) => f.followee.id === ME.id && f.status === 'ACCEPTED'),
+    );
+  }
+  if (method === 'get' && url === '/me/follow-requests') {
+    if (params.direction !== 'RECEIVED' && params.direction !== 'SENT')
+      throw fail(config, 400, 'VALIDATION_ERROR', '요청 방향을 확인해 주세요.');
+    return followPage(
+      config,
+      follows.filter(
+        (f) =>
+          f.status === 'REQUESTED' &&
+          (params.direction === 'RECEIVED' ? f.followee.id : f.follower.id) === ME.id,
+      ),
+    );
+  }
+  const requestMatch = /^\/me\/follow-requests\/([^/]+)(\/accept)?$/.exec(url);
+  if (
+    requestMatch &&
+    ((method === 'post' && requestMatch[2]) || (method === 'delete' && !requestMatch[2]))
+  ) {
+    const found = follows.find((f) => f.id === decodeURIComponent(requestMatch[1]));
+    if (!found || found.status !== 'REQUESTED')
+      throw fail(config, 404, 'NOT_FOUND', '팔로우 요청을 찾을 수 없어요.');
+    if (method === 'post') {
+      if (found.followee.id !== ME.id)
+        throw fail(config, 403, 'FORBIDDEN', '받은 요청만 수락할 수 있어요.');
+      const accepted: Follow = {
+        ...found,
+        status: 'ACCEPTED',
+        acceptedAt: new Date().toISOString(),
+        follower: { ...found.follower, followedByStatus: 'ACCEPTED' },
+      };
+      follows = follows.map((f) => (f.id === found.id ? accepted : f));
+      return ok(config, { data: followResponse(accepted) });
+    }
+    follows = follows.filter((f) => f.id !== found.id);
+    return ok(config, undefined, 204);
+  }
+  const unfollowMatch = /^\/users\/([^/]+)\/follow$/.exec(url);
+  const followerMatch = /^\/me\/followers\/([^/]+)$/.exec(url);
+  if (method === 'delete' && (unfollowMatch || followerMatch)) {
+    const targetId = decodeURIComponent((unfollowMatch ?? followerMatch)![1]);
+    follows = follows.filter(
+      (f) =>
+        !(unfollowMatch
+          ? f.follower.id === ME.id && f.followee.id === targetId
+          : f.followee.id === ME.id && f.follower.id === targetId),
+    );
+    return ok(config, undefined, 204);
+  }
 
   if (method === 'get' && url === '/me') return ok(config, { data: ME });
   if (method === 'get' && url === '/me/trips') return ok(config, page(trips));
