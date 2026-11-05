@@ -417,7 +417,70 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
       },
     });
   }
-  if (method === 'get' && url === '/me/discovery-recommendations') return ok(config, page([]));
+  // 좋아요 기반 추천(백엔드 아직 없음). 휴대폰 테스트에서 시트 카드가 보이게 예시를 준다
+  if (method === 'get' && url === '/me/discovery-recommendations') {
+    const region = (code: string, name: string) => ({
+      id: `home-${code}`,
+      code,
+      name,
+      parentId: null,
+      latitude: null,
+      longitude: null,
+    });
+    const feed = (
+      id: string,
+      title: string,
+      code: string,
+      name: string,
+      start: string,
+      end: string,
+    ) => ({
+      type: 'FEED' as const,
+      feed: {
+        id,
+        tripId: `trip-${id}`,
+        title,
+        coverPhotoId: null,
+        regions: [region(code, name)],
+        startDate: start,
+        endDate: end,
+        publishedAt: '2026-10-20T09:00:00Z',
+        likedByMe: false,
+        likeCount: 3,
+      },
+      place: null,
+      reason: '좋아요한 여행과 비슷해요',
+    });
+    const place = (id: string, name: string, address: string) => ({
+      type: 'PLACE' as const,
+      feed: null,
+      place: { id, name, address, regionId: null },
+      reason: '좋아요한 여행과 비슷해요',
+    });
+    return ok(
+      config,
+      page([
+        feed(
+          'rec-1',
+          '제주 동쪽 한 바퀴',
+          '5011000000',
+          '제주특별자치도 제주시',
+          '2026-09-12',
+          '2026-09-14',
+        ),
+        place('rec-2', '명주동 골목 카페', '강원 강릉시 명주동'),
+        feed(
+          'rec-3',
+          '여수 밤바다',
+          '1213000000',
+          '전남광주통합특별시 여수시',
+          '2026-08-02',
+          '2026-08-03',
+        ),
+        place('rec-4', '안목 바다뷰 카페', '강원 강릉시 견소동'),
+      ]),
+    );
+  }
   if (method === 'get' && url === '/me/notification-summary') {
     return ok(config, { data: { unreadCount: 2, asOf: new Date().toISOString() } });
   }
