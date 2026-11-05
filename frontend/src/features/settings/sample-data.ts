@@ -1,16 +1,16 @@
 import type { SettingsData } from '@/features/settings/types';
 
-/** Figma S45 예시. 프로필 주소는 실제 사용자 주소가 아닌 예시 주소다. */
+/** S45 예시 데이터. 이름·프로필 주소는 실제 사용자가 아닌 예시다. */
 export const SAMPLE_SETTINGS: SettingsData = {
   profile: {
-    id: 'sample-younggwang',
-    nickname: '영광',
+    id: 'sample-user',
+    nickname: '하늘',
     profileImageUrl: null,
     ageBand: '20대',
     accountVisibility: 'PUBLIC',
-    profileUrl: 'https://example.com/users/younggwang',
+    profileUrl: 'https://example.com/users/haneul',
   },
-  handleLabel: '@younggwang',
+  handleLabel: '@haneul',
   loginLabel: '카카오로 로그인',
   preferences: ['바다', '맛집', '카페'],
   settings: {
