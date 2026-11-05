@@ -63,7 +63,7 @@ function user(id: string, nickname: string): UserCard {
 }
 
 const ME: MyProfile = {
-  ...user('user-me', '영광'),
+  ...user('user-me', '다온'),
   ageBand: null,
   ageUseConsent: false,
   // 신규 가입자 모드: 카카오 닉네임만 있고 프로필(S02)은 아직
@@ -74,7 +74,7 @@ const ME: MyProfile = {
 /** 신규 가입자 모드에서 S03에 저장한 취향. 저장 전에는 404 */
 let myPreferences: unknown = null;
 
-const FRIENDS = ['세은', '승기', '인경', '수철', '성환'].map((name, i) =>
+const FRIENDS = ['가람', '나래', '바다', '소라', '하늘'].map((name, i) =>
   user(`user-${i + 1}`, name),
 );
 
@@ -228,7 +228,7 @@ const SAMPLE_TRIPS: Trip[] = [
   }),
   makeTrip({ title: '봄 소풍', start: -10, days: 0, friends: 1 }),
   // 동행 초대·관리 확인용: 내가 동행인 여행, 정원이 찬 여행
-  makeTrip({ title: '세은이 만든 여행', start: 20, days: 1, friends: 2, meAsMember: true }),
+  makeTrip({ title: '가람이 만든 여행', start: 20, days: 1, friends: 2, meAsMember: true }),
   makeTrip({ title: '스무 명 워크숍', start: 40, days: 1, crowd: true }),
 ];
 // 신규 가입자 모드는 여행 없이 시작해 첫 방문 홈을 본다
