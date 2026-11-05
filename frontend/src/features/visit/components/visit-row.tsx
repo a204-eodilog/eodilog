@@ -9,7 +9,7 @@ import { PillButton } from './pill-button';
 
 type VisitRowProps = {
   row: VisitRowData;
-  /** [다녀옴]을 보내는 중 */
+  /** [다녀옴]을 보내는 중이거나 되돌리는 중. 버튼이 돌아가는 표시로 바뀌고 눌리지 않는다 */
   checking?: boolean;
   onCheck: () => void;
   /** [평가하기]·내 점수 → S34 */

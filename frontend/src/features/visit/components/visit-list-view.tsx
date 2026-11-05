@@ -16,8 +16,8 @@ export type VisitListViewProps = {
   days: VisitDay[];
   /** null이면 요약 대신 방문 후보 없음 상자 */
   summary: string | null;
-  /** [다녀옴]을 보내는 중인 장소 */
-  checkingPlaceId?: string | null;
+  /** [다녀옴]을 보내는 중이거나 되돌리는 중인 장소. 그 줄의 [다녀옴]을 막는다 */
+  busyPlaceIds?: string[];
   onCheck: (row: VisitRowData) => void;
   onReview: (row: VisitRowData) => void;
   onUpload: () => void;
@@ -34,7 +34,7 @@ export function VisitListView({
   people,
   days,
   summary,
-  checkingPlaceId = null,
+  busyPlaceIds = [],
   onCheck,
   onReview,
   onUpload,
@@ -81,7 +81,7 @@ export function VisitListView({
                   <VisitRow
                     key={row.itemId}
                     row={row}
-                    checking={checkingPlaceId === row.placeId}
+                    checking={busyPlaceIds.includes(row.placeId)}
                     onCheck={() => onCheck(row)}
                     onReview={() => onReview(row)}
                   />
