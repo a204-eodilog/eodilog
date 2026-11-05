@@ -379,6 +379,25 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
     return ok(config, { data: myPreferences });
   }
   if (method === 'get' && url === '/me/trips') return ok(config, page(trips));
+  // S37 내가 게시한 공동 피드: 예시 여행 중 "남도 맛집 여행"을 경주로 게시한 것으로 본다
+  if (method === 'get' && url === '/me/feeds') {
+    const posted = trips.find((t) => t.title === '남도 맛집 여행');
+    return ok(
+      config,
+      page(
+        posted
+          ? [
+              {
+                id: `feed-${posted.id}`,
+                tripId: posted.id,
+                title: '봄 경주',
+                regions: [{ id: 'region-gyeongju', code: '4713000000', name: '경상북도 경주시' }],
+              },
+            ]
+          : [],
+      ),
+    );
+  }
 
   if (method === 'post' && url === '/trips') {
     const key = String(config.headers['Idempotency-Key'] ?? '');

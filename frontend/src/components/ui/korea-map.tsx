@@ -54,6 +54,10 @@ export type KoreaMapProps = {
   focus?: { key: string | number; point: MapPoint; scale: number };
   /** 최대 배율. 경계를 단순하게 줄여 두어 더 키우면 선이 각져 보이고, 홈은 시군까지만 보면 된다 */
   maxScale?: number;
+  /** false면 손가락으로 확대·이동하지 않는다. 화면 안 작은 카드 지도(S37)가 세로 스크롤을 막지 않게 */
+  interactive?: boolean;
+  /** false면 출처 표기를 숨긴다. 부르는 쪽이 따로 표기할 때만 */
+  showCredit?: boolean;
   /** 지도 위를 덮는 것(위 버튼·아래 시트)의 높이. 처음 맞출 때 이 영역을 피한다 */
   inset?: { top?: number; bottom?: number };
   /** 출처 표기 위치를 아래에서 띄울 때(아래 시트가 덮는 화면) */
@@ -115,6 +119,8 @@ export function KoreaMap({
   initialFocus,
   focus,
   maxScale = 5,
+  interactive = true,
+  showCredit = true,
   inset,
   creditBottom = spacing[8],
   style,
@@ -150,19 +156,22 @@ export function KoreaMap({
           initialFocus={initialFocus}
           focus={focus}
           maxScale={maxScale}
+          interactive={interactive}
           insetTop={inset?.top ?? 0}
           insetBottom={inset?.bottom ?? 0}
         />
       ) : null}
-      <Text style={[styles.credit, { bottom: creditBottom }]} pointerEvents="none">
-        {KOREA_MAP_CREDIT}
-      </Text>
+      {showCredit ? (
+        <Text style={[styles.credit, { bottom: creditBottom }]} pointerEvents="none">
+          {KOREA_MAP_CREDIT}
+        </Text>
+      ) : null}
     </View>
   );
 }
 
 type CanvasProps = Required<
-  Pick<KoreaMapProps, 'fills' | 'fillSteps' | 'pins' | 'stages' | 'maxScale'>
+  Pick<KoreaMapProps, 'fills' | 'fillSteps' | 'pins' | 'stages' | 'maxScale' | 'interactive'>
 > &
   Pick<KoreaMapProps, 'onStageChange' | 'initialFocus' | 'focus'> & {
     box: { width: number; height: number };
@@ -180,6 +189,7 @@ function MapCanvas({
   initialFocus,
   focus,
   maxScale,
+  interactive,
   insetTop,
   insetBottom,
 }: CanvasProps) {
@@ -412,18 +422,17 @@ function MapCanvas({
     [baseW, baseH, fills, fillSteps, stage],
   );
 
-  return (
-    <GestureDetector gesture={gesture}>
-      <View style={StyleSheet.absoluteFill} collapsable={false}>
-        <Animated.View style={[styles.map, { width: baseW, height: baseH }, mapStyle]}>
-          {paths}
-        </Animated.View>
-        {pins.map((p) => (
-          <PinView key={p.key} pin={p} fit={fit} scale={scale} tx={tx} ty={ty} />
-        ))}
-      </View>
-    </GestureDetector>
+  const body = (
+    <View style={StyleSheet.absoluteFill} collapsable={false}>
+      <Animated.View style={[styles.map, { width: baseW, height: baseH }, mapStyle]}>
+        {paths}
+      </Animated.View>
+      {pins.map((p) => (
+        <PinView key={p.key} pin={p} fit={fit} scale={scale} tx={tx} ty={ty} />
+      ))}
+    </View>
   );
+  return interactive ? <GestureDetector gesture={gesture}>{body}</GestureDetector> : body;
 }
 
 const SHAPE = new Map([...KOREA_MAP.sido, ...KOREA_MAP.sigungu].map((r) => [r.code, r.d] as const));
