@@ -1,6 +1,6 @@
 # 백엔드 B 후속 작업 — 준비물 체크리스트·멤버 관리·경비·초대·정산·채팅·나가기·투표·코스
 
-작성일: 2026-10-29 · 상태: 체크리스트·멤버 관리 병합 완료(MR !49·!50), 경비·정산 상태 병합 완료(MR !56, 2026-10-30), 초대 링크 병합 완료(MR !58·!62), 정산 계산 병합 완료(MR !69), 채팅 REST 병합 완료(MR !71), 기본 나가기 병합 완료(MR !76), 투표 구현(EODI-161), 나가기 내 채팅 삭제·방문 기록 구현(2026-11-04, §15·§16), 초대 링크 취소 병합 완료(MR !108, §9 I-11), 채팅 실시간 전달 구현(EODI-192, §12-1), 도메인 알림 이벤트 발행 구현(EODI-196, §17)
+작성일: 2026-10-29 · 상태: 체크리스트·멤버 관리 병합 완료(MR !49·!50), 경비·정산 상태 병합 완료(MR !56, 2026-10-30), 초대 링크 병합 완료(MR !58·!62), 정산 계산 병합 완료(MR !69), 채팅 REST 병합 완료(MR !71), 기본 나가기 병합 완료(MR !76), 투표 구현(EODI-161), 나가기 내 채팅 삭제·방문 기록 구현(2026-11-04, §15·§16), 초대 링크 취소 병합 완료(MR !108, §9 I-11), 채팅 실시간 전달 구현(EODI-192, §12-1), 도메인 알림 이벤트 발행 병합(MR !123, §17), 방문 평가 구현(EODI-199, §18)
 
 [B 첫 작업](backend-b-trip-basic.md)(여행 생성·조회·수정)이 끝난 뒤 A의 카카오 로그인을 기다리는 동안 진행한 B 작업이다. [분담안](../../../docs/plan/backend-first-work-split.md) §6은 이 기능들을 "첫 통합 뒤 배분"으로 두었지만, 로그인 없이 개발할 수 있고 여행 패키지 안에서 끝나는 것부터 B가 먼저 맡았다. A와 겹치는 파일(`user`·`auth` 패키지, `SecurityConfig`)은 건드리지 않는다.
 
@@ -24,7 +24,8 @@
 | 여행 삭제·마지막 멤버 나가기 | `DELETE /trips/{tripId}`, `POST /trips/{tripId}/leave`(혼자 남은 사람) | EODI-167 | 구현(§14) |
 | 나가기 내 채팅 삭제 | `POST /trips/{tripId}/leave`(`deleteOwnMessages=true`), LEAVE_CLEANUP 작업 | EODI-182 | 구현(§15) |
 | 방문 기록 | `POST/GET /trips/{tripId}/visits`, `DELETE /trips/{tripId}/visits/{visitId}` | EODI-183 | 구현(§16) |
-| 도메인 알림 이벤트 발행 | 새 API 없음(`GET /me/notifications`에 투표·초대 수락·코스 알림이 생김), 주기 작업 `PollReminderScheduler` | EODI-196 | 구현(§17) |
+| 도메인 알림 이벤트 발행 | 새 API 없음(`GET /me/notifications`에 투표·초대 수락·코스 알림이 생김), 주기 작업 `PollReminderScheduler` | EODI-196 | 병합(MR !123, §17) |
+| 방문 평가 | `PUT/DELETE /trips/{tripId}/visits/{visitId}/review`, `GET /trips/{tripId}/reviews`, 방문 목록·해제 보강 | EODI-199 | 구현(§18) |
 
 검증은 B 첫 작업과 같이 테스트에서 `AuthUser` principal을 넣어 했다. A 로그인 병합 뒤 실제 카카오 계정 2개로 여행 API 통합 검증(B-7)을 마쳤다([계약 §8](backend-a-b-contract.md)).
 
@@ -421,7 +422,7 @@ where id = :jobId and kind = 'LEAVE_CLEANUP' and status = 'FAILED';
 
 ## 16. 방문 기록 정책 (2026-11-04 사용자 확정)
 
-명세 §6 `POST/GET /trips/{tripId}/visits`, `DELETE /trips/{tripId}/visits/{visitId}`를 EODI-183에서 `visit` 패키지로 구현했다(테이블 `V202611041100`). 장소 범위(VS-2)와 중복 처리(VS-1)는 사용자가 정했고 나머지는 기존 경비·준비물 규칙에 맞춰 B가 정했다. 평가(reviews)·사진 방문 후보(visit_candidates)는 범위 밖이다.
+명세 §6 `POST/GET /trips/{tripId}/visits`, `DELETE /trips/{tripId}/visits/{visitId}`를 EODI-183에서 `visit` 패키지로 구현했다(테이블 `V202611041100`). 장소 범위(VS-2)와 중복 처리(VS-1)는 사용자가 정했고 나머지는 기존 경비·준비물 규칙에 맞춰 B가 정했다. 사진 방문 후보(visit_candidates)는 범위 밖이고, 평가(reviews)는 §18에서 붙였다.
 
 | # | 질문 | 결정 | 근거 |
 | --- | --- | --- | --- |
@@ -430,8 +431,8 @@ where id = :jobId and kind = 'LEAVE_CLEANUP' and status = 'FAILED';
 | VS-3 | `visitedAt` | 필수. 서버 시각 + 5분보다 미래면 400. 여행 기간과는 비교하지 않는다 | 날짜 없는 여행이 있고 기간은 날짜(시간대 없음)라 시각과 바로 비교할 수 없다. 5분은 기기 시계 차이 여유 |
 | VS-4 | `evidenceType` | 필수, `MANUAL`만. `PHOTO`는 400(사진 후보 확인 기능으로만 생김) | 명세 요청 `evidenceType:MANUAL` |
 | VS-5 | 판정 순서 | 생성: 입력 400 → 여행 행 잠금 후 ACTIVE 404 → 없는 장소 400 → 기존 방문 200 → 생성 201. 해제: 여행 행 잠금 후 ACTIVE 404 → 방문 404 `VISIT_NOT_FOUND` → 본인 아니면 403 | 경비(E-*)·준비물과 같은 순서. 장소 존재는 DB를 봐야 해 멤버 확인 뒤 |
-| VS-6 | 목록 | `memberId` 생략 시 본인. 같은 여행 멤버십(나간 멤버 포함)만, 아니면 400(필드 `memberId`). `placeId` 필터, 정렬 `createdAt DESC, id DESC` + 공통 커서. 평가 전이라 `reviewStatus=WRITTEN`은 빈 목록, UNWRITTEN은 ALL과 같고 `reviewId`·`reviewScore`는 null | 명세 §6 "기본 본인·ALL, 같은 여행 멤버만". 요청 ID 오류는 400(M-4) |
-| VS-7 | 체크 해제 | 방문한 본인만(방장도 남의 것은 403). `deleted_at` 논리 삭제, 되살리지 않고 다시 체크하면 새 행. 평가가 생기면 평가 있는 방문은 409 `REVIEW_EXISTS`(평가 기능 때) | 명세 §6. ERD `deleted_at` |
+| VS-6 | 목록 | `memberId` 생략 시 본인. 같은 여행 멤버십(나간 멤버 포함)만, 아니면 400(필드 `memberId`). `placeId` 필터, 정렬 `createdAt DESC, id DESC` + 공통 커서. 평가 연결(§18 R-8) 뒤로 `reviewStatus`는 평가 유무로 거르고 `reviewId`·`reviewScore`를 채운다 | 명세 §6 "기본 본인·ALL, 같은 여행 멤버만". 요청 ID 오류는 400(M-4) |
+| VS-7 | 체크 해제 | 방문한 본인만(방장도 남의 것은 403). `deleted_at` 논리 삭제, 되살리지 않고 다시 체크하면 새 행. 평가가 있는 방문은 409 `REVIEW_EXISTS`(§18 R-8) | 명세 §6. ERD `deleted_at` |
 | VS-8 | 이탈·여행 삭제 | 나가거나 내보내져도 방문은 남고 다른 멤버가 `memberId`로 본다. 나간 사람은 404. 여행 삭제 작업(TRIP_DELETE)이 `visits`를 물리 삭제한다. 방문은 여행 version과 무관 | 정산처럼 여행이 있는 동안 기록을 남긴다(D-6) |
 
 ## 17. 도메인 알림 이벤트 발행 (EODI-196, 2026-11-05 사용자 확정)
@@ -467,3 +468,19 @@ A가 만든 알림 기반(`events`·`notifications`, `GET /me/notifications`)에
 - 설정별 차단 매핑 제안: `POLL_*`·`COURSE_CHANGED` → `user_settings.vote_course_enabled`, `TRIP_MEMBER_JOINED` → `trip_changes_enabled`. `register` 안에서 걸러 주면 B는 고칠 것이 없다.
 - `polls.reminder_sent_at` 컬럼(V202611051000)과 공통 설정 `app.polls.reminder-enabled`(`application.yaml` true, `application-test.yaml` false)를 추가했다.
 - 채팅 시스템 카드를 붙일 때 위 이벤트 행을 그대로 쓰면 된다.
+
+## 18. 방문 평가 정책 (EODI-199, 2026-11-05 사용자 확정)
+
+명세 §7 `PUT/DELETE /trips/{tripId}/visits/{visitId}/review`, `GET /trips/{tripId}/reviews`를 `visit` 패키지 안에 구현했다(테이블 `V202611051100`). 평가는 방문의 부속이라 방문과 같은 잠금·판정 순서를 쓴다. 공동 피드 게시(`feed_reviews`, `PublishedReview`)는 범위 밖이다.
+
+| # | 질문 | 결정 | 근거 |
+| --- | --- | --- | --- |
+| R-1 | 저장·삭제 | 방문 하나당 평가 하나(`reviews.visit_id` 유일). 삭제는 물리 삭제, 다시 쓰면 새 행(version 1) | 논리 삭제면 유일 제약을 부분 인덱스로 바꾸고 되살릴지 정해야 한다. 평가는 정산처럼 보존할 이유가 없다 |
+| R-2 | 본문 | 공백만·NUL 문자 거부, 1,000자(코드 포인트) 이하, 받은 그대로 저장 | 채팅 본문과 같은 규칙 |
+| R-3 | 점수 | 1~5 JSON 정수만. `2.5`·`"3"`도 400(필드 `score`). `score` 필드에만 엄격한 변환기(`StrictIntegerDeserializer`)를 붙였다 | 명세 "반 점 거부". Jackson 기본 변환은 2.5→2, "3"→3으로 받는다. 공통 설정은 다른 API에 영향이 있어 바꾸지 않았다 |
+| R-4 | PUT 판정 순서 | 입력 400 → 여행 행 잠금 후 ACTIVE 404 → 방문 404 `VISIT_NOT_FOUND`(해제·다른 여행 포함) → 내 방문 아니면 403 → 평가가 있으면 `expectedVersion` 다를 때 409 `VERSION_CONFLICT`, 생략하면 덮어쓰기 / 없으면 `expectedVersion`을 보냈을 때 400 → 저장. 생성·수정 모두 200. 값이 바뀔 때만 version·updatedAt 갱신 | 방문 VS-5와 같은 틀. 명세 `expectedVersion?`. 여행 행 잠금으로 같은 방문의 동시 첫 작성도 한 행으로 모인다 |
+| R-5 | DELETE 판정 순서 | 여행 행 잠금 후 ACTIVE 404 → 방문 404 → 평가 404 `REVIEW_NOT_FOUND` → 내 평가 아니면 403 → 삭제 204 | 방장도 남의 평가는 지울 수 없다(명세 "타인 평가 변경 불가") |
+| R-6 | 목록 | `memberId` 생략 시 여행 전체(동행 평가 포함), 같은 여행 멤버십(나간 멤버 포함)만 필터, 아니면 400. 정렬 `createdAt DESC, id DESC` + 공통 커서 | 방문 목록은 기본 본인이지만 S33이 동행 후기를 같이 보여 준다 |
+| R-7 | 응답 | 명세 `Review`에 `visit{placeId,visitedAt}`·`place{name,address}` 요약을 덧붙인다. 장소는 `PlaceReader.findAll`로 한 페이지 분을 한 번에 읽는다. PUT 응답도 같은 모양 | 화면이 방문 목록과 다시 조합하지 않아도 된다. N+1 방지 |
+| R-8 | 방문 API 보강 | `Visit.reviewId`·`reviewScore`를 채우고(같은 장소 재체크 200 응답 포함), `reviewStatus=WRITTEN/UNWRITTEN`을 실제로 거른다. 평가가 있는 방문의 체크 해제는 409 `REVIEW_EXISTS`(방문 404 → 본인 403 → 평가 409 순) | 명세 §6 제안 확정(VS-6·VS-7 갱신) |
+| R-9 | 이탈·여행 삭제 | 나가도 평가는 남고 다른 멤버가 목록에서 본다. 나간 사람은 404. TRIP_DELETE 작업이 `visits`보다 먼저 `reviews`를 지운다(FK) | 방문 VS-8과 같은 원칙 |

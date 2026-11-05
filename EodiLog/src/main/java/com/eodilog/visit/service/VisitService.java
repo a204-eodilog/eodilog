@@ -10,12 +10,14 @@ import com.eodilog.trip.domain.TripMember;
 import com.eodilog.trip.repository.TripMemberRepository;
 import com.eodilog.trip.service.TripAccess;
 import com.eodilog.trip.service.TripAccessChecker;
+import com.eodilog.visit.domain.Review;
 import com.eodilog.visit.domain.Visit;
 import com.eodilog.visit.domain.VisitEvidenceType;
 import com.eodilog.visit.dto.CreateVisitRequest;
 import com.eodilog.visit.dto.VisitResponse;
 import com.eodilog.visit.dto.VisitReviewStatus;
 import com.eodilog.visit.exception.VisitErrorCode;
+import com.eodilog.visit.repository.ReviewRepository;
 import com.eodilog.visit.repository.VisitRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
@@ -25,8 +27,11 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,6 +49,7 @@ public class VisitService {
 	private static final Duration FUTURE_TOLERANCE = Duration.ofMinutes(5);
 
 	private final VisitRepository visitRepository;
+	private final ReviewRepository reviewRepository;
 	private final TripMemberRepository tripMemberRepository;
 	private final TripAccessChecker tripAccessChecker;
 	private final PlaceReader placeReader;
@@ -82,11 +88,12 @@ public class VisitService {
 		Optional<Visit> existing = visitRepository.findByTripIdAndMemberIdAndPlaceIdAndDeletedAtIsNull(tripId, memberId,
 				request.placeId());
 		if (existing.isPresent()) {
-			return new CreateResult(VisitResponse.of(existing.get()), false);
+			return new CreateResult(VisitResponse.of(existing.get(),
+					reviewRepository.findByVisitId(existing.get().getId()).orElse(null)), false);
 		}
 		Visit visit = visitRepository.saveAndFlush(Visit.manual(tripId, memberId, request.placeId(),
 				request.visitedAt().truncatedTo(ChronoUnit.MICROS), now));
-		return new CreateResult(VisitResponse.of(visit), true);
+		return new CreateResult(VisitResponse.of(visit, null), true);
 	}
 
 	// 기본은 본인 방문. memberId로 같은 여행 멤버(나간 멤버 포함)의 방문을 본다. 최근 등록 순(createdAt DESC, id DESC)
@@ -100,13 +107,14 @@ public class VisitService {
 			throw invalid("memberId", "같은 여행 동행의 방문만 볼 수 있습니다.");
 		}
 		CreatedAtCursor after = cursor == null || cursor.isBlank() ? null : CreatedAtCursor.decode(cursor);
-		// 평가가 아직 없으므로 평가를 쓴 방문은 없다
-		if (reviewStatus == VisitReviewStatus.WRITTEN) {
-			return PageResponse.of(List.of(), null, false);
-		}
 
 		String jpql = "select v from Visit v where v.tripId = :tripId and v.memberId = :memberId and v.deletedAt is null"
 				+ (placeId == null ? "" : " and v.placeId = :placeId")
+				+ switch (reviewStatus) {
+					case ALL -> "";
+					case WRITTEN -> " and exists (select r.id from Review r where r.visitId = v.id)";
+					case UNWRITTEN -> " and not exists (select r.id from Review r where r.visitId = v.id)";
+				}
 				+ (after == null ? "" : " and (v.createdAt < :cursorCreatedAt or (v.createdAt = :cursorCreatedAt and v.id < :cursorId))")
 				+ " order by v.createdAt desc, v.id desc";
 		TypedQuery<Visit> query = entityManager.createQuery(jpql, Visit.class)
@@ -125,11 +133,16 @@ public class VisitService {
 		String nextCursor = hasNext
 				? new CreatedAtCursor(page.getLast().getCreatedAt(), page.getLast().getId()).encode()
 				: null;
-		return PageResponse.of(page.stream().map(VisitResponse::of).toList(), nextCursor, hasNext);
+		// 평가는 한 페이지 분을 한 번에 읽는다(방문 하나당 평가 하나)
+		Map<UUID, Review> reviews = page.isEmpty() ? Map.of()
+				: reviewRepository.findAllByVisitIdIn(page.stream().map(Visit::getId).toList()).stream()
+						.collect(Collectors.toMap(Review::getVisitId, Function.identity()));
+		return PageResponse.of(page.stream().map(visit -> VisitResponse.of(visit, reviews.get(visit.getId()))).toList(),
+				nextCursor, hasNext);
 	}
 
-	// 체크 해제. 판정 순서: 여행 행 잠금 후 ACTIVE 404 → 방문 404 → 본인 방문이 아니면 403
-	// 평가가 생기면 평가가 있는 방문은 409 REVIEW_EXISTS로 막는다(명세 §6 제안, 평가 기능 때 추가)
+	// 체크 해제. 판정 순서: 여행 행 잠금 후 ACTIVE 404 → 방문 404 → 본인 방문이 아니면 403 → 평가가 있으면 409 REVIEW_EXISTS
+	// 평가는 여행 행 잠금 아래에서만 생기므로 확인과 해제 사이에 새 평가가 끼어들지 않는다
 	@Transactional
 	public void deleteVisit(UUID userId, UUID tripId, UUID visitId) {
 		TripAccess access = tripAccessChecker.requireActiveMemberForUpdate(tripId, userId);
@@ -137,6 +150,9 @@ public class VisitService {
 				.orElseThrow(() -> new BusinessException(VisitErrorCode.VISIT_NOT_FOUND));
 		if (!visit.getMemberId().equals(access.member().getId())) {
 			throw new BusinessException(CommonErrorCode.FORBIDDEN, "내 방문 기록만 지울 수 있습니다.");
+		}
+		if (reviewRepository.existsByVisitId(visitId)) {
+			throw new BusinessException(VisitErrorCode.REVIEW_EXISTS);
 		}
 		visit.delete(now());
 		visitRepository.flush();
