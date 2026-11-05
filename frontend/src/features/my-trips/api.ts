@@ -1,7 +1,7 @@
 import { apiClient } from '@/api/client';
 import type { DataResponse, MyProfile, PageResponse } from '@/api/types';
 
-import type { MyTrip } from './types';
+import type { MyTrip, RecordTrip } from './types';
 
 /** 서버 최대 페이지 크기. 묶음마다 개수를 보여 줘서 끝까지 읽는다 */
 const PAGE_LIMIT = 100;
@@ -23,4 +23,9 @@ export async function getAllMyTrips(): Promise<MyTrip[]> {
     cursor = data.page.hasNext ? data.page.nextCursor : null;
   } while (cursor);
   return all;
+}
+
+export async function getRecordTrip(tripId: string): Promise<RecordTrip> {
+  const { data } = await apiClient.get<DataResponse<RecordTrip>>(`/trips/${tripId}`);
+  return data.data;
 }
