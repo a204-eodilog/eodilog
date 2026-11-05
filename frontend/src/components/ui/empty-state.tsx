@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
   },
   title: { color: colors.text.default, textAlign: 'center', marginTop: spacing[16] },
   description: { color: colors.text.icon, textAlign: 'center' },
-  action: { marginTop: spacing[16] },
+  action: { marginTop: spacing[16], alignSelf: 'center' },
   iconCircle: {
     width: 64,
     height: 64,
