@@ -1,3 +1,4 @@
+import { useMutationState } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
 import { useMemo } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
@@ -7,7 +8,8 @@ import { colors } from '@/theme';
 
 import { VisitListView } from '../components/visit-list-view';
 import { useVisitBoard } from '../hooks/use-visit-board';
-import { useCheckVisit, useUndoVisit } from '../hooks/use-visit-mutations';
+import { undoVisitKey, useCheckVisit, useUndoVisit } from '../hooks/use-visit-mutations';
+import type { Visit } from '../types';
 import { buildVisitDays, manualVisitedAt, visitSummary, type VisitRow } from '../visit-rules';
 
 /**
@@ -20,6 +22,11 @@ export function VisitListScreen() {
   const board = useVisitBoard(tripId);
   const check = useCheckVisit(tripId);
   const undo = useUndoVisit(tripId);
+  // 되돌리는 중인 장소. 지우기가 끝나기 전에 같은 장소를 다시 체크하면 DELETE가 새 체크를 지울 수 있어 막는다
+  const undoingPlaceIds = useMutationState({
+    filters: { mutationKey: undoVisitKey(tripId), status: 'pending' },
+    select: (m) => (m.state.variables as Visit).placeId,
+  });
 
   const startDate = board.trip?.startDate ?? null;
   const days = useMemo(
@@ -47,19 +54,26 @@ export function VisitListScreen() {
     );
   }
 
+  const undoVisit = (visit: Visit) =>
+    undo.mutate(visit, {
+      onError: () =>
+        toast.error('되돌리지 못했어요', {
+          action: { label: '다시 시도', onPress: () => undoVisit(visit) },
+        }),
+    });
+
+  const busyPlaceIds = [
+    ...undoingPlaceIds,
+    ...(check.isPending && check.variables ? [check.variables.placeId] : []),
+  ];
+
   const onCheck = (row: VisitRow) =>
     check.mutate(
       { placeId: row.placeId, visitedAt: manualVisitedAt(startDate, row.day, row.time) },
       {
         onSuccess: (visit) =>
           toast.show('다녀온 곳으로 표시했어요', {
-            action: {
-              label: '되돌리기',
-              onPress: () =>
-                undo.mutate(visit, {
-                  onError: () => toast.error('되돌리지 못했어요. 다시 시도해 주세요'),
-                }),
-            },
+            action: { label: '되돌리기', onPress: () => undoVisit(visit) },
           }),
         onError: () => toast.error('표시하지 못했어요. 다시 시도해 주세요'),
       },
@@ -75,7 +89,7 @@ export function VisitListScreen() {
       }))}
       days={days}
       summary={visitSummary(days)}
-      checkingPlaceId={check.isPending ? (check.variables?.placeId ?? null) : null}
+      busyPlaceIds={busyPlaceIds}
       onCheck={onCheck}
       // S34 평점·평가 작성은 평가 API(PUT /visits/{visitId}/review)가 생기면 연결한다
       onReview={() => toast.show('준비 중이에요')}
