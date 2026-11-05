@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { getItineraryItems, getMe, getMyVisits, getVisitTrip } from '../api';
+import { useMe } from '@/hooks/use-me';
+
+import { getItineraryItems, getMyVisits, getVisitTrip } from '../api';
 
 export const visitKeys = {
   trip: (tripId: string) => ['trips', tripId] as const,
@@ -22,7 +24,7 @@ export function useVisitBoard(tripId: string) {
     queryKey: visitKeys.myVisits(tripId),
     queryFn: () => getMyVisits(tripId),
   });
-  const me = useQuery({ queryKey: ['me'], queryFn: getMe });
+  const me = useMe();
 
   const queries = [trip, itinerary, visits, me];
 

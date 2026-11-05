@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 
-import type { Expense, SettlementState } from '@/features/expense/types';
-import type { ItineraryItem, Visit } from '@/features/visit/types';
+import type { Expense, SettlementState } from '@/features/expense';
+import type { ItineraryItem, Visit } from '@/features/visit';
 
 import {
   companionLine,
