@@ -1,7 +1,9 @@
 import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { Image } from 'expo-image';
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+// 시트 안 가로 목록은 제스처 핸들러 스크롤이어야 시트 끌기와 손가락을 나눠 가진다(안드로이드)
+import { ScrollView } from 'react-native-gesture-handler';
 
 import { Icon } from '@/components/ui';
 import { colors, layout, radius, spacing, typography } from '@/theme';
@@ -29,6 +31,9 @@ export function RecommendSheet({ items, initialExpanded = false, onPress }: Prop
       snapPoints={snapPoints}
       enableDynamicSizing={false}
       onChange={(i) => setExpanded(i > 0)}
+      // 시트는 위아래로 끌 때만 움직인다. 옆으로 밀면 시트 끌기를 포기해 가로 카드가 넘어간다
+      activeOffsetY={[-10, 10]}
+      failOffsetX={[-10, 10]}
       backgroundStyle={styles.sheet}
       handleIndicatorStyle={styles.handle}
     >
