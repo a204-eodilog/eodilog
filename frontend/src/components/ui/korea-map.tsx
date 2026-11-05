@@ -237,14 +237,43 @@ function MapCanvas({
     ty.value = c.y;
   };
 
+  /** 배율 s가 속한 단계의 시작 배율. 단계 사이에 멈추지 않게 손을 떼면 여기로 붙인다 */
+  const stageStart = (s: number) => {
+    'worklet';
+    let i = 0;
+    while (i + 1 < stages.length && s >= stages[i + 1]) i += 1;
+    return stages[i];
+  };
+  /** 점(fx, fy)이 그 자리에 있도록 배율 next로 부드럽게 옮긴다 */
+  const animateTo = (fx: number, fy: number, next: number) => {
+    'worklet';
+    const r = next / scale.value;
+    const c = clamp(next, fx - (fx - tx.value) * r, fy - (fy - ty.value) * r);
+    const timing = { duration: 220, easing: Easing.out(Easing.cubic) };
+    scale.value = withTiming(next, timing);
+    tx.value = withTiming(c.x, timing);
+    ty.value = withTiming(c.y, timing);
+  };
+
   const pinch = usePinchGesture({
     onUpdate: (e) => {
       'worklet';
       zoomAt(e.focalX, e.focalY, e.scaleChange);
     },
+    // 손을 떼면 가장 가까운 단계로 붙어, 어중간한 배율에서 멈추지 않는다
+    onDeactivate: (e) => {
+      'worklet';
+      const s = scale.value;
+      const low = stageStart(s);
+      const i = stages.indexOf(low);
+      const high = i + 1 < stages.length ? stages[i + 1] : maxScale;
+      const next = s - low < high - s ? low : Math.min(high, maxScale);
+      if (next !== s) animateTo(e.focalX, e.focalY, next);
+    },
   });
   const pan = usePanGesture({
-    maxPointers: 2,
+    // 두 손가락은 확대만 한다. 확대하면서 지도가 같이 밀리지 않게
+    maxPointers: 1,
     onUpdate: (e) => {
       'worklet';
       const c = clamp(scale.value, tx.value + e.changeX, ty.value + e.changeY);
@@ -257,12 +286,10 @@ function MapCanvas({
     onDeactivate: (e) => {
       'worklet';
       if (e.canceled) return;
-      const next = Math.min(maxScale, scale.value * 2);
-      const r = next / scale.value;
-      const c = clamp(next, e.x - (e.x - tx.value) * r, e.y - (e.y - ty.value) * r);
-      scale.value = withTiming(next);
-      tx.value = withTiming(c.x);
-      ty.value = withTiming(c.y);
+      // 두 번 누르면 그 자리로 한 단계 확대. 마지막 단계면 전국으로 돌아간다
+      const i = stages.indexOf(stageStart(scale.value));
+      const next = i + 1 < stages.length ? stages[i + 1] : stages[0];
+      animateTo(e.x, e.y, next);
     },
   });
   const gesture = useSimultaneousGestures(pinch, pan, doubleTap);
@@ -341,8 +368,14 @@ function MapCanvas({
           <Path key={r.code} d={r.d} fill={fills[r.code] ?? fills[r.parent] ?? LAND} />
         ))}
         {/* 시군구 선은 칠한 면과 따로 그려, 단계가 바뀌어도 면은 다시 그리지 않는다 */}
+        {/* 2~3단계는 옅게, 4단계부터 제대로 보인다 */}
         {detail ? (
-          <G fill="none" stroke={colors.line.default} strokeWidth={px(0.6)}>
+          <G
+            fill="none"
+            stroke={colors.line.default}
+            strokeWidth={px(0.6)}
+            strokeOpacity={stage >= 3 ? 1 : 0.45}
+          >
             {KOREA_MAP.sigungu.map((r) => (
               <Path key={r.code} d={r.d} />
             ))}
