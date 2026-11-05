@@ -22,6 +22,8 @@ app:
   polls:
     # 1분마다 마감 시각이 지난 투표를 마감한다(정책 §13 V-12)
     auto-close-enabled: true
+    # 1분마다 마감 1시간 전 투표의 미투표 멤버에게 알림을 보낸다(POLL_REMINDER)
+    reminder-enabled: true
   jobs:
     enabled: true
     polling: 1s

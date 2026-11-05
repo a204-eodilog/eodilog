@@ -4,11 +4,13 @@ import {
   type InfiniteData,
   type QueryClient,
 } from '@tanstack/react-query';
+import { useEffect } from 'react';
 
 import { API_ERROR, toApiError } from '@/api/errors';
 import type { PageResponse } from '@/api/types';
 
 import { getTrip } from '../api';
+import { forgetInviteLink } from '../invite-storage';
 import type { Trip } from '../types';
 
 import { MY_TRIPS_KEY } from './use-my-trips';
@@ -41,6 +43,14 @@ export function useTrip(tripId: string) {
   const error = query.error ? toApiError(query.error) : null;
   const notFound =
     error !== null && (error.code === API_ERROR.TRIP_NOT_FOUND || error.status === 400);
+  const gone = error?.code === API_ERROR.TRIP_NOT_FOUND;
+
+  // 다른 기기에서 내보내졌거나 여행이 삭제됐다. 이 기기에 남긴 그 여행의 초대 링크도 지운다(동행 명세 FR-033)
+  useEffect(() => {
+    if (!gone) return;
+    forgetInviteLink(tripId).catch(() => undefined);
+    queryClient.setQueryData([...tripKey(tripId), 'invite'], null);
+  }, [gone, tripId, queryClient]);
 
   return { ...query, notFound };
 }

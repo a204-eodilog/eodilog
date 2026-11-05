@@ -2,6 +2,8 @@ package com.eodilog.poll.repository;
 
 import com.eodilog.poll.domain.Poll;
 import jakarta.persistence.LockModeType;
+import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -18,5 +20,13 @@ public interface PollRepository extends JpaRepository<Poll, UUID> {
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	@Query("select p from Poll p where p.id = :id and p.tripId = :tripId")
 	Optional<Poll> findByIdAndTripIdForUpdate(@Param("id") UUID id, @Param("tripId") UUID tripId);
+
+	// 마감 1시간 전 알림 대상. 여행 행을 잠근 뒤 투표 행을 잠그며 다시 읽는다(PollReminderSender)
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("select p from Poll p where p.tripId = :tripId"
+			+ " and p.status = com.eodilog.poll.domain.PollStatus.OPEN and p.reminderSentAt is null"
+			+ " and p.closesAt > :now and p.closesAt <= :windowEnd order by p.createdAt, p.id")
+	List<Poll> findReminderDueForUpdate(@Param("tripId") UUID tripId, @Param("now") Instant now,
+			@Param("windowEnd") Instant windowEnd);
 
 }

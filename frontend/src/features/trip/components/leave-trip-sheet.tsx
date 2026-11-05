@@ -27,10 +27,15 @@ export type LeaveTripSheetProps = {
   /** 방장일 때 [다른 사람에게 넘기기]. S19 방장 넘기기 대상 선택으로 간다 */
   onHandOver?: () => void;
   /**
-   * 서버가 사진·메시지 지우기를 받는지. 정리 작업(LEAVE_CLEANUP)이 생기기 전까지는 true를 보내면
-   * 400이라, 명세(trip-members-leave 가정)대로 체크를 끈 채로 보여 주고 "곧 지원돼요"로 안내한다.
+   * 사진 줄을 보일지. 사진 기능(S30·S31) 전에는 서버가 사진 지우기를 받지 않아(true면 400) 줄째 숨긴다
+   * (동행 명세 FR-025). 보이더라도 지우기는 아직 고를 수 없고 "곧 지원돼요"로 안내한다. 기본 false
    */
-  cleanupSupported?: boolean;
+  showPhotos?: boolean;
+  /**
+   * 내 채팅 지우기를 고를 수 있는지. 서버가 받는다(LEAVE_CLEANUP 작업, 202). 기본 true.
+   * 혼자 남았을 때는 채팅방이 함께 사라지므로 고르지 않는다
+   */
+  messageCleanupSupported?: boolean;
   /** useLeaveTrip().isPending */
   loading?: boolean;
   /**
@@ -67,20 +72,19 @@ export function LeaveTripSheet({
   alone = false,
   ownPhotoCount,
   onHandOver,
-  cleanupSupported = false,
+  showPhotos = false,
+  messageCleanupSupported = true,
   loading = false,
   failure,
 }: LeaveTripSheetProps) {
-  const [deleteOwnPhotos, setDeleteOwnPhotos] = useState(false);
   const [deleteOwnMessages, setDeleteOwnMessages] = useState(false);
-  const canChoose = cleanupSupported && !alone;
+  const canChooseMessages = messageCleanupSupported && !alone;
 
   // 다시 열 때마다 지우지 않는 쪽에서 시작한다
   const [wasVisible, setWasVisible] = useState(visible);
   if (visible !== wasVisible) {
     setWasVisible(visible);
     if (visible) {
-      setDeleteOwnPhotos(false);
       setDeleteOwnMessages(false);
     }
   }
@@ -93,12 +97,14 @@ export function LeaveTripSheet({
       onClose={onClose}
       onConfirm={() =>
         onConfirm({
-          deleteOwnPhotos: canChoose && deleteOwnPhotos,
-          deleteOwnMessages: canChoose && deleteOwnMessages,
+          // 사진 지우기는 서버가 아직 받지 않아 언제나 false다
+          deleteOwnPhotos: false,
+          deleteOwnMessages: canChooseMessages && deleteOwnMessages,
         })
       }
       title={alone ? '혼자 남아서 나가면 여행이 삭제돼요' : `${tripTitle}에서 나갈까요?`}
-      confirmLabel={failure ? '다시 시도' : alone ? '나가고 여행 삭제' : '나가기'}
+      // 혼자 남았을 때도 버튼은 "나가기"로 짧게 둔다. 여행이 삭제된다는 것은 제목과 설명이 알려 준다(2026-11-05 사용자 요청)
+      confirmLabel={failure ? '다시 시도' : '나가기'}
       confirmIcon={failure ? 'refresh' : 'leave'}
       loading={loading}
       error={failure ? FAILURE_TITLE[failure] : undefined}
@@ -108,7 +114,8 @@ export function LeaveTripSheet({
         <Icon name="info" size={16} color={colors.text.icon} />
         <Text style={[typography.caption, styles.sublineText]}>
           {alone ? (
-            `${tripTitle}의 기록이 모두 지워져요`
+            // 혼자 남은 사람이 나가면 여행 삭제와 같아 되돌릴 수 없다(동행 명세 FR-027)
+            `${tripTitle}의 기록이 모두 지워져요. 되돌릴 수 없어요`
           ) : nextOwnerName ? (
             <>
               {`나가면 ${nextOwnerName}님이 방장이 돼요`}
@@ -133,36 +140,30 @@ export function LeaveTripSheet({
 
       <View style={styles.list}>
         <ChangeRow icon="map-pin" name="지도" description="내 지도에서 이 여행이 빠져요" />
-        <ChangeRow
-          icon="image"
-          name="사진"
-          description={
-            alone
-              ? '여행 사진이 모두 지워져요'
-              : !canChoose
-                ? `올린 ${photos} · ${SOON}`
-                : deleteOwnPhotos
-                  ? `${photos}도 지워요 · 피드는 남아요`
-                  : `올린 ${photos}, 지울지 골라요`
-          }
-          check={
-            alone ? null : (
-              <RoundCheck
-                checked={canChoose && deleteOwnPhotos}
-                onChange={setDeleteOwnPhotos}
-                disabled={!canChoose || loading}
-                accessibilityLabel="내가 올린 사진도 지우기"
-              />
-            )
-          }
-        />
+        {showPhotos ? (
+          <ChangeRow
+            icon="image"
+            name="사진"
+            description={alone ? '여행 사진이 모두 지워져요' : `올린 ${photos} · ${SOON}`}
+            check={
+              alone ? null : (
+                <RoundCheck
+                  checked={false}
+                  onChange={() => undefined}
+                  disabled
+                  accessibilityLabel="내가 올린 사진도 지우기"
+                />
+              )
+            }
+          />
+        ) : null}
         <ChangeRow
           icon="chat"
           name="채팅"
           description={
             alone
               ? '그룹 채팅방이 사라져요'
-              : !canChoose
+              : !canChooseMessages
                 ? `보낸 메시지 · ${SOON}`
                 : deleteOwnMessages
                   ? '보낸 메시지도 지워요'
@@ -171,9 +172,9 @@ export function LeaveTripSheet({
           check={
             alone ? null : (
               <RoundCheck
-                checked={canChoose && deleteOwnMessages}
+                checked={canChooseMessages && deleteOwnMessages}
                 onChange={setDeleteOwnMessages}
-                disabled={!canChoose || loading}
+                disabled={!canChooseMessages || loading}
                 accessibilityLabel="내가 보낸 메시지도 지우기"
               />
             )

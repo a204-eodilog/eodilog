@@ -72,7 +72,36 @@ export type LeaveResult = {
   tripDeleted: boolean;
   /** 방장이 나가 방장을 넘겨받은 동행. 아니면 null */
   newOwnerMemberId: string | null;
-  /** 여행 삭제 작업 ID. 일반 나가기는 null */
+  /** 여행 삭제(TRIP_DELETE) 또는 내 채팅 정리(LEAVE_CLEANUP) 작업 ID. 없으면 null */
   cleanupJobId: string | null;
   status: 'LEFT' | 'TRIP_DELETED';
 };
+
+/** POST /trips/{tripId}/invitations 201. 서버는 토큰 해시만 보관하므로 이 응답에서만 url을 알 수 있다 */
+export type InvitationSecret = {
+  id: string;
+  /** 초대 토큰(43자). 화면에는 쓰지 않고 url만 보인다 */
+  token: string;
+  /** 공유할 링크. 서버가 만든 앱 주소 그대로 쓴다 */
+  url: string;
+  /** 만료 시각(UTC). 만든 때부터 7일 */
+  expiresAt: string;
+};
+
+/** 이 기기에 남겨 두는 초대 링크(research R1) */
+export type SavedInviteLink = { url: string; expiresAt: string };
+
+/** PATCH /trips/{tripId} 본문. 생략한 칸은 서버가 그대로 둔다. 모르는 칸을 넣으면 400 */
+export type UpdateTripBody = {
+  /** 수정을 시작한 때의 여행 version. 다르면 409 */
+  expectedVersion: number;
+  title?: string;
+  /** null이면 비운다. endDate와 함께 있거나 함께 비어야 한다 */
+  startDate?: string | null;
+  endDate?: string | null;
+  /** 보낸 목록으로 통째로 바꾼다. []이면 모두 비운다 */
+  destinationRegionIds?: string[];
+};
+
+/** DELETE /trips/{tripId} 202. 앱은 받기만 하고 조회하지 않는다 */
+export type JobRef = { jobId: string; status: 'QUEUED'; statusUrl: string };

@@ -6,6 +6,11 @@ import type { Trip, TripMember, TripSections, TripStatus } from './types';
 const PROVINCE_SUFFIXES = ['특별자치도', '특별자치시', '특별시', '광역시', '도'];
 
 /** "부산광역시" → "부산", "서울특별시 종로구" → "종로구" */
+/** 기간 이름. 0박이면 "당일", 그 밖은 "1박 2일". 기간 시트 요약과 여행 목록 줄이 함께 쓴다 */
+export function stayLabel(nights: number): string {
+  return nights === 0 ? '당일' : `${nights}박 ${nights + 1}일`;
+}
+
 export function shortRegionName(name: string): string {
   const parts = name.trim().split(/\s+/);
   const last = parts[parts.length - 1] ?? '';

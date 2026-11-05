@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { DEV_MOCK_TOKENS } from '@/api/dev-mock';
 import type { Session } from '@/api/types';
 import { env } from '@/config/env';
+import { clearInviteLinks } from '@/features/trip/invite-storage';
 import { secureStorage } from '@/lib/secure-storage';
 
 const STORAGE_KEY = 'eodilog.session';
@@ -108,6 +109,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   clearSession: async (options) => {
     // 저장소 삭제가 실패해도 화면에서는 로그아웃 상태로 만든다
     await persist(null).catch(() => undefined);
+    // 이 기기에 남긴 초대 링크도 지운다(동행 초대 명세 FR-033)
+    await clearInviteLinks().catch(() => undefined);
     set({
       accessToken: null,
       refreshToken: null,

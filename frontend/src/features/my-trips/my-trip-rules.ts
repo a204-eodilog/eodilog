@@ -34,7 +34,10 @@ export function formatPeriod(startDate: string | null, endDate: string | null): 
 }
 
 /** 나를 뺀 동행 이름, 참여 순. "서연, 민준". 혼자면 빈 문자열 */
-export function companionNames(trip: MyTrip, myUserId: string | undefined): string {
+export function companionNames(
+  trip: Pick<MyTrip, 'members'>,
+  myUserId: string | null | undefined,
+): string {
   return [...trip.members]
     .sort((a, b) => a.joinOrder - b.joinOrder)
     .filter((m) => m.user.id !== myUserId)
