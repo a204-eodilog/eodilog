@@ -6,6 +6,7 @@ import { CenterNotice, Header, toast } from '@/components/ui';
 import { formatTripNights } from '@/lib/format-date';
 import { colors } from '@/theme';
 
+import { DeleteRecordSheet } from '../components/delete-record-sheet';
 import { PublishSheet } from '../components/publish-sheet';
 import { TripRecordView } from '../components/trip-record-view';
 import { useTripRecord } from '../hooks/use-trip-record';
@@ -18,12 +19,13 @@ const notReady = () => toast.show('준비 중이에요');
  * S38 내 여행 기록. N4 여행 줄에서 연다.
  * 코스·평가·경비 요약은 지금 있는 API로 채운다. 공동 피드(게시·노출 설정·삭제), 사진, 기록 삭제,
  * 지도 핀 API가 아직 없어서 늘 "게시 전"으로 그리고 그 버튼들은 준비 중 안내를 띄운다.
- * 게시 확인 시트는 열 수 있지만 [게시]도 준비 중 안내다
+ * 게시 확인·기록 삭제 확인(S50) 시트는 열 수 있지만 [게시]·[지우기]도 준비 중 안내다
  */
 export function MyTripRecordScreen() {
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
   const record = useTripRecord(tripId);
   const [confirming, setConfirming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   if (record.isLoading || record.error || !record.trip) {
     return (
@@ -66,9 +68,9 @@ export function MyTripRecordScreen() {
         onCourse={notReady}
         onReview={() => router.push({ pathname: '/trips/[tripId]/visits', params: { tripId } })}
         onExpense={() => router.push(`/trips/${tripId}/expenses`)}
-        // 지도 핀 고치기 화면과 기록 삭제 API(S50 확인)는 아직 없다
+        // 지도 핀 고치기 화면은 아직 없다
         onMovePin={notReady}
-        onDelete={notReady}
+        onDelete={() => setDeleting(true)}
         onPublish={() => setConfirming(true)}
         onVisibility={notReady}
         onDeleteFeed={notReady}
@@ -82,6 +84,15 @@ export function MyTripRecordScreen() {
         onPreview={notReady}
         onPublish={() => {
           setConfirming(false);
+          notReady();
+        }}
+      />
+      <DeleteRecordSheet
+        visible={deleting}
+        onClose={() => setDeleting(false)}
+        // 기록 삭제 API가 아직 없다. 생기면 지운 뒤 S37로 간다
+        onConfirm={() => {
+          setDeleting(false);
           notReady();
         }}
       />

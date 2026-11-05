@@ -22,8 +22,10 @@ import {
   TextField,
   toast,
 } from '@/components/ui';
+import { DeleteRecordSheet } from '@/features/my-trips/components/delete-record-sheet';
 import { LeaveTripSheet } from '@/features/trip/components/leave-trip-sheet';
 import type { LeaveTripFailure } from '@/features/trip/hooks/use-leave-trip';
+import { DeleteReviewSheet } from '@/features/visit/components/delete-review-sheet';
 import {
   AMOUNT_MAX_LENGTH,
   exceedsAmountMax,
@@ -65,6 +67,7 @@ const ICONS: IconName[] = [
 ];
 
 type LeaveExample = 'member' | 'owner' | 'alone' | 'fail' | 'conflict';
+type ConfirmExample = 'photo' | 'withdraw' | 'record' | 'review';
 
 const TASTES = ['바다', '맛집', '카페', '산책', '야경', '사진'];
 
@@ -78,7 +81,7 @@ export default function UiCatalog() {
   const [amount, setAmount] = useState('21,000');
   const [memo, setMemo] = useState('');
   const [sheet, setSheet] = useState(false);
-  const [confirm, setConfirm] = useState<'photo' | 'withdraw' | null>(null);
+  const [confirm, setConfirm] = useState<ConfirmExample | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [confirmError, setConfirmError] = useState<string>();
   const [leave, setLeave] = useState<LeaveExample | null>(null);
@@ -95,12 +98,12 @@ export default function UiCatalog() {
     setTimeout(() => setLoading(false), 1500);
   };
 
-  const openConfirm = (kind: 'photo' | 'withdraw') => {
+  const openConfirm = (kind: ConfirmExample) => {
     setConfirmError(undefined);
     setConfirm(kind);
   };
 
-  // 사진 삭제는 1초 뒤 지운 것처럼, 탈퇴는 1초 뒤 실패한 것처럼 보여 준다
+  // 사진·기록 삭제는 1초 뒤 지운 것처럼, 탈퇴·평가 삭제는 1초 뒤 실패한 것처럼 보여 준다
   const fakeConfirm = () => {
     setConfirming(true);
     setTimeout(() => {
@@ -109,8 +112,12 @@ export default function UiCatalog() {
         setConfirmError('탈퇴하지 못했어요');
         return;
       }
+      if (confirm === 'review') {
+        setConfirmError('평가를 삭제하지 못했어요');
+        return;
+      }
       setConfirm(null);
-      toast.success('사진 2장을 지웠어요');
+      toast.success(confirm === 'record' ? '여행 기록을 지웠어요' : '사진 2장을 지웠어요');
     }, 1000);
   };
 
@@ -391,6 +398,12 @@ export default function UiCatalog() {
               variant="neutral"
               onPress={() => openConfirm('withdraw')}
             />
+            <Button label="기록 삭제" variant="neutral" onPress={() => openConfirm('record')} />
+            <Button
+              label="평가 삭제 (실패 예시)"
+              variant="neutral"
+              onPress={() => openConfirm('review')}
+            />
           </Row>
           <Row>
             <Button label="여행 나가기" variant="neutral" onPress={() => openLeave('member')} />
@@ -492,6 +505,20 @@ export default function UiCatalog() {
         loading={confirming}
         error={confirmError}
         errorDescription="다시 시도해 주세요"
+      />
+      <DeleteRecordSheet
+        visible={confirm === 'record'}
+        onClose={() => setConfirm(null)}
+        onConfirm={fakeConfirm}
+        deleting={confirming}
+      />
+      <DeleteReviewSheet
+        visible={confirm === 'review'}
+        placeName="해운대 해변"
+        onClose={() => setConfirm(null)}
+        onConfirm={fakeConfirm}
+        deleting={confirming}
+        failed={confirmError !== undefined}
       />
       {/* 방장일 때는 서버가 지우기를 받게 된 뒤의 모습(체크를 고를 수 있음)을 미리 보여 준다 */}
       <LeaveTripSheet
