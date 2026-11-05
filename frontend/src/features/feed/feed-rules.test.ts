@@ -61,6 +61,7 @@ describe('toFeedDetail', () => {
     const first = detail.days[0].stops[0];
     expect(first.score).toBe(4.5);
     expect(first.review).toBe('겨울 바다가 맑아서 오래 걸었어요');
+    expect(first.reviewAuthor).toBe('하늘');
     expect(detail.days[1].stops[1].score).toBe(3.5);
   });
   it('같은 날 다음 장소까지 이동만 붙고, 날의 마지막 장소에는 없다', () => {

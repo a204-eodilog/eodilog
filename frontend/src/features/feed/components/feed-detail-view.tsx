@@ -278,7 +278,7 @@ function StopRow({
         onPress={onPress}
         style={({ pressed }) => [styles.stopMain, pressed && styles.pressed]}
         accessibilityRole="button"
-        accessibilityLabel={`${stop.number}번 ${stop.name}${stop.score !== null ? `, 평점 ${stop.score}` : ''}`}
+        accessibilityLabel={`${stop.number}번 ${stop.name}${stop.score !== null ? `, 평점 ${stop.score}` : ''}${stop.review ? `, ${stop.reviewAuthor ?? ''} ${stop.review}` : ''}`}
       >
         <View>
           <View style={styles.thumb}>
@@ -303,6 +303,9 @@ function StopRow({
           </View>
           {stop.review ? (
             <Text style={styles.review} numberOfLines={1}>
+              {stop.reviewAuthor ? (
+                <Text style={styles.reviewAuthor}>{stop.reviewAuthor} · </Text>
+              ) : null}
               {stop.review}
             </Text>
           ) : null}
@@ -434,6 +437,8 @@ const styles = StyleSheet.create({
   score: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   scoreText: { ...typography.captionBold, color: colors.text.default },
   review: { ...typography.caption, color: colors.text.sub },
+  // 누가 쓴 평가인지. 이름만 조금 진하게
+  reviewAuthor: { ...typography.captionMedium, color: colors.text.strong },
   save: {
     width: 40,
     height: 40,

@@ -100,6 +100,8 @@ export type FeedStop = {
   score: number | null;
   /** 대표 한 줄 평가 */
   review: string | null;
+  /** 그 평가를 쓴 동행 이름 */
+  reviewAuthor: string | null;
   photoUrl: string | null;
   point: { latitude: number; longitude: number };
   /** 다음 장소까지 이동(같은 날 안에서만) */

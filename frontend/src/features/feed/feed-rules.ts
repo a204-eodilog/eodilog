@@ -100,6 +100,7 @@ export function toFeedDetail(feed: Feed): FeedDetail {
       name: item.place.name,
       score,
       review: list[0]?.body ?? null,
+      reviewAuthor: list[0]?.author.nickname ?? null,
       photoUrl: photoUrl.get(item.place.id) ?? null,
       point: { latitude: item.place.latitude, longitude: item.place.longitude },
       next: leg

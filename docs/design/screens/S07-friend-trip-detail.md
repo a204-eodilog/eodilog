@@ -29,7 +29,7 @@
 
 - 장소 순서: `publicItinerary.items`를 일차 → 순서로
 - 평점: 그 장소 `publicReviews` 점수 평균(소수 한 자리). 점수는 정수라 4.5는 두 사람 평가의 평균
-- 한 줄 평가: 그 장소에서 가장 먼저 쓴 평가
+- 한 줄 평가: 그 장소에서 가장 먼저 쓴 평가. 앞에 쓴 사람 이름을 붙인다("하늘 · 겨울 바다가…"). 동행이 S34에서 남긴 평가가 게시된 것(`publicReviews`)이고 개인 메모가 아니다. 평가가 여러 개면 모두 보기는 N7에서
 - 이동: `legs`에서 같은 날 바로 다음 장소로 가는 구간. WALK → 걷기, CAR·TAXI → 차, BUS·TRANSIT·SUBWAY → 버스, 그 밖은 경로 아이콘
 - 사진 주소: `PublicPhoto.imageUrl`은 로그인해야 받는 `/assets/...` 경로라 서버 주소를 붙이고 토큰을 같이 보낸다(`lib/asset-image.ts`)
 
