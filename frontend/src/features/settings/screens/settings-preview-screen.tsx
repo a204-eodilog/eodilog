@@ -1,9 +1,11 @@
 import { Redirect, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { type ComponentProps, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui';
-import { SettingsScreen } from '@/features/settings/screens/settings-screen';
+import { useSettings } from '@/features/settings/hooks/use-settings';
+import { SAMPLE_SETTINGS } from '@/features/settings/sample-data';
+import { SettingsView } from '@/features/settings/screens/settings-screen';
 import { colors, spacing, typography } from '@/theme';
 
 /** /dev/settings: 실패 모드에서 설정 변경 → 복원 → 토스트 재시도를 확인한다. */
@@ -15,10 +17,9 @@ export function SettingsPreviewScreen() {
   const [revision, setRevision] = useState(0);
   if (!__DEV__) return <Redirect href="/" />;
   return (
-    <SettingsScreen
+    <LocalSettings
       key={String(initialDetail) + revision}
       initialDetail={initialDetail}
-      preview
       simulateFailure={failure}
       previewControls={
         <View style={styles.controls}>
@@ -56,3 +57,14 @@ const styles = StyleSheet.create({
   caption: { ...typography.caption, color: colors.text.icon },
   buttons: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[8] },
 });
+
+type LocalProps = Omit<
+  ComponentProps<typeof SettingsView>,
+  'data' | 'pending' | 'change' | 'preview'
+>;
+
+/** 예시 값으로만 동작하는 S45. 서버에 저장하지 않는다 */
+function LocalSettings(props: LocalProps) {
+  const { data, pending, change } = useSettings(SAMPLE_SETTINGS, props.simulateFailure ?? false);
+  return <SettingsView {...props} data={data} pending={pending} change={change} preview />;
+}

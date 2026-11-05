@@ -6,3 +6,4 @@ export {
   SUGGESTED_KEYWORDS,
 } from './preference-rules';
 export { ChosenChip, SuggestChip } from './components/preference-chips';
+export { getPreferences, PREFERENCES_QUERY_KEY } from './api';

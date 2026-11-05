@@ -1,4 +1,4 @@
-/** docs/api-spec.md의 UserSettings. 실제 요청은 API 연결 단계에 추가한다. */
+/** docs/api-spec.md의 UserSettings (GET·PATCH /me/settings) */
 export type AiMode = 'AUTO' | 'CONFIRM' | 'OFF';
 export type UserSettings = {
   version: number;
@@ -14,6 +14,13 @@ export type UserSettings = {
     voteCourse: boolean;
     tripChanges: boolean;
   };
+};
+
+/** PATCH /me/settings 요청. 생략한 필드는 그대로 둔다 */
+export type SettingsPatch = {
+  expectedVersion: number;
+  ai?: Partial<UserSettings['ai']>;
+  notifications?: Partial<UserSettings['notifications']>;
 };
 
 export type SettingsProfile = {

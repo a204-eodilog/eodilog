@@ -1,10 +1,10 @@
 import * as Clipboard from 'expo-clipboard';
 import { router } from 'expo-router';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
-import { BackHandler, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, BackHandler, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Avatar, Button, ConfirmSheet, Header, Icon, toast } from '@/components/ui';
+import { Avatar, Button, ConfirmSheet, ErrorState, Header, Icon, toast } from '@/components/ui';
 import { signOut } from '@/features/auth/logout';
 import {
   AiModeSelector,
@@ -13,8 +13,7 @@ import {
   SettingsToggle,
 } from '@/features/settings/components/settings-controls';
 import { SettingsEditPreview } from '@/features/settings/components/settings-edit-preview';
-import { useSettings } from '@/features/settings/hooks/use-settings';
-import { SAMPLE_SETTINGS } from '@/features/settings/sample-data';
+import { useServerSettings } from '@/features/settings/hooks/use-server-settings';
 import type { AiMode, SettingsData, UserSettings } from '@/features/settings/types';
 import { colors, layout, radius, size, spacing, typography } from '@/theme';
 
@@ -32,23 +31,49 @@ const WEATHER_OPTIONS = [
   { value: 'OFF', label: '끄기' },
 ] as const;
 
-type Props = {
-  initialData?: SettingsData;
+type ViewProps = {
+  data: SettingsData;
+  pending: boolean;
+  change: (
+    update: (previous: SettingsData) => SettingsData,
+    failureMessage: string,
+    retry?: boolean,
+  ) => void;
+  /** /dev/settings 미리보기. 예시 값, 편집안 화면, 개발용 문구를 쓴다 */
+  preview?: boolean;
   initialDetail?: 'preferences' | 'profile' | 'ai' | null;
   simulateFailure?: boolean;
-  preview?: boolean;
   previewControls?: ReactNode;
 };
 
-/** S45. 데이터와 저장 동작은 useSettings 경계에서만 다룬다. */
-export function SettingsScreen({
-  initialData = SAMPLE_SETTINGS,
+/** S45 실제 화면. 내 정보·취향·AI·알림 설정을 서버에서 받는다. */
+export function SettingsScreen() {
+  const server = useServerSettings();
+  if (!server.data) {
+    return (
+      <SafeAreaView style={styles.screen} edges={['left', 'right', 'bottom']}>
+        <Header title="프로필과 설정" />
+        {server.isError ? (
+          <ErrorState title="설정을 불러오지 못했어요" onRetry={server.refetch} />
+        ) : (
+          <ActivityIndicator style={styles.screen} color={colors.brand.primary} />
+        )}
+      </SafeAreaView>
+    );
+  }
+  return <SettingsView data={server.data} pending={server.pending} change={server.change} />;
+}
+
+/** S45 화면 그리기. 값과 저장은 받은 data·change로만 다룬다. */
+export function SettingsView({
+  data,
+  pending,
+  change,
   initialDetail = null,
   simulateFailure = false,
   preview = false,
   previewControls,
-}: Props) {
-  const { data, pending, change } = useSettings(initialData, simulateFailure);
+}: ViewProps) {
   const [detail, setDetail] = useState<'ai' | 'profile' | 'preferences' | null>(
     preview ? initialDetail : null,
   );
@@ -97,7 +122,7 @@ export function SettingsScreen({
     try {
       const copied = await Clipboard.setStringAsync(profile.profileUrl);
       if (!copied) throw new Error('복사 실패');
-      toast.success('예시 프로필 링크를 복사했어요');
+      toast.success(preview ? '예시 프로필 링크를 복사했어요' : '프로필 링크를 복사했어요');
     } catch {
       toast.error('링크를 복사하지 못했어요');
     }
@@ -224,7 +249,12 @@ export function SettingsScreen({
                     label="계정 공개"
                     value={profile.accountVisibility === 'PUBLIC'}
                     disabled={pending}
-                    onChange={(value) =>
+                    onChange={(value) => {
+                      // 공개 범위를 바꾸는 API가 아직 없어 실제 화면에서는 바꾸지 않는다
+                      if (!preview) {
+                        toast.show('공개 설정은 곧 바꿀 수 있어요');
+                        return;
+                      }
                       change(
                         (previous) => ({
                           ...previous,
@@ -234,8 +264,8 @@ export function SettingsScreen({
                           },
                         }),
                         '공개 설정을 바꾸지 못했어요',
-                      )
-                    }
+                      );
+                    }}
                   />
                 }
               />
@@ -344,13 +374,14 @@ export function SettingsScreen({
       ) : null}
       <ConfirmSheet
         visible={withdrawOpen}
-        title="정말 탈퇴할까요?"
-        description="계정과 내 기록에 미치는 영향을 확인해 주세요. 현재는 확인 화면만 제공하며 실제로 탈퇴하지 않아요."
+        title="어디로그를 탈퇴할까요?"
+        description={'내 기록이 모두 지워져요.\n함께 만든 여행은 동행에게 남아요'}
         confirmLabel="탈퇴하기"
         onClose={() => setWithdrawOpen(false)}
         onConfirm={() => {
           setWithdrawOpen(false);
-          toast.show('탈퇴 기능은 아직 연결되지 않았어요');
+          // 탈퇴(DELETE /me)는 보존 정책(Q-11)이 정해진 뒤 연결한다
+          toast.show('탈퇴는 곧 지원돼요');
         }}
       />
     </SafeAreaView>
