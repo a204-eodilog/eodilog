@@ -6,6 +6,8 @@ app:
   polls:
     # 주기 마감은 끄고 테스트가 PollAutoCloser를 직접 부른다
     auto-close-enabled: false
+    # 마감 1시간 전 알림도 끄고 테스트가 PollReminderSender를 직접 부른다
+    reminder-enabled: false
   auth:
     kakao-client-id: test-client
     kakao-client-secret: test-secret

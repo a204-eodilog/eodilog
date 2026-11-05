@@ -24,4 +24,9 @@ public interface TripMemberRepository extends JpaRepository<TripMember, UUID> {
 
 	List<TripMember> findAllByTripIdOrderByJoinOrder(UUID tripId);
 
+	// 알림 수신자 후보. 지금 ACTIVE인 멤버의 회원 ID다
+	@Query("select m.userId from TripMember m where m.tripId = :tripId"
+			+ " and m.status = com.eodilog.trip.domain.TripMemberStatus.ACTIVE order by m.joinOrder")
+	List<UUID> findActiveUserIds(@Param("tripId") UUID tripId);
+
 }

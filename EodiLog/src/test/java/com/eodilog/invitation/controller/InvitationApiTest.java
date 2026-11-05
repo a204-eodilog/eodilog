@@ -410,6 +410,41 @@ class InvitationApiTest {
 						.value(containsString("TRIP_FULL")));
 	}
 
+	@Test
+	void notifiesExistingMembersWhenSomeoneJoins() throws Exception {
+		UUID friendId = insertUser("동행");
+		insertMember(friendId, 2, "ACTIVE");
+		String token = token(createInvitation(ownerId));
+		UUID guestId = insertUser("손님");
+
+		acceptInvitation(guestId, token).andExpect(status().isOk());
+		// 이미 ACTIVE인 사람의 재수락은 멤버십이 바뀌지 않아 알리지 않는다
+		acceptInvitation(guestId, token).andExpect(status().isOk());
+
+		assertThat(joinedNotifications(ownerId)).containsExactly("손님님이 여행에 참여했어요.");
+		assertThat(joinedNotifications(friendId)).containsExactly("손님님이 여행에 참여했어요.");
+		assertThat(joinedNotifications(guestId)).isEmpty();
+		assertThat(jdbcTemplate.queryForObject(
+				"select actor_user_id from events where trip_id = ? and type = 'TRIP_MEMBER_JOINED'", UUID.class, tripId))
+				.isEqualTo(guestId);
+
+		// 나갔다가 다시 들어오면 새 참여 순번으로 한 번 더 알린다. 본인은 여전히 받지 않는다
+		jdbcTemplate.update("update trip_members set status = 'LEFT', left_at = now() where trip_id = ? and user_id = ?",
+				tripId, guestId);
+		acceptInvitation(guestId, token).andExpect(status().isOk());
+		assertThat(joinedNotifications(ownerId)).hasSize(2);
+		assertThat(joinedNotifications(guestId)).isEmpty();
+		assertThat(count("select count(*) from events where trip_id = ? and type = 'TRIP_MEMBER_JOINED'", tripId))
+				.isEqualTo(2);
+	}
+
+	private List<String> joinedNotifications(UUID userId) {
+		return jdbcTemplate.queryForList("""
+				select e.payload_json->>'message' from notifications n join events e on e.id = n.event_id
+				where n.recipient_user_id = ? and e.trip_id = ? and e.type = 'TRIP_MEMBER_JOINED'
+				order by e.created_at, e.id""", String.class, userId, tripId);
+	}
+
 	private void expectExpired(ResultActions result) throws Exception {
 		expectGone(result, "INVITATION_EXPIRED");
 	}

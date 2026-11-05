@@ -51,6 +51,9 @@ public class Poll {
 
 	private Integer votedMemberCount;
 
+	// 마감 1시간 전 알림을 보낸(또는 받을 사람이 없어 건너뛴) 시각. version과 무관하다
+	private Instant reminderSentAt;
+
 	private Instant createdAt;
 
 	public static Poll open(UUID tripId, UUID createdByMemberId, PollType type, String title, Instant closesAt,
@@ -70,6 +73,11 @@ public class Poll {
 	// 서버 시각이 마감 시각 이상이면 더는 쓰지 못한다(명세 §6)
 	public boolean isDue(Instant now) {
 		return status == PollStatus.OPEN && !now.isBefore(closesAt);
+	}
+
+	// 화면 응답에 나오지 않는 표식이라 version을 올리지 않는다. 대상 조건은 PollRepository.findReminderDueForUpdate가 본다
+	public void markReminderSent(Instant now) {
+		this.reminderSentAt = now;
 	}
 
 	public void markCandidateAdded() {
