@@ -57,6 +57,7 @@ public class PollService {
 	private final PollCandidateRepository pollCandidateRepository;
 	private final PollVoteRepository pollVoteRepository;
 	private final PollCloser pollCloser;
+	private final PollNotifier pollNotifier;
 	private final PollResponseAssembler pollResponseAssembler;
 	private final TripAccessChecker tripAccessChecker;
 	private final RegionReader regionReader;
@@ -67,13 +68,15 @@ public class PollService {
 	private final TransactionTemplate writeTransaction;
 
 	public PollService(PollRepository pollRepository, PollCandidateRepository pollCandidateRepository,
-			PollVoteRepository pollVoteRepository, PollCloser pollCloser, PollResponseAssembler pollResponseAssembler,
+			PollVoteRepository pollVoteRepository, PollCloser pollCloser, PollNotifier pollNotifier,
+			PollResponseAssembler pollResponseAssembler,
 			TripAccessChecker tripAccessChecker, RegionReader regionReader, PlaceReader placeReader,
 			EntityManager entityManager, Clock clock, PlatformTransactionManager transactionManager) {
 		this.pollRepository = pollRepository;
 		this.pollCandidateRepository = pollCandidateRepository;
 		this.pollVoteRepository = pollVoteRepository;
 		this.pollCloser = pollCloser;
+		this.pollNotifier = pollNotifier;
 		this.pollResponseAssembler = pollResponseAssembler;
 		this.tripAccessChecker = tripAccessChecker;
 		this.regionReader = regionReader;
@@ -138,6 +141,7 @@ public class PollService {
 			pollCandidateRepository.save(
 					PollCandidate.of(poll.getId(), newPoll.type(), newPoll.targetIds().get(order), order, now));
 		}
+		pollNotifier.opened(poll, userId);
 		return pollResponseAssembler.assemble(poll, access.member().getId());
 	}
 
@@ -218,8 +222,10 @@ public class PollService {
 					"후보는 " + MAX_CANDIDATES + "개까지 넣을 수 있습니다.")));
 		}
 
-		pollCandidateRepository.save(PollCandidate.of(pollId, poll.getType(), targetId, candidates.size(), now()));
+		PollCandidate added = pollCandidateRepository.save(
+				PollCandidate.of(pollId, poll.getType(), targetId, candidates.size(), now()));
 		poll.markCandidateAdded();
+		pollNotifier.candidateAdded(poll, added.getId(), userId);
 		return pollResponseAssembler.assemble(poll, access.member().getId());
 	}
 
