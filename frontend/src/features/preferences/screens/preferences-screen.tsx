@@ -178,7 +178,9 @@ function PreferencesForm({
             onPress={leave}
             style={({ pressed }) => [styles.later, pressed && styles.pressed]}
           >
-            <Text style={[typography.bodyMedium, styles.laterText]}>나중에</Text>
+            <Text style={[typography.bodyMedium, styles.laterText]} numberOfLines={1}>
+              나중에
+            </Text>
           </Pressable>
         }
       />
@@ -375,7 +377,8 @@ const styles = StyleSheet.create({
     gap: spacing[32],
   },
   contentTight: { paddingTop: spacing[16], gap: spacing[28] },
-  later: { paddingHorizontal: spacing[12], height: 44, justifyContent: 'center' },
+  // 머리 오른쪽 칸(너비 72)에 한 줄로 들어가게 옆 여백을 줄인다
+  later: { paddingHorizontal: spacing[4], height: 44, justifyContent: 'center' },
   laterText: { color: colors.brand.primaryDark },
   pressed: { opacity: 0.7 },
   notice: {

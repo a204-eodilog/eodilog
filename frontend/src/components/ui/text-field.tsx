@@ -191,19 +191,26 @@ const styles = StyleSheet.create({
   boxLarge: { minHeight: 56 },
   boxMultiline: { alignItems: 'flex-start', minHeight: 88, paddingVertical: spacing[14] },
   // 웹 입력칸은 기본 폭이 있어 줄어들지 않는다. 최소 폭 0이어야 trailing("원", 붙여넣기)이 밀려나지 않는다
+  // 회색 상자도 밑줄 칸과 같이 lineHeight를 주지 않는다(안드로이드에서 예시 글자 윗부분이 잘림)
   boxInput: {
-    ...typography.body,
+    fontFamily: typography.body.fontFamily,
+    fontSize: typography.body.fontSize,
     flex: 1,
     minWidth: 0,
     color: colors.text.default,
     paddingVertical: 0,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   boxInputLarge: {
-    ...typography.title1,
+    fontFamily: typography.title1.fontFamily,
+    fontSize: typography.title1.fontSize,
     flex: 1,
     minWidth: 0,
     color: colors.text.default,
     paddingVertical: 0,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   boxInputMultiline: { textAlignVertical: 'top' },
   // 웹 미리보기에서 브라우저가 입력칸에 기본 포커스 테두리(주황)를 그린다. 디자인에 없고 앱(안드로이드)에도 없다.
