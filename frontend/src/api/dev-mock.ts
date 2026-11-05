@@ -214,6 +214,32 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
     return ok(config, page(REGIONS.filter((r) => query && r.name.includes(query))));
   }
 
+  // S05 홈. 팔로우한 친구가 다녀간 지역 네 곳(법정동 코드는 지도 경계와 같다)
+  if (method === 'get' && url === '/home/map') {
+    const marker = (code: string, name: string, members: string[]) => ({
+      region: { id: `home-${code}`, code, name, parentId: null, latitude: null, longitude: null },
+      feedIds: [`feed-${code}`],
+      visibleMemberUserIds: members,
+      visitCount: members.length,
+    });
+    return ok(config, {
+      data: {
+        markers: [
+          marker('5115000000', '강원특별자치도 강릉시', ['user-1', 'user-2', 'user-3']),
+          marker('4713000000', '경상북도 경주시', ['user-2', 'user-4']),
+          marker('1213000000', '전남광주통합특별시 여수시', ['user-1']),
+          marker('5011000000', '제주특별자치도 제주시', ['user-3', 'user-5']),
+        ],
+        criteria: { from: null, to: null, regionGrouping: 'SIGUNGU' },
+        updatedAt: new Date().toISOString(),
+      },
+    });
+  }
+  if (method === 'get' && url === '/me/discovery-recommendations') return ok(config, page([]));
+  if (method === 'get' && url === '/me/notification-summary') {
+    return ok(config, { data: { unreadCount: 2, asOf: new Date().toISOString() } });
+  }
+
   const regionMatch = /^\/regions\/([^/]+)$/.exec(url);
   if (method === 'get' && regionMatch) {
     const region = REGIONS.find((r) => r.id === regionMatch[1]);

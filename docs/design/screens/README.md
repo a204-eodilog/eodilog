@@ -32,6 +32,7 @@ B 담당 화면 17개 전부와 A 담당 S13. 다른 화면은 필요할 때 같
 | S38 내 여행 기록·공동 피드 게시 | [S38-my-trip-record.md](S38-my-trip-record.md) |
 | S41 타임라인 | [S41-timeline.md](S41-timeline.md) |
 | S42 여행 요약 카드 | [S42-trip-summary-card.md](S42-trip-summary-card.md) |
+| S05 홈 친구 여행 지도 (SVG 물든 지도) | [S05-home-map.md](S05-home-map.md) |
 | S50 삭제·나가기·탈퇴 확인 | [S50-confirm.md](S50-confirm.md) |
 
 **여러 화면에 반복되는 것** (공통으로 만들면 좋은 것): 회색 상자 입력칸(S11·S34·S35), 둥글기 8 작은 태그(S12·S14·S33·N4·S41), 사진 고르기 칸(S30·S31·S32), 버튼이 있는 토스트(S08·S33), "나" 얼굴 연파랑(S31·S35·S36), 흰 테두리 카드(S38·S42), 새로고침·카드·계산기·별 아이콘.

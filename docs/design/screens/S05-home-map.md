@@ -1,0 +1,70 @@
+# S05 홈 친구 여행 지도
+
+담당 A · 핵심 · 요구사항 WD-FR-24, 25, 10, 34 · 홈 탭 첫 화면
+
+화면 규칙은 [화면 목록](../../flow/screen-list.md) S05 줄과 [화면 공통 기준](../design-decisions.md) "S05 홈". 구현은 `frontend/src/features/home`, 지도는 공통 부품 `KoreaMap`(`frontend/src/components/ui/korea-map.tsx`).
+
+**지도는 네이버 지도가 아니라 시도·시군구 경계를 SVG로 그린 "물든 지도"다.** 지도 키 없이 웹 미리보기에서도 보인다. 같은 부품을 S37 마이페이지·S40·S07 경로·S42 요약 카드가 쓴다.
+
+## 상태
+
+| 상태               | 피그마                                                                               | 미리보기                | 달라지는 점                                                                      |
+| ------------------ | ------------------------------------------------------------------------------------ | ----------------------- | -------------------------------------------------------------------------------- |
+| 기본               | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-724)  | `/dev/home?state=basic` | 아래 "기본"                                                                      |
+| 지도 확대          | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=516-203)  | `?state=zoom`           | 배율 2.2 이상이면 지역 알약 → 사진 핀(표지 + 지역 이름 + 친구 얼굴)              |
+| 추천 시트 펼침     | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-1161) | `?state=sheet`          | 시트를 끌어 올리면 세로 목록                                                     |
+| 친구 없음          | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-1689) | `?state=no-friends`     | 점선 + 자리 3곳, "친구가 생기면 여기에 보여요", 아래 카드 [트렌드] [친구 찾기]   |
+| 첫 방문(여행 없음) | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=665-602)  | `?state=first`          | 지도 없이 걷는 마스코트 + "첫 여행을 만들어 볼까요?" + [새 여행]                 |
+| 공개된 기록 없음   | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-2030) | `?state=no-public`      | "친구 N명 · 아직 공개한 여행이 없어요", 아래 카드 [친구 찾기] [요즘 뜨는 여행지] |
+| 지도 로드 실패     | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-2369) | `?state=error`          | 회색 바탕, 지도 아이콘 + "지도를 불러오지 못했어요" + [다시 시도]                |
+
+어느 상태를 보여 줄지: 여행이 없으면 첫 방문 → 지도 실패면 로드 실패 → 표시할 지역이 있으면 기본 → 팔로우한 사람이 없다고 확실하면 친구 없음, 아니면 공개된 기록 없음 (`home-rules.homeState`).
+
+## 기본
+
+1. **위** — 로고(채운 핀 아이콘 + "어디로그" `typography.title2`), 오른쪽 알림 종(안 읽은 수 배지, `GET /me/notification-summary`)
+2. **지도** — 바다 `colors.map.sea`, 땅 흰색, 시군구 선 `colors.line.default`, 시도 선 `colors.line.strong`. 처음에는 본토 + 제주가 위 알약과 아래 시트를 피한 자리에 꽉 차게(울릉도·독도는 옮기면 보임). 다녀간 친구 수로 시군구를 4단계 파랑(`colors.map.step1~4`: 1명 / 2명 / 3명 / 4명 이상)
+3. **지역 알약 핀** — 흰 알약(지역 짧은 이름 `captionBold` + 사람 아이콘 + 친구 수 `colors.brand.primary`) 아래 검은 점(흰 테두리). 누르면 S06 같은 지역 여행 목록
+4. **"요즘 뜨는 여행지"** — 위 왼쪽 흰 알약 44 → S09
+5. **아래 시트** — "♡ 좋아요한 여행과 비슷해요". 접으면 가로 카드(사진 56 + 제목 + 사람·박수 또는 장소), 펼치면 세로 목록(사진 64 + 화살표). 누르면 여행은 S07, 장소는 N7
+6. 오른쪽 아래 **"지도 출처: 통계청 SGIS"** — 지우지 않는다
+
+손가락: 두 손가락 확대·축소(최대 8배), 한 손가락 이동, 두 번 누르면 2배. 핀은 확대해도 크기가 같다.
+
+## 지도 데이터
+
+- `frontend/assets/map/korea-regions.json`: 시도 16·시군구 230(일반구는 시로 합침, 세종은 시도이면서 한 칸), 약 199KB. 지역 `code`는 우리 `regions.code`(2026-10 법정동, 전남광주통합특별시 반영)와 같다
+- 원본: 통계청 SGIS 행정구역 경계(공공누리 제1유형) → github.com/vuski/admdongkor ver20261001(CC BY 4.0)을 합치고 단순화. 만드는 법은 `frontend/scripts/korea-map/README.md`
+- 위경도 → 지도 좌표는 `@/lib/korea-map`의 `projectLatLng`
+
+## 버튼과 이동
+
+| 누르는 것                   | 동작·이동                                      |
+| --------------------------- | ---------------------------------------------- |
+| 알림 종                     | S48 (화면 없음, 지금은 "준비 중이에요")        |
+| 요즘 뜨는 여행지 / [트렌드] | S09 (화면 없음)                                |
+| 지역 핀                     | S06 (화면 없음)                                |
+| 추천 줄                     | 여행 S07, 장소 N7 (화면 없음)                  |
+| [친구 찾기]                 | S44 (화면 없음. S43 `/friends`는 !125 병합 뒤) |
+| [새 여행]                   | S16 `/trips/new`                               |
+| [다시 시도]                 | 여행·지도 다시 불러오기                        |
+
+## API (2026-11-05 기준)
+
+| API                                 | 백엔드   | 쓰는 곳                                                              |
+| ----------------------------------- | -------- | -------------------------------------------------------------------- |
+| `GET /me/trips?limit=1`             | 있음     | 여행이 있는지(첫 방문)                                               |
+| `GET /home/map?bbox=`               | **없음** | 지역 색칠·핀. 없어서 실제 화면은 지금 '지도 로드 실패'               |
+| `GET /me/following?limit=1`         | 없음     | 친구 없음 판단. 실패하면 모름으로 두고 '공개된 기록 없음'으로 보인다 |
+| `GET /me/discovery-recommendations` | 없음     | 추천 시트. 실패하면 빈 시트 안내                                     |
+| `GET /me/notification-summary`      | 있음     | 알림 배지                                                            |
+
+서버 응답은 `home-rules.toRegionMarks` 한 곳에서만 화면 값(`RegionMark`)으로 바꾼다. 응답 모양이 바뀌면 이 함수만 고친다. 개발 테스트 모드(`api/dev-mock.ts`)도 위 API를 흉내 낸다.
+
+## 백엔드에 필요한 것
+
+1. `/home/map` 마커는 **시군구 단위**(`regionGrouping`)로 준다. 시도로는 화면에서 합칠 수 있다
+2. `bbox`는 지도 SDK 기준이라, SVG 지도는 처음부터 전국을 본다. 없어도 되게(선택) 해 주면 좋다. 지금은 전국 범위를 보낸다
+3. 확대 사진 핀에 필요한 **지역별 대표 표지 사진·여행 이름**과 **다녀간 친구 이름**이 `MapResult`에 없다. 마커에 넣어 주면 지역마다 따로 부르지 않아도 된다. 지금은 사진 자리는 아이콘, 얼굴 대신 친구 수
+4. 추천 `FeedCard`에 표지 사진 주소가 없어(`coverPhotoId`만) 사진 자리는 아이콘
+5. '공개된 기록 없음'의 친구 얼굴 위치는 서버가 주지 않아 미리보기에서만 보인다

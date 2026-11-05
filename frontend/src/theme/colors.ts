@@ -78,6 +78,8 @@ export const colors = {
   },
   /** 하단 시트·확인창 뒤 어두운 막 */
   overlay: 'rgba(0, 0, 0, 0.32)',
+  /** 지도 위 핀·말풍선 그림자 */
+  shadow: 'rgba(31, 36, 48, 0.14)',
 } as const;
 
 export type Colors = typeof colors;

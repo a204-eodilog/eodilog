@@ -34,7 +34,12 @@ export type IconName =
   | 'leave'
   | 'image'
   | 'arrow-right'
-  | 'bulb';
+  | 'bulb'
+  | 'trending'
+  | 'heart'
+  | 'moon'
+  | 'map'
+  | 'person-add';
 
 type IconProps = {
   name: IconName;
@@ -81,6 +86,12 @@ const PATHS: Record<IconName, string> = {
   image: 'M4 5H20V19H4V5ZM4 16L9 11L14 16M13 15L16 12L20 16M15.5 8.5V8.6',
   'arrow-right': 'M5 12H19M13 6L19 12L13 18',
   bulb: 'M9.5 18.5H14.5M10.5 21H13.5M12 3A6 6 0 0 0 8.5 13.9V16H15.5V13.9A6 6 0 0 0 12 3Z',
+  trending: 'M3 17L9 11L13 15L21 7M15 7H21V13',
+  heart: 'M12 20S4 14.6 4 9.2A4.2 4.2 0 0 1 12 7A4.2 4.2 0 0 1 20 9.2C20 14.6 12 20 12 20Z',
+  moon: 'M20 14.5A8 8 0 1 1 9.5 4A6.5 6.5 0 0 0 20 14.5Z',
+  map: 'M9 5L3 7V19L9 17L15 19L21 17V5L15 7L9 5ZM9 5V17M15 7V19',
+  'person-add':
+    'M10 12A4 4 0 1 0 10 4A4 4 0 0 0 10 12ZM3 20C3 16.7 6.1 15 10 15C11.4 15 12.7 15.2 13.8 15.7M18 14V20M15 17H21',
 };
 
 /** 채워도 선으로만 남겨야 하는 부분. 가방 손잡이처럼 몸통과 따로 그린다. */

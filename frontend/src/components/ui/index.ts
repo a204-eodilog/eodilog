@@ -25,6 +25,8 @@ export { Header } from './header';
 export type { HeaderProps } from './header';
 export { Dot, Icon } from './icon';
 export type { IconName } from './icon';
+export { KoreaMap } from './korea-map';
+export type { KoreaMapPin, KoreaMapProps } from './korea-map';
 export { MascotTraveler } from './mascot';
 export { RoundCheck } from './round-check';
 export type { RoundCheckProps } from './round-check';
