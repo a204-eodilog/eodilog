@@ -15,3 +15,13 @@ export function withRo(word: string): string {
   if (jong === null) return `${word}(으)로`;
   return `${word}${jong === 0 || jong === 8 ? '로' : '으로'}`;
 }
+
+/**
+ * 단어 뒤에 '과/와'를 붙인다. 받침이 있으면 '과', 없으면 '와'.
+ * 한글로 끝나지 않으면 '와(과)'. "민준" → "민준과", "서연" → "서연과", "지우" → "지우와"
+ */
+export function withWa(word: string): string {
+  const jong = finalConsonant(word);
+  if (jong === null) return `${word}와(과)`;
+  return `${word}${jong === 0 ? '와' : '과'}`;
+}
