@@ -1,6 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { CenterNotice, Header, toast } from '@/components/ui';
@@ -13,8 +13,8 @@ import { MemoSheet } from '../components/memo-sheet';
 import { SavedPlaceView } from '../components/saved-place-view';
 import {
   useAddToTrip,
+  restoreBookmark,
   useDeleteBookmark,
-  useRestoreBookmark,
   useUpdateMemo,
 } from '../hooks/use-bookmark-mutations';
 import { useBookmarks } from '../hooks/use-bookmarks';
@@ -25,7 +25,7 @@ const goBack = () => (router.canGoBack() ? router.back() : router.replace('/save
 /**
  * S14 저장 장소 상세. S10 카드·핀에서 연다(/saved/{key}).
  * 즐겨찾기 하나를 읽는 API가 없어 목록에서 찾는다. 장소가 사라진 즐겨찾기는 장소 id가 없어
- * 메모 고치기·저장 해제·그룹에 추가를 할 수 없다(API가 장소 id로만 받는다)
+ * 메모 고치기·저장 해제·그룹에 추가를 할 수 없다(API가 장소 id로만 받는다. 백엔드에 식별자 요청 필요)
  */
 export function SavedPlaceScreen() {
   const { key } = useLocalSearchParams<{ key: string }>();
@@ -35,9 +35,11 @@ export function SavedPlaceScreen() {
 
   const update = useUpdateMemo(placeId);
   const remove = useDeleteBookmark(placeId);
-  const restore = useRestoreBookmark();
+  const queryClient = useQueryClient();
   const add = useAddToTrip(placeId);
 
+  // 해제 요청을 이미 보냈는지. 빠르게 여러 번 누르면 다시 그리기 전이라 isPending이 아직 false라서 ref로 바로 막는다
+  const unsaving = useRef(false);
   const [memoOpen, setMemoOpen] = useState(false);
   // 메모 시트를 열 때마다 바꿔 시트가 지금 메모로 새로 시작하게 한다
   const [memoKey, setMemoKey] = useState(0);
@@ -87,22 +89,26 @@ export function SavedPlaceScreen() {
     companions: companionNames(t, me.data?.id),
   }));
 
-  const onUnsave = () =>
+  // 해제 요청이 끝날 때까지 같은 항목의 다른 변경(다시 해제·메모 고치기·그룹에 추가)을 막는다
+  const busy = remove.isPending;
+  const tripsStatus = trips.isError ? 'error' : trips.data ? 'ready' : 'loading';
+
+  const onUnsave = () => {
+    if (unsaving.current) return;
+    unsaving.current = true;
     remove.mutate(undefined, {
       onSuccess: () => {
         goBack();
         toast.show('저장을 해제했어요', {
-          action: {
-            label: '되돌리기',
-            onPress: () =>
-              restore.mutate(bookmark, {
-                onError: () => toast.error('되돌리지 못했어요. 다시 시도해 주세요'),
-              }),
-          },
+          action: { label: '되돌리기', onPress: () => restoreBookmark(queryClient, bookmark) },
         });
       },
-      onError: () => toast.error('저장을 해제하지 못했어요. 다시 시도해 주세요'),
+      onError: () => {
+        unsaving.current = false;
+        toast.error('저장을 해제하지 못했어요. 다시 시도해 주세요');
+      },
     });
+  };
 
   return (
     <>
@@ -114,6 +120,7 @@ export function SavedPlaceScreen() {
         memo={bookmark.memo}
         source={bookmarkSource(bookmark)}
         editable={editable}
+        busy={busy}
         onUnsave={onUnsave}
         onEditMemo={() => {
           setMemoKey((k) => k + 1);
@@ -146,6 +153,8 @@ export function SavedPlaceScreen() {
         visible={addOpen}
         placeName={item.name}
         trips={tripOptions}
+        tripsStatus={tripsStatus}
+        onRetryTrips={() => void trips.refetch()}
         selectedId={tripId}
         onSelect={setTripId}
         adding={add.isPending}

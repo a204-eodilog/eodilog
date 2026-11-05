@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { BottomSheet, Button, Icon } from '@/components/ui';
 import { colors, layout, spacing, typography } from '@/theme';
@@ -9,6 +9,10 @@ type AddToTripSheetProps = {
   visible: boolean;
   placeName: string;
   trips: TripOption[];
+  /** 내 여행 목록 조회 상태. ready일 때만 목록(비었으면 여행 없음 안내)을 보여 준다 */
+  tripsStatus: 'loading' | 'error' | 'ready';
+  /** 내 여행 목록 다시 불러오기 */
+  onRetryTrips: () => void;
   selectedId: string | null;
   onSelect: (tripId: string) => void;
   adding?: boolean;
@@ -18,19 +22,23 @@ type AddToTripSheetProps = {
 
 /**
  * S14 그룹 즐겨찾기에 추가 시트. 여행 하나를 골라 그 여행의 그룹 즐겨찾기에 내 저장으로 담는다.
- * 참여 중인 여행이 없으면 안내를 보이고 [추가]를 막는다
+ * 목록을 불러오는 중이면 돌아가는 표시, 실패하면 [다시 시도], 불러왔는데 여행이 없을 때만 여행 없음 안내를 보이고 [추가]를 막는다.
+ * 다녀온 여행도 담을 수 있어 "참여 중인 여행" 대신 "내 여행"이라고 쓴다(!137 리뷰)
  */
 export function AddToTripSheet({
   visible,
   placeName,
   trips,
+  tripsStatus,
+  onRetryTrips,
   selectedId,
   onSelect,
   adding = false,
   onClose,
   onAdd,
 }: AddToTripSheetProps) {
-  const empty = trips.length === 0;
+  const ready = tripsStatus === 'ready';
+  const empty = ready && trips.length === 0;
   return (
     <BottomSheet visible={visible} onClose={onClose} locked={adding}>
       <View style={styles.titleRow}>
@@ -56,11 +64,31 @@ export function AddToTripSheet({
       </View>
 
       <View style={styles.body}>
-        {empty ? (
+        {tripsStatus === 'loading' ? (
+          <ActivityIndicator
+            accessibilityLabel="내 여행 불러오는 중"
+            style={styles.empty}
+            color={colors.brand.primary}
+          />
+        ) : tripsStatus === 'error' ? (
+          <View style={styles.empty}>
+            <Icon name="alert" size={16} color={colors.text.icon} />
+            <Text style={[typography.caption, styles.sub, styles.center]}>
+              내 여행을 불러오지 못했어요
+            </Text>
+            <Button
+              label="다시 시도"
+              size="sm"
+              variant="secondary"
+              onPress={onRetryTrips}
+              leading={<Icon name="refresh" size={16} color={colors.brand.primary} />}
+            />
+          </View>
+        ) : empty ? (
           <View style={styles.empty}>
             <Icon name="trip" size={16} color={colors.text.icon} />
             <Text style={[typography.caption, styles.sub, styles.center]}>
-              {'참여 중인 여행이 없어요\n여행을 만들면 여기에 담을 수 있어요'}
+              {'아직 내 여행이 없어요\n여행을 만들면 여기에 담을 수 있어요'}
             </Text>
           </View>
         ) : (
@@ -72,11 +100,11 @@ export function AddToTripSheet({
         </View>
       </View>
 
-      <View style={[styles.footer, empty && styles.dim]}>
+      <View style={[styles.footer, !ready || empty ? styles.dim : null]}>
         <Button
           label="추가"
           weight="medium"
-          disabled={empty || selectedId === null}
+          disabled={!ready || empty || selectedId === null}
           loading={adding}
           onPress={onAdd}
           leading={<Icon name="plus" size={20} color={colors.text.inverse} />}

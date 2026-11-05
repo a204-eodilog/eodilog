@@ -1,4 +1,4 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MapMarker, MapView } from '@/components/map';
@@ -16,6 +16,8 @@ type SavedPlaceViewProps = {
   source: 'feed' | 'lost' | 'none';
   /** 장소가 사라져 장소 id가 없으면 메모 고치기·저장 해제를 할 수 없다 */
   editable: boolean;
+  /** 저장 해제·되돌리기 요청 중. 저장 해제·메모 고치기·그룹에 추가를 모두 막아 같은 항목 요청이 겹치지 않게 한다 */
+  busy?: boolean;
   onBack?: () => void;
   onUnsave: () => void;
   onEditMemo: () => void;
@@ -36,6 +38,7 @@ export function SavedPlaceView({
   memo,
   source,
   editable,
+  busy = false,
   onBack,
   onUnsave,
   onEditMemo,
@@ -54,11 +57,17 @@ export function SavedPlaceView({
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="저장 해제"
+              accessibilityState={{ disabled: busy, busy }}
               hitSlop={8}
+              disabled={busy}
               onPress={onUnsave}
               style={styles.headerButton}
             >
-              <Icon name="bookmark" color={colors.brand.primary} filled />
+              {busy ? (
+                <ActivityIndicator color={colors.brand.primary} />
+              ) : (
+                <Icon name="bookmark" color={colors.brand.primary} filled />
+              )}
             </Pressable>
           ) : undefined
         }
@@ -112,6 +121,8 @@ export function SavedPlaceView({
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="메모 고치기"
+                accessibilityState={{ disabled: busy }}
+                disabled={busy}
                 onPress={onEditMemo}
                 style={({ pressed }) => [styles.memoButton, pressed && styles.pressed]}
               >
@@ -160,7 +171,7 @@ export function SavedPlaceView({
         <Button
           label="그룹에 추가"
           weight="medium"
-          disabled={!editable}
+          disabled={!editable || busy}
           onPress={onAddToTrip}
           leading={<Icon name="plus" size={20} color={colors.text.inverse} />}
           style={styles.add}

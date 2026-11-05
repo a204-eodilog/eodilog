@@ -17,7 +17,7 @@ const TRIPS = [
   { id: 't2', title: '강릉 바다', period: '11.14 – 11.15', companions: '서연' },
 ];
 
-type Example = 'basic' | 'lost' | 'add' | 'noTrip';
+type Example = 'basic' | 'lost' | 'add' | 'noTrip' | 'tripsError';
 
 export default function SavedPlaceStates() {
   const [example, setExample] = useState<Example | null>(null);
@@ -31,7 +31,7 @@ export default function SavedPlaceStates() {
     const open = (e: Example) => {
       setExample(e);
       setTripId(null);
-      setAddOpen(e === 'add' || e === 'noTrip');
+      setAddOpen(e === 'add' || e === 'noTrip' || e === 'tripsError');
     };
     return (
       <ScrollView contentContainerStyle={styles.menu} style={styles.screen}>
@@ -39,7 +39,12 @@ export default function SavedPlaceStates() {
           <Button label="기본" variant="neutral" onPress={() => open('basic')} />
           <Button label="원본 볼 수 없음" variant="neutral" onPress={() => open('lost')} />
           <Button label="그룹에 추가" variant="neutral" onPress={() => open('add')} />
-          <Button label="참여 중인 여행 없음" variant="neutral" onPress={() => open('noTrip')} />
+          <Button label="내 여행 없음" variant="neutral" onPress={() => open('noTrip')} />
+          <Button
+            label="내 여행 불러오기 실패"
+            variant="neutral"
+            onPress={() => open('tripsError')}
+          />
         </View>
       </ScrollView>
     );
@@ -88,6 +93,8 @@ export default function SavedPlaceStates() {
         visible={addOpen}
         placeName="강문 해변"
         trips={trips}
+        tripsStatus={example === 'tripsError' ? 'error' : 'ready'}
+        onRetryTrips={() => setExample('add')}
         selectedId={tripId}
         onSelect={setTripId}
         onClose={() => setAddOpen(false)}

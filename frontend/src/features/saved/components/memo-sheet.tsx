@@ -4,8 +4,8 @@ import { StyleSheet, View } from 'react-native';
 import { BottomSheet, Button, TextField } from '@/components/ui';
 import { spacing } from '@/theme';
 
-/** 명세에 메모 길이 제한이 없어 화면에서 넘치지 않을 만큼만 받는다 */
-export const MEMO_MAX = 200;
+/** 서버 규칙: 즐겨찾기 메모는 2,000자까지(PersonalBookmarkController PutRequest·PatchRequest) */
+export const MEMO_MAX = 2000;
 
 type MemoSheetProps = {
   visible: boolean;
