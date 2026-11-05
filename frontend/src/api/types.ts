@@ -44,3 +44,30 @@ export type Session = {
   user: MyProfile;
   isNewUser: boolean;
 };
+
+export type TripStatus = 'PLANNING' | 'ONGOING' | 'COMPLETED';
+
+export type TripMember = {
+  id: string;
+  user: UserCard;
+  role: 'OWNER' | 'MEMBER';
+  status: 'ACTIVE' | 'LEFT' | 'REMOVED';
+  joinOrder: number;
+  joinedAt: string;
+  leftAt: string | null;
+};
+
+/** 여행. 상태는 기간으로 서버가 정한다(날짜 미정은 PLANNING) */
+export type Trip = {
+  id: string;
+  title: string;
+  startDate: string | null;
+  endDate: string | null;
+  destinationRegionIds: string[];
+  status: TripStatus;
+  currency: 'KRW';
+  ownerMemberId: string;
+  members: TripMember[];
+  version: number;
+  expenseVersion: number;
+};

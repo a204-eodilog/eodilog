@@ -6,6 +6,7 @@ import { env } from '@/config/env';
 import { secureStorage } from '@/lib/secure-storage';
 
 const STORAGE_KEY = 'eodilog.session';
+const LANDING_KEY = 'eodilog.landingSeen';
 
 /**
  * loading: 저장된 토큰을 읽는 중
@@ -27,6 +28,13 @@ type SessionState = {
   refreshToken: string | null;
   /** 갱신에 실패해 다시 로그인해야 할 때 true. 앱 어디서든 다시 로그인 안내 창을 띄운다 */
   expired: boolean;
+  /** S00 랜딩을 본 적이 있으면 true. 첫 실행에만 랜딩을 보여 준다 */
+  landingSeen: boolean;
+  /**
+   * 로그인 전에 연 초대 링크의 토큰. 로그인·가입을 마치면 S04 초대 참여 확인으로 이어 준다.
+   * 기기에 남기지 않는다. 앱을 껐다 켜면 링크를 다시 열어야 한다
+   */
+  pendingInviteToken: string | null;
   /** 앱 시작 때 한 번. 기기에 남은 토큰으로 로그인 상태를 되살린다 */
   hydrate: () => Promise<void>;
   /** 로그인·갱신 성공. 두 토큰을 함께 바꿔 저장한다 */
@@ -36,6 +44,8 @@ type SessionState = {
   /** 로그아웃·갱신 실패. 기기의 토큰을 지운다 */
   clearSession: (options?: { expired?: boolean }) => Promise<void>;
   dismissExpired: () => void;
+  markLandingSeen: () => Promise<void>;
+  setPendingInvite: (token: string | null) => void;
 };
 
 async function persist(value: StoredSession | null) {
@@ -48,29 +58,33 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   accessToken: null,
   refreshToken: null,
   expired: false,
+  landingSeen: false,
+  pendingInviteToken: null,
 
   hydrate: async () => {
     // 개발용 테스트 모드: 로그인을 건너뛰고 가입을 마친 것으로 시작한다. 기기에는 저장하지 않는다
     if (env.devMock) {
-      set({ ...DEV_MOCK_TOKENS, status: 'signedIn' });
+      set({ ...DEV_MOCK_TOKENS, status: 'signedIn', landingSeen: true });
       return;
     }
+    const landingSeen = (await secureStorage.get(LANDING_KEY).catch(() => null)) === '1';
     try {
       const raw = await secureStorage.get(STORAGE_KEY);
       const saved = raw ? (JSON.parse(raw) as StoredSession) : null;
       if (!saved?.accessToken || !saved.refreshToken) {
-        set({ status: 'signedOut' });
+        set({ status: 'signedOut', landingSeen });
         return;
       }
       set({
         accessToken: saved.accessToken,
         refreshToken: saved.refreshToken,
         status: saved.profileCompleted ? 'signedIn' : 'pending',
+        landingSeen,
       });
     } catch {
       // 저장 형식이 깨졌으면 로그인 안 한 상태로 시작한다
       await persist(null).catch(() => undefined);
-      set({ status: 'signedOut' });
+      set({ status: 'signedOut', landingSeen });
     }
   },
 
@@ -103,4 +117,11 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   },
 
   dismissExpired: () => set({ expired: false }),
+
+  markLandingSeen: async () => {
+    set({ landingSeen: true });
+    await secureStorage.set(LANDING_KEY, '1').catch(() => undefined);
+  },
+
+  setPendingInvite: (token) => set({ pendingInviteToken: token }),
 }));

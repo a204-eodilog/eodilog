@@ -7,6 +7,7 @@ import { Icon, toast } from '@/components/ui';
 import { useSessionStore } from '@/stores/session-store';
 import { colors, layout, spacing, typography } from '@/theme';
 
+import { afterLoginHref } from '../after-login';
 import { CamperVanIntro } from '../components/camper-van-intro';
 import { KakaoSymbol } from '../components/kakao-symbol';
 import { KakaoLoginError, loginWithKakao, prepareKakaoLogin } from '../kakao-login';
@@ -40,7 +41,13 @@ export function LoginScreen() {
       const result = await loginWithKakao();
       if (result.type === 'cancel') return;
       await setSession(result.session);
-      router.replace(result.session.user.profileCompleted ? '/home' : '/profile');
+      router.replace(
+        afterLoginHref({
+          profileCompleted: result.session.user.profileCompleted,
+          isNewUser: result.session.isNewUser,
+          inviteToken: useSessionStore.getState().pendingInviteToken,
+        }),
+      );
     } catch (e) {
       setError(errorMessage(e));
       prepareKakaoLogin().catch(() => undefined);
