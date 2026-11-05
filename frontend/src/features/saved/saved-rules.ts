@@ -36,11 +36,32 @@ export function addressParts(address: string | null): string[] {
   return [first.replace(CITY_SUFFIX, ''), second].filter(Boolean) as string[];
 }
 
+/**
+ * 즐겨찾기를 가리키는 값(S10 → S14 경로). 보통은 장소 id, 원본이 사라져 장소가 없으면 저장 시각과 이름.
+ * 즐겨찾기 하나를 읽는 API가 없어 S14는 목록에서 이 값으로 찾는다
+ */
+export function bookmarkKey(bookmark: Bookmark): string {
+  return bookmark.place?.id ?? `retained-${bookmark.createdAt}-${bookmark.retainedPlace.name}`;
+}
+
+export function findBookmark(bookmarks: Bookmark[], key: string): Bookmark | null {
+  return bookmarks.find((b) => bookmarkKey(b) === key) ?? null;
+}
+
+/**
+ * S14 "가져온 곳". feed: 공동 피드에서 담음(누르면 S07) / lost: 원본 피드가 지워졌거나 볼 수 없음
+ * / none: 링크·캡처처럼 피드가 아닌 곳에서 담음(줄을 그리지 않는다)
+ */
+export function bookmarkSource(bookmark: Bookmark): 'feed' | 'lost' | 'none' {
+  if (bookmark.sourceUnavailable) return 'lost';
+  return bookmark.sourceFeedId ? 'feed' : 'none';
+}
+
 export function toSavedItem(bookmark: Bookmark): SavedItem {
   const { place, retainedPlace } = bookmark;
   const parts = addressParts(place?.address ?? null);
   return {
-    key: place?.id ?? `retained-${bookmark.createdAt}-${retainedPlace.name}`,
+    key: bookmarkKey(bookmark),
     placeId: place?.id ?? null,
     name: place?.name ?? retainedPlace.name,
     latitude: place?.latitude ?? retainedPlace.latitude,

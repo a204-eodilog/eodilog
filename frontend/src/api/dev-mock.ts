@@ -151,24 +151,45 @@ const BOOKMARKS = [
   ['흰여울문화마을', '부산광역시 영도구 영선동4가 1044', 35.0784, 129.0447, null],
   ['명주동 골목 카페', '강원특별자치도 강릉시 명주동 15', 37.7537, 128.8957, 'feed-dev-2'],
 ] as const;
-const bookmarks = BOOKMARKS.map(([name, address, latitude, longitude, sourceFeedId], i) => ({
+/** 명세 Bookmark 모양. 기능 폴더(features/saved) 타입을 api 쪽에서 불러오지 않으려고 여기 둔다 */
+type MockBookmark = {
   place: {
-    id: `place-bookmark-${i + 1}`,
-    name,
-    address,
-    latitude,
-    longitude,
-    regionId: null,
-    provider: 'NAVER',
-    providerPlaceId: null,
-    source: 'PROVIDER' as const,
-  },
-  retainedPlace: { name, latitude, longitude },
-  memo: null,
-  sourceFeedId,
-  sourceUnavailable: false,
-  createdAt: new Date(Date.UTC(2026, 10, 5 - i)).toISOString(),
-}));
+    id: string;
+    name: string;
+    address: string | null;
+    latitude: number;
+    longitude: number;
+    regionId: string | null;
+    provider: string | null;
+    providerPlaceId: string | null;
+    source: 'PROVIDER' | 'MANUAL';
+  };
+  retainedPlace: { name: string; latitude: number; longitude: number };
+  memo: string | null;
+  sourceFeedId: string | null;
+  sourceUnavailable: boolean;
+  createdAt: string;
+};
+let bookmarks: MockBookmark[] = BOOKMARKS.map(
+  ([name, address, latitude, longitude, sourceFeedId], i) => ({
+    place: {
+      id: `place-bookmark-${i + 1}`,
+      name,
+      address,
+      latitude,
+      longitude,
+      regionId: null,
+      provider: 'NAVER',
+      providerPlaceId: null,
+      source: 'PROVIDER' as const,
+    },
+    retainedPlace: { name, latitude, longitude },
+    memo: null,
+    sourceFeedId,
+    sourceUnavailable: false,
+    createdAt: new Date(Date.UTC(2026, 10, 5 - i)).toISOString(),
+  }),
+);
 
 let seq = 0;
 
@@ -381,6 +402,55 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
 
   if (method === 'get' && url === '/me') return ok(config, { data: ME });
   if (method === 'get' && url === '/me/bookmarks') return ok(config, page(bookmarks));
+  const bookmarkMatch = /^\/me\/bookmarks\/([^/]+)$/.exec(url);
+  if (bookmarkMatch) {
+    const placeId = decodeURIComponent(bookmarkMatch[1]);
+    const found = bookmarks.find((b) => b.place.id === placeId);
+    const body = (
+      typeof config.data === 'string' ? JSON.parse(config.data) : (config.data ?? {})
+    ) as {
+      memo?: string;
+      sourceFeedId?: string;
+    };
+    if (method === 'patch' && found) {
+      found.memo = body.memo ?? null;
+      return ok(config, { data: found });
+    }
+    if (method === 'delete' && found) {
+      bookmarks = bookmarks.filter((b) => b !== found);
+      return ok(config, undefined, 204);
+    }
+    // 되돌리기: 지운 예시 장소를 같은 자리 값으로 다시 넣는다
+    const index = BOOKMARKS.findIndex((_, i) => `place-bookmark-${i + 1}` === placeId);
+    if (method === 'put' && index >= 0) {
+      const [name, address, latitude, longitude] = BOOKMARKS[index];
+      const restored = {
+        place: {
+          id: placeId,
+          name,
+          address,
+          latitude,
+          longitude,
+          regionId: null,
+          provider: 'NAVER',
+          providerPlaceId: null,
+          source: 'PROVIDER' as const,
+        },
+        retainedPlace: { name, latitude, longitude },
+        memo: body.memo ?? null,
+        sourceFeedId: body.sourceFeedId ?? null,
+        sourceUnavailable: false,
+        createdAt: new Date().toISOString(),
+      };
+      bookmarks = [restored, ...bookmarks.filter((b) => b.place.id !== placeId)];
+      return ok(config, { data: restored });
+    }
+    throw fail(config, 404, 'NOT_FOUND', '저장한 장소를 찾을 수 없어요.');
+  }
+  // 그룹 즐겨찾기에 추가(S14): 담기만 하고 S20 목록은 아직 흉내 내지 않는다
+  if (method === 'put' && /^\/trips\/[^/]+\/saved-places\/[^/]+\/me$/.test(url)) {
+    return ok(config, { data: null });
+  }
   if (method === 'get' && url === '/me/trips') return ok(config, page(trips));
 
   if (method === 'post' && url === '/trips') {
