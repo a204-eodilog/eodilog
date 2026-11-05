@@ -2,7 +2,14 @@ import { describe, expect, it } from '@jest/globals';
 
 import { colors } from '@/theme';
 
-import { fillsFor, homeState, nightsLabel, toRecommendations, toRegionMarks } from './home-rules';
+import {
+  fillStepsFor,
+  fillsFor,
+  homeState,
+  nightsLabel,
+  toRecommendations,
+  toRegionMarks,
+} from './home-rules';
 import type { MapResult } from './types';
 
 const region = (code: string, name: string) => ({
@@ -101,6 +108,28 @@ describe('fillsFor', () => {
       },
     ]);
     expect(fills).toEqual({ a: colors.map.step1, b: colors.map.step4 });
+  });
+});
+
+describe('fillStepsFor', () => {
+  it('적게 다녀간 곳부터, 많이 다녀간 곳은 진한 겹까지', () => {
+    const m = (regionCode: string, memberCount: number) => ({
+      regionCode,
+      name: regionCode,
+      memberCount,
+      memberNames: [],
+      coverUrl: null,
+      visitCount: 1,
+      feedIds: [],
+    });
+    expect(fillStepsFor([m('a', 3), m('b', 1), m('c', 6)])).toEqual([
+      { code: 'b', colors: [colors.map.step1] },
+      { code: 'a', colors: [colors.map.step1, colors.map.step2, colors.map.step3] },
+      {
+        code: 'c',
+        colors: [colors.map.step1, colors.map.step2, colors.map.step3, colors.map.step4],
+      },
+    ]);
   });
 });
 

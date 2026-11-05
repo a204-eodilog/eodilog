@@ -1,5 +1,16 @@
 import { Image } from 'expo-image';
+import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { Icon } from '@/components/ui';
 import { colors, radius, spacing, typography } from '@/theme';
@@ -8,8 +19,16 @@ import type { RegionMark } from '../types';
 
 const SHADOW = `0 2px 10px ${colors.shadow}`;
 
-/** 전국 보기 핀. 흰 알약(지역 이름 + 친구 수) 아래 지역 점 */
-export function RegionPill({ mark, onPress }: { mark: RegionMark; onPress?: () => void }) {
+/** 전국 보기 핀. 흰 알약(지역 이름 + 친구 수) 아래 지역 점. pulse면 점에서 원이 퍼진다 */
+export function RegionPill({
+  mark,
+  onPress,
+  pulse = false,
+}: {
+  mark: RegionMark;
+  onPress?: () => void;
+  pulse?: boolean;
+}) {
   return (
     <Pressable
       onPress={onPress}
@@ -22,9 +41,36 @@ export function RegionPill({ mark, onPress }: { mark: RegionMark; onPress?: () =
         <Icon name="people" size={14} color={colors.text.icon} />
         <Text style={styles.pillCount}>{mark.memberCount}</Text>
       </View>
-      <View style={styles.dot} />
+      <View style={styles.dotWrap}>
+        {pulse ? <Ripple /> : null}
+        <View style={styles.dot} />
+      </View>
     </Pressable>
   );
+}
+
+// Figma S05 '퍼지는 원': 1.6초 동안 0.6배 → 2.6배로 퍼지며 사라지고, 3.5초마다 반복
+const RIPPLE = { growMs: 1600, cycleMs: 3500, from: 0.6, to: 2.6, opacity: 0.9 } as const;
+
+function Ripple() {
+  const reduced = useReducedMotion();
+  const scale = useSharedValue<number>(RIPPLE.from);
+  const opacity = useSharedValue<number>(reduced ? 0 : RIPPLE.opacity);
+  useEffect(() => {
+    if (reduced) return;
+    const ease = { duration: RIPPLE.growMs, easing: Easing.out(Easing.quad) };
+    const rest = RIPPLE.cycleMs - RIPPLE.growMs;
+    const reset = (v: number) => withDelay(rest, withTiming(v, { duration: 0 }));
+    scale.set(withRepeat(withSequence(withTiming(RIPPLE.to, ease), reset(RIPPLE.from)), -1));
+    opacity.set(withRepeat(withSequence(withTiming(0, ease), reset(RIPPLE.opacity)), -1));
+    // 처음 한 번만 시작하면 계속 반복된다
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const style = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ scale: scale.value }],
+  }));
+  return <Animated.View style={[styles.ripple, style]} pointerEvents="none" />;
 }
 
 /** 확대 보기 핀. 표지 사진 + 지역 이름 + 다녀간 친구 얼굴 */
@@ -103,6 +149,14 @@ const styles = StyleSheet.create({
   },
   pillName: { ...typography.captionBold, color: colors.text.default, marginRight: spacing[2] },
   pillCount: { ...typography.captionBold, color: colors.brand.primary },
+  dotWrap: { width: 12, height: 12, alignItems: 'center', justifyContent: 'center' },
+  ripple: {
+    position: 'absolute',
+    width: 20,
+    height: 20,
+    borderRadius: radius.full,
+    backgroundColor: colors.brand.primarySoft,
+  },
   dot: {
     width: 12,
     height: 12,

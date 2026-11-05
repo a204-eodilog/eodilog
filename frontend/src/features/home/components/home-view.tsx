@@ -8,12 +8,14 @@ import {
   Icon,
   KoreaMap,
   type KoreaMapPin,
+  MAP_MOTION,
   MascotTraveler,
+  pinEnterStartMs,
 } from '@/components/ui';
 import { findMapRegion } from '@/lib/korea-map';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
-import { fillsFor } from '../home-rules';
+import { fillStepsFor } from '../home-rules';
 import type { HomeRecommendation, HomeState, RegionMark } from '../types';
 
 import { InviteSpot, LockedFace, PhotoPin, RegionPill } from './map-pins';
@@ -102,7 +104,10 @@ export function HomeView(props: HomeViewProps) {
 function MapBody(props: HomeViewProps) {
   const { state, marks } = props;
   const [detail, setDetail] = useState(false);
-  const fills = useMemo(() => fillsFor(marks), [marks]);
+  // 적게 다녀간 곳부터 차례로 물들고, 핀도 같은 순서로 나타난다(Figma S05 모션)
+  const fillSteps = useMemo(() => fillStepsFor(marks), [marks]);
+  const order = useMemo(() => new Map(fillSteps.map((f, i) => [f.code, i])), [fillSteps]);
+  const top = fillSteps[fillSteps.length - 1]?.code;
 
   const pins = useMemo<KoreaMapPin[]>(() => {
     if (state === 'no-friends') {
@@ -135,15 +140,18 @@ function MapBody(props: HomeViewProps) {
           key: m.regionCode,
           point: r.point,
           anchor: 'bottom',
+          enterDelayMs:
+            pinEnterStartMs(fillSteps.length) +
+            (order.get(m.regionCode) ?? 0) * MAP_MOTION.pinStaggerMs,
           children: detail ? (
             <PhotoPin mark={m} onPress={press} />
           ) : (
-            <RegionPill mark={m} onPress={press} />
+            <RegionPill mark={m} onPress={press} pulse={m.regionCode === top} />
           ),
         },
       ];
     });
-  }, [state, marks, detail, props]);
+  }, [state, marks, detail, props, fillSteps, order, top]);
 
   const focus = props.initialZoom ? findMapRegion(props.initialZoom.regionCode) : undefined;
   const ready = state === 'ready';
@@ -160,7 +168,7 @@ function MapBody(props: HomeViewProps) {
   return (
     <View style={styles.flex}>
       <KoreaMap
-        fills={fills}
+        fillSteps={fillSteps}
         pins={pins}
         onDetailChange={setDetail}
         initialFocus={

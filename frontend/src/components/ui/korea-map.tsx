@@ -8,11 +8,15 @@ import {
   useTapGesture,
 } from 'react-native-gesture-handler';
 import Animated, {
+  Easing,
   runOnJS,
   type SharedValue,
+  useAnimatedProps,
   useAnimatedReaction,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
+  withDelay,
   withTiming,
 } from 'react-native-reanimated';
 import Svg, { Defs, G, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
@@ -26,12 +30,19 @@ export type KoreaMapPin = {
   point: MapPoint;
   /** bottom: 핀 아래 끝이 점에 닿음(말풍선), center: 가운데가 점 */
   anchor?: 'bottom' | 'center';
+  /** 처음 나타날 때 기다릴 시간(ms). 있으면 아래에서 올라오며 나타난다(Figma S05 핀 등장) */
+  enterDelayMs?: number;
   children: ReactNode;
 };
+
+/** 차례로 물들 지역. colors는 옅은 색부터 최종 색까지 겹겹이 칠한다 */
+export type KoreaMapFillStep = { code: string; colors: readonly string[] };
 
 export type KoreaMapProps = {
   /** 지역 코드 → 칠할 색. 시군구 코드가 먼저, 없으면 그 시도 코드 */
   fills?: Readonly<Record<string, string>>;
+  /** 화면에 들어올 때 배열 순서대로 차례차례 물드는 지역(Figma S05 모션). 한 번만 재생 */
+  fillSteps?: readonly KoreaMapFillStep[];
   pins?: readonly KoreaMapPin[];
   /** 이 배율을 넘으면 onDetailChange(true). 홈은 시군 사진 핀으로 바꾼다 */
   detailScale?: number;
@@ -52,12 +63,39 @@ const PIN_ROOM = 280;
 const LAND = colors.surface.white;
 
 /**
+ * Figma S05 모션(3.5초 타임라인) 값. 지역은 0.2초부터 0.18초 간격으로 0.5초 동안 물들고,
+ * 더 진한 층은 0.35초씩 뒤에 겹친다. 핀은 물들기가 끝난 뒤 0.15초 간격으로 10px 올라오며 나타난다.
+ * Figma는 미리보기라 전체가 반복되지만 앱은 화면에 들어올 때 한 번만 재생한다
+ */
+export const MAP_MOTION = {
+  fillStartMs: 200,
+  fillStaggerMs: 180,
+  fillFadeMs: 500,
+  layerGapMs: 350,
+  pinGapAfterFillMs: 260,
+  pinStaggerMs: 150,
+  pinRiseMs: 350,
+  pinFadeMs: 300,
+  pinRisePx: 10,
+} as const;
+
+/** fillSteps 길이로 핀이 나오기 시작할 때(ms) */
+export function pinEnterStartMs(fillCount: number): number {
+  return (
+    MAP_MOTION.fillStartMs + fillCount * MAP_MOTION.fillStaggerMs + MAP_MOTION.pinGapAfterFillMs
+  );
+}
+
+const AnimatedPath = Animated.createAnimatedComponent(Path);
+
+/**
  * 시도·시군구 SVG 물든 지도. 네이버 지도가 아니라 경계(통계청 SGIS)를 직접 그린다.
  * 두 손가락 확대·축소, 한 손가락 이동, 두 번 누르면 확대. 핀은 확대해도 크기가 그대로다.
  * S05 홈·S37 마이페이지·S40·S07·S42가 같이 쓴다. 화면별 값(색 단계, 핀 모양)은 부르는 쪽이 정한다.
  */
 export function KoreaMap({
   fills = {},
+  fillSteps = [],
   pins = [],
   detailScale = 2.2,
   onDetailChange,
@@ -91,6 +129,7 @@ export function KoreaMap({
           key={`${box.width}x${box.height}`}
           box={box}
           fills={fills}
+          fillSteps={fillSteps}
           pins={pins}
           detailScale={detailScale}
           onDetailChange={onDetailChange}
@@ -107,7 +146,9 @@ export function KoreaMap({
   );
 }
 
-type CanvasProps = Required<Pick<KoreaMapProps, 'fills' | 'pins' | 'detailScale' | 'maxScale'>> &
+type CanvasProps = Required<
+  Pick<KoreaMapProps, 'fills' | 'fillSteps' | 'pins' | 'detailScale' | 'maxScale'>
+> &
   Pick<KoreaMapProps, 'onDetailChange' | 'initialFocus'> & {
     box: { width: number; height: number };
     insetTop: number;
@@ -117,6 +158,7 @@ type CanvasProps = Required<Pick<KoreaMapProps, 'fills' | 'pins' | 'detailScale'
 function MapCanvas({
   box,
   fills,
+  fillSteps,
   pins,
   detailScale,
   onDetailChange,
@@ -258,6 +300,22 @@ function MapCanvas({
             strokeWidth={px(0.6)}
           />
         ))}
+        {fillSteps.map((step, i) => {
+          const shape = SHAPE.get(step.code);
+          if (!shape) return null;
+          return step.colors.map((color, layer) => (
+            <FillLayer
+              key={`${step.code}-${layer}`}
+              d={shape}
+              color={color}
+              delayMs={
+                MAP_MOTION.fillStartMs +
+                i * MAP_MOTION.fillStaggerMs +
+                layer * MAP_MOTION.layerGapMs
+              }
+            />
+          ));
+        })}
         {KOREA_MAP.sido.map((r) => (
           <Path
             key={r.code}
@@ -270,7 +328,7 @@ function MapCanvas({
       </Svg>
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [baseW, baseH, fills, detail, zoom],
+    [baseW, baseH, fills, fillSteps, detail, zoom],
   );
 
   return (
@@ -287,6 +345,27 @@ function MapCanvas({
   );
 }
 
+const SHAPE = new Map([...KOREA_MAP.sido, ...KOREA_MAP.sigungu].map((r) => [r.code, r.d] as const));
+
+/** 한 지역의 한 겹. 정해진 때에 0.5초 동안 서서히 칠해진다 */
+function FillLayer({ d, color, delayMs }: { d: string; color: string; delayMs: number }) {
+  const reduced = useReducedMotion();
+  const opacity = useSharedValue(reduced ? 1 : 0);
+  useEffect(() => {
+    if (reduced) return;
+    opacity.set(
+      withDelay(
+        delayMs,
+        withTiming(1, { duration: MAP_MOTION.fillFadeMs, easing: Easing.out(Easing.quad) }),
+      ),
+    );
+    // 처음 한 번만 재생한다
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const animatedProps = useAnimatedProps(() => ({ fillOpacity: opacity.value }));
+  return <AnimatedPath d={d} fill={color} animatedProps={animatedProps} />;
+}
+
 function PinView({
   pin,
   fit,
@@ -301,10 +380,24 @@ function PinView({
   ty: SharedValue<number>;
 }) {
   const [px, py] = pin.point;
+  const reduced = useReducedMotion();
+  const animate = pin.enterDelayMs !== undefined && !reduced;
+  const rise = useSharedValue(animate ? MAP_MOTION.pinRisePx : 0);
+  const shown = useSharedValue(animate ? 0 : 1);
+  useEffect(() => {
+    if (!animate) return;
+    const delay = pin.enterDelayMs ?? 0;
+    const easing = Easing.out(Easing.quad);
+    rise.set(withDelay(delay, withTiming(0, { duration: MAP_MOTION.pinRiseMs, easing })));
+    shown.set(withDelay(delay, withTiming(1, { duration: MAP_MOTION.pinFadeMs, easing })));
+    // 처음 한 번만 재생한다
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const style = useAnimatedStyle(() => ({
+    opacity: shown.value,
     transform: [
       { translateX: px * fit * scale.value + tx.value },
-      { translateY: py * fit * scale.value + ty.value },
+      { translateY: py * fit * scale.value + ty.value + rise.value },
     ],
   }));
   // 크기 0인 자리에 놓고 안쪽을 가운데·아래 기준으로 맞춘다(핀 크기를 몰라도 됨)

@@ -39,12 +39,26 @@ export function toRegionMarks(result: MapResult): RegionMark[] {
     .sort((a, b) => b.memberCount - a.memberCount);
 }
 
+const STEPS = [colors.map.step1, colors.map.step2, colors.map.step3, colors.map.step4];
+
+/** 다녀간 친구 수 → 물드는 단계 1~4 (1명 / 2명 / 3명 / 4명 이상) */
+export function markLevel(memberCount: number): number {
+  return Math.min(STEPS.length, Math.max(1, memberCount));
+}
+
 /** 다녀간 친구 수에 따라 4단계 파랑 (colors.map.step1~4) */
 export function markFill(memberCount: number): string {
-  if (memberCount >= 4) return colors.map.step4;
-  if (memberCount === 3) return colors.map.step3;
-  if (memberCount === 2) return colors.map.step2;
-  return colors.map.step1;
+  return STEPS[markLevel(memberCount) - 1];
+}
+
+/**
+ * 차례로 물들 순서와 겹. 적게 다녀간 곳부터 물들고(Figma S05: 여수 → … → 강릉),
+ * 많이 다녀간 곳일수록 옅은 파랑 위에 진한 파랑이 겹겹이 더 물든다
+ */
+export function fillStepsFor(marks: readonly RegionMark[]): { code: string; colors: string[] }[] {
+  return [...marks]
+    .sort((a, b) => a.memberCount - b.memberCount)
+    .map((m) => ({ code: m.regionCode, colors: STEPS.slice(0, markLevel(m.memberCount)) }));
 }
 
 export function fillsFor(marks: readonly RegionMark[]): Record<string, string> {
