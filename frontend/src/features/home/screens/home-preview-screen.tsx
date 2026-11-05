@@ -6,6 +6,7 @@ import {
   PREVIEW_LOCKED,
   PREVIEW_MARKS,
   PREVIEW_RECOMMENDATIONS,
+  PREVIEW_ZOOM_MARKS,
 } from '@/features/home/preview-data';
 
 type PreviewState = 'basic' | 'zoom' | 'sheet' | 'no-friends' | 'first' | 'no-public' | 'error';
@@ -22,7 +23,7 @@ export function HomePreviewScreen() {
 
   const base: HomeViewProps = {
     state: 'ready',
-    marks: PREVIEW_MARKS.slice(0, 4),
+    marks: PREVIEW_MARKS,
     recommendations: PREVIEW_RECOMMENDATIONS,
     unreadCount: 3,
     friendCount: 4,
@@ -36,7 +37,10 @@ export function HomePreviewScreen() {
   };
   const byState: Record<PreviewState, Partial<HomeViewProps>> = {
     basic: {},
-    zoom: { marks: PREVIEW_MARKS, initialZoom: { regionCode: '5115000000', scale: 4.2 } },
+    zoom: {
+      marks: [...PREVIEW_MARKS, ...PREVIEW_ZOOM_MARKS.slice(0, 2)],
+      initialZoom: { regionCode: '5115000000', scale: 4.2 },
+    },
     sheet: { initialSheetExpanded: true },
     'no-friends': { state: 'no-friends', marks: [] },
     first: { state: 'first-visit' },

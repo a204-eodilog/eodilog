@@ -255,7 +255,7 @@ function MapCanvas({
             d={r.d}
             fill={fills[r.code] ?? fills[r.parent] ?? LAND}
             stroke={detail ? colors.line.default : 'none'}
-            strokeWidth={px(0.8)}
+            strokeWidth={px(0.6)}
           />
         ))}
         {KOREA_MAP.sido.map((r) => (
@@ -263,8 +263,8 @@ function MapCanvas({
             key={r.code}
             d={r.d}
             fill="none"
-            stroke={detail ? colors.line.strong : colors.line.default}
-            strokeWidth={px(detail ? 1.2 : 0.8)}
+            stroke={colors.line.default}
+            strokeWidth={px(detail ? 1 : 0.8)}
           />
         ))}
       </Svg>
