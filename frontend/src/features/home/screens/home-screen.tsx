@@ -19,8 +19,7 @@ export function HomeScreen() {
       onRetry={home.retry}
       onTrend={soon}
       onBell={soon}
-      // S43 /friends 는 !125 병합 뒤 연결한다
-      onFindFriends={soon}
+      onFindFriends={() => router.push('/find-friends')}
       onNewTrip={() => router.push('/trips/new')}
       onRegion={soon}
       onRecommendation={(r) => (r.kind === 'trip' ? router.push(`/feeds/${r.targetId}`) : soon())}

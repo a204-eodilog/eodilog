@@ -72,6 +72,19 @@ const ME: MyProfile = {
   profileUrl: '',
 };
 
+/** S44 추천 친구·N9 프로필에 쓰는 예시 사람(테스트 모드). 한 명은 비공개 계정 */
+const PEOPLE = [
+  { ...user('people-1', '도윤'), feedCount: 3, followerCount: 12, followingCount: 9 },
+  { ...user('people-2', '하린'), feedCount: 1, followerCount: 4, followingCount: 6 },
+  {
+    ...user('people-3', '서준'),
+    accountVisibility: 'PRIVATE' as const,
+    followerCount: 5,
+    followingCount: 7,
+  },
+];
+let hiddenSuggestions: string[] = [];
+
 /** S39 내 노출 설정(테스트 모드 메모리). 처음엔 아무도 숨기지 않음 */
 let feedVisibility = {
   hiddenViewerUserIds: [] as string[],
@@ -355,6 +368,76 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
     }
     follows = follows.filter((f) => f.id !== found.id);
     return ok(config, undefined, 204);
+  }
+  // S44 추천 친구(명세에 아직 없는 제안 경로)·숨기기
+  if (method === 'get' && url === '/me/friend-recommendations') {
+    const reasons = [
+      { kind: 'taste', tags: ['바다', '카페'] },
+      { kind: 'taste', tags: ['맛집'] },
+      { kind: 'trips', count: 4 },
+    ];
+    return ok(
+      config,
+      page(
+        PEOPLE.map((p, i) => ({ user: followCard(p), reason: reasons[i] })).filter(
+          (x) => !hiddenSuggestions.includes(x.user.id),
+        ),
+      ),
+    );
+  }
+  const hideMatch = /^\/me\/friend-recommendations\/([^/]+)\/hide$/.exec(url);
+  if (method === 'post' && hideMatch) {
+    hiddenSuggestions = [...hiddenSuggestions, decodeURIComponent(hideMatch[1])];
+    return ok(config, undefined, 204);
+  }
+  // S44 닉네임 검색
+  if (method === 'get' && url === '/users') {
+    const q = String((config.params as { query?: string } | undefined)?.query ?? '').trim();
+    const all = [...PEOPLE, ...FOLLOW_PEOPLE, ...FRIENDS];
+    return ok(config, page(q ? all.filter((p) => p.nickname.includes(q)).map(followCard) : []));
+  }
+  // N9 다른 사용자 프로필·공동 피드
+  const userMatch = /^\/users\/([^/]+)(\/feeds)?$/.exec(url);
+  if (method === 'get' && userMatch) {
+    const id = decodeURIComponent(userMatch[1]);
+    const found = [...PEOPLE, ...FOLLOW_PEOPLE, ...FRIENDS].find((p) => p.id === id);
+    if (!found) throw fail(config, 404, 'USER_NOT_FOUND', '사용자를 찾을 수 없어요');
+    const card = followCard(found);
+    if (!userMatch[2]) return ok(config, { data: { ...found, ...card } });
+    if (card.accountVisibility === 'PRIVATE' && card.followingStatus !== 'ACCEPTED') {
+      throw fail(config, 403, 'FORBIDDEN', '비공개 계정이에요');
+    }
+    const feed = (fid: string, title: string, code: string) => ({
+      id: `${id}-${fid}`,
+      tripId: `trip-${id}-${fid}`,
+      title,
+      regions: [{ id: `r-${code}`, code, name: title }],
+    });
+    return ok(
+      config,
+      page([
+        feed('1', '봄 경주', '4713000000'),
+        feed('2', '추석 전주', '5211000000'),
+        feed('3', '겨울 여행', '2635000000'),
+      ]),
+    );
+  }
+  // 팔로우: 공개 계정이면 ACCEPTED, 비공개면 REQUESTED
+  const followMatch = /^\/users\/([^/]+)\/follow$/.exec(url);
+  if (method === 'post' && followMatch) {
+    const id = decodeURIComponent(followMatch[1]);
+    const target = [...PEOPLE, ...FOLLOW_PEOPLE, ...FRIENDS].find((p) => p.id === id);
+    if (!target) throw fail(config, 404, 'USER_NOT_FOUND', '사용자를 찾을 수 없어요');
+    const existing = follows.find((x) => x.follower.id === ME.id && x.followee.id === id);
+    if (existing) return ok(config, { data: followResponse(existing) });
+    const created = follow(
+      `follow-${id}`,
+      FOLLOW_ME,
+      target,
+      target.accountVisibility === 'PRIVATE' ? 'REQUESTED' : 'ACCEPTED',
+    );
+    follows = [...follows, created];
+    return ok(config, { data: followResponse(created) });
   }
   const unfollowMatch = /^\/users\/([^/]+)\/follow$/.exec(url);
   const followerMatch = /^\/me\/followers\/([^/]+)$/.exec(url);
