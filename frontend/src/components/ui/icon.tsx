@@ -39,7 +39,8 @@ export type IconName =
   | 'upload'
   | 'globe'
   | 'settings'
-  | 'route';
+  | 'route'
+  | 'pencil';
 
 type IconProps = {
   name: IconName;
@@ -96,6 +97,8 @@ const PATHS: Record<IconName, string> = {
   // 양 끝 동그라미를 S자 길로 잇는 경로. S33 '계획에만 있어요'
   route:
     'M6 21A2 2 0 1 0 6 17A2 2 0 0 0 6 21ZM18 7A2 2 0 1 0 18 3A2 2 0 0 0 18 7ZM8 19H16.5A3.5 3.5 0 0 0 16.5 12H7.5A3.5 3.5 0 0 1 7.5 5H16',
+  // S34 내 평가 [수정]
+  pencil: 'M4 20H8L18.5 9.5A2.1 2.1 0 0 0 15.5 6.5L5 17V20M13.5 8.5L16.5 11.5',
 };
 
 /** 채워도 선으로만 남겨야 하는 부분. 가방 손잡이처럼 몸통과 따로 그린다. */

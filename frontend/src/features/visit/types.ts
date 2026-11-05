@@ -35,3 +35,25 @@ export type Visit = {
   reviewId: string | null;
   reviewScore: number | null;
 };
+
+/**
+ * 방문 평가 (docs/api-spec.md Review). 방문 하나에 평가 하나, 작성자는 방문한 멤버.
+ * visit·place는 평가 목록용 요약이고 장소를 읽지 못하면 place가 null이다
+ */
+export type Review = {
+  id: string;
+  visitId: string;
+  authorMemberId: string;
+  /** 1~5 정수 */
+  score: number;
+  body: string;
+  /** 점수·글이 바뀔 때만 오른다. 고칠 때 expectedVersion으로 보낸다 */
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  visit: { placeId: string; visitedAt: string };
+  place: { name: string; address: string | null } | null;
+};
+
+/** 평가 쓰기·고치기. 처음 쓸 때는 expectedVersion을 보내지 않는다(보내면 400) */
+export type ReviewInput = { score: number; body: string; expectedVersion?: number };

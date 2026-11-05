@@ -1,5 +1,5 @@
 import { useMutationState } from '@tanstack/react-query';
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
@@ -14,8 +14,8 @@ import { buildVisitDays, manualVisitedAt, visitSummary, type VisitRow } from '..
 
 /**
  * S33 방문 장소 평가 목록. 여행 상세(S17)의 '평가'에서 연다.
- * 사진 방문 후보(visit-candidates)와 평가(S34) API가 아직 없어서
- * 지금은 코스 장소를 '다녀옴'으로 직접 체크하는 것까지 된다. [평가하기]·[사진 올리기]는 준비 중 안내를 띄운다
+ * 사진 방문 후보(visit-candidates) API가 아직 없어서 코스 장소를 '다녀옴'으로 직접 체크하고,
+ * [평가하기]·내 점수로 S34에 간다. [사진 올리기]는 준비 중 안내를 띄운다
  */
 export function VisitListScreen() {
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
@@ -91,8 +91,14 @@ export function VisitListScreen() {
       summary={visitSummary(days)}
       busyPlaceIds={busyPlaceIds}
       onCheck={onCheck}
-      // S34 평점·평가 작성은 평가 API(PUT /visits/{visitId}/review)가 생기면 연결한다
-      onReview={() => toast.show('준비 중이에요')}
+      // S34 평점·평가 작성. 사진 방문 후보(방문 확정 전)는 아직 없어 늘 방문이 있는 줄에서만 열린다
+      onReview={(row) => {
+        if (!row.visit) return;
+        router.push({
+          pathname: '/trips/[tripId]/visits/[visitId]',
+          params: { tripId, visitId: row.visit.id },
+        });
+      }}
       // S30 사진 선택·업로드는 아직 없다
       onUpload={() => toast.show('준비 중이에요')}
     />
