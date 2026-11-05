@@ -44,7 +44,9 @@ export type IconName =
   | 'gear'
   | 'person-plus'
   | 'person-minus'
-  | 'crown';
+  | 'crown'
+  | 'list'
+  | 'wifi-off';
 
 type IconProps = {
   name: IconName;
@@ -113,6 +115,11 @@ const PATHS: Record<IconName, string> = {
     'M10 12A4 4 0 1 0 10 4A4 4 0 0 0 10 12ZM3 20C3 16.7 6.2 15 10 15C11.4 15 12.7 15.2 13.8 15.7M15 17H21',
   // 방장 넘기기(S19 방장 메뉴). 왕관
   crown: 'M4 8L8 12L12 5L16 12L20 8L18.5 18H5.5L4 8Z',
+  // S10 목록 보기. 점 세 개 + 줄 세 개
+  list: 'M9 6H20M9 12H20M9 18H20M4.5 6H4.51M4.5 12H4.51M4.5 18H4.51',
+  // S10 연결 끊김. 와이파이 부채꼴 + 사선
+  'wifi-off':
+    'M3 3L21 21M8.5 16.2A5 5 0 0 1 14 15.5M5 12.6A10 10 0 0 1 9.3 10.2M19 12.6A10 10 0 0 0 15.5 10.4M1.8 9A15 15 0 0 1 6 6.3M22.2 9A15 15 0 0 0 10.8 5M12 20H12.01',
 };
 
 /** 채워도 선으로만 남겨야 하는 부분. 가방 손잡이처럼 몸통과 따로 그린다. */
