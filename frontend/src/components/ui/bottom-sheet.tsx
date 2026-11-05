@@ -5,10 +5,10 @@ import {
   BottomSheetView,
 } from '@gorhom/bottom-sheet';
 import { type ReactNode, useCallback, useEffect, useRef } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { BackHandler, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { colors, layout, radius, spacing, typography } from '@/theme';
+import { colors, radius, spacing, typography } from '@/theme';
 
 export type BottomSheetProps = {
   visible: boolean;
@@ -22,6 +22,13 @@ export type BottomSheetProps = {
   footer?: ReactNode;
   /** 서버 처리 중처럼 닫히면 안 될 때. 어두운 막을 눌러도, 아래로 끌어도 닫히지 않는다 */
   locked?: boolean;
+  /**
+   * 제목 글자. 기본 title1(23, S50 확인 시트). 피그마가 더 작게 그린 시트는 바꾼다:
+   * title2(20) S19 방장 넘기기 대상 선택, title3(18) S16 여행 기간
+   */
+  titleVariant?: 'title1' | 'title2' | 'title3';
+  /** 설명 글자. 기본 body(16, S50 짧은 확인 시트). 피그마가 캡션으로 그린 시트는 caption(12) */
+  descriptionVariant?: 'body' | 'caption';
 };
 
 /**
@@ -37,21 +44,44 @@ export function BottomSheet({
   children,
   footer,
   locked = false,
+  titleVariant = 'title1',
+  descriptionVariant = 'body',
 }: BottomSheetProps) {
   const insets = useSafeAreaInsets();
   const ref = useRef<BottomSheetModal>(null);
-  const opened = useRef(false);
+  // 시트가 지금 떠 있는지. 이미 닫힌 시트에 dismiss()를 또 부르면 다음 present()가 아무것도 그리지 않는다
+  // (@gorhom/bottom-sheet 5.2.11+ 버그, 이슈 #2787). 사용자가 뒤로 버튼·어두운 막·끌어내리기로 닫으면
+  // onDismiss에서 false가 되므로, 부모가 visible을 false로 바꿔도 한 번 더 닫지 않는다
+  const presented = useRef(false);
 
   useEffect(() => {
     if (visible) {
+      if (presented.current) return;
+      presented.current = true;
       ref.current?.present();
-      opened.current = true;
       return;
     }
-    // 한 번도 열지 않은 시트에 dismiss()를 부르면 이후 present()가 아무것도 그리지 않는다
-    // (@gorhom/bottom-sheet 5.2.11+ 버그, 이슈 #2787). 열린 적이 있을 때만 닫는다
-    if (opened.current) ref.current?.dismiss();
+    if (!presented.current) return;
+    presented.current = false;
+    ref.current?.dismiss();
   }, [visible]);
+
+  const handleDismiss = useCallback(() => {
+    presented.current = false;
+    onClose();
+  }, [onClose]);
+
+  // 안드로이드 뒤로 버튼은 화면이 아니라 열린 시트를 먼저 닫는다. 처리 중(locked)이면 닫지도 나가지도 않는다.
+  // 시트가 열린 동안만 듣고, 나중에 등록한 것이 먼저 불리므로 화면의 뒤로 처리보다 앞선다
+  useEffect(() => {
+    if (!visible) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      // 어두운 막을 눌렀을 때와 같이 시트를 내리면 onDismiss가 onClose를 한 번 부른다
+      if (!locked) ref.current?.dismiss();
+      return true;
+    });
+    return () => sub.remove();
+  }, [visible, locked]);
 
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (
@@ -70,7 +100,7 @@ export function BottomSheet({
   return (
     <BottomSheetModal
       ref={ref}
-      onDismiss={onClose}
+      onDismiss={handleDismiss}
       enableDynamicSizing
       enablePanDownToClose={!locked}
       backdropComponent={renderBackdrop}
@@ -79,13 +109,19 @@ export function BottomSheet({
       handleStyle={styles.handleArea}
     >
       <BottomSheetView
-        style={[styles.content, { paddingBottom: Math.max(insets.bottom, spacing[20]) }]}
+        style={[
+          styles.content,
+          { paddingBottom: Math.max(insets.bottom + spacing[20], spacing[24]) },
+        ]}
       >
-        {title ? <Text style={[typography.title1, styles.title]}>{title}</Text> : null}
+        {title ? <Text style={[typography[titleVariant], styles.title]}>{title}</Text> : null}
         {description ? (
-          <Text style={[typography.body, styles.description]}>{description}</Text>
+          <Text style={[typography[descriptionVariant], styles.description]}>{description}</Text>
         ) : null}
-        {children ? <View style={styles.body}>{children}</View> : null}
+        {children ? (
+          // 제목이 없는 시트(기간 시트처럼 내용 안에 제목 줄이 있는 시트)는 손잡이 아래 16에서 바로 시작한다
+          <View style={title || description ? styles.body : undefined}>{children}</View>
+        ) : null}
         {footer ? <View style={styles.footer}>{footer}</View> : null}
       </BottomSheetView>
     </BottomSheetModal>
@@ -99,20 +135,22 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: radius.xxl,
     borderTopRightRadius: radius.xxl,
   },
-  handleArea: { paddingTop: spacing[8], paddingBottom: spacing[4] },
-  handle: { width: 40, height: 4, backgroundColor: colors.gray[200] },
+  // 손잡이 36x4는 위 12. 시트 안 여백은 피그마(좌우 20)보다 조금 넓게 둔다(2026-11-05 사용자 요청: 여백이 좁아 보임)
+  handleArea: { paddingTop: spacing[12], paddingBottom: 0 },
+  handle: { width: 36, height: 4, backgroundColor: colors.gray[300] },
   content: {
-    paddingHorizontal: layout.screenPaddingX,
-    gap: spacing[8],
+    paddingHorizontal: spacing[24],
+    paddingTop: spacing[20],
+    gap: spacing[10],
   },
   title: { color: colors.text.default },
   description: { color: colors.text.sub },
-  body: { paddingTop: spacing[8] },
+  body: { paddingTop: spacing[12] },
   footer: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     alignItems: 'center',
     gap: spacing[8],
-    paddingTop: spacing[16],
+    paddingTop: spacing[24],
   },
 });

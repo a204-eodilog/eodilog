@@ -84,6 +84,11 @@ export const colors = {
   overlay: 'rgba(0, 0, 0, 0.32)',
   /** 지도 위 핀·말풍선 그림자 */
   shadow: 'rgba(31, 36, 48, 0.14)',
+  /** 파랑 블록 위 반투명 흰색(피그마 S15·S17). 칩 바탕 18%, 보조 글자 85% */
+  onBrand: {
+    chip: 'rgba(255, 255, 255, 0.18)',
+    textSoft: 'rgba(255, 255, 255, 0.85)',
+  },
 } as const;
 
 export type Colors = typeof colors;

@@ -2,10 +2,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Button, Header, Icon, TextField, type IconName } from '@/components/ui';
+import { Button, Header, Icon, TextField } from '@/components/ui';
 import { formatRange } from '@/lib/seoul-date';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -68,10 +67,15 @@ export function NewTripScreen() {
   return (
     <View style={styles.screen}>
       <Header close onBack={close} />
-      <KeyboardAvoidingView behavior="padding" style={styles.flex}>
+      <View style={styles.flex}>
         <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
-          <Text style={[typography.title1, styles.question]}>어떤 여행을{'\n'}떠나시나요?</Text>
-          <Text style={[typography.body, styles.hint]}>이름만 정하면 바로 시작할 수 있어요</Text>
+          {/* 피그마 S16: 큰 질문 28, 아래 8 안내 15 */}
+          <View style={styles.questionBlock}>
+            <Text style={[typography.question, styles.question]}>어떤 여행을{'\n'}떠나시나요?</Text>
+            <Text style={[typography.bodySmall, styles.hint]}>
+              이름만 정하면 바로 시작할 수 있어요
+            </Text>
+          </View>
 
           <TextField
             large
@@ -80,8 +84,10 @@ export function NewTripScreen() {
               setTitle(text);
               if (titleError) setTitleError(null);
             }}
-            placeholder="예: 겨울 바다 보러 가기"
+            placeholder="겨울 바다 보러 가기"
             maxLength={TITLE_MAX}
+            // 피그마 S16에는 글자 수가 없다. 200자 제한은 그대로 막는다
+            hideCount
             error={shownTitleError}
             returnKeyType="done"
             accessibilityLabel="여행 이름"
@@ -89,13 +95,11 @@ export function NewTripScreen() {
 
           <View style={styles.rows}>
             <ChoiceRow
-              icon="calendar"
               label="언제"
               value={range ? formatRange(range.start, range.end) : null}
               onPress={() => setRangeOpen(true)}
             />
             <ChoiceRow
-              icon="map-pin"
               label="어디로"
               value={
                 regions.length > 0 ? regions.map((r) => shortRegionName(r.name)).join(', ') : null
@@ -124,7 +128,7 @@ export function NewTripScreen() {
             onPress={submit}
           />
         </View>
-      </KeyboardAvoidingView>
+      </View>
 
       <DateRangeSheet
         visible={rangeOpen}
@@ -144,12 +148,10 @@ export function NewTripScreen() {
 }
 
 function ChoiceRow({
-  icon,
   label,
   value,
   onPress,
 }: {
-  icon: IconName;
   label: string;
   value: string | null;
   onPress: () => void;
@@ -161,12 +163,15 @@ function ChoiceRow({
       onPress={onPress}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
     >
-      <Icon name={icon} size={20} color={colors.text.sub} />
-      <Text style={[typography.bodyMedium, styles.rowLabel]}>{label}</Text>
-      <Text style={[typography.body, value ? styles.rowValue : styles.rowLater]} numberOfLines={1}>
+      {/* 피그마 S16 줄: 이름 14(폭 64) · 값 17 · 오른쪽 화살표 16. 아이콘은 없다 */}
+      <Text style={[typography.sub, styles.rowLabel]}>{label}</Text>
+      <Text
+        style={[typography.bodyLarge, value ? styles.rowValue : styles.rowLater]}
+        numberOfLines={1}
+      >
         {value ?? LATER}
       </Text>
-      <Icon name="chevron-right" size={20} color={colors.text.muted} />
+      <Icon name="chevron-right" size={16} color={colors.text.muted} />
     </Pressable>
   );
 }
@@ -174,22 +179,25 @@ function ChoiceRow({
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.surface.white },
   flex: { flex: 1 },
-  body: { paddingHorizontal: layout.screenPaddingX, paddingTop: spacing[8], gap: spacing[16] },
+  // 피그마 S16: 위 16, 묶음 사이 24
+  body: { paddingHorizontal: layout.screenPaddingX, paddingTop: spacing[16], gap: spacing[24] },
+  questionBlock: { gap: spacing[8] },
   question: { color: colors.text.default },
-  hint: { color: colors.text.sub, marginTop: -spacing[8] },
-  rows: { marginTop: spacing[8] },
+  hint: { color: colors.text.sub2 },
+  rows: { gap: spacing[12] },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing[8],
-    minHeight: 56,
+    gap: spacing[10],
+    // 피그마 S16 줄 높이 60
+    minHeight: 60,
     borderBottomWidth: 1,
     borderBottomColor: colors.line.default,
   },
   pressed: { opacity: 0.6 },
-  rowLabel: { color: colors.text.default, width: 56 },
-  rowValue: { flex: 1, color: colors.text.default, textAlign: 'right' },
-  rowLater: { flex: 1, color: colors.text.muted, textAlign: 'right' },
+  rowLabel: { color: colors.text.sub2, width: 64 },
+  rowValue: { flex: 1, color: colors.text.default },
+  rowLater: { flex: 1, color: colors.text.muted },
   failed: {
     flexDirection: 'row',
     alignItems: 'center',

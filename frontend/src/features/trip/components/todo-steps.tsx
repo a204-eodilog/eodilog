@@ -18,13 +18,18 @@ export function TodoSteps({ nickname, view, onAction, onPublish }: Props) {
 
   return (
     <View style={styles.wrap}>
-      <Text style={[typography.title3, styles.greeting]}>
-        {nickname ? `${nickname}님, ` : ''}
+      {/* 피그마 S17: 인사 20(이름만 파랑), 단계 줄 위아래 13·아래 선, 지금 단계 버튼 높이 40 */}
+      <Text style={[typography.title2, styles.greeting]}>
+        {nickname ? <Text style={styles.nickname}>{nickname}</Text> : null}
+        {nickname ? '님, ' : ''}
         {current ? `${current.label}부터 해 볼까요?` : '오늘 코스를 확인해요'}
       </Text>
 
       {view.steps.map((step, i) => (
-        <View key={step.label} style={styles.step}>
+        <View
+          key={step.label}
+          style={[styles.step, i < view.steps.length - 1 && styles.stepDivider]}
+        >
           <View
             style={[
               styles.badge,
@@ -37,7 +42,7 @@ export function TodoSteps({ nickname, view, onAction, onPublish }: Props) {
             ) : (
               <Text
                 style={[
-                  typography.micro,
+                  typography.captionBold,
                   step.state === 'current' ? styles.badgeTextCurrent : styles.badgeText,
                 ]}
               >
@@ -47,14 +52,18 @@ export function TodoSteps({ nickname, view, onAction, onPublish }: Props) {
           </View>
           <Text
             style={[
-              typography.bodyMedium,
-              step.state === 'upcoming' ? styles.stepUpcoming : styles.stepLabel,
+              step.state === 'current' ? typography.bodyBold : typography.body,
+              step.state === 'upcoming'
+                ? styles.stepUpcoming
+                : step.state === 'done'
+                  ? styles.stepDone
+                  : styles.stepLabel,
             ]}
           >
             {step.label}
           </Text>
           {step.state === 'current' && view.action ? (
-            <Button label={view.action.label} size="sm" onPress={onAction} />
+            <Button label={view.action.label} size="md" onPress={onAction} />
           ) : null}
         </View>
       ))}
@@ -71,10 +80,12 @@ export function TodoSteps({ nickname, view, onAction, onPublish }: Props) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { gap: spacing[12] },
+  wrap: { gap: spacing[14], paddingTop: spacing[4] },
   greeting: { color: colors.text.default },
+  nickname: { color: colors.brand.primary },
   note: { color: colors.text.muted },
-  step: { flexDirection: 'row', alignItems: 'center', gap: spacing[12], minHeight: 40 },
+  step: { flexDirection: 'row', alignItems: 'center', gap: spacing[14], paddingVertical: 13 },
+  stepDivider: { borderBottomWidth: 1, borderBottomColor: colors.line.default },
   badge: {
     width: 24,
     height: 24,
@@ -88,5 +99,6 @@ const styles = StyleSheet.create({
   badgeText: { color: colors.text.muted },
   badgeTextCurrent: { color: colors.text.inverse },
   stepLabel: { flex: 1, color: colors.text.default },
+  stepDone: { flex: 1, color: colors.text.sub2 },
   stepUpcoming: { flex: 1, color: colors.text.muted },
 });

@@ -159,7 +159,13 @@ function InviteContent({ token, first }: { token: string; first: boolean }) {
           </Text>
         </View>
       </View>
-      <View style={[styles.bottom, { paddingBottom: Math.max(insets.bottom, spacing[24]) }]}>
+      {/* 안드로이드 하단 버튼 줄(내비게이션 바) 높이만 주면 버튼이 바에 붙는다. 바 위로 16을 더 띄우고, 바가 없을 때는 원래 최소 여백을 쓴다 */}
+      <View
+        style={[
+          styles.bottom,
+          { paddingBottom: Math.max(insets.bottom + spacing[16], spacing[24]) },
+        ]}
+      >
         <Pressable
           accessibilityRole="button"
           onPress={() => leave('/home')}
@@ -260,5 +266,6 @@ const styles = StyleSheet.create({
   noticeTitle: { color: colors.text.default, textAlign: 'center', marginTop: spacing[20] },
   noticeDescription: { color: colors.text.icon, textAlign: 'center', marginTop: spacing[8] },
   moving: { flexDirection: 'row', alignItems: 'center', gap: spacing[10], marginTop: spacing[24] },
-  home: { marginTop: spacing[24] },
+  // Button은 기본이 왼쪽 붙음(alignSelf flex-start)이라 가운데로 다시 맞춘다
+  home: { alignSelf: 'center', marginTop: spacing[24] },
 });

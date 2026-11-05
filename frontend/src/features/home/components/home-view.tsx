@@ -311,7 +311,7 @@ function EmptyCard(props: HomeViewProps) {
             <Button
               label="친구 찾기"
               onPress={props.onFindFriends}
-              leading={<Icon name="person-add" size={20} color={colors.text.inverse} />}
+              leading={<Icon name="person-plus" size={20} color={colors.text.inverse} />}
             />
           </>
         ) : (
@@ -320,7 +320,7 @@ function EmptyCard(props: HomeViewProps) {
               label="친구 찾기"
               variant="text"
               onPress={props.onFindFriends}
-              leading={<Icon name="person-add" size={20} color={colors.brand.primary} />}
+              leading={<Icon name="person-plus" size={20} color={colors.brand.primary} />}
             />
             <Button
               label="요즘 뜨는 여행지"
