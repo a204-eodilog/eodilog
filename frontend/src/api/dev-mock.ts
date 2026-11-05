@@ -143,6 +143,33 @@ const REGIONS: Region[] = [
   ['region-gyeongju', '4713000000', '경상북도 경주시'],
 ].map(([id, code, name]) => ({ id, code, name, parentId: null, latitude: null, longitude: null }));
 
+/** S10 개인 즐겨찾기 예시(값 문서 S10 "예시 데이터"). 강문 해변·명주동은 공동 피드에서 담은 것 */
+const BOOKMARKS = [
+  ['광안리 바다뷰 카페', '부산광역시 수영구 광안해변로 219', 35.1532, 129.1186, null],
+  ['강문 해변', '강원특별자치도 강릉시 강문동 산1', 37.7953, 128.9184, 'feed-dev-1'],
+  ['전포 카페거리', '부산광역시 부산진구 전포대로 209', 35.1557, 129.0636, null],
+  ['흰여울문화마을', '부산광역시 영도구 영선동4가 1044', 35.0784, 129.0447, null],
+  ['명주동 골목 카페', '강원특별자치도 강릉시 명주동 15', 37.7537, 128.8957, 'feed-dev-2'],
+] as const;
+const bookmarks = BOOKMARKS.map(([name, address, latitude, longitude, sourceFeedId], i) => ({
+  place: {
+    id: `place-bookmark-${i + 1}`,
+    name,
+    address,
+    latitude,
+    longitude,
+    regionId: null,
+    provider: 'NAVER',
+    providerPlaceId: null,
+    source: 'PROVIDER' as const,
+  },
+  retainedPlace: { name, latitude, longitude },
+  memo: null,
+  sourceFeedId,
+  sourceUnavailable: false,
+  createdAt: new Date(Date.UTC(2026, 10, 5 - i)).toISOString(),
+}));
+
 let seq = 0;
 
 function makeTrip(input: {
@@ -389,6 +416,7 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
   if (method === 'patch' && url === '/me/settings') {
     return ok(config, { data: patchSettings(config) });
   }
+  if (method === 'get' && url === '/me/bookmarks') return ok(config, page(bookmarks));
   if (method === 'get' && url === '/me/trips') return ok(config, page(trips));
 
   if (method === 'post' && url === '/trips') {

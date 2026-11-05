@@ -1,9 +1,9 @@
 ---
 title: "어디로그 AI 서버 API 스펙"
 status: draft
-version: "0.4"
+version: "0.5"
 created: 2026-10-27
-updated: 2026-11-02
+updated: 2026-11-04
 jira: EODI-76
 parent: EODI-141
 sources:
@@ -14,16 +14,16 @@ sources:
   - "프론트 화면 설계 (eodilog-figma-import)"
 ---
 
-# 어디로그 AI 서버 API 스펙 v0.4
+# 어디로그 AI 서버 API 스펙 v0.5
 
-> 백엔드 작업 큐(worker)가 호출하는 **내부 API**다. 응답 `data`는 백엔드 [`api-spec.md`](../../docs/api-spec.md) §10 "비동기 작업 kind별 result"의 모양 그대로이므로 백엔드는 변환 없이 `jobs.result_json`에 저장할 수 있다.
+> 백엔드 작업 큐(worker)가 호출하는 **내부 API**다. 응답 `data`의 최상위 키는 백엔드 [`api-spec.md`](../../docs/api-spec.md) §10 "비동기 작업 kind별 result"와 같다. `TRIP_RECOMMENDATION`·`WEATHER_ALTERNATIVES`·`CHECKLIST_SUGGESTIONS`·`PHOTO_CLASSIFICATION`은 변환 없이 `jobs.result_json`에 저장할 수 있고, 나머지 kind는 §0.1 아래 표의 값이 다르다.
 > 기준 우선순위: **백엔드 API 명세(dev) → 화면 설계 → PRD.** 스펙과 코드가 다르면 스펙을 먼저 고친다.
 
 ## 0. 범위
 
 ### 0.1 백엔드 작업과 AI 엔드포인트
 
-| 백엔드 job kind / API | AI 엔드포인트 | 응답 `data` = 백엔드 모양 |
+| 백엔드 job kind / API | AI 엔드포인트 | 응답 `data` 최상위 키 |
 | --- | --- | --- |
 | `PLACE_EXTRACTION` | `POST /ai/v1/place-extractions` | `{resultStatus, candidates}` |
 | `TRIP_RECOMMENDATION` | `POST /ai/v1/trip-recommendations` | `{items, basis, insufficientData}` |
@@ -35,6 +35,14 @@ sources:
 | `GET /me/preferences`의 추론 항목 | `POST /ai/v1/preference-inferences` | `{inferredItems}` |
 | `GET /me/discovery-recommendations` | `POST /ai/v1/discovery-recommendations` | `{items}` |
 | `GET /me/follow-suggestions` | `POST /ai/v1/follow-suggestions` | `{items}` |
+
+아래 job kind는 AI 응답과 백엔드 DTO가 다르다. AI는 행 ID를 발급하지 않는다(§0.2).
+
+| job kind | AI 응답 | 백엔드 DTO | 처리 |
+| --- | --- | --- | --- |
+| `PLACE_EXTRACTION` | 후보에 `candidateId` 없음. `place`에 `id`·`regionId`·`source` 없음 | `candidates[].candidateId:id`, `place:Place` | `place.id`는 백엔드 resolver가 만든다(§2). `candidateId`·`regionId`를 채우는 방법은 합의 전 |
+| `ITINERARY_PROPOSAL` | 새 항목 `id: null`, 구간 `fromItemId`·`toItemId`·`distanceMeters`·`geometry`가 `null`일 수 있음 | `ItineraryItem.id:id`, `RouteLeg.fromItemId:id`, `toItemId:id` | 저장·적용 방법은 합의 전 |
+| `VISIT_DETECTION` | `{memberId, placeId, visitedAt, evidencePhotoIds}` | `VisitCandidate`(`id`, `place`, `status`, `version`, `visitId` 포함) | 후보 행은 백엔드가 만든다(§8.2) |
 
 ### 0.2 AI 서버가 하지 않는 일
 
@@ -69,7 +77,7 @@ sources:
 
 | AI 응답 | 작업 결과 | 재시도 |
 | --- | --- | --- |
-| 2xx | 성공, `{data}` 봉투를 벗긴 객체를 `result`로 저장 | - |
+| 2xx | 성공, `{data}` 봉투를 벗긴 객체를 `result`로 저장(§0.1 표의 kind는 빠진 값을 처리한 뒤) | - |
 | 503, 500, 연결 실패, 호출 타임아웃 | 일시 실패(`TEMPORARY_FAILURE`) | 최초 포함 3회, 간격 30초 |
 | 4xx | 실패(`EXECUTION_FAILED`) | 없음 |
 
@@ -86,7 +94,7 @@ sources:
   "category": "여행 > 관광,명소|null" }   // ★ 백엔드 places 테이블에 없음. 공급자 분류를 넘겨 달라고 요청(§11)
 
 // Region = 백엔드 Region
-{ "id": "uuid", "code": "busan-yeongdo", "name": "부산 영도구", "parentId": null, "latitude": 35.09, "longitude": 129.06 }
+{ "id": "uuid", "code": "2620000000", "name": "부산광역시 영도구", "parentId": "uuid", "latitude": null, "longitude": null }
 
 // ItineraryItem = 백엔드 ItineraryItem
 { "id": "uuid|null", "place": Place, "day": 1, "order": 1, "startTime": "10:00|null", "stayMinutes": 120 }
@@ -130,7 +138,7 @@ sources:
 ```
 
 - `name`은 자료에서 찾은 **장소 언급**이다. 같은 `name`의 후보들은 같은 언급의 여러 지점이다(화면 "어느 곳인가요?").
-- `place`는 공급자 장소(백엔드 resolver가 `places`에 upsert해 `place.id`를 만든다). 검색 결과가 없으면 `null`, `confidence: null`.
+- `place`는 공급자 장소(백엔드 resolver가 `places`에 upsert해 `place.id`를 만든다). 검색 결과가 없으면 `null`, `confidence: null`. 응답에는 `candidateId`와 `place.id`·`regionId`·`source`가 없다(§0.1).
 - `confidence`(0~1): 정규화한 언급 이름과 공급자 장소 이름의 문자열 유사도.
 - `evidence`: 화면 문구 그대로 — `게시물 글에서 찾았어요` / `캡처 속 간판에서 찾았어요` / `캡처 속 글에서 찾았어요` / `메모에서 찾았어요`.
 
@@ -394,10 +402,10 @@ sources:
 | 5 | `follow-suggestions` 응답에 취향 태그 칩(S44) 필드 추가 검토 | 지금은 `reason`에 문장으로 넣음 |
 | 6 | AI 호출 타임아웃 50초, `X-Internal-Token`, `X-Trace-Id`(`jobId`) 전달 | §1.0 시간 예산 |
 | 7 | §1.0의 사전 검사를 작업 등록 전에 수행 | 공통 오류 코드 4개로는 사유를 화면에 보여 줄 수 없다 |
-| 8 | `regions`의 코드 체계(Q-8)·시드 시점과 좌표 제공 범위 공유 | 현재 운영 자료가 없고 좌표는 NULL 가능. 추천·코스가 사용 |
+| 8 | `regions` 좌표 제공 범위 공유 | 코드 체계(법정동 10자리)와 시드(`V202611021500`)는 끝났지만 시드에 좌표가 없다. 추천·코스가 사용 |
 | 9 | S21 "모은 장소" 수를 `basis`에 추가할지 결정(예: `savedPlaceCount`) | 디자인 결정의 숫자 칸 3개 중 지금 `basis`에 없는 값 |
-| 11 | 네이버 장소 ID 규칙 합의(-162). 응답에 고유 ID가 없어 AI는 AS-12로 만든다. 백엔드도 같은 값을 써야 같은 장소로 저장된다. 저장 약관도 함께 확인 | 추출 결과를 즐겨찾기에 넣을 때 필요 |
 | 10 | 이동 시간 공급자 결정. 2026-11-03 네이버 확정과 AI의 카카오 길찾기가 어긋나 재검토 필요 | AI 변경안의 구간 시간과 백엔드 `ROUTE_RECALCULATION`이 같은 값을 내야 한다 |
+| 11 | 네이버 장소 ID 규칙 합의(-162). 응답에 고유 ID가 없어 AI는 AS-12로 만든다. 백엔드도 같은 값을 써야 같은 장소로 저장된다. 저장 약관도 함께 확인 | 추출 결과를 즐겨찾기에 넣을 때 필요 |
 
 ## 12. 임시 가정
 
@@ -426,4 +434,4 @@ sources:
 | 0.2 | 화면 설계 기준 개편 |
 | 0.3 | **백엔드 API 명세(dev v0.4)에 맞춤.** 응답을 `{data}`/`{error}`와 job kind별 result 모양으로, camelCase, 동기 처리(작업 관리는 백엔드), 날씨 요약·날씨 조회 제거, 코스 재조정(`PLACE_REMOVED`·`WEATHER`)·방문 판정 추가, 구간별 수단, 캡처 10장·사진 50장·HEIC, 준비물 삭제 항목 재제안 금지, 강수확률 0~1 |
 | 0.4 | **백엔드 `jobs` 기반(EODI-135)에 맞춤.** 추적 헤더를 `X-Trace-Id`로 변경, 응답 처리표, 사전 검사 위치, 시간 예산, 재실행 동작 추가. 백엔드 요청 7~10 추가 |
-| 0.5 | **장소 검색을 카카오에서 네이버로 교체**(2026-11-03 기술 확정). 장소 ID 규칙 AS-12 추가 |
+| 0.5 | **장소 검색을 카카오에서 네이버로 교체**(2026-11-03 기술 확정). 장소 ID 규칙 AS-12 추가. 2026-11-04 문서 정리: 머리말 버전, 지역 코드 예시, 변환 없이 저장할 수 있는 범위, §11 순서와 #8 현황 |

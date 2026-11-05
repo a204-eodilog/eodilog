@@ -13,6 +13,9 @@ from app.core.config import Settings, get_settings
 from app.core.errors import TRACE_HEADER, register_error_handlers, resolve_trace_id
 from app.features.checklist_suggestion.router import router as checklist_suggestion_router
 from app.features.checklist_suggestion.service import ChecklistSuggester
+from app.features.photo_classification.embedder import SiglipEmbedder
+from app.features.photo_classification.router import router as photo_classification_router
+from app.features.photo_classification.service import PhotoClassifier
 from app.features.place_extraction.router import router as place_extraction_router
 from app.features.place_extraction.service import PlaceExtractor
 from app.features.preference_inference.router import router as preference_inference_router
@@ -51,6 +54,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.preference_inferrer = PreferenceInferrer(
         llm=_build_llm(app.state.settings, app.state.http)
     )
+    app.state.photo_classifier = PhotoClassifier(
+        embedder=SiglipEmbedder(
+            model_name=app.state.settings.clip_model,
+            pretrained=app.state.settings.clip_pretrained,
+        ),
+        similarity_threshold=app.state.settings.photo_similarity_threshold,
+    )
 
     # 뒤에 등록한 미들웨어가 바깥을 감싼다. 예산 초과 503에도 trace가 추적 ID를 붙인다
     app.add_middleware(RequestBudgetMiddleware, seconds=app.state.settings.request_budget_seconds)
@@ -80,6 +90,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(place_extraction_router)
     app.include_router(preference_inference_router)
     app.include_router(checklist_suggestion_router)
+    app.include_router(photo_classification_router)
 
     return app
 

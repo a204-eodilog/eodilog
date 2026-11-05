@@ -10,6 +10,8 @@ type PillButtonProps = {
   icon: IconName;
   /** gray 장소 줄 [평가하기]·[다녀옴] / white 안내 상자 [사진 올리기] / brand 내 점수 */
   tone?: Tone;
+  /** md: S33 장소 줄(좌우 12/16, bodyMedium) / sm: S34 내 평가 [수정]·[삭제](좌우 10/12, captionMedium). 높이는 둘 다 36 */
+  size?: 'md' | 'sm';
   loading?: boolean;
   accessibilityLabel?: string;
   onPress: () => void;
@@ -28,13 +30,14 @@ const FG: Record<Tone, string> = {
 };
 
 /**
- * S33 오른쪽 알약 버튼. 높이 36, 좌우 12/16, 아이콘 16 + bodyMedium.
+ * S33 오른쪽 알약 버튼(S34 내 평가 [수정]·[삭제]도 sm으로 쓴다). 높이 36, 좌우 12/16, 아이콘 16 + bodyMedium.
  * 공통 Button의 sm은 label 글자(13 굵게)라 값 문서와 달라 여기 따로 둔다
  */
 export function PillButton({
   label,
   icon,
   tone = 'gray',
+  size = 'md',
   loading = false,
   accessibilityLabel,
   onPress,
@@ -50,6 +53,7 @@ export function PillButton({
         styles.pill,
         { backgroundColor: BG[tone] },
         tone === 'brand' && styles.brand,
+        size === 'sm' && styles.sm,
         pressed && styles.pressed,
       ]}
     >
@@ -58,7 +62,14 @@ export function PillButton({
       ) : (
         <Icon name={icon} size={16} color={FG[tone]} />
       )}
-      <Text style={[typography.bodyMedium, { color: FG[tone] }]}>{label}</Text>
+      <Text
+        style={[
+          size === 'sm' ? typography.captionMedium : typography.bodyMedium,
+          { color: FG[tone] },
+        ]}
+      >
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -75,5 +86,6 @@ const styles = StyleSheet.create({
   },
   // 내 점수 알약은 좌우 12
   brand: { paddingRight: spacing[12] },
+  sm: { paddingLeft: spacing[10], paddingRight: spacing[12] },
   pressed: { opacity: 0.7 },
 });

@@ -1,20 +1,9 @@
-import { exceedsAmountMax, formatThousands, formatWon, parseAmount } from '@/lib/format-number';
+import { exceedsAmountMax, parseAmount } from '@/lib/format-number';
 
 import type { ExpenseInput, SettlementState, TripMember } from './types';
 
 /** 서버 규칙: 경비 이름은 앞뒤 공백을 뺀 1~200자 */
 export const TITLE_MAX_LENGTH = 200;
-
-/**
- * 합계 상자 금액. 만 원이 넘으면 만 원 단위 소수 첫째 자리까지 줄인다(Figma "23.4만 원").
- * 만 원보다 작으면 원 단위 그대로.
- */
-export function formatTotalShort(amount: number): string {
-  if (amount < 10_000) return formatWon(amount);
-  const tenThousands = Math.round(amount / 1_000) / 10;
-  const [whole, decimal] = String(tenThousands).split('.');
-  return `${formatThousands(whole)}${decimal ? `.${decimal}` : ''}만 원`;
-}
 
 /** 이름 뒤에 붙는 '이/가'. 받침이 있으면 '이' */
 export function subjectParticle(name: string): string {
