@@ -89,6 +89,40 @@ public class PollTallyRepository {
 				LIMIT :limit""", Map.of("now", Timestamp.from(now), "limit", limit), UUID.class);
 	}
 
+	// 마감 1시간 전 알림을 아직 보내지 않은 OPEN 투표가 있는 여행. 주기 작업이 여행마다 따로 처리한다
+	public List<UUID> tripIdsWithReminderDuePolls(Instant now, Instant windowEnd, int limit) {
+		return jdbc.queryForList("""
+				SELECT DISTINCT p.trip_id
+				FROM polls p
+				JOIN trips t ON t.id = p.trip_id AND t.deleted_at IS NULL
+				WHERE p.status = 'OPEN' AND p.reminder_sent_at IS NULL
+				  AND p.closes_at > :now AND p.closes_at <= :windowEnd
+				LIMIT :limit""",
+				Map.of("now", Timestamp.from(now), "windowEnd", Timestamp.from(windowEnd), "limit", limit), UUID.class);
+	}
+
+	// 이 투표에 한 표 이상 던진 ACTIVE 멤버의 회원 ID(후보 추가 알림 수신자)
+	public List<UUID> activeVoterUserIds(UUID pollId) {
+		return jdbc.queryForList("""
+				SELECT DISTINCT m.user_id
+				FROM poll_votes v
+				JOIN poll_candidates c ON c.id = v.candidate_id
+				JOIN trip_members m ON m.id = v.member_id AND m.status = 'ACTIVE'
+				WHERE c.poll_id = :pollId""", Map.of("pollId", pollId), UUID.class);
+	}
+
+	// 이 투표에 아직 표를 내지 않은 ACTIVE 멤버의 회원 ID(마감 1시간 전 알림 수신자)
+	public List<UUID> activeNonVoterUserIds(UUID tripId, UUID pollId) {
+		return jdbc.queryForList("""
+				SELECT m.user_id
+				FROM trip_members m
+				WHERE m.trip_id = :tripId AND m.status = 'ACTIVE'
+				  AND NOT EXISTS (
+				      SELECT 1 FROM poll_votes v JOIN poll_candidates c ON c.id = v.candidate_id
+				      WHERE c.poll_id = :pollId AND v.member_id = m.id)
+				ORDER BY m.join_order""", Map.of("tripId", tripId, "pollId", pollId), UUID.class);
+	}
+
 	// 지연 마감 전에 잠금 없이 확인한다. 마감할 투표가 없으면 여행 행을 잠그지 않는다
 	public boolean hasDuePoll(UUID tripId, Instant now) {
 		Boolean exists = jdbc.queryForObject("""

@@ -34,7 +34,7 @@ export function TripHero({ trip, headline, companions }: Props) {
         />
         <IconButton
           label="여행 설정"
-          icon="settings"
+          icon="gear"
           onPress={() => router.push(`/trips/${trip.id}/settings`)}
         />
       </View>
@@ -84,7 +84,7 @@ function IconButton({
   onPress,
 }: {
   label: string;
-  icon: 'back' | 'settings';
+  icon: 'back' | 'gear';
   onPress: () => void;
 }) {
   return (

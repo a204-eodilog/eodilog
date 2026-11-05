@@ -21,7 +21,12 @@ const MENU: MenuItem[] = [
   { key: 'course', label: '코스', icon: 'map-pin' },
   { key: 'today', label: '여행 중', icon: 'trip' },
   { key: 'photos', label: '사진', icon: 'copy' },
-  { key: 'review', label: '평가', icon: 'person' },
+  {
+    key: 'review',
+    label: '평가',
+    icon: 'star',
+    open: (tripId) => router.push({ pathname: '/trips/[tripId]/visits', params: { tripId } }),
+  },
   {
     key: 'expense',
     label: '경비',

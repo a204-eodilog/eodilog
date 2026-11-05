@@ -57,6 +57,7 @@ public class ItineraryService {
 	private final RouteLegRepository routeLegRepository;
 	private final ItineraryResponseAssembler itineraryResponseAssembler;
 	private final TripAccessChecker tripAccessChecker;
+	private final ItineraryNotifier itineraryNotifier;
 	private final PlaceReader placeReader;
 	private final EntityManager entityManager;
 	private final Clock clock;
@@ -118,6 +119,7 @@ public class ItineraryService {
 					placed.get(new DayOrder(leg.day(), leg.toOrder())).getId(), leg.transportMode(), now));
 		}
 		itinerary.markReplaced(access.member().getId(), now);
+		itineraryNotifier.courseChanged(itinerary, userId);
 		return itineraryResponseAssembler.assemble(itinerary);
 	}
 
