@@ -6,6 +6,7 @@ import {
   digitsOnly,
   exceedsAmountMax,
   formatThousands,
+  formatTotalShort,
   formatWon,
   parseAmount,
 } from './format-number';
@@ -51,4 +52,17 @@ describe('parseAmount', () => {
 it('digitsOnly·formatWon', () => {
   expect(digitsOnly('21,000원')).toBe('21000');
   expect(formatWon(33000)).toBe('33,000원');
+});
+
+describe('formatTotalShort', () => {
+  it('만 원이 넘으면 만 원 단위로 줄인다', () => {
+    expect(formatTotalShort(234_000)).toBe('23.4만 원');
+    expect(formatTotalShort(180_000)).toBe('18만 원');
+    expect(formatTotalShort(12_345_000)).toBe('1,234.5만 원');
+  });
+
+  it('만 원보다 작으면 원 단위 그대로', () => {
+    expect(formatTotalShort(9_000)).toBe('9,000원');
+    expect(formatTotalShort(0)).toBe('0원');
+  });
 });

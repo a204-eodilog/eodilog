@@ -10,6 +10,8 @@ import { undoVisitOptions } from './use-visit-mutations';
 
 // api.ts가 axios 인스턴스를 만들어서, 지우기만 가짜로 바꿔 둔다
 jest.mock('../api', () => ({ deleteVisit: jest.fn() }));
+// 목록 훅이 쓰는 useMe(@/hooks/use-me)가 apiClient를 만들면서 환경 변수를 읽어서 함께 막아 둔다
+jest.mock('@/api/client', () => ({ apiClient: {} }));
 const mockDelete = deleteVisit as jest.MockedFunction<typeof deleteVisit>;
 
 const TRIP = 't1';

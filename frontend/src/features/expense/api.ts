@@ -1,7 +1,7 @@
 import { randomUUID } from 'expo-crypto';
 
 import { apiClient } from '@/api/client';
-import type { DataResponse, MyProfile, PageResponse } from '@/api/types';
+import type { DataResponse, PageResponse } from '@/api/types';
 
 import type {
   Expense,
@@ -17,11 +17,6 @@ const PAGE_LIMIT = 100;
 
 /** 같은 요청을 다시 보낼 때 같은 키를 쓰면 서버가 두 번 만들지 않는다 */
 export const newIdempotencyKey = () => randomUUID();
-
-export async function getMe(): Promise<MyProfile> {
-  const { data } = await apiClient.get<DataResponse<MyProfile>>('/me');
-  return data.data;
-}
 
 export async function getExpenseTrip(tripId: string): Promise<ExpenseTrip> {
   const { data } = await apiClient.get<DataResponse<ExpenseTrip>>(`/trips/${tripId}`);

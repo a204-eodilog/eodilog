@@ -2,13 +2,12 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, Card, EmptyState, Header, Icon } from '@/components/ui';
-import { formatWon } from '@/lib/format-number';
+import { formatTotalShort, formatWon } from '@/lib/format-number';
 import { colors, layout, spacing, typography } from '@/theme';
 
 import {
   addedAfterSettlement,
   changedAfterSettlement,
-  formatTotalShort,
   payerLabel,
   splitLabel,
 } from '../expense-rules';

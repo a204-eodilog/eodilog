@@ -1,15 +1,10 @@
 import { apiClient } from '@/api/client';
-import type { DataResponse, MyProfile, PageResponse } from '@/api/types';
+import type { DataResponse, PageResponse } from '@/api/types';
 
 import type { ItineraryItem, Visit, VisitTrip } from './types';
 
 /** 서버 최대 페이지 크기. 한 여행의 내 방문은 많지 않아 끝까지 읽는다 */
 const PAGE_LIMIT = 100;
-
-export async function getMe(): Promise<MyProfile> {
-  const { data } = await apiClient.get<DataResponse<MyProfile>>('/me');
-  return data.data;
-}
 
 export async function getVisitTrip(tripId: string): Promise<VisitTrip> {
   const { data } = await apiClient.get<DataResponse<VisitTrip>>(`/trips/${tripId}`);
