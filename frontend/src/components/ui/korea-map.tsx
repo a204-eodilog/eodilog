@@ -15,7 +15,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Defs, G, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 import { KOREA_MAP, KOREA_MAP_CREDIT, MAINLAND_BOUNDS, type MapPoint } from '@/lib/korea-map';
 import { colors, spacing, typography } from '@/theme';
@@ -75,8 +75,20 @@ export function KoreaMap({
 
   return (
     <View style={[styles.box, style]} onLayout={onLayout}>
+      <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
+        <Defs>
+          <RadialGradient id="sea" cx="50%" cy="42%" rx="75%" ry="60%">
+            <Stop offset="0" stopColor={colors.map.seaCenter} />
+            <Stop offset="0.55" stopColor={colors.map.seaMid} />
+            <Stop offset="1" stopColor={colors.map.seaEdge} />
+          </RadialGradient>
+        </Defs>
+        <Rect width="100%" height="100%" fill="url(#sea)" />
+      </Svg>
       {box ? (
         <MapCanvas
+          // 화면 크기가 바뀌면(회전·창 크기) 처음 맞춤부터 다시 한다
+          key={`${box.width}x${box.height}`}
           box={box}
           fills={fills}
           pins={pins}
@@ -204,6 +216,23 @@ function MapCanvas({
   const paths = useMemo(
     () => (
       <Svg width={baseW} height={baseH} viewBox={`0 0 ${KOREA_MAP.width} ${KOREA_MAP.height}`}>
+        {/* 땅 아래 옅은 그림자와 흰 빛 (Figma S05) */}
+        <G transform="translate(0 4)">
+          {KOREA_MAP.sido.map((r) => (
+            <Path key={r.code} d={r.d} fill={colors.shadow} />
+          ))}
+        </G>
+        {KOREA_MAP.sido.map((r) => (
+          <Path
+            key={r.code}
+            d={r.d}
+            fill={LAND}
+            stroke={LAND}
+            strokeWidth={10}
+            strokeLinejoin="round"
+            strokeOpacity={0.8}
+          />
+        ))}
         {KOREA_MAP.sigungu.map((r) => (
           <Path
             key={r.code}
@@ -280,7 +309,7 @@ function PinView({
 }
 
 const styles = StyleSheet.create({
-  box: { flex: 1, overflow: 'hidden', backgroundColor: colors.map.sea },
+  box: { flex: 1, overflow: 'hidden', backgroundColor: colors.map.seaEdge },
   map: { position: 'absolute', left: 0, top: 0, transformOrigin: 'left top' },
   pin: { position: 'absolute', left: 0, top: 0, width: 0, height: 0, alignItems: 'center' },
   center: { justifyContent: 'center' },
