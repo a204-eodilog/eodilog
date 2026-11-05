@@ -19,6 +19,7 @@ B 담당 화면 17개 전부와 A 담당 S13. 다른 화면은 필요할 때 같
 | S10 개인 즐겨찾기 | [S10-bookmarks.md](S10-bookmarks.md) |
 | S11 링크·캡처 등록 | [S11-link-capture.md](S11-link-capture.md) |
 | S12 추출 결과 확인 | [S12-extract-result.md](S12-extract-result.md) |
+| S13 장소 직접 검색·지정 (수동 장소 규칙 포함) | [S13-place-search.md](S13-place-search.md) |
 | S14 저장 장소 상세 | [S14-saved-place.md](S14-saved-place.md) |
 | S30 사진 선택·업로드 | [S30-photo-upload.md](S30-photo-upload.md) |
 | S31 여행 사진 목록 | [S31-trip-photos.md](S31-trip-photos.md) |
@@ -32,7 +33,6 @@ B 담당 화면 17개 전부와 A 담당 S13. 다른 화면은 필요할 때 같
 | S41 타임라인 | [S41-timeline.md](S41-timeline.md) |
 | S42 여행 요약 카드 | [S42-trip-summary-card.md](S42-trip-summary-card.md) |
 | S50 삭제·나가기·탈퇴 확인 | [S50-confirm.md](S50-confirm.md) |
-| S13 장소 직접 검색·지정 (수동 장소 규칙 포함) | [S13-place-search.md](S13-place-search.md) |
 
 **여러 화면에 반복되는 것** (공통으로 만들면 좋은 것): 회색 상자 입력칸(S11·S34·S35), 둥글기 8 작은 태그(S12·S14·S33·N4·S41), 사진 고르기 칸(S30·S31·S32), 버튼이 있는 토스트(S08·S33), "나" 얼굴 연파랑(S31·S35·S36), 흰 테두리 카드(S38·S42), 새로고침·카드·계산기·별 아이콘.
 

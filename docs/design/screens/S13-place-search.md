@@ -1,6 +1,6 @@
 # S13 장소 직접 검색·지정
 
-담당 A · 핵심 · 요구사항 WD-FR-05 · 여는 곳 S12, S20, S23 (장소를 고르는 모든 화면)
+담당 A · 핵심 · 요구사항 WD-FR-05 · 여는 곳 S12, S20, S23, S31, S32 (장소를 고르는 모든 화면)
 
 화면 규칙은 [화면 목록](../../flow/screen-list.md) S13 줄: 장소 검색, 지도에서 고르기. 구현은 MR !115(`frontend/src/features/place`).
 
@@ -30,8 +30,8 @@ if (place) save(place.id); // 뒤로 나가면 null
 
 ## 검색 결과
 
-1. **상단 바** — [뒤로], 제목 "장소 검색"
-2. **검색칸** — 좌우 20, 알약(높이 48, 배경 `colors.surface.default`, 입력 중 테두리 `colors.brand.primaryLight`). 돋보기 20 + 입력 `typography.body`(자리 글 "장소 이름으로 찾기" `colors.text.muted`) + 글자가 있으면 오른쪽 [지우기] 20. 글자를 멈추고 300ms 뒤 검색, 이전 요청은 취소. 검색어 최대 100자(명세에 없어 화면에서 정함)
+1. **상단 바** — 높이 56, 제목 없이 [뒤로] 44 옆에 검색칸이 한 줄로 붙는다(왼쪽 8, 오른쪽 20, 간격 6)
+2. **검색칸** — 남는 너비 전체, 알약(높이 40, 배경 `colors.surface.default`, 입력 중 테두리 `colors.brand.primaryLight`). 돋보기 20 + 입력 `typography.body`(자리 글 "장소 이름으로 찾기" `colors.text.muted`) + 글자가 있으면 오른쪽 [지우기] 28(회색 동그라미). 글자를 멈추고 300ms 뒤 검색, 이전 요청은 취소. 검색어 최대 100자(명세에 없어 화면에서 정함)
 3. **지도에서 직접 고르기 카드** — 위 12, 배경 `colors.brand.primaryBg`, 둥글기 `radius.lg`, 안쪽 14/16. 지도 아이콘 20 `colors.brand.primaryDark` + "지도에서 직접 고르기" `typography.bodyBold` `colors.brand.primaryDark` + 오른쪽 `Icon chevron-right`. 결과가 있어도 항상 보인다
 4. **결과 수** — "검색 결과 N곳" `typography.captionMedium` `colors.text.icon`
 5. **장소 줄** — 높이 64, 핀 아이콘 20 + 이름 `typography.bodyBold`(한 줄) + 주소 `typography.caption` `colors.text.icon`(한 줄, 없으면 생략). 누르면 그 장소를 부른 화면에 돌려주고 닫힘. 한 번에 20곳(첫 페이지만)
@@ -64,8 +64,8 @@ if (place) save(place.id); // 뒤로 나가면 null
 
 ## 그 밖의 상태
 
-- **검색 결과 없음** — 가운데 안내: 제목 "검색 결과가 없어요", 설명 "다른 이름으로 찾거나 지도에서 직접 골라 주세요", 주 버튼 [지도에서 고르기]
-- **검색 오래 걸림** — 8초 초과 또는 503 `PROVIDER_UNAVAILABLE`: 제목 "검색이 오래 걸려 멈췄어요", 주 버튼 [다시 검색], 글자 버튼 "지도에서 고르기"
+- **검색 결과 없음** — 가운데 안내: 제목 "검색 결과가 없어요", 설명 "지도에서 직접 골라 주세요", 주 버튼 [지도에서 고르기]
+- **검색 오래 걸림** — 8초 초과 또는 503 `PROVIDER_UNAVAILABLE`: 제목 "검색이 오래 걸려 멈췄어요", 설명 "검색이 오래 걸려요", 주 버튼 [다시 검색], 글자 버튼 "지도에서 고르기"
 - **그 밖의 실패** — 공통 `ErrorState` "장소를 찾지 못했어요" + [다시 검색]
 - 검색어를 바꿔 이전 요청이 취소된 것은 실패로 보지 않는다
 
