@@ -13,6 +13,14 @@ dependencies = [
     "pillow>=13.0.0",
     "pillow-heif>=1.8.1",
     "python-multipart>=0.0.33",
+    "numpy>=2.4.6",
+]
+
+[project.optional-dependencies]
+vision = [
+    "open-clip-torch>=3.3.0",
+    "torch>=2.15.0",
+    "transformers>=5.22.1",
 ]
 
 [dependency-groups]
