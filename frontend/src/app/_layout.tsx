@@ -16,6 +16,8 @@ import { queryClient } from '@/api/query-client';
 import { setupQueryFocus } from '@/api/query-focus';
 import { ToastHost } from '@/components/ui/toast';
 import { SessionExpiredDialog } from '@/features/auth/components/session-expired-dialog';
+import { startChatRealtime } from '@/features/chat/realtime-chat';
+import { useRealtimeLifecycle } from '@/realtime';
 import { useSessionStore } from '@/stores/session-store';
 
 // 글꼴과 저장된 로그인을 다 불러오기 전에는 시작 화면을 유지한다
@@ -32,6 +34,13 @@ export default function RootLayout() {
   });
   const sessionLoaded = useSessionStore((s) => s.status !== 'loading');
   const ready = (fontsLoaded || fontError !== null) && sessionLoaded;
+
+  // 로그인한 동안 실시간 연결(채팅 등)을 켜고, 앱이 백그라운드면 끊는다
+  useRealtimeLifecycle();
+
+  // 채팅 큐 구독. src/realtime은 기능을 모르므로 앱 층에서 붙인다(채팅 명세 contracts/realtime.md "모듈 경계")
+  const signedIn = useSessionStore((s) => s.status === 'signedIn');
+  useEffect(() => (signedIn ? startChatRealtime(queryClient) : undefined), [signedIn]);
 
   useEffect(() => {
     useSessionStore.getState().hydrate();
