@@ -320,14 +320,79 @@ def test_invalid_llm_entries_are_dropped(client, llm, entry):
     assert set(suggestions(client.post(PATH, json=body()))) == set(ALWAYS)
 
 
-def test_llm_receives_trip_context_but_no_personal_data(client, llm):
-    request = body(items=[item("감천문화마을")], existing=["멀미약 2개"], deleted=["비밀 메모"])
+def test_llm_receives_trip_context_but_no_address_or_ids(client, llm):
+    request = body(items=[item("감천문화마을")])
     assert suggestions(client.post(PATH, json=request))
 
     sent = json.dumps(json.loads(llm.calls[0].request.content), ensure_ascii=False)
     assert "감천문화마을" in sent
-    assert "멀미약" not in sent and "비밀 메모" not in sent
     assert "부산 어딘가" not in sent and JOB_ID not in sent
+
+
+def sent_input(llm) -> dict:
+    """LLM 요청의 user 메시지(JSON 입력)를 꺼낸다."""
+    messages = json.loads(llm.calls[0].request.content)["messages"]
+    return json.loads(next(m["content"] for m in messages if m["role"] == "user"))
+
+
+def test_llm_is_told_existing_and_deleted_item_names(client, llm):
+    request = body(existing=["멀미약 2개"], deleted=["선크림", "  "])
+    assert suggestions(client.post(PATH, json=request))
+
+    sent = sent_input(llm)
+    assert sent["existingItems"] == ["멀미약 2개"]
+    assert sent["deletedItems"] == ["선크림"]
+    system = json.loads(llm.calls[0].request.content)["messages"][0]["content"]
+    assert "같은 뜻" in system
+
+
+@pytest.mark.parametrize(
+    ("deleted", "suggested"),
+    [
+        ("선크림", "자외선 차단제"),
+        ("선크림", "썬크림"),
+        ("선블록", "선크림"),
+        ("우산", "레인코트"),
+        ("우비", "우의"),
+        ("충전기 배터리", "보조배터리"),
+        ("상비약", "구급약"),
+    ],
+)
+def test_llm_synonym_of_deleted_item_is_dropped(client, llm, deleted, suggested):
+    reply = {"items": [{"label": suggested, "reason": "필요해요"}]}
+    llm.mock(return_value=llm_response(reply))
+    found = suggestions(client.post(PATH, json=body(deleted=[deleted])))
+    assert suggested not in found
+
+
+def test_llm_synonym_of_existing_item_is_dropped(client, llm):
+    reply = {"items": [{"label": "자외선 차단제", "reason": "햇볕이 강해요"}]}
+    llm.mock(return_value=llm_response(reply))
+    found = suggestions(client.post(PATH, json=body(existing=["선크림 50ml"])))
+    assert "자외선 차단제" not in found
+
+
+def test_llm_non_synonym_still_passes_after_deletion(client, llm):
+    reply = {
+        "items": [
+            {"label": "자외선 차단제", "reason": "햇볕이 강해요"},
+            {"label": "돗자리", "reason": "공원 일정"},
+        ]
+    }
+    llm.mock(return_value=llm_response(reply))
+    found = suggestions(client.post(PATH, json=body(deleted=["선크림"])))
+    assert "자외선 차단제" not in found
+    assert found["돗자리"] == "공원 일정"
+
+
+def test_synonyms_do_not_change_rule_items(client, llm):
+    # 동의어 묶음은 LLM 추가 제안에만 쓴다. 규칙 제안은 기존 같음·포함 비교만 따른다
+    request = body(forecasts=[weather(rain=0.8, high=30)], existing=["우산"], deleted=["선블록"])
+    found = suggestions(client.post(PATH, json=request))
+    assert "우산" not in found
+    assert found["우비"] == "비 80%"
+    assert found["선크림"] == "최고 30°"
+    assert "모자" in found
 
 
 def test_requires_internal_token(client, llm):

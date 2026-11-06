@@ -58,7 +58,7 @@ class KakaoRoutingClient:
             if (
                 seconds is None
                 and mode is TransportMode.TRANSIT
-                and _straight_line_meters(origin, destination) <= NEAR_ENOUGH_TO_WALK_METERS
+                and straight_line_meters(origin, destination) <= NEAR_ENOUGH_TO_WALK_METERS
             ):
                 mode = TransportMode.WALK
                 seconds = await self._seconds(origin, destination, mode)
@@ -122,7 +122,7 @@ def _leg(mode: TransportMode, seconds: int | None) -> RouteLeg:
     )
 
 
-def _straight_line_meters(a: Coordinate, b: Coordinate) -> float:
+def straight_line_meters(a: Coordinate, b: Coordinate) -> float:
     lat_a, lat_b = math.radians(a.latitude), math.radians(b.latitude)
     half_lat = (lat_b - lat_a) / 2
     half_lng = math.radians(b.longitude - a.longitude) / 2

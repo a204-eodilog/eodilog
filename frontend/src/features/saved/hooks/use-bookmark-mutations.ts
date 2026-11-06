@@ -2,7 +2,13 @@ import { type QueryClient, useMutation, useQueryClient } from '@tanstack/react-q
 
 import { toast } from '@/components/ui';
 
-import { addToTrip, deleteBookmark, putBookmark, updateBookmarkMemo } from '../api';
+import {
+  addToTrip,
+  deleteBookmark,
+  getAllBookmarks,
+  putBookmark,
+  updateBookmarkMemo,
+} from '../api';
 import type { Bookmark } from '../types';
 
 import { bookmarkKeys } from './use-bookmarks';
@@ -63,5 +69,41 @@ export function useAddToTrip(placeId: string) {
     mutationFn: (tripId: string) => addToTrip(tripId, placeId),
     onSuccess: (_data, tripId) =>
       queryClient.invalidateQueries({ queryKey: ['trips', tripId, 'saved-places'] }),
+  });
+}
+
+/** S08 저장 위치. 나만 보기 = 개인 즐겨찾기, 동행과 같이 = 고른 여행의 그룹 즐겨찾기 */
+export type SaveTarget = { kind: 'personal' } | { kind: 'trip'; tripId: string };
+
+/**
+ * S08 장소 저장. 장소 여러 곳(S12에서 찾은 장소)도 한 번에 저장한다.
+ * PUT은 같은 장소면 덮어쓰고 메모를 빼면 메모가 지워져서, 이미 개인 즐겨찾기에 있는 장소는 그 메모를 다시 보낸다.
+ * 원본 피드(sourceFeedId)는 서버가 아직 받지 않아(400) 보내지 않는다(백엔드 후속).
+ * 그룹 즐겨찾기는 내 저장 메모를 읽을 방법이 없어 메모 없이 보낸다(이미 담은 장소면 내 메모가 지워진다, 백엔드 후속)
+ */
+export function useSavePlaces() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ placeIds, target }: { placeIds: string[]; target: SaveTarget }) => {
+      if (target.kind === 'trip') {
+        await Promise.all(placeIds.map((placeId) => addToTrip(target.tripId, placeId)));
+        return;
+      }
+      const saved = await queryClient.ensureQueryData({
+        queryKey: bookmarkKeys.all,
+        queryFn: getAllBookmarks,
+      });
+      await Promise.all(
+        placeIds.map((placeId) => {
+          const memo = saved.find((b) => samePlace(b, placeId))?.memo;
+          return putBookmark(placeId, memo ? { memo } : {});
+        }),
+      );
+    },
+    onSettled: (_data, _error, { target }) =>
+      queryClient.invalidateQueries({
+        queryKey:
+          target.kind === 'trip' ? ['trips', target.tripId, 'saved-places'] : bookmarkKeys.all,
+      }),
   });
 }

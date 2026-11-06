@@ -6,6 +6,8 @@ import {
   findBookmark,
   cityGroups,
   masonryColumns,
+  placeSavedMessage,
+  placeSaveState,
   regionFor,
   syncedAtLabel,
   toSavedItem,
@@ -166,5 +168,50 @@ describe('regionFor', () => {
     const r = regionFor([toSavedItem(bookmark('a', null, 37, 128))]);
     expect(r?.latitudeDelta).toBeCloseTo(0.042);
     expect(regionFor([])).toBeNull();
+  });
+});
+
+describe('placeSaveState (S08)', () => {
+  const base = {
+    choice: 'trip' as const,
+    tripsStatus: 'ready' as const,
+    tripCount: 2,
+    selectedTripId: 't1',
+  };
+
+  it('여행을 골랐으면 동행과 같이로 저장할 수 있다', () => {
+    expect(placeSaveState(base)).toEqual({ target: 'trip', tripDisabled: false, canSave: true });
+  });
+
+  it('내 여행이 없으면 동행과 같이를 막고 나만 보기로 저장한다', () => {
+    expect(placeSaveState({ ...base, tripCount: 0, selectedTripId: null })).toEqual({
+      target: 'personal',
+      tripDisabled: true,
+      canSave: true,
+    });
+  });
+
+  it('내 여행을 불러오는 중이거나 실패하면 동행과 같이는 저장할 수 없고, 여행 없음으로 보지 않는다', () => {
+    for (const tripsStatus of ['loading', 'error'] as const) {
+      expect(placeSaveState({ ...base, tripsStatus, tripCount: 0, selectedTripId: null })).toEqual({
+        target: 'trip',
+        tripDisabled: false,
+        canSave: false,
+      });
+    }
+  });
+
+  it('나만 보기는 여행 목록과 상관없이 저장할 수 있다', () => {
+    expect(
+      placeSaveState({ ...base, choice: 'personal', tripsStatus: 'error', selectedTripId: null })
+        .canSave,
+    ).toBe(true);
+  });
+});
+
+describe('placeSavedMessage (S08)', () => {
+  it('여행이면 여행 이름, 개인이면 개인 즐겨찾기', () => {
+    expect(placeSavedMessage('연말 강릉')).toBe('연말 강릉에 담았어요');
+    expect(placeSavedMessage(null)).toBe('개인 즐겨찾기에 저장했어요');
   });
 });
