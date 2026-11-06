@@ -1,0 +1,939 @@
+{
+ "description": "Wikimedia Commons 여행 사진 평가 세트. 정답은 Claude가 사진을 보고 붙였다(사람 검수 전). variant_of가 있는 사진은 연속 사진을 흉내 낸 파생본이며 주제 정확도 집계에서는 뺀다.",
+ "created": "2026-11-06",
+ "grouping_requests": [
+  {
+   "name": "batch_a",
+   "ids": [
+    "land_06",
+    "land_06_crop",
+    "land_06_bright",
+    "land_06_q60",
+    "land_07",
+    "land_08",
+    "land_16",
+    "land_17",
+    "land_18",
+    "land_15",
+    "land_15_crop",
+    "land_15_dark",
+    "people_06",
+    "people_06_bright",
+    "people_06_q60",
+    "land_09",
+    "land_11",
+    "land_01",
+    "land_03",
+    "land_05",
+    "land_12",
+    "land_14",
+    "land_20",
+    "food_04",
+    "food_06",
+    "food_08",
+    "food_10",
+    "food_12",
+    "food_17",
+    "food_19",
+    "people_02",
+    "people_04",
+    "people_07",
+    "people_09",
+    "people_12",
+    "people_14",
+    "people_16",
+    "people_18",
+    "other_02",
+    "other_04",
+    "other_08",
+    "other_10",
+    "other_12",
+    "other_14",
+    "other_16",
+    "other_18"
+   ]
+  },
+  {
+   "name": "batch_b",
+   "ids": [
+    "food_01",
+    "food_02",
+    "food_03",
+    "food_03_crop",
+    "food_03_resize",
+    "other_05",
+    "other_05_resize",
+    "other_05_jpeg",
+    "other_06",
+    "food_16",
+    "food_16_q50",
+    "food_16_resize",
+    "people_11",
+    "people_11_shift",
+    "people_11_bright",
+    "food_14",
+    "food_15",
+    "land_02",
+    "land_04",
+    "land_10",
+    "land_13",
+    "land_19",
+    "land_21",
+    "food_05",
+    "food_07",
+    "food_09",
+    "food_11",
+    "food_13",
+    "food_18",
+    "people_01",
+    "people_03",
+    "people_05",
+    "people_08",
+    "people_10",
+    "people_13",
+    "people_15",
+    "people_17",
+    "other_01",
+    "other_03",
+    "other_07",
+    "other_09",
+    "other_11",
+    "other_13",
+    "other_15",
+    "other_17",
+    "other_19"
+   ]
+  }
+ ],
+ "images": [
+  {
+   "id": "land_01",
+   "file": "land_01.jpg",
+   "topic": "LANDSCAPE",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "land_02",
+   "file": "land_02.jpg",
+   "topic": "LANDSCAPE",
+   "hard": "해 질 녘 마을 야경",
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "land_03",
+   "file": "land_03.jpg",
+   "topic": "LANDSCAPE",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "land_04",
+   "file": "land_04.jpg",
+   "topic": "LANDSCAPE",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "land_05",
+   "file": "land_05.jpg",
+   "topic": "LANDSCAPE",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "land_06",
+   "file": "land_06.jpg",
+   "topic": "LANDSCAPE",
+   "hard": "야간 도시",
+   "group": "g_land_06",
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "land_06_crop",
+   "file": "land_06_crop.jpg",
+   "topic": "LANDSCAPE",
+   "hard": "야간 도시",
+   "group": "g_land_06",
+   "variant_of": "land_06",
+   "variant": "crop"
+  },
+  {
+   "id": "land_06_bright",
+   "file": "land_06_bright.jpg",
+   "topic": "LANDSCAPE",
+   "hard": "야간 도시",
+   "group": "g_land_06",
+   "variant_of": "land_06",
+   "variant": "bright"
+  },
+  {
+   "id": "land_06_q60",
+   "file": "land_06_q60.jpg",
+   "topic": "LANDSCAPE",
+   "hard": "야간 도시",
+   "group": "g_land_06",
+   "variant_of": "land_06",
+   "variant": "q60"
+  },
+  {
+   "id": "land_07",
+   "file": "land_07.jpg",
+   "topic": "LANDSCAPE",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "land_08",
+   "file": "land_08.jpg",
+   "topic": "LANDSCAPE",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "land_09",
+   "file": "land_09.jpg",
+   "topic": "LANDSCAPE",
+   "hard": "야간 도시",
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "land_10",
+   "file": "land_10.jpg",
+   "topic": "LANDSCAPE",
+   "hard": "야간 도시",
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "land_11",
+   "file": "land_11.jpg",
+   "topic": "LANDSCAPE",
+   "hard": "야간 도시",
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "land_12",
+   "file": "land_12.jpg",
+   "topic": "LANDSCAPE",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "land_13",
+   "file": "land_13.jpg",
+   "topic": "LANDSCAPE",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "land_14",
+   "file": "land_14.jpg",
+   "topic": "LANDSCAPE",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "land_15",
+   "file": "land_15.jpg",
+   "topic": "LANDSCAPE",
+   "hard": null,
+   "group": "g_land_15",
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "land_15_crop",
+   "file": "land_15_crop.jpg",
+   "topic": "LANDSCAPE",
+   "hard": null,
+   "group": "g_land_15",
+   "variant_of": "land_15",
+   "variant": "crop"
+  },
+  {
+   "id": "land_15_dark",
+   "file": "land_15_dark.jpg",
+   "topic": "LANDSCAPE",
+   "hard": null,
+   "group": "g_land_15",
+   "variant_of": "land_15",
+   "variant": "dark"
+  },
+  {
+   "id": "land_16",
+   "file": "land_16.jpg",
+   "topic": "LANDSCAPE",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "land_17",
+   "file": "land_17.jpg",
+   "topic": "LANDSCAPE",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "land_18",
+   "file": "land_18.jpg",
+   "topic": "LANDSCAPE",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "land_19",
+   "file": "land_19.jpg",
+   "topic": "LANDSCAPE",
+   "hard": "작은 사람이 있는 풍경",
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "land_20",
+   "file": "land_20.jpg",
+   "topic": "LANDSCAPE",
+   "hard": "작은 사람이 있는 풍경",
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "land_21",
+   "file": "land_21.jpg",
+   "topic": "LANDSCAPE",
+   "hard": "작은 사람이 있는 풍경",
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "food_01",
+   "file": "food_01.jpg",
+   "topic": "FOOD",
+   "hard": null,
+   "group": "g_bibimbap_real",
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "food_02",
+   "file": "food_02.jpg",
+   "topic": "FOOD",
+   "hard": null,
+   "group": "g_bibimbap_real",
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "food_03",
+   "file": "food_03.jpg",
+   "topic": "FOOD",
+   "hard": null,
+   "group": "g_food_03",
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "food_03_crop",
+   "file": "food_03_crop.jpg",
+   "topic": "FOOD",
+   "hard": null,
+   "group": "g_food_03",
+   "variant_of": "food_03",
+   "variant": "crop"
+  },
+  {
+   "id": "food_03_resize",
+   "file": "food_03_resize.jpg",
+   "topic": "FOOD",
+   "hard": null,
+   "group": "g_food_03",
+   "variant_of": "food_03",
+   "variant": "resize"
+  },
+  {
+   "id": "food_04",
+   "file": "food_04.jpg",
+   "topic": "FOOD",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "food_05",
+   "file": "food_05.jpg",
+   "topic": "FOOD",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "food_06",
+   "file": "food_06.jpg",
+   "topic": "FOOD",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "food_07",
+   "file": "food_07.jpg",
+   "topic": "FOOD",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "food_08",
+   "file": "food_08.jpg",
+   "topic": "FOOD",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "food_09",
+   "file": "food_09.jpg",
+   "topic": "FOOD",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "food_10",
+   "file": "food_10.jpg",
+   "topic": "FOOD",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "food_11",
+   "file": "food_11.jpg",
+   "topic": "FOOD",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "food_12",
+   "file": "food_12.jpg",
+   "topic": "FOOD",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "food_13",
+   "file": "food_13.jpg",
+   "topic": "FOOD",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "food_14",
+   "file": "food_14.jpg",
+   "topic": "FOOD",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "food_15",
+   "file": "food_15.jpg",
+   "topic": "FOOD",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "food_16",
+   "file": "food_16.jpg",
+   "topic": "FOOD",
+   "hard": null,
+   "group": "g_food_16",
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "food_16_q50",
+   "file": "food_16_q50.jpg",
+   "topic": "FOOD",
+   "hard": null,
+   "group": "g_food_16",
+   "variant_of": "food_16",
+   "variant": "q50"
+  },
+  {
+   "id": "food_16_resize",
+   "file": "food_16_resize.jpg",
+   "topic": "FOOD",
+   "hard": null,
+   "group": "g_food_16",
+   "variant_of": "food_16",
+   "variant": "resize"
+  },
+  {
+   "id": "food_17",
+   "file": "food_17.jpg",
+   "topic": "FOOD",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "food_18",
+   "file": "food_18.jpg",
+   "topic": "FOOD",
+   "hard": "시장 과일 진열",
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "food_19",
+   "file": "food_19.jpg",
+   "topic": "FOOD",
+   "hard": "손이 보이는 음식",
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "people_01",
+   "file": "people_01.jpg",
+   "topic": "PEOPLE",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "people_02",
+   "file": "people_02.jpg",
+   "topic": "PEOPLE",
+   "hard": "풍경 앞 단체 사진",
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "people_03",
+   "file": "people_03.jpg",
+   "topic": "PEOPLE",
+   "hard": "음식·음료와 사람",
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "people_04",
+   "file": "people_04.jpg",
+   "topic": "PEOPLE",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "people_05",
+   "file": "people_05.jpg",
+   "topic": "PEOPLE",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "people_06",
+   "file": "people_06.jpg",
+   "topic": "PEOPLE",
+   "hard": null,
+   "group": "g_people_06",
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "people_06_bright",
+   "file": "people_06_bright.jpg",
+   "topic": "PEOPLE",
+   "hard": null,
+   "group": "g_people_06",
+   "variant_of": "people_06",
+   "variant": "bright"
+  },
+  {
+   "id": "people_06_q60",
+   "file": "people_06_q60.jpg",
+   "topic": "PEOPLE",
+   "hard": null,
+   "group": "g_people_06",
+   "variant_of": "people_06",
+   "variant": "q60"
+  },
+  {
+   "id": "people_07",
+   "file": "people_07.jpg",
+   "topic": "PEOPLE",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "people_08",
+   "file": "people_08.jpg",
+   "topic": "PEOPLE",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "people_09",
+   "file": "people_09.jpg",
+   "topic": "PEOPLE",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "people_10",
+   "file": "people_10.jpg",
+   "topic": "PEOPLE",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "people_11",
+   "file": "people_11.jpg",
+   "topic": "PEOPLE",
+   "hard": null,
+   "group": "g_people_11",
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "people_11_shift",
+   "file": "people_11_shift.jpg",
+   "topic": "PEOPLE",
+   "hard": null,
+   "group": "g_people_11",
+   "variant_of": "people_11",
+   "variant": "shift"
+  },
+  {
+   "id": "people_11_bright",
+   "file": "people_11_bright.jpg",
+   "topic": "PEOPLE",
+   "hard": null,
+   "group": "g_people_11",
+   "variant_of": "people_11",
+   "variant": "bright"
+  },
+  {
+   "id": "people_12",
+   "file": "people_12.jpg",
+   "topic": "PEOPLE",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "people_13",
+   "file": "people_13.jpg",
+   "topic": "PEOPLE",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "people_14",
+   "file": "people_14.jpg",
+   "topic": "PEOPLE",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "people_15",
+   "file": "people_15.jpg",
+   "topic": "PEOPLE",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "people_16",
+   "file": "people_16.jpg",
+   "topic": "PEOPLE",
+   "hard": "음식과 사람",
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "people_17",
+   "file": "people_17.jpg",
+   "topic": "PEOPLE",
+   "hard": "음식과 사람",
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "people_18",
+   "file": "people_18.jpg",
+   "topic": "PEOPLE",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "other_01",
+   "file": "other_01.jpg",
+   "topic": "OTHER",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "other_02",
+   "file": "other_02.jpg",
+   "topic": "OTHER",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "other_03",
+   "file": "other_03.png",
+   "topic": "OTHER",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "other_04",
+   "file": "other_04.png",
+   "topic": "OTHER",
+   "hard": "스크린샷",
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "other_05",
+   "file": "other_05.jpg",
+   "topic": "OTHER",
+   "hard": "스크린샷",
+   "group": "g_other_05",
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "other_05_resize",
+   "file": "other_05_resize.jpg",
+   "topic": "OTHER",
+   "hard": "스크린샷",
+   "group": "g_other_05",
+   "variant_of": "other_05",
+   "variant": "resize"
+  },
+  {
+   "id": "other_05_jpeg",
+   "file": "other_05_jpeg.jpg",
+   "topic": "OTHER",
+   "hard": "스크린샷",
+   "group": "g_other_05",
+   "variant_of": "other_05",
+   "variant": "jpeg"
+  },
+  {
+   "id": "other_06",
+   "file": "other_06.jpg",
+   "topic": "OTHER",
+   "hard": "스크린샷",
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "other_07",
+   "file": "other_07.png",
+   "topic": "OTHER",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "other_08",
+   "file": "other_08.jpg",
+   "topic": "OTHER",
+   "hard": "손에 든 표",
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "other_09",
+   "file": "other_09.jpg",
+   "topic": "OTHER",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "other_10",
+   "file": "other_10.jpg",
+   "topic": "OTHER",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "other_11",
+   "file": "other_11.jpg",
+   "topic": "OTHER",
+   "hard": "메뉴판",
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "other_12",
+   "file": "other_12.jpg",
+   "topic": "OTHER",
+   "hard": "박물관 실내",
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "other_13",
+   "file": "other_13.jpg",
+   "topic": "OTHER",
+   "hard": "박물관 실내",
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "other_14",
+   "file": "other_14.jpg",
+   "topic": "OTHER",
+   "hard": "호텔 객실",
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "other_15",
+   "file": "other_15.jpg",
+   "topic": "OTHER",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "other_16",
+   "file": "other_16.jpg",
+   "topic": "OTHER",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "other_17",
+   "file": "other_17.jpg",
+   "topic": "OTHER",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "other_18",
+   "file": "other_18.jpg",
+   "topic": "OTHER",
+   "hard": null,
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  },
+  {
+   "id": "other_19",
+   "file": "other_19.jpg",
+   "topic": "OTHER",
+   "hard": "박물관 홀",
+   "group": null,
+   "variant_of": null,
+   "variant": null
+  }
+ ],
+ "grouping_note": "2026-11-06 첫 실행 뒤 요청 구성만 고쳤다. 처음 구성은 음성 쌍(비슷하지만 다른 사진)이 서로 다른 요청으로 갈라져 잘못 묶임을 시험하지 못했다. 정답(topic, group)은 바꾸지 않았다."
+}

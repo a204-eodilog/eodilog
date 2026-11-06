@@ -89,3 +89,40 @@ def test_rescore_uses_current_labels_without_changing_recorded_answers():
     assert rescored["correct"] is True
     assert rescored["mentions"] == ["강릉교동짬뽕본점"]
     assert rescored["seconds"] == 1.0
+
+
+def test_data_dir_defaults_to_places_set():
+    from pathlib import Path
+
+    from scripts.eval_places import parse_args
+
+    assert parse_args([]).data_dir == Path("eval_data/places")
+    assert parse_args(["--data-dir", "eval_data/captures"]).data_dir == Path("eval_data/captures")
+
+
+async def test_evaluate_model_reads_and_writes_inside_data_dir(tmp_path, monkeypatch):
+    import json
+
+    import scripts.eval_places as eval_places
+    from app.core.config import Settings
+    from app.features.place_extraction.service import Candidate, ExtractionResult
+
+    (tmp_path / "images").mkdir()
+    (tmp_path / "images" / "a.png").write_bytes(b"png")
+    labels = {"images": {"a.png": {"expected": ["감천문화마을"], "also_visible": []}}}
+    (tmp_path / "labels.json").write_text(json.dumps(labels), "utf-8")
+    seen = []
+
+    class FakeExtractor:
+        async def extract(self, source):
+            seen.append(source.captures)
+            candidate = Candidate(name="감천문화마을", place=None, evidence="", confidence=None)
+            return ExtractionResult(result_status="MULTIPLE_CANDIDATES", candidates=[candidate])
+
+    monkeypatch.setattr(eval_places, "_build_place_extractor", lambda *_: FakeExtractor())
+    rows = await eval_places.evaluate_model(None, Settings(), "m", None, tmp_path)
+
+    assert seen == [[b"png"]]
+    assert rows[0]["correct"] is True
+    saved = (tmp_path / "results" / "m.jsonl").read_text("utf-8").splitlines()
+    assert json.loads(saved[0])["mentions"] == ["감천문화마을"]
