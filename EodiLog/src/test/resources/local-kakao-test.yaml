@@ -20,6 +20,10 @@ app:
     retry-delay: 30s
     batch-size: 1
     concurrency: 2
+  storage:
+    bucket: fake-local-bucket
+    region: ap-northeast-2
+    upload-url-ttl: 10m
   auth:
     kakao-client-id: fake-local-client
     kakao-client-secret: fake-local-secret

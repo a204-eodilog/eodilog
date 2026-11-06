@@ -50,10 +50,10 @@
 
 | 상태 | 대표 업무 오류 |
 | --- | --- |
-| 404 | `TRIP_NOT_FOUND`, `FEED_NOT_FOUND`, `JOB_NOT_FOUND` — 존재를 공개할 수 없는 자료도 같은 응답. 여행 안의 하위 자료는 `MEMBER_NOT_FOUND`(없거나 이탈한 멤버십), `CHECKLIST_ITEM_NOT_FOUND`(없거나 삭제된 준비물), `EXPENSE_NOT_FOUND`(없거나 삭제된 경비), `SETTLEMENT_NOT_FOUND`(없거나 다른 여행의 정산 계산), `CHAT_ROOM_NOT_FOUND`(없거나 삭제된 여행·참여하지 않았거나 나간 채팅방), `POLL_NOT_FOUND`(없거나 다른 여행의 투표), `VISIT_NOT_FOUND`(없거나 체크 해제한·다른 여행의 방문), `REVIEW_NOT_FOUND`(평가를 쓰지 않았거나 지운 방문) |
-| 409 | `VERSION_CONFLICT`, `POLL_CLOSED`, `ALREADY_MEMBER`, `ALREADY_APPLIED`, `TRIP_FULL`(여행 ACTIVE 멤버 정원 초과), `CLIENT_MESSAGE_ID_REUSED`(같은 clientMessageId를 다른 방·본문에 재사용), `REVIEW_EXISTS`(평가가 있는 방문의 체크 해제) |
+| 404 | `TRIP_NOT_FOUND`, `FEED_NOT_FOUND`, `JOB_NOT_FOUND` — 존재를 공개할 수 없는 자료도 같은 응답. 여행 안의 하위 자료는 `MEMBER_NOT_FOUND`(없거나 이탈한 멤버십), `CHECKLIST_ITEM_NOT_FOUND`(없거나 삭제된 준비물), `EXPENSE_NOT_FOUND`(없거나 삭제된 경비), `SETTLEMENT_NOT_FOUND`(없거나 다른 여행의 정산 계산), `CHAT_ROOM_NOT_FOUND`(없거나 삭제된 여행·참여하지 않았거나 나간 채팅방), `POLL_NOT_FOUND`(없거나 다른 여행의 투표), `VISIT_NOT_FOUND`(없거나 체크 해제한·다른 여행의 방문), `REVIEW_NOT_FOUND`(평가를 쓰지 않았거나 지운 방문), `ASSET_NOT_FOUND`(없거나 남의·볼 수 없는 파일) |
+| 409 | `VERSION_CONFLICT`, `POLL_CLOSED`, `ALREADY_MEMBER`, `ALREADY_APPLIED`, `TRIP_FULL`(여행 ACTIVE 멤버 정원 초과), `CLIENT_MESSAGE_ID_REUSED`(같은 clientMessageId를 다른 방·본문에 재사용), `REVIEW_EXISTS`(평가가 있는 방문의 체크 해제), `ASSET_NOT_PENDING`(이미 확인했거나 취소한 파일의 complete·취소), `UPLOAD_NOT_FOUND`(complete 때 저장소에 아직 파일이 없음) |
 | 410 | `INVITATION_EXPIRED`·`INVITATION_REVOKED` — 사용자가 제시한 유효 형식의 초대 토큰 검증 결과. 새 링크 발급이나 취소로 무효가 된 링크만 `INVITATION_REVOKED`, 없는 토큰·기간 지남·삭제된 여행·초대자 이탈은 `INVITATION_EXPIRED` |
-| 422 | `INSUFFICIENT_DATA`, `CURRENCY_MISMATCH`, `INVALID_PARTICIPANTS`, `UNSUPPORTED_INPUT`, `INVALID_ROUTE_LEGS`(코스 구간이 빠지거나 겹치거나 인접하지 않음) |
+| 422 | `INSUFFICIENT_DATA`, `CURRENCY_MISMATCH`, `INVALID_PARTICIPANTS`, `UNSUPPORTED_INPUT`, `INVALID_ROUTE_LEGS`(코스 구간이 빠지거나 겹치거나 인접하지 않음), `UPLOAD_MISMATCH`(올린 파일의 크기·실제 형식이 업로드 요청과 다름) |
 | 503 | `PROVIDER_UNAVAILABLE` — 지도·날씨·장소 공급자 장애. 결과 없음과 구분 |
 
 동시 편집 대상인 일정·투표·경비·정산·설정·피드 편집에는 `expectedVersion:integer`를 사용한다. 다른 버전을 덮어쓰지 않고 `409`를 반환한다. 공동 피드 편집과 개인 숨김 변경에도 버전 조건을 적용한다. 여행 생성·경비 생성·비동기 작업 생성·정산 계산·사진 업로드 배치 생성 POST에는 `Idempotency-Key` 헤더가 필수라는 제안이며 `(사용자, 실제 요청 경로, 키)`를 묶는다. 채팅 메시지 전송은 본문의 `clientMessageId`가 이 역할을 하므로 헤더를 요구하지 않는다(보내도 쓰지 않음, §9, 2026-11-02). 같은 키/같은 본문은 최초 결과, 다른 본문은 409. 여행 안 자료를 만드는 POST(경비 등록 등)는 최초 결과를 다시 줄 때도 현재 멤버 권한을 다시 검사한다(등록 뒤 이탈·내보내기·여행 삭제면 404). 다른 POST에는 이 헤더를 필수로 요구하지 않는다. 유효기간은 Q-12에서 확정한다.
@@ -204,10 +204,10 @@
 
 | Method | URL | 권한 | 요청 | 성공 data / 상태 | 주요 규칙 |
 | --- | --- | --- | --- | --- | --- |
-| POST | `/assets/upload-intents` | 로그인/여행 사진은 멤버 | `{purpose:PROFILE\|CAPTURE\|TRIP_PHOTO,tripId?:id,contentType:string,byteSize:integer,batchId?:id}` | `UploadIntent` / 201 | TRIP_PHOTO는 JPG/PNG/HEIC. batchId는 같은 사용자/여행의 PhotoUploadBatch이며 등록 시 필수. 파일 실제 형식 검증, 용량 Q-7 |
-| DELETE | `/assets/{assetId}` | 업로더 | 없음 | 204 | PENDING 업로드 취소만, 서버 객체 정리·이후 complete 거부. 등록된 사진은 사진 삭제 API 사용 |
-| POST | `/assets/{assetId}/complete` | 업로더 | 없음 | `Asset` / 200 | 객체 존재·크기·형식 검증, 본인 파일만. 허용된 EXIF 위치/촬영시각은 비공개 메타데이터로 추출, 공개 파일은 GPS 메타데이터 제거 |
-| GET | `/assets/{assetId}/download` | 실제 자료 접근권자 | `feedId?:id` | 파일 바이트 / 200 | 인증 게이트웨이 스트리밍 제안. 피드 경유면 매 요청 직접 공동 피드 공개 정책·포함 사진·삭제/이동 상태를 재검사. 개인 경로 숨김을 직접 파일 접근 차단으로 확대하지 않음, private/no-store |
+| POST | `/assets/upload-intents` | 로그인/여행 사진은 멤버 | `{purpose:PROFILE\|CAPTURE\|TRIP_PHOTO,tripId?:id,contentType:string,byteSize:integer,batchId?:id}` | `UploadIntent` / 201 | PROFILE·CAPTURE는 JPG/PNG, TRIP_PHOTO는 JPG/PNG/HEIC(`image/jpeg`·`image/png`·`image/heic`·`image/heif`). 파일 1개 1바이트~15MB(Q-7, 2026-11-06). tripId는 TRIP_PHOTO만 필수이고 다른 용도는 보내면 400. 여행이 없거나 ACTIVE 멤버가 아니면 404 TRIP_NOT_FOUND. batchId는 같은 사용자/여행의 PhotoUploadBatch이며 등록 시 필수(사진 묶음 구현 전까지는 보내면 400). 2026-11-06 구현 |
+| DELETE | `/assets/{assetId}` | 업로더 | 없음 | 204 | PENDING 업로드 취소만, 서버 객체 정리·이후 complete 거부(409 ASSET_NOT_PENDING). 이미 취소한 파일은 다시 204, READY는 409 ASSET_NOT_PENDING. 등록된 사진은 사진 삭제 API 사용. 없거나 남의 파일은 404 ASSET_NOT_FOUND |
+| POST | `/assets/{assetId}/complete` | 업로더 | 없음 | `Asset` / 200 | 객체 존재·크기·형식 검증, 본인 파일만. 이미 READY면 그대로 200. 객체가 없으면 409 UPLOAD_NOT_FOUND, 크기·실제 형식(파일 앞부분 시그니처)이 요청과 다르면 객체를 지우고 422 UPLOAD_MISMATCH(PENDING 유지). 허용된 EXIF 위치/촬영시각은 비공개 메타데이터로 추출, 공개 파일은 GPS 메타데이터 제거(사진 등록 작업에서 구현) |
+| GET | `/assets/{assetId}/download` | 실제 자료 접근권자 | `feedId?:id` | 파일 바이트 / 200 | 인증 게이트웨이 스트리밍 제안. READY만. 업로더는 항상, PROFILE은 로그인 사용자, CAPTURE는 업로더만, TRIP_PHOTO는 그 여행 ACTIVE 멤버만. 볼 수 없으면 404 ASSET_NOT_FOUND. 피드 경유면 매 요청 직접 공동 피드 공개 정책·포함 사진·삭제/이동 상태를 재검사(feedId는 피드 구현 때 추가). 개인 경로 숨김을 직접 파일 접근 차단으로 확대하지 않음, private/no-store |
 | GET | `/trips/{tripId}/photos` | 멤버 | `topic?:string,groupId?:id` + 페이지 | `Photo[]` / 200 | 부분 업로드 실패는 기존 성공 사진과 독립 |
 | POST | `/trips/{tripId}/photos` | 멤버 | `{batchId:id,assetId:id,placeId?:id,capturedAt?:datetime}` | `Photo` / 201 | READY·본인·같은 여행/배치·지원 형식 확인. 배치 한도 예약/소비는 원자적, 부분 성공 유지 |
 | POST | `/trips/{tripId}/photo-upload-batches` | 멤버 | `{fileCount:integer}` | `PhotoUploadBatch` / 201 | Idempotency-Key 필수 제안. 한 번의 업로드 1~50장. 51장 이상 422 INPUT_LIMIT_EXCEEDED. 형식/파일 크기는 각 intent에서 검사 |

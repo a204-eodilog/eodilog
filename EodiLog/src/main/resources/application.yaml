@@ -36,6 +36,15 @@ app:
     concurrency: 2
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:}
+  storage:
+    # 사진·캡처 파일을 두는 S3 버킷. 버킷은 비공개로 두고 다운로드는 서버가 권한을 확인해 전달한다
+    bucket: ${STORAGE_BUCKET}
+    region: ${STORAGE_REGION:ap-northeast-2}
+    # 로컬은 .env의 키를 쓴다. 비우면 AWS 기본 자격 증명 체인(EC2 IAM 역할 등)을 쓴다
+    access-key-id: ${AWS_ACCESS_KEY_ID:}
+    secret-access-key: ${AWS_SECRET_ACCESS_KEY:}
+    # 업로드 URL 유효 시간. 지나면 새 업로드 요청을 받아야 한다
+    upload-url-ttl: 10m
   auth:
     kakao-client-id: ${KAKAO_CLIENT_ID}
     kakao-client-secret: ${KAKAO_CLIENT_SECRET}
