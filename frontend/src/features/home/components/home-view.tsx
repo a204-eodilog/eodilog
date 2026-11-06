@@ -27,6 +27,8 @@ export type HomeViewProps = {
   state: HomeState;
   marks: readonly RegionMark[];
   recommendations: readonly HomeRecommendation[];
+  /** 추천 조회 상태. 불러오는 중이나 실패에 "좋아요를 누르면…" 안내를 보이지 않으려고 받는다 */
+  recommendationsStatus?: 'loading' | 'error' | 'ready';
   unreadCount: number;
   /** '공개된 기록 없음' 안내의 친구 수. 모르면 null */
   friendCount: number | null;
@@ -131,7 +133,7 @@ export function HomeView(props: HomeViewProps) {
 }
 
 function MapBody(props: HomeViewProps) {
-  const { state, marks } = props;
+  const { state, marks, onRegion, lockedFriends } = props;
   const [stage, setStage] = useState<MapStage>();
   const [selectedMarks, setSelectedMarks] = useState<readonly RegionMark[] | null>(null);
   const [zoomTo, setZoomTo] = useState<{ key: number; point: MapPoint; scale: number }>();
@@ -164,7 +166,7 @@ function MapBody(props: HomeViewProps) {
     }
     const next = MAP_STAGES[index + 1];
     if (next === undefined) {
-      props.onRegion(g.marks[0]);
+      onRegion(g.marks[0]);
       return;
     }
     setZoomTo((prev) => ({ key: (prev?.key ?? 0) + 1, point: g.point, scale: next + 0.1 }));
@@ -178,7 +180,7 @@ function MapBody(props: HomeViewProps) {
       });
     }
     if (state === 'no-public') {
-      return (props.lockedFriends ?? []).flatMap((f) => {
+      return (lockedFriends ?? []).flatMap((f) => {
         const r = findMapRegion(f.regionCode);
         return r
           ? [
@@ -205,8 +207,7 @@ function MapBody(props: HomeViewProps) {
         const side = 'mark' in entry ? entry.side : 'right';
         const r = findMapRegion(item.regionCode);
         if (!r) return [];
-        const press = () =>
-          props.renderRegionSheet ? setSelectedMarks([item]) : props.onRegion(item);
+        const press = () => (props.renderRegionSheet ? setSelectedMarks([item]) : onRegion(item));
         return [
           {
             key: detail ? `${item.regionCode}-photo` : item.regionCode,
@@ -243,7 +244,7 @@ function MapBody(props: HomeViewProps) {
       ];
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state, marks, stage, props, fillSteps, order, top, entered]);
+  }, [state, marks, stage, onRegion, lockedFriends, fillSteps, order, top, entered]);
 
   const focus = props.initialZoom ? findMapRegion(props.initialZoom.regionCode) : undefined;
   const ready = state === 'ready';
@@ -287,6 +288,7 @@ function MapBody(props: HomeViewProps) {
       ) : ready ? (
         <RecommendSheet
           items={props.recommendations}
+          status={props.recommendationsStatus ?? 'ready'}
           initialExpanded={props.initialSheetExpanded}
           onPress={props.onRecommendation}
         />

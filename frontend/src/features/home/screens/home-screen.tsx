@@ -30,6 +30,7 @@ export function HomeScreen() {
       state={home.state}
       marks={home.marks}
       recommendations={home.recommendations}
+      recommendationsStatus={home.recommendationsStatus}
       unreadCount={home.unreadCount}
       friendCount={null}
       onRetry={home.retry}
