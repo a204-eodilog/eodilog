@@ -808,12 +808,19 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
   if (method === 'get' && facilitiesMatch) {
     const type = String((config.params as { type?: string } | undefined)?.type ?? '');
     const at = new Date(new Date().setHours(10, 15, 0, 0)).toISOString();
-    const fac = (id: string, name: string, minutes: number, availability: string | null) => ({
+    // 기준 장소(37.7718, 128.9478) 둘레에 흩어 놓는다. 걷는 1분 ≈ 70m, 방향은 시설마다 다르게
+    const fac = (
+      id: string,
+      name: string,
+      minutes: number,
+      availability: string | null,
+      angle = Number(id.replace(/D/g, '')) * 2.1,
+    ) => ({
       providerId: id,
       name,
       type,
-      latitude: 37.7718 + minutes / 5000,
-      longitude: 128.9478 - minutes / 6000,
+      latitude: 37.7718 + ((minutes * 70) / 111_000) * Math.sin(angle),
+      longitude: 128.9478 + ((minutes * 70) / 88_000) * Math.cos(angle),
       walkingSeconds: minutes * 60,
       availability,
       queriedAt: at,

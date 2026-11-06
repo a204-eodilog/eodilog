@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, ErrorState, Header, Icon } from '@/components/ui';
 import { assetSource } from '@/lib/asset-image';
@@ -24,6 +24,8 @@ export type DestinationViewProps = {
 export function DestinationView(props: DestinationViewProps) {
   const { info } = props;
   const cover = assetSource(info?.photos[0]);
+  // 안드로이드 아래 버튼(3버튼 탐색) 위로 올린다. 화면 끝 기준 절대 위치라 안전 영역이 저절로 빠지지 않는다
+  const insets = useSafeAreaInsets();
   return (
     <SafeAreaView style={styles.screen} edges={['left', 'right', 'bottom']}>
       <Header title={info?.name} />
@@ -99,7 +101,10 @@ export function DestinationView(props: DestinationViewProps) {
               )}
             </View>
           </ScrollView>
-          <View style={styles.fab} pointerEvents="box-none">
+          <View
+            style={[styles.fab, { bottom: spacing[24] + insets.bottom }]}
+            pointerEvents="box-none"
+          >
             <Button
               label="새 여행"
               onPress={props.onNewTrip}

@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { MapLine, MapMarker, MapView } from '@/components/map';
+import { type MapBox, MapLine, MapMarker, MapView, spreadMarkers } from '@/components/map';
 import { colors, radius, spacing, typography } from '@/theme';
 
 import { routeLegend, routeLines, routeRegion } from '../route-rules';
@@ -16,21 +17,38 @@ const HEIGHT = 180;
  * 웹 미리보기는 route-map.web.tsx(통계청 경계 SVG 그림)가 대신 그려진다
  */
 export function RouteMap({ days }: { days: readonly FeedDay[] }) {
+  const [box, setBox] = useState<MapBox | null>(null);
   const stops = days.flatMap((d) => d.stops);
   const region = routeRegion(stops.map((s) => s.point));
   if (!region) return null;
   const legend = routeLegend(days);
+  // 가까운 장소 번호가 서로 가리지 않게 핀만 조금 벌린다(선은 실제 좌표)
+  const pins = box
+    ? spreadMarkers(
+        stops.map((s) => s.point),
+        region,
+        box,
+      )
+    : stops.map((s) => s.point);
   return (
-    <View style={styles.box} accessibilityLabel={`경로, 장소 ${stops.length}곳`}>
+    <View
+      style={styles.box}
+      accessibilityLabel={`경로, 장소 ${stops.length}곳`}
+      onLayout={(e) => {
+        const { width, height } = e.nativeEvent.layout;
+        if (box?.width !== width || box?.height !== height) setBox({ width, height });
+      }}
+    >
       <MapView initialRegion={region} isScrollGesturesEnabled={false} isZoomGesturesEnabled={false}>
         {routeLines(days).map((line) => (
           <MapLine key={line.day} coords={line.coords} color={line.color} dashed={line.dashed} />
         ))}
-        {stops.map((s) => (
+        {stops.map((s, i) => (
           <MapMarker
             key={s.itemId}
-            latitude={s.point.latitude}
-            longitude={s.point.longitude}
+            latitude={pins[i].latitude}
+            longitude={pins[i].longitude}
+            zIndex={stops.length - i}
             label={String(s.number)}
             dot="brand"
             accessibilityLabel={`${s.number}. ${s.name}`}

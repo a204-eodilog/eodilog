@@ -1,7 +1,8 @@
+import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { MapMarker, MapView } from '@/components/map';
+import { fitRegion, type MapBox, MapMarker, MapView, spreadMarkers } from '@/components/map';
 import { AvatarGroup, Header, Icon } from '@/components/ui';
 import { withIga } from '@/lib/korean';
 import { colors, layout, radius, spacing, typography } from '@/theme';
@@ -26,17 +27,8 @@ export type FacilitiesViewProps = {
   onRetry: () => void;
 };
 
-/** 반경 2km가 화면에 들어오는 지도 범위(왼쪽 아래 꼭짓점 + 폭). 위도 1도 ≈ 111km */
-function regionAround(lat: number, lng: number) {
-  const dLat = (FACILITY_RADIUS_M * 2.2) / 111_000;
-  const dLng = dLat / Math.cos((lat * Math.PI) / 180);
-  return {
-    latitude: lat - dLat / 2,
-    longitude: lng - dLng / 2,
-    latitudeDelta: dLat,
-    longitudeDelta: dLng,
-  };
-}
+/** 가장 좁게 볼 범위(위도). 0.006도 ≈ 660m. 시설이 아주 가까워도 둘레 길이 보이게 한다 */
+const MIN_DELTA = 0.006;
 
 /**
  * S28 주변 편의시설(WD-FR-18). S25 여행 중에서 들어온다. 기준 장소 둘레 2km 안의 시설을 유형별로 보인다.
@@ -44,6 +36,11 @@ function regionAround(lat: number, lng: number) {
  */
 export function FacilitiesView(props: FacilitiesViewProps) {
   const label = FACILITY_TYPES.find((t) => t.key === props.type)?.label ?? '시설';
+  const [box, setBox] = useState<MapBox | null>(null);
+  // 기준 장소 + 찾은 시설이 모두 들어오게 맞추고, 가까운 핀은 서로 가리지 않게 조금 벌린다
+  const points = props.base ? [props.base, ...props.rows] : [];
+  const region = fitRegion(points, MIN_DELTA);
+  const pins = region && box ? spreadMarkers(points, region, box) : points;
   return (
     <SafeAreaView style={styles.screen} edges={['left', 'right', 'bottom']}>
       <Header
@@ -96,21 +93,31 @@ export function FacilitiesView(props: FacilitiesViewProps) {
           })}
         </ScrollView>
 
-        <View style={styles.map}>
-          {props.base ? (
-            <MapView initialRegion={regionAround(props.base.latitude, props.base.longitude)}>
+        <View
+          style={styles.map}
+          onLayout={(e) => {
+            const { width, height } = e.nativeEvent.layout;
+            if (box?.width !== width || box?.height !== height) setBox({ width, height });
+          }}
+        >
+          {props.base && region ? (
+            <MapView
+              // 처음 범위는 한 번만 반영돼서, 시설 유형을 바꾸면 새로 맞춘다
+              key={props.rows.map((r) => r.id).join('|') || 'base'}
+              initialRegion={region}
+            >
               <MapMarker
-                latitude={props.base.latitude}
-                longitude={props.base.longitude}
+                latitude={pins[0].latitude}
+                longitude={pins[0].longitude}
                 label={props.base.name}
                 highlighted
                 zIndex={10}
               />
-              {props.rows.map((r) => (
+              {props.rows.map((r, i) => (
                 <MapMarker
                   key={r.id}
-                  latitude={r.latitude}
-                  longitude={r.longitude}
+                  latitude={pins[i + 1].latitude}
+                  longitude={pins[i + 1].longitude}
                   label={String(r.number)}
                   onPress={() => props.onDirections(r)}
                 />

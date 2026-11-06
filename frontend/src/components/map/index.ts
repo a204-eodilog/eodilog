@@ -17,5 +17,7 @@ export { MapMarker } from './map-marker';
 export type { MapMarkerProps } from './map-marker';
 export { MAP_MARKER_HEIGHT, MapPill } from './map-pill';
 export type { MapPillProps } from './map-pill';
+export { fitRegion, spreadMarkers } from './map-spread';
+export type { MapBox, MapRegion } from './map-spread';
 export { MapView } from './map-view';
 export type { MapViewProps, MapViewRef } from './map-view';
