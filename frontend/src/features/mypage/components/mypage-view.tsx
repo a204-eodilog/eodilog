@@ -1,4 +1,13 @@
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import {
+  ActivityIndicator,
+  type LayoutChangeEvent,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
@@ -10,10 +19,16 @@ import {
   KoreaMap,
   type KoreaMapPin,
 } from '@/components/ui';
-import { findMapRegion } from '@/lib/korea-map';
+import { findMapRegion, mapFit } from '@/lib/korea-map';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
-import { profileLine, tripListLine } from '../mypage-rules';
+import {
+  type PinLabelSpot,
+  pinLabelWidth,
+  placePinLabels,
+  profileLine,
+  tripListLine,
+} from '../mypage-rules';
 import type { MyPageSummary, MyTripPin } from '../types';
 
 export type MyPageViewProps = {
@@ -119,31 +134,17 @@ export function MyPageView(props: MyPageViewProps) {
 /** 내 여행 지도. 화면 안 카드라 손가락 확대는 끄고(세로 스크롤 우선) 핀만 누른다 */
 function MapCard(props: MyPageViewProps & { summary: MyPageSummary }) {
   const empty = props.state === 'empty';
-  const pins: KoreaMapPin[] = empty
-    ? []
-    : props.summary.pins.flatMap((p) => {
-        const r = findMapRegion(p.regionCode);
-        return r
-          ? [
-              {
-                key: p.regionCode,
-                point: r.point,
-                anchor: 'bottom' as const,
-                children: <TripPin pin={p} onPress={() => props.onPin(p)} />,
-              },
-            ]
-          : [];
-      });
+  const map = useTripPinMap(empty ? [] : props.summary.pins, props.onPin);
   return (
-    <View style={styles.mapCard}>
+    <View style={styles.mapCard} onLayout={map.onLayout}>
       <View
         style={[StyleSheet.absoluteFill, empty && styles.mapFaded]}
         pointerEvents={empty ? 'none' : 'box-none'}
       >
         <KoreaMap
-          pins={pins}
+          pins={map.pins}
           interactive={false}
-          initialFocus={empty ? undefined : focusOn(props.summary.pins)}
+          initialFocus={map.focus}
           creditBottom={spacing[6]}
         />
       </View>
@@ -192,15 +193,78 @@ export function focusOn(pins: readonly MyTripPin[]) {
   };
 }
 
+/**
+ * 여행 핀 지도(S37 마이페이지·S40 친구에게 보이는 모습·S44 친구 프로필 공용).
+ * 지도 상자 크기를 재서 가까운 핀의 알약이 겹치거나 다른 점을 가리면 알약을 옆·아래로 옮긴다(점은 제자리). 확대하지 않는 지도라 처음 배율로 한 번 계산한다
+ */
+export function useTripPinMap<P extends MyTripPin>(pins: readonly P[], onPress: (pin: P) => void) {
+  const [box, setBox] = useState<{ width: number; height: number } | null>(null);
+  const onLayout = (e: LayoutChangeEvent) => {
+    const { width, height } = e.nativeEvent.layout;
+    setBox((b) => (b && b.width === width && b.height === height ? b : { width, height }));
+  };
+  const focus = focusOn(pins);
+  const placed = pins.flatMap((p) => {
+    const r = findMapRegion(p.regionCode);
+    return r ? [{ pin: p, point: r.point }] : [];
+  });
+  const k = box ? mapFit(box) * (focus?.scale ?? 1) : 0;
+  const spots = placePinLabels(
+    placed.map(({ pin, point }) => ({
+      key: pin.regionCode,
+      x: point[0] * k,
+      y: point[1] * k,
+      width: pinLabelWidth(pin.label),
+    })),
+  );
+  const mapPins: KoreaMapPin[] = placed.map(({ pin, point }) => ({
+    key: pin.regionCode,
+    point,
+    anchor: 'bottom' as const,
+    children: (
+      <TripPin
+        pin={pin}
+        spot={box ? spots.get(pin.regionCode) : undefined}
+        onPress={() => onPress(pin)}
+      />
+    ),
+  }));
+  return { onLayout, pins: mapPins, focus };
+}
+
 /** 지도 핀. 게시한 여행은 파란 알약(사람 아이콘), 게시 전은 흰 알약(자물쇠) */
-export function TripPin({ pin, onPress }: { pin: MyTripPin; onPress: () => void }) {
+export function TripPin({
+  pin,
+  onPress,
+  spot,
+}: {
+  pin: MyTripPin;
+  onPress: () => void;
+  /** 옆 핀과 겹치지 않게 옮긴 알약 자리. 점은 제자리에 둔다. 없으면 점 바로 위 */
+  spot?: PinLabelSpot;
+}) {
+  const dx = spot?.dx ?? 0;
+  const below = spot?.below ?? false;
+  // 아래에 둘 때는 점·알약 순서를 바꾸고, 점이 제자리에 오도록 (알약 28 + 간격 4)만큼 내린다
+  const move =
+    dx || below ? { transform: [{ translateX: dx }, { translateY: below ? 32 : 0 }] } : null;
+  const dot = (
+    <View
+      style={[
+        styles.pinDot,
+        pin.posted && styles.pinDotPosted,
+        dx ? { transform: [{ translateX: -dx }] } : null,
+      ]}
+    />
+  );
   return (
     <Pressable
       onPress={onPress}
-      style={styles.pinWrap}
+      style={[styles.pinWrap, move]}
       accessibilityRole="button"
       accessibilityLabel={`${pin.label}, ${pin.posted ? '게시됨' : '나만 봐요'}`}
     >
+      {below ? dot : null}
       <View style={[styles.pin, pin.posted ? styles.pinPosted : styles.pinPrivate]}>
         <Icon
           name={pin.posted ? 'people' : 'lock'}
@@ -211,7 +275,7 @@ export function TripPin({ pin, onPress }: { pin: MyTripPin; onPress: () => void 
           {pin.label}
         </Text>
       </View>
-      <View style={[styles.pinDot, pin.posted && styles.pinDotPosted]} />
+      {below ? null : dot}
     </Pressable>
   );
 }

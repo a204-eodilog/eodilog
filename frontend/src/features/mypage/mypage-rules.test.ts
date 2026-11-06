@@ -1,6 +1,12 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { profileLine, regionIdsToLookUp, toMyPageSummary, tripListLine } from './mypage-rules';
+import {
+  placePinLabels,
+  profileLine,
+  regionIdsToLookUp,
+  toMyPageSummary,
+  tripListLine,
+} from './mypage-rules';
 import type { MyFeed, MyTrip } from './types';
 
 const trip = (id: string, status: string, regions: string[] = []): MyTrip => ({
@@ -73,5 +79,25 @@ describe('글자', () => {
   });
   it('코드를 찾아야 하는 지역은 게시 전 다녀온 여행의 첫 지역만, 겹치지 않게', () => {
     expect(regionIdsToLookUp(trips, feeds)).toEqual(['r-jj']);
+  });
+});
+
+describe('placePinLabels', () => {
+  it('떨어진 핀은 점 바로 위에 둔다', () => {
+    const spots = placePinLabels([
+      { key: 'a', x: 0, y: 0, width: 80 },
+      { key: 'b', x: 300, y: 0, width: 80 },
+    ]);
+    expect(spots.get('a')).toEqual({ dx: 0, below: false });
+    expect(spots.get('b')).toEqual({ dx: 0, below: false });
+  });
+
+  it('알약이 겹치면 뒤 핀을 옮겨 겹치지 않게 한다', () => {
+    const spots = placePinLabels([
+      { key: 'a', x: 0, y: 0, width: 80 },
+      { key: 'b', x: 40, y: 10, width: 80 },
+    ]);
+    expect(spots.get('a')).toEqual({ dx: 0, below: false });
+    expect(spots.get('b')).not.toEqual({ dx: 0, below: false });
   });
 });

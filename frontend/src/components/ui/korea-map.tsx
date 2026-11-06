@@ -21,7 +21,13 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Defs, G, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 
-import { KOREA_MAP, KOREA_MAP_CREDIT, MAINLAND_BOUNDS, type MapPoint } from '@/lib/korea-map';
+import {
+  KOREA_MAP,
+  KOREA_MAP_CREDIT,
+  MAINLAND_BOUNDS,
+  mapFit,
+  type MapPoint,
+} from '@/lib/korea-map';
 import { colors, spacing, typography } from '@/theme';
 
 export type KoreaMapPin = {
@@ -199,7 +205,7 @@ function MapCanvas({
   // 본토 + 제주가 덮이지 않는 영역에 들어오는 크기(배율 1)와 그 가운데
   const b = MAINLAND_BOUNDS;
   const visibleH = Math.max(1, box.height - insetTop - insetBottom);
-  const fit = Math.min(box.width / (b.x1 - b.x0), visibleH / (b.y1 - b.y0)) * 0.9;
+  const fit = mapFit(box, insetTop, insetBottom);
   const baseW = KOREA_MAP.width * fit;
   const baseH = KOREA_MAP.height * fit;
   const centerY = insetTop + visibleH / 2;
