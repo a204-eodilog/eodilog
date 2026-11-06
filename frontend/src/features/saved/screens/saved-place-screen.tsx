@@ -1,11 +1,9 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { CenterNotice, Header, toast } from '@/components/ui';
-import { companionNames, formatPeriod, getAllMyTrips } from '@/features/my-trips';
-import { useMe } from '@/hooks/use-me';
 import { colors } from '@/theme';
 
 import { AddToTripSheet } from '../components/add-to-trip-sheet';
@@ -18,6 +16,7 @@ import {
   useUpdateMemo,
 } from '../hooks/use-bookmark-mutations';
 import { useBookmarks } from '../hooks/use-bookmarks';
+import { useTripOptions } from '../hooks/use-trip-options';
 import { bookmarkSource, findBookmark, toSavedItem } from '../saved-rules';
 
 const goBack = () => (router.canGoBack() ? router.back() : router.replace('/saved'));
@@ -46,9 +45,8 @@ export function SavedPlaceScreen() {
   const [addOpen, setAddOpen] = useState(false);
   const [tripId, setTripId] = useState<string | null>(null);
 
-  // 그룹에 추가 시트를 열 때만 내 여행을 읽는다(N4와 같은 쿼리 키)
-  const trips = useQuery({ queryKey: ['me', 'trips'], queryFn: getAllMyTrips, enabled: addOpen });
-  const me = useMe();
+  // 그룹에 추가 시트를 열 때만 내 여행을 읽는다
+  const trips = useTripOptions(addOpen);
 
   if (!bookmark) {
     return (
@@ -82,18 +80,9 @@ export function SavedPlaceScreen() {
 
   const item = toSavedItem(bookmark);
   const editable = bookmark.place !== null;
-  const tripOptions = (trips.data ?? []).map((t) => ({
-    id: t.id,
-    title: t.title,
-    period: formatPeriod(t.startDate, t.endDate),
-    companions: companionNames(t, me.data?.id),
-  }));
 
   // 해제 요청이 끝날 때까지 같은 항목의 다른 변경(다시 해제·메모 고치기·그룹에 추가)을 막는다
   const busy = remove.isPending;
-  // 실패 뒤 [다시 시도] 중에도 isError가 true로 남아 있어 다시 읽는 동안은 오류로 보지 않는다
-  const tripsStatus =
-    trips.isError && !trips.isFetching ? 'error' : trips.data ? 'ready' : 'loading';
 
   const onUnsave = () => {
     if (unsaving.current) return;
@@ -154,15 +143,15 @@ export function SavedPlaceScreen() {
       <AddToTripSheet
         visible={addOpen}
         placeName={item.name}
-        trips={tripOptions}
-        tripsStatus={tripsStatus}
-        onRetryTrips={() => void trips.refetch()}
+        trips={trips.trips}
+        tripsStatus={trips.status}
+        onRetryTrips={trips.retry}
         selectedId={tripId}
         onSelect={setTripId}
         adding={add.isPending}
         onClose={() => setAddOpen(false)}
         onAdd={() => {
-          const trip = tripOptions.find((t) => t.id === tripId);
+          const trip = trips.trips.find((t) => t.id === tripId);
           if (!trip) return;
           add.mutate(trip.id, {
             onSuccess: () => {

@@ -3,6 +3,8 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { BottomSheet, Button, Icon } from '@/components/ui';
 import { colors, layout, spacing, typography } from '@/theme';
 
+import type { TripsStatus } from '../hooks/use-trip-options';
+
 import { TripPickList, type TripOption } from './trip-pick-list';
 
 type AddToTripSheetProps = {
@@ -10,7 +12,7 @@ type AddToTripSheetProps = {
   placeName: string;
   trips: TripOption[];
   /** 내 여행 목록 조회 상태. ready일 때만 목록(비었으면 여행 없음 안내)을 보여 준다 */
-  tripsStatus: 'loading' | 'error' | 'ready';
+  tripsStatus: TripsStatus;
   /** 내 여행 목록 다시 불러오기 */
   onRetryTrips: () => void;
   selectedId: string | null;
