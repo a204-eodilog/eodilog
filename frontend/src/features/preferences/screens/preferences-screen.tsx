@@ -18,6 +18,7 @@ import { colors, layout, radius, spacing, typography } from '@/theme';
 
 import {
   getPreferences,
+  PREFERENCES_QUERY_KEY,
   removeInferredPreference,
   savePreferences,
   setTripPreferenceConsent,
@@ -32,8 +33,6 @@ import {
   toExplicitItems,
 } from '../preference-rules';
 import type { PreferenceItem, Preferences } from '../types';
-
-const PREFERENCES_KEY = ['me', 'preferences'] as const;
 
 const ADD_PROBLEM: Record<'empty' | 'duplicate' | 'full', string> = {
   empty: `1~${KEYWORD_MAX_LENGTH}자로 적어 주세요`,
@@ -57,7 +56,11 @@ export function PreferencesScreen() {
   const forRecommendation = from === 'recommendation' && Boolean(tripId);
   // 추천 직전과 설정에서 왔으면 끝나고 그 화면으로 돌아간다
   const returnsBack = forRecommendation || from === 'settings';
-  const prefs = useQuery({ queryKey: PREFERENCES_KEY, queryFn: getPreferences, retry: false });
+  const prefs = useQuery({
+    queryKey: PREFERENCES_QUERY_KEY,
+    queryFn: getPreferences,
+    retry: false,
+  });
 
   if (prefs.isPending) {
     return (
@@ -133,7 +136,7 @@ function PreferencesForm({
       return saved;
     },
     onSuccess: (saved) => {
-      queryClient.setQueryData(PREFERENCES_KEY, saved);
+      queryClient.setQueryData(PREFERENCES_QUERY_KEY, saved);
       leave();
     },
     onError: () =>

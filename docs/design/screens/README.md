@@ -7,11 +7,11 @@
 - 화면별 디자인 값 문서(간격·글자·색을 토큰 이름으로 정리)는 같은 폴더에 `화면ID-영문이름.md`로 하나씩 추가한다. AI에게 화면을 만들게 할 때 이 문서와 [CONVENTION](../../../frontend/CONVENTION.md)을 함께 준다.
 - 화면 사진은 없어도 된다. 기본 상태와, 기본과 모양이 많이 다른 상태(지도 보기, 진행 중, 시트가 뜨는 상태 등)는 구조·간격·글자·색·문구를 다 적었다. 나머지 상태도 "그 밖의 상태" 절에 값이 있고, 반복되는 모양은 아래 "상태 공통 모양"에 한 번만 적었다. 그래도 결과가 어긋나면 링크로 연 그 상태를 한 장 캡처해 같이 주면 된다.
 - 피그마를 고치면 이 표도 함께 고친다. 상태 이름은 피그마 프레임 이름 그대로다.
-- 화면 56개, 상태 214개. 오류 상태는 피그마 15번 섹션에 따로 있지만 여기서는 해당 화면 아래에 같이 둔다.
+- 화면 56개, 상태 217개. 오류 상태는 피그마 15번 섹션에 따로 있지만 여기서는 해당 화면 아래에 같이 둔다.
 
 ## 값 문서가 있는 화면
 
-B 담당 화면 17개 전부와 A 담당 S13. 다른 화면은 필요할 때 같은 모양으로 추가한다.
+B 담당 화면 17개 전부와 A 담당 S13·S45. 다른 화면은 필요할 때 같은 모양으로 추가한다.
 
 | 화면 | 문서 |
 | --- | --- |
@@ -35,6 +35,7 @@ B 담당 화면 17개 전부와 A 담당 S13. 다른 화면은 필요할 때 같
 | S41 타임라인 | [S41-timeline.md](S41-timeline.md) |
 | S42 여행 요약 카드 | [S42-trip-summary-card.md](S42-trip-summary-card.md) |
 | S43 친구 목록 | [S43-friends.md](S43-friends.md) |
+| S45 프로필·취향·설정 (AI 상세·편집안 포함) | [S45-settings.md](S45-settings.md) |
 | S50 삭제·나가기·탈퇴 확인 | [S50-confirm.md](S50-confirm.md) |
 
 **여러 화면에 반복되는 것** (공통으로 만들면 좋은 것): 회색 상자 입력칸(S11·S34·S35), 둥글기 8 작은 태그(S12·S14·S33·N4·S41), 사진 고르기 칸(S30·S31·S32), 버튼이 있는 토스트(S08·S33), "나" 얼굴 연파랑(S31·S35·S36), 흰 테두리 카드(S38·S42), 새로고침·카드·계산기·별 아이콘.
@@ -278,7 +279,10 @@ B 담당 화면 17개 전부와 A 담당 S13. 다른 화면은 필요할 때 같
 | N9 | 다른 사용자 프로필 · 공개 계정, 팔로잉 | A | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=385-1303) |
 | N9 | 다른 사용자 프로필 · 비공개 계정 | A | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=385-2062) |
 | S45 | 프로필·취향·설정 | A | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-24201) |
+| S45 | 프로필·취향·설정 · AI 기능 설정 | A | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=928-231) |
 | S45 | 프로필·취향·설정 · 설정 바꾸기 실패 | A | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-32262) |
+| S45 | 프로필·취향·설정 · 프로필 수정 | A | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=928-482) |
+| S45 | 프로필·취향·설정 · 여행 취향 | A | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=928-568) |
 
 ## 8. 채팅
 

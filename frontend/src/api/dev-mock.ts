@@ -159,24 +159,45 @@ const BOOKMARKS = [
   ['흰여울문화마을', '부산광역시 영도구 영선동4가 1044', 35.0784, 129.0447, null],
   ['명주동 골목 카페', '강원특별자치도 강릉시 명주동 15', 37.7537, 128.8957, 'feed-dev-2'],
 ] as const;
-const bookmarks = BOOKMARKS.map(([name, address, latitude, longitude, sourceFeedId], i) => ({
+/** 명세 Bookmark 모양. 기능 폴더(features/saved) 타입을 api 쪽에서 불러오지 않으려고 여기 둔다 */
+type MockBookmark = {
   place: {
-    id: `place-bookmark-${i + 1}`,
-    name,
-    address,
-    latitude,
-    longitude,
-    regionId: null,
-    provider: 'NAVER',
-    providerPlaceId: null,
-    source: 'PROVIDER' as const,
-  },
-  retainedPlace: { name, latitude, longitude },
-  memo: null,
-  sourceFeedId,
-  sourceUnavailable: false,
-  createdAt: new Date(Date.UTC(2026, 10, 5 - i)).toISOString(),
-}));
+    id: string;
+    name: string;
+    address: string | null;
+    latitude: number;
+    longitude: number;
+    regionId: string | null;
+    provider: string | null;
+    providerPlaceId: string | null;
+    source: 'PROVIDER' | 'MANUAL';
+  };
+  retainedPlace: { name: string; latitude: number; longitude: number };
+  memo: string | null;
+  sourceFeedId: string | null;
+  sourceUnavailable: boolean;
+  createdAt: string;
+};
+let bookmarks: MockBookmark[] = BOOKMARKS.map(
+  ([name, address, latitude, longitude, sourceFeedId], i) => ({
+    place: {
+      id: `place-bookmark-${i + 1}`,
+      name,
+      address,
+      latitude,
+      longitude,
+      regionId: null,
+      provider: 'NAVER',
+      providerPlaceId: null,
+      source: 'PROVIDER' as const,
+    },
+    retainedPlace: { name, latitude, longitude },
+    memo: null,
+    sourceFeedId,
+    sourceUnavailable: false,
+    createdAt: new Date(Date.UTC(2026, 10, 5 - i)).toISOString(),
+  }),
+);
 
 let seq = 0;
 
@@ -320,6 +341,38 @@ function fail(config: InternalAxiosRequestConfig, status: number, code: string, 
   return new AxiosError(message, 'ERR_BAD_REQUEST', config, null, response);
 }
 
+// GET·PATCH /me/settings. 첫 값은 서버 기본값(AI 네 개 CONFIRM, 날씨 SUGGEST_ONLY, 알림 셋 켜짐)과 같다
+let settings = {
+  version: 1,
+  ai: {
+    photoClassification: 'CONFIRM',
+    visitDetection: 'CONFIRM',
+    placeExtraction: 'CONFIRM',
+    checklist: 'CONFIRM',
+    weather: 'SUGGEST_ONLY',
+  },
+  notifications: { followRequests: true, voteCourse: true, tripChanges: true },
+};
+
+function patchSettings(config: InternalAxiosRequestConfig) {
+  const body = JSON.parse(String(config.data ?? '{}')) as {
+    expectedVersion?: number;
+    ai?: Partial<typeof settings.ai>;
+    notifications?: Partial<typeof settings.notifications>;
+  };
+  if (body.expectedVersion !== settings.version) {
+    throw fail(config, 409, 'VERSION_CONFLICT', '설정이 변경되었습니다. 다시 조회해 주세요.');
+  }
+  const next = {
+    version: settings.version,
+    ai: { ...settings.ai, ...body.ai },
+    notifications: { ...settings.notifications, ...body.notifications },
+  };
+  const changed = JSON.stringify(next) !== JSON.stringify(settings);
+  settings = { ...next, version: changed ? settings.version + 1 : settings.version };
+  return settings;
+}
+
 function page<T>(data: T[]) {
   return { data, page: { nextCursor: null, hasNext: false } };
 }
@@ -405,7 +458,60 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
     myPreferences = { inferredItems: [], ...body, updatedAt: new Date().toISOString() };
     return ok(config, { data: myPreferences });
   }
+  if (method === 'get' && url === '/me/settings') return ok(config, { data: settings });
+  if (method === 'patch' && url === '/me/settings') {
+    return ok(config, { data: patchSettings(config) });
+  }
   if (method === 'get' && url === '/me/bookmarks') return ok(config, page(bookmarks));
+  const bookmarkMatch = /^\/me\/bookmarks\/([^/]+)$/.exec(url);
+  if (bookmarkMatch) {
+    const placeId = decodeURIComponent(bookmarkMatch[1]);
+    const found = bookmarks.find((b) => b.place.id === placeId);
+    const body = (
+      typeof config.data === 'string' ? JSON.parse(config.data) : (config.data ?? {})
+    ) as {
+      memo?: string;
+      sourceFeedId?: string;
+    };
+    if (method === 'patch' && found) {
+      found.memo = body.memo ?? null;
+      return ok(config, { data: found });
+    }
+    if (method === 'delete' && found) {
+      bookmarks = bookmarks.filter((b) => b !== found);
+      return ok(config, undefined, 204);
+    }
+    // 되돌리기: 지운 예시 장소를 같은 자리 값으로 다시 넣는다
+    const index = BOOKMARKS.findIndex((_, i) => `place-bookmark-${i + 1}` === placeId);
+    if (method === 'put' && index >= 0) {
+      const [name, address, latitude, longitude] = BOOKMARKS[index];
+      const restored = {
+        place: {
+          id: placeId,
+          name,
+          address,
+          latitude,
+          longitude,
+          regionId: null,
+          provider: 'NAVER',
+          providerPlaceId: null,
+          source: 'PROVIDER' as const,
+        },
+        retainedPlace: { name, latitude, longitude },
+        memo: body.memo ?? null,
+        sourceFeedId: body.sourceFeedId ?? null,
+        sourceUnavailable: false,
+        createdAt: new Date().toISOString(),
+      };
+      bookmarks = [restored, ...bookmarks.filter((b) => b.place.id !== placeId)];
+      return ok(config, { data: restored });
+    }
+    throw fail(config, 404, 'NOT_FOUND', '저장한 장소를 찾을 수 없어요.');
+  }
+  // 그룹 즐겨찾기에 추가(S14): 담기만 하고 S20 목록은 아직 흉내 내지 않는다
+  if (method === 'put' && /^\/trips\/[^/]+\/saved-places\/[^/]+\/me$/.test(url)) {
+    return ok(config, { data: null });
+  }
   if (method === 'get' && url === '/me/trips') return ok(config, page(trips));
 
   if (method === 'post' && url === '/trips') {
