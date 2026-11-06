@@ -1,5 +1,5 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { router } from 'expo-router';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -27,9 +27,14 @@ import { AGE_BANDS, type AgeBand, NICKNAME_MAX_LENGTH, normalizeNickname } from 
  * 저장 뒤에는 S03 취향 입력으로, 초대 링크로 왔으면 S04 초대 참여 확인으로 간다.
  * 주소는 (auth) 묶음 밖에 둔다. 가입을 마쳐 signedIn이 되는 순간 (auth) 레이아웃이 홈으로 보내 S03 이동과 겹치기 때문이다.
  * 피그마에는 없지만 가입 대기 중 다른 계정으로 바꿀 길이 없어 상단 오른쪽에 [로그아웃]을 둔다.
+ * 설정에서 열면(from=settings) "프로필 수정": [저장] 후 설정으로 돌아가고, 취향 입력으로 넘어가지 않는다.
+ * 저장에 실패하면 이 화면에 남아 다시 시도한다.
  */
 export function ProfileScreen() {
   const markProfileCompleted = useSessionStore((s) => s.markProfileCompleted);
+  const queryClient = useQueryClient();
+  const { from } = useLocalSearchParams<{ from?: string }>();
+  const editing = from === 'settings';
   const me = useQuery({ queryKey: ['me'], queryFn: getMe });
   // null이면 아직 손대지 않은 것. 카카오에서 받은 닉네임이 있으면 그걸 보여 준다
   const [edited, setEdited] = useState<string | null>(null);
@@ -43,6 +48,13 @@ export function ProfileScreen() {
   const save = useMutation({
     mutationFn: (value: string) => updateNickname(value),
     onSuccess: async () => {
+      if (editing) {
+        await queryClient.invalidateQueries({ queryKey: ['me'] });
+        toast.show('저장했어요');
+        if (router.canGoBack()) router.back();
+        else router.replace('/settings');
+        return;
+      }
       await markProfileCompleted();
       // 초대 링크로 가입했으면 S04 초대 참여 확인, 아니면 S03 취향 입력
       const invite = useSessionStore.getState().pendingInviteToken;
@@ -59,15 +71,17 @@ export function ProfileScreen() {
   return (
     <SafeAreaView style={styles.screen} edges={['left', 'right', 'bottom']}>
       <Header
-        title="프로필 만들기"
+        title={editing ? '프로필 수정' : '프로필 만들기'}
         right={
-          <Pressable
-            accessibilityRole="button"
-            onPress={signOut}
-            style={({ pressed }) => [styles.logout, pressed && styles.pressed]}
-          >
-            <Text style={[typography.captionMedium, styles.sub]}>로그아웃</Text>
-          </Pressable>
+          editing ? undefined : (
+            <Pressable
+              accessibilityRole="button"
+              onPress={signOut}
+              style={({ pressed }) => [styles.logout, pressed && styles.pressed]}
+            >
+              <Text style={[typography.captionMedium, styles.sub]}>로그아웃</Text>
+            </Pressable>
+          )
         }
       />
       <KeyboardAvoidingView
@@ -155,9 +169,13 @@ export function ProfileScreen() {
         </ScrollView>
 
         <View style={styles.bottom}>
-          <Text style={[typography.caption, styles.sub]}>나중에 마이페이지에서 바꿀 수 있어요</Text>
+          {editing ? null : (
+            <Text style={[typography.caption, styles.sub]}>
+              나중에 마이페이지에서 바꿀 수 있어요
+            </Text>
+          )}
           <Button
-            label={save.isError ? '다시 시도' : '다음'}
+            label={save.isError ? '다시 시도' : editing ? '저장' : '다음'}
             size="xl"
             block
             loading={save.isPending}

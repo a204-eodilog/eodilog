@@ -178,7 +178,11 @@ export function SettingsView({
               <SettingsRow
                 icon="person"
                 label="프로필 수정"
-                onPress={() => (preview ? setDetail('profile') : router.push('/profile'))}
+                onPress={() =>
+                  preview
+                    ? setDetail('profile')
+                    : router.push({ pathname: '/profile', params: { from: 'settings' } })
+                }
               />
               <SettingsRow
                 icon="star"

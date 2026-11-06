@@ -80,3 +80,54 @@ export function tripListLine(s: Pick<MyPageSummary, 'tripCount' | 'pinlessCount'
     ? `${s.tripCount}개 · 핀 없는 여행 ${s.pinlessCount}개 포함`
     : `${s.tripCount}개`;
 }
+
+/** 핀 알약 너비 어림값(px). 한글 12 · 공백 4 · 그 밖 7, 글자는 최대 120 + 안쪽 여백 20 + 아이콘 14 + 간격 4 */
+export function pinLabelWidth(label: string) {
+  let w = 0;
+  for (const ch of label) w += /[가-힣]/.test(ch) ? 12 : ch === ' ' ? 4 : 7;
+  return Math.min(120, w) + 38;
+}
+
+export type PinLabelSpot = { dx: number; below: boolean };
+
+type Box = { x0: number; x1: number; y0: number; y1: number };
+const hit = (a: Box, b: Box, gap: number) =>
+  a.x0 < b.x1 + gap && b.x0 < a.x1 + gap && a.y0 < b.y1 + gap && b.y0 < a.y1 + gap;
+
+/**
+ * 핀 알약 자리 고르기. 기본은 점 바로 위, 다른 알약이나 점을 가리면 위로 옆으로 조금 · 점 아래 · 더 옆 순서로 빈 곳을 찾는다.
+ * 화면 px 좌표를 받는다. 알약은 높이 28, 점과 9 떨어진다(TripPin 모양). 빈 곳이 없으면 점 바로 위에 둔다
+ */
+export function placePinLabels(
+  items: readonly { key: string; x: number; y: number; width: number }[],
+  gap = 4,
+): Map<string, PinLabelSpot> {
+  const dots: Box[] = items.map((i) => ({ x0: i.x - 6, x1: i.x + 6, y0: i.y - 6, y1: i.y + 6 }));
+  const placed: Box[] = [];
+  const out = new Map<string, PinLabelSpot>();
+  // 위쪽 핀부터 자리를 잡는다
+  const order = items.map((it, idx) => ({ it, idx })).sort((a, b) => a.it.y - b.it.y);
+  for (const { it, idx } of order) {
+    const w = it.width;
+    const rectOf = (spot: PinLabelSpot): Box => {
+      const x0 = it.x - w / 2 + spot.dx;
+      return spot.below
+        ? { x0, x1: x0 + w, y0: it.y + 9, y1: it.y + 37 }
+        : { x0, x1: x0 + w, y0: it.y - 37, y1: it.y - 9 };
+    };
+    const tries: PinLabelSpot[] = [];
+    for (const dx of [0, w / 3, -w / 3]) tries.push({ dx, below: false });
+    for (const dx of [0, w / 3, -w / 3]) tries.push({ dx, below: true });
+    for (const dx of [(w * 2) / 3, (-w * 2) / 3]) {
+      tries.push({ dx, below: false }, { dx, below: true });
+    }
+    const free = tries.find((spot) => {
+      const r = rectOf(spot);
+      return !placed.some((p) => hit(p, r, gap)) && !dots.some((d, j) => j !== idx && hit(d, r, 0));
+    });
+    const spot = free ?? { dx: 0, below: false };
+    placed.push(rectOf(spot));
+    out.set(it.key, spot);
+  }
+  return out;
+}

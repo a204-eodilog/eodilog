@@ -1,4 +1,5 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmptyState, Header } from '@/components/ui';
 import { colors, layout, spacing, typography } from '@/theme';
@@ -17,6 +18,8 @@ export type MyTripsViewProps = {
 
 /** N4 내 여행 목록. 지도 핀이 없는 여행까지 내가 참여 중인 여행을 모두 보여 준다 */
 export function MyTripsView({ trips, myUserId, onOpen, onBack }: MyTripsViewProps) {
+  // 하단 탭이 없는 화면이라 기기 아래 막대(제스처·버튼) 높이만큼 목록 끝을 더 띄운다
+  const insets = useSafeAreaInsets();
   return (
     <View style={styles.screen}>
       <Header onBack={onBack} />
@@ -24,7 +27,9 @@ export function MyTripsView({ trips, myUserId, onOpen, onBack }: MyTripsViewProp
         // 값 문서에 빈 상태가 없어 공통 빈 화면으로 둔다
         <EmptyState icon="trip" title="아직 여행이 없어요" />
       ) : (
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView
+          contentContainerStyle={[styles.content, { paddingBottom: spacing[32] + insets.bottom }]}
+        >
           <Text style={[typography.title1, styles.text]}>내 여행</Text>
           <Text style={[typography.caption, styles.note]}>핀 없는 여행까지 보여요</Text>
           {groupMyTrips(trips).map((group) => (

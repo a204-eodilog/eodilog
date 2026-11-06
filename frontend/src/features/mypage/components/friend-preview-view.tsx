@@ -11,15 +11,13 @@ import {
   Icon,
   type IconName,
   KoreaMap,
-  type KoreaMapPin,
 } from '@/components/ui';
 import { assetSource } from '@/lib/asset-image';
-import { findMapRegion } from '@/lib/korea-map';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 import type { FriendView, VisibleFeedCard } from '../preview-rules';
 
-import { focusOn, TripPin } from './mypage-view';
+import { useTripPinMap } from './mypage-view';
 
 export type FriendPreviewViewProps = {
   state: 'loading' | 'error' | 'no-friends' | 'ready';
@@ -112,26 +110,14 @@ export function FriendPreviewView(props: FriendPreviewViewProps) {
 }
 
 function MiniMap({ view }: { view: FriendView }) {
-  const pins: KoreaMapPin[] = view.pins.flatMap((p) => {
-    const r = findMapRegion(p.regionCode);
-    return r
-      ? [
-          {
-            key: p.regionCode,
-            point: r.point,
-            anchor: 'bottom' as const,
-            children: <TripPin pin={p} onPress={() => {}} />,
-          },
-        ]
-      : [];
-  });
+  const map = useTripPinMap(view.pins, () => {});
   return (
-    <View style={styles.map}>
+    <View style={styles.map} onLayout={map.onLayout}>
       <KoreaMap
         key={view.pins.map((p) => p.regionCode).join('-') || 'none'}
-        pins={pins}
+        pins={map.pins}
         interactive={false}
-        initialFocus={focusOn(view.pins)}
+        initialFocus={map.focus}
         creditBottom={spacing[6]}
       />
     </View>

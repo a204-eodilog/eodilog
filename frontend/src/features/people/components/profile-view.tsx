@@ -1,9 +1,8 @@
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Avatar, ErrorState, Header, KoreaMap, type KoreaMapPin } from '@/components/ui';
-import { focusOn, TripPin } from '@/features/mypage';
-import { findMapRegion } from '@/lib/korea-map';
+import { Avatar, ErrorState, Header, KoreaMap } from '@/components/ui';
+import { useTripPinMap } from '@/features/mypage';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 import { feedPins, followButtonState, isLocked, profileStats } from '../people-rules';
@@ -70,26 +69,14 @@ function FeedMap({
   onFeed: (id: string) => void;
 }) {
   const pins = feedPins(feeds);
-  const mapPins: KoreaMapPin[] = pins.flatMap((pin) => {
-    const r = findMapRegion(pin.regionCode);
-    return r
-      ? [
-          {
-            key: pin.regionCode,
-            point: r.point,
-            anchor: 'bottom' as const,
-            children: <TripPin pin={pin} onPress={() => onFeed(pin.feedIds[0])} />,
-          },
-        ]
-      : [];
-  });
+  const map = useTripPinMap(pins, (pin) => onFeed(pin.feedIds[0]));
   return (
     <>
-      <View style={styles.map}>
+      <View style={styles.map} onLayout={map.onLayout}>
         <KoreaMap
-          pins={mapPins}
+          pins={map.pins}
           interactive={false}
-          initialFocus={focusOn(pins)}
+          initialFocus={map.focus}
           creditBottom={spacing[6]}
         />
         {pins.length === 0 ? (

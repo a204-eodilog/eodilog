@@ -17,7 +17,7 @@
 - **숨긴 친구 N**(빨강 수): 이름 흐리게 + [다시 보이기]
 - **보여 주는 친구 N**(파랑 수): 동행은 "이 여행 동행 · 항상 보여요" + 흐린 "동행"(숨길 수 없음), 그 밖은 [숨기기]
 - 🔒 "숨겨도 다른 동행 피드에서는 보일 수 있어요"
-- 오른쪽 아래 [저장](바뀐 게 없으면 흐림) → `PUT /feeds/{feedId}/visibility/me {hiddenViewerUserIds, expectedVersion}`, 409면 다시 읽고 "다른 곳에서 설정이 바뀌었어요" 토스트
+- 오른쪽 아래 안전 영역 안에 [저장](바뀐 게 없으면 흐림, 안드로이드 탐색 버튼 위 여백 확보) → `PUT /feeds/{feedId}/visibility/me {hiddenViewerUserIds, expectedVersion}`, 409면 다시 읽고 "다른 곳에서 설정이 바뀌었어요" 토스트
 
 목록 = 나를 팔로우하는 사람(`GET /me/followers`) + 이 여행 동행(`GET /trips/{tripId}` 활성 멤버, 나 빼고). 숨김 값은 `GET /me/feeds`의 `visibility`.
 
