@@ -1,6 +1,7 @@
 import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { Image } from 'expo-image';
-import { useEffect, useMemo, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, BackHandler, Pressable, StyleSheet, Text, View } from 'react-native';
 // 시트 안 가로 목록은 제스처 핸들러 스크롤이어야 시트 끌기와 손가락을 나눠 가진다(안드로이드)
 import { ScrollView } from 'react-native-gesture-handler';
@@ -27,18 +28,26 @@ export type RegionTripsSheetProps = {
 export function RegionTripsSheet({ groups, onClose, onTrip, onRetry }: RegionTripsSheetProps) {
   const snapPoints = useMemo(() => ['60%', '82%'], []);
   const [selected, setSelected] = useState<string | null>(null);
-  useEffect(() => {
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      onClose();
-      return true;
-    });
-    return () => sub.remove();
-  }, [onClose]);
+  // 홈이 보일 때만 뒤로 가기를 가로챈다. S07로 넘어간 뒤에도 남아 있으면 S07 대신 시트가 닫힌다(!144 리뷰)
+  useFocusEffect(
+    useCallback(() => {
+      const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+        onClose();
+        return true;
+      });
+      return () => sub.remove();
+    }, [onClose]),
+  );
 
   const shown = selected ? groups.filter((g) => g.mark.regionCode === selected) : groups;
-  const cards = shown.flatMap((g) => g.cards.map((c) => ({ card: c, region: g.mark.name })));
+  // 여러 지역에 걸친 여행은 지역마다 오므로 한 번만 둔다(!144 리뷰)
+  const seen = new Set<string>();
+  const cards = shown
+    .flatMap((g) => g.cards.map((c) => ({ card: c, region: g.mark.name })))
+    .filter(({ card }) => !seen.has(card.feedId) && Boolean(seen.add(card.feedId)));
   const loading = shown.some((g) => g.state === 'loading');
-  const failed = shown.length > 0 && shown.every((g) => g.state === 'error');
+  // 한 지역이라도 실패하면 다시 시도를 보이고, 여행 없음은 모두 받았을 때만(!144 리뷰)
+  const failed = shown.some((g) => g.state === 'error');
   const many = groups.length > 1;
 
   return (

@@ -46,7 +46,7 @@ export type FacilityRow = {
 export async function getFacilities(placeId: string, type: FacilityType): Promise<Facility[]> {
   const { data } = await apiClient.get<PageResponse<Facility>>(
     `/places/${encodeURIComponent(placeId)}/facilities`,
-    { params: { type, radiusMeters: FACILITY_RADIUS_M, size: 20 } },
+    { params: { type, radiusMeters: FACILITY_RADIUS_M, limit: 20 } },
   );
   return data.data;
 }

@@ -6,7 +6,7 @@ import type { FriendSuggestion, PublicProfile, UserFeedCard } from './types';
 /** GET /users?query= 닉네임 검색(결정 Q-2). 프로필 링크·ID 검색은 없다 */
 export async function searchUsers(query: string): Promise<UserCard[]> {
   const { data } = await apiClient.get<PageResponse<UserCard>>('/users', {
-    params: { query, size: 30 },
+    params: { query, limit: 30 },
   });
   return data.data;
 }
@@ -56,7 +56,7 @@ export async function getUser(userId: string): Promise<PublicProfile> {
 export async function getUserFeeds(userId: string): Promise<UserFeedCard[]> {
   const { data } = await apiClient.get<PageResponse<UserFeedCard>>(
     `/users/${encodeURIComponent(userId)}/feeds`,
-    { params: { size: 100 } },
+    { params: { limit: 100 } },
   );
   return data.data;
 }

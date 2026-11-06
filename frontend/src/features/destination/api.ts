@@ -6,7 +6,7 @@ import type { RegionDetail, TrendRegion } from './types';
 /** GET /trends/regions?from&to. 첫 쪽 20개 */
 export async function getTrends(from: string, to: string): Promise<TrendRegion[]> {
   const { data } = await apiClient.get<PageResponse<TrendRegion>>('/trends/regions', {
-    params: { from, to, size: 20 },
+    params: { from, to, limit: 20 },
   });
   return data.data;
 }

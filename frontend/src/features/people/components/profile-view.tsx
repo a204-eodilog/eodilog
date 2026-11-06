@@ -1,7 +1,7 @@
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Avatar, ErrorState, Header, KoreaMap } from '@/components/ui';
+import { Avatar, Button, ErrorState, Header, KoreaMap } from '@/components/ui';
 import { useTripPinMap } from '@/features/mypage';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -14,6 +14,9 @@ export type ProfileViewProps = {
   state: 'loading' | 'error' | 'ready';
   profile?: PublicProfile;
   feeds: readonly UserFeedCard[];
+  /** 공동 피드 받는 중·실패. 빈 목록과 나눠 보인다(!145 리뷰). 없으면 ready */
+  feedsState?: 'loading' | 'error' | 'ready';
+  onRetryFeeds?: () => void;
   following: boolean;
   onFollow: () => void;
   onFeed: (feedId: string) => void;
@@ -33,7 +36,7 @@ export function ProfileView(props: ProfileViewProps) {
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.profile}>
-            <Avatar name={p.nickname} imageUrl={p.profileImageUrl} size={48} me />
+            <Avatar name={p.nickname} imageUrl={p.profileImageUrl} size={48} />
             <View style={styles.profileText}>
               <Text style={styles.name}>{p.nickname}</Text>
               <Text style={styles.stats}>{profileStats(p, isLocked(p))}</Text>
@@ -53,7 +56,12 @@ export function ProfileView(props: ProfileViewProps) {
               <Text style={styles.lockedDesc}>팔로우가 수락되면 여행을 볼 수 있어요</Text>
             </View>
           ) : (
-            <FeedMap feeds={props.feeds} onFeed={props.onFeed} />
+            <FeedMap
+              feeds={props.feeds}
+              state={props.feedsState ?? 'ready'}
+              onRetry={props.onRetryFeeds}
+              onFeed={props.onFeed}
+            />
           )}
         </ScrollView>
       )}
@@ -63,17 +71,38 @@ export function ProfileView(props: ProfileViewProps) {
 
 function FeedMap({
   feeds,
+  state,
+  onRetry,
   onFeed,
 }: {
   feeds: readonly UserFeedCard[];
+  state: 'loading' | 'error' | 'ready';
+  onRetry?: () => void;
   onFeed: (id: string) => void;
 }) {
-  const pins = feedPins(feeds);
+  const pins = feedPins(state === 'ready' ? feeds : []);
   const map = useTripPinMap(pins, (pin) => onFeed(pin.feedIds[0]));
+  if (state !== 'ready') {
+    return (
+      <View style={[styles.map, styles.mapStatus]}>
+        {state === 'loading' ? (
+          <ActivityIndicator color={colors.brand.primary} />
+        ) : (
+          <>
+            <Text style={styles.lockedDesc}>공동 피드를 불러오지 못했어요</Text>
+            {onRetry ? (
+              <Button label="다시 시도" size="sm" variant="secondary" onPress={onRetry} />
+            ) : null}
+          </>
+        )}
+      </View>
+    );
+  }
   return (
     <>
       <View style={styles.map} onLayout={map.onLayout}>
         <KoreaMap
+          key={map.pins.map((p) => p.key).join('|')}
           pins={map.pins}
           interactive={false}
           initialFocus={map.focus}
@@ -121,6 +150,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.map.seaMid,
   },
   mapEmpty: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
+  mapStatus: { alignItems: 'center', justifyContent: 'center', gap: spacing[10] },
   legend: { flexDirection: 'row', alignItems: 'center', gap: spacing[6], marginTop: -spacing[8] },
   legendDot: {
     width: 10,

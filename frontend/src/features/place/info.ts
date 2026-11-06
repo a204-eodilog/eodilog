@@ -59,7 +59,7 @@ export async function getPlaceSocial(placeId: string): Promise<PlaceSocialSummar
 export async function getPlaceReviews(placeId: string): Promise<PlacePublicReview[]> {
   const { data } = await apiClient.get<PageResponse<PlacePublicReview>>(
     `/places/${encodeURIComponent(placeId)}/public-reviews`,
-    { params: { size: 10 } },
+    { params: { limit: 10 } },
   );
   return data.data;
 }
