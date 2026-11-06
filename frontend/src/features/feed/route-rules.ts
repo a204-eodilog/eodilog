@@ -47,3 +47,12 @@ export function routeLines(days: readonly FeedDay[]) {
         ],
   );
 }
+
+/** 지도 아래 일차 설명("● 1일차 ● 2일차"). 이틀 이상일 때만. 색은 선 색과 같다 */
+export function routeLegend(days: readonly FeedDay[]) {
+  if (days.length < 2) return [];
+  return days.map((d, i) => ({
+    day: d.day,
+    color: DAY_COLORS[Math.min(i, DAY_COLORS.length - 1)],
+  }));
+}

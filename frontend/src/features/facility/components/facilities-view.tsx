@@ -124,8 +124,8 @@ export function FacilitiesView(props: FacilitiesViewProps) {
         ) : props.state === 'error' ? (
           <View style={styles.note}>
             <Icon name="alert" size={22} color={colors.text.icon} />
-            <Text style={styles.noteTitle}>{label} 정보를 불러오지 못했어요</Text>
-            <Text style={styles.noteDesc}>잠시 뒤 다시 시도해 주세요</Text>
+            <Text style={styles.noteTitle}>편의시설을 불러오지 못했어요</Text>
+            <Text style={styles.noteDesc}>다시 시도해 주세요</Text>
             <Pressable onPress={props.onRetry} style={styles.retry} accessibilityRole="button">
               <Text style={styles.retryText}>다시 시도</Text>
             </Pressable>
@@ -136,7 +136,10 @@ export function FacilitiesView(props: FacilitiesViewProps) {
             <Text style={styles.noteTitle}>
               {FACILITY_RADIUS_M / 1000}km 안에 {withIga(label)} 없어요
             </Text>
-            <Text style={styles.noteDesc}>다른 유형을 고르거나 기준 장소를 바꿔 보세요</Text>
+            <Text style={styles.noteDesc}>기준 장소를 바꾸거나 다른 시설을 골라 보세요</Text>
+            <Pressable onPress={props.onChangeBase} style={styles.retry} accessibilityRole="button">
+              <Text style={styles.retryText}>기준 장소 바꾸기</Text>
+            </Pressable>
           </View>
         ) : (
           <View style={styles.list}>

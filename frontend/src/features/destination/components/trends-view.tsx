@@ -33,7 +33,11 @@ export function TrendsView(props: TrendsViewProps) {
     <SafeAreaView style={styles.screen} edges={['left', 'right', 'bottom']}>
       <Header title="요즘 뜨는 여행지" />
       {props.state === 'error' ? (
-        <ErrorState title="순위를 불러오지 못했어요" onRetry={props.onRetry} />
+        <ErrorState
+          title="순위를 불러오지 못했어요"
+          description="불러오지 못했어요. 다시 시도해 주세요."
+          onRetry={props.onRetry}
+        />
       ) : props.state === 'loading' || !board ? (
         <ActivityIndicator style={styles.flex} color={colors.brand.primary} />
       ) : (

@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { routeLines, routeRegion } from './route-rules';
+import { routeLegend, routeLines, routeRegion } from './route-rules';
 import type { FeedDay } from './types';
 
 const stop = (n: number, latitude: number, longitude: number) =>
@@ -42,5 +42,15 @@ describe('routeLines', () => {
       [1, false],
       [2, true],
     ]);
+  });
+});
+
+describe('routeLegend', () => {
+  it('하루면 비우고, 이틀 이상이면 일차마다 선 색을 준다', () => {
+    const day = (n: number) => ({ day: n, date: null, stops: [] }) as never;
+    expect(routeLegend([day(1)])).toEqual([]);
+    const legend = routeLegend([day(1), day(2)]);
+    expect(legend.map((l) => l.day)).toEqual([1, 2]);
+    expect(legend[0].color).not.toBe(legend[1].color);
   });
 });

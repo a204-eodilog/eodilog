@@ -28,7 +28,11 @@ export function DestinationView(props: DestinationViewProps) {
     <SafeAreaView style={styles.screen} edges={['left', 'right', 'bottom']}>
       <Header title={info?.name} />
       {props.state === 'error' ? (
-        <ErrorState title="여행지 정보를 불러오지 못했어요" onRetry={props.onRetry} />
+        <ErrorState
+          title="여행지 정보를 불러오지 못했어요"
+          description="불러오지 못했어요. 다시 시도해 주세요."
+          onRetry={props.onRetry}
+        />
       ) : props.state === 'loading' || !info ? (
         <ActivityIndicator style={styles.flex} color={colors.brand.primary} />
       ) : (

@@ -116,7 +116,12 @@ export function RegionTripsSheet({ groups, onClose, onTrip, onRetry }: RegionTri
         {loading ? <ActivityIndicator color={colors.brand.primary} style={styles.loading} /> : null}
         {!loading && failed ? (
           <View style={styles.note}>
-            <Text style={styles.noteText}>여행을 불러오지 못했어요</Text>
+            <Text style={styles.noteTitle}>
+              {many
+                ? '여행을 불러오지 못했어요'
+                : `${groups[0]?.mark.name ?? ''} 여행을 불러오지 못했어요`}
+            </Text>
+            <Text style={styles.noteText}>지도는 그대로 볼 수 있어요</Text>
             <Pressable onPress={onRetry} accessibilityRole="button" style={styles.retry}>
               <Text style={styles.retryText}>다시 시도</Text>
             </Pressable>
@@ -226,6 +231,7 @@ const styles = StyleSheet.create({
   meta: { ...typography.caption, color: colors.text.icon },
   loading: { marginVertical: spacing[24] },
   note: { alignItems: 'center', gap: spacing[10], paddingVertical: spacing[24] },
+  noteTitle: { ...typography.bodyBold, color: colors.text.default, textAlign: 'center' },
   noteText: { ...typography.caption, color: colors.text.sub },
   retry: {
     paddingHorizontal: spacing[16],
