@@ -25,7 +25,8 @@ const MENU: MenuItem[] = [
     key: 'review',
     label: '평가',
     icon: 'star',
-    open: (tripId) => router.push({ pathname: '/trips/[tripId]/visits', params: { tripId } }),
+    // 평가 목록도 폴더(visits/index.tsx)라 경비처럼 실제 주소로 보낸다. pathname 객체는 타입 검사가 막는다
+    open: (tripId) => router.push(`/trips/${tripId}/visits`),
   },
   {
     key: 'expense',
