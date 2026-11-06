@@ -158,3 +158,26 @@ def test_heic_opens_as_photo():
 def test_heic_is_not_a_capture_format():
     with pytest.raises(UnsupportedImage):
         to_llm_jpeg(heic_bytes())
+
+
+def _jpeg(size: tuple[int, int]) -> bytes:
+    out = io.BytesIO()
+    Image.new("RGB", size, "green").save(out, format="JPEG")
+    return out.getvalue()
+
+
+def test_open_image_decodes_large_jpeg_at_reduced_size_when_asked():
+    image = open_image(_jpeg((4000, 3000)), PHOTO_FORMATS, min_side=448)
+
+    assert image.size == (1000, 750)
+    assert min(image.size) >= 448
+
+
+def test_open_image_keeps_full_jpeg_size_by_default():
+    assert open_image(_jpeg((4000, 3000)), PHOTO_FORMATS).size == (4000, 3000)
+
+
+def test_open_image_checks_pixel_limit_on_original_size(monkeypatch):
+    monkeypatch.setattr(images, "MAX_PIXELS", 1_000_000)
+    with pytest.raises(ImageDecodeError):
+        open_image(_jpeg((4000, 3000)), PHOTO_FORMATS, min_side=448)

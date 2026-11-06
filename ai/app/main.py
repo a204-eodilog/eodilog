@@ -41,6 +41,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         _check_internal_token(app.state.settings)
+        if app.state.settings.photo_model_preload:
+            await app.state.photo_classifier.preload()
         yield
         await app.state.http.aclose()
 
