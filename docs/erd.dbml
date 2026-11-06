@@ -225,13 +225,18 @@ Table assets {
   trip_id uuid [ref: > trips.id]
   purpose varchar(16) [not null, note: 'PROFILE/CAPTURE/TRIP_PHOTO']
   object_key varchar(500) [not null, unique]
+  display_key varchar(500) [not null, unique, note: '원본 PUT으로 변경할 수 없는 별도 메타데이터 제거 표시 이미지']
   content_type varchar(100) [not null]
   byte_size bigint [not null]
+  display_content_type varchar(100) [note: '표시 이미지 형식, HEIC는 image/jpeg']
   metadata_json json [note: '허용된 EXIF 촬영시각/위치만 비공개 저장. 방문 판정 입력. API 공개 DTO·공개 이미지 GPS에는 미노출']
   status varchar(16) [not null, default: 'PENDING', note: 'PENDING/READY/DELETING/DELETED/CANCELLED']
   created_at timestamp [not null]
   deleted_at timestamp
-  Note: 'TRIP_PHOTO는 JPG/PNG/HEIC 및 같은 배치 필수. CAPTURE는 JPG/PNG, extraction당 최대 10장 검사. 영구 공개 URL 대신 객체 식별자 보관. CAPTURE 본인, TRIP_PHOTO 내부 멤버/게시된 사진 경로를 별도 검증. 파일 수명·삭제 복구 Q-7·11. 2026-11-06 V202611061300 구현: 파일 1개 최대 15MB, TRIP_PHOTO일 때만 trip_id(CHECK), object_key는 {용도}/{소유자}/{assetId}. upload_batch_id·metadata_json 열은 사진 등록 작업에서 추가'
+  upload_expires_at timestamp [not null, note: '기본 PUT URL 10분']
+  expires_at timestamp [not null, note: '기본 미완료/미등록 정리 24시간']
+  original_cleaned_at timestamp [note: 'PUT 만료 후 원본 삭제 완료 시각']
+  Note: '2026-11-06 구현: PROFILE/CAPTURE/TRIP_PHOTO 지원. TRIP_PHOTO는 JPG/PNG/HEIC. 기존 배치 없는 파일도 보존하며 사진 등록에는 같은 배치 필수. CAPTURE는 JPG/PNG. 실제 전체 디코딩·메타데이터 제거 후 READY. 인증 다운로드는 표시 이미지 바이트만 반환. 여행 삭제 뒤 취소할 수 없는 PUT의 늦은 업로드 정리를 위해 DELETING 키 tombstone을 미완료 기한까지 남기며 배치 FK는 비운다. 같은 여행/본인/배치는 여행 행 잠금 뒤 서비스에서 검사한다.'
 }
 
 Ref: users.profile_asset_id > assets.id
@@ -430,7 +435,8 @@ Table photo_upload_batches {
   file_count integer [not null, note: '1~50, 한 번 업로드 장수']
   registered_count integer [not null, default: 0]
   created_at timestamp [not null]
-  Note: '업로드 intent의 assets.upload_batch_id와 photos.batch_id가 같은 배치/사용자/여행인지 검사. 등록 수 증가·사진 생성 원자 처리, 재시도 중복 증가 금지. 여행 전체 사진 한도 아님. 배치 만료/미완료 정리 Q-7·11.'
+  expires_at timestamp [not null, note: '기본 24시간, 환경 설정 가능']
+  Note: '업로드 intent와 사진 등록 모두 같은 배치/사용자/여행인지 여행 행 잠금 후 검사. 등록 수 증가·사진 생성 원자 처리, asset_id unique 및 같은 등록 재시도 중복 증가 금지. file_count 1~50 및 0<=registered_count<=file_count DB CHECK. 만료 뒤 새 등록 410. 여행 전체 사진 한도 아님. 여행 삭제 때 사진·asset 배치 FK 정리 후 배치 삭제.'
 }
 
 Table photos {

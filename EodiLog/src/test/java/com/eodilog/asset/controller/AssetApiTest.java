@@ -38,9 +38,9 @@ import tools.jackson.databind.json.JsonMapper;
 @Import({TestcontainersConfiguration.class, InMemoryStorageConfiguration.class})
 class AssetApiTest {
 
-	private static final byte[] PNG = withPadding(new byte[] {(byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n'}, 64);
-	private static final byte[] JPEG = withPadding(new byte[] {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0}, 64);
-	private static final byte[] HEIC = withPadding(heicHead(), 64);
+	private static final byte[] PNG = realImage("png");
+	private static final byte[] JPEG = realImage("jpeg");
+	private static final byte[] HEIC = heicFixture();
 
 	@Autowired
 	private MockMvc mockMvc;
@@ -65,11 +65,11 @@ class AssetApiTest {
 
 	@Test
 	void uploadsCompletesAndDownloadsProfileImage() throws Exception {
-		JsonNode intent = data(intent(ownerId, "{\"purpose\":\"PROFILE\",\"contentType\":\"image/png\",\"byteSize\":64}")
+		JsonNode intent = data(intent(ownerId, "{\"purpose\":\"PROFILE\",\"contentType\":\"image/png\",\"byteSize\":2048}")
 				.andExpect(status().isCreated())
 				.andExpect(jsonPath("$.data.method").value("PUT"))
 				.andExpect(jsonPath("$.data.headers.content-type").value("image/png"))
-				.andExpect(jsonPath("$.data.uploadUrl").value(containsString("profile/" + ownerId + "/")))
+				.andExpect(jsonPath("$.data.uploadUrl").value(containsString("uploads/")))
 				.andExpect(jsonPath("$.data.expiresAt").exists()));
 		UUID assetId = UUID.fromString(intent.get("assetId").asString());
 		assertThat(assetStatus(assetId)).isEqualTo("PENDING");
@@ -80,19 +80,19 @@ class AssetApiTest {
 				.andExpect(jsonPath("$.data.purpose").value("PROFILE"))
 				.andExpect(jsonPath("$.data.status").value("READY"))
 				.andExpect(jsonPath("$.data.contentType").value("image/png"))
-				.andExpect(jsonPath("$.data.byteSize").value(64))
+				.andExpect(jsonPath("$.data.byteSize").value(2048))
 				.andExpect(jsonPath("$.data.tripId").isEmpty());
 		// 재시도해도 그대로 200
 		complete(ownerId, assetId).andExpect(status().isOk()).andExpect(jsonPath("$.data.status").value("READY"));
 
 		byte[] body = download(ownerId, assetId).andExpect(status().isOk())
 				.andExpect(content().contentType("image/png"))
-				.andExpect(header().string("Content-Length", "64"))
+				.andExpect(header().string("Content-Length", Integer.toString(cleanPng().length)))
 				.andExpect(header().string("Cache-Control", containsString("no-store")))
 				.andExpect(header().string("Cache-Control", containsString("private")))
 				.andExpect(header().string("X-Content-Type-Options", "nosniff"))
 				.andReturn().getResponse().getContentAsByteArray();
-		assertThat(body).isEqualTo(PNG);
+		assertThat(body).isEqualTo(cleanPng());
 		// 프로필은 다른 로그인 사용자도 받는다
 		download(strangerId, assetId).andExpect(status().isOk());
 		// 확인을 마친 파일은 취소할 수 없다
@@ -135,20 +135,20 @@ class AssetApiTest {
 		UUID tripId = createTrip(ownerId);
 		insertActiveMember(tripId, memberId, 2);
 		String body = "{\"purpose\":\"TRIP_PHOTO\",\"tripId\":\"" + tripId
-				+ "\",\"contentType\":\"image/heic\",\"byteSize\":64}";
+				+ "\",\"contentType\":\"image/heic\",\"byteSize\":" + HEIC.length + "}";
 
 		intent(strangerId, body).andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.error.code").value("TRIP_NOT_FOUND"));
 		intent(ownerId, "{\"purpose\":\"TRIP_PHOTO\",\"tripId\":\"" + UUID.randomUUID()
-				+ "\",\"contentType\":\"image/heic\",\"byteSize\":64}").andExpect(status().isNotFound());
+				+ "\",\"contentType\":\"image/heic\",\"byteSize\":2048}").andExpect(status().isNotFound());
 
 		UUID assetId = assetId(intent(ownerId, body).andExpect(status().isCreated()));
-		assertThat(objectKey(assetId)).startsWith("trip-photo/" + ownerId + "/");
+		assertThat(objectKey(assetId)).startsWith("uploads/");
 		storage.put(objectKey(assetId), HEIC, "image/heic");
 		complete(ownerId, assetId).andExpect(status().isOk())
 				.andExpect(jsonPath("$.data.tripId").value(tripId.toString()));
 
-		download(memberId, assetId).andExpect(status().isOk()).andExpect(content().contentType("image/heic"));
+		download(memberId, assetId).andExpect(status().isOk()).andExpect(content().contentType("image/jpeg"));
 		expectAssetNotFound(download(strangerId, assetId));
 
 		// 나간 멤버는 더 받지 못한다
@@ -158,7 +158,7 @@ class AssetApiTest {
 
 	@Test
 	void completeChecksUploadOwnershipAndRealFormat() throws Exception {
-		UUID assetId = assetId(intent(ownerId, "{\"purpose\":\"CAPTURE\",\"contentType\":\"image/png\",\"byteSize\":64}"));
+		UUID assetId = assetId(intent(ownerId, "{\"purpose\":\"CAPTURE\",\"contentType\":\"image/png\",\"byteSize\":2048}"));
 
 		// 남의 파일은 없는 파일과 같다
 		expectAssetNotFound(complete(strangerId, assetId));
@@ -188,13 +188,13 @@ class AssetApiTest {
 		// 캡처는 올린 사람만 받는다. 확인 전 파일은 주인도 받지 못한다
 		download(ownerId, assetId).andExpect(status().isOk());
 		expectAssetNotFound(download(strangerId, assetId));
-		UUID pendingId = assetId(intent(ownerId, "{\"purpose\":\"CAPTURE\",\"contentType\":\"image/png\",\"byteSize\":64}"));
+		UUID pendingId = assetId(intent(ownerId, "{\"purpose\":\"CAPTURE\",\"contentType\":\"image/png\",\"byteSize\":2048}"));
 		expectAssetNotFound(download(ownerId, pendingId));
 	}
 
 	@Test
 	void cancelsPendingUploadAndBlocksLaterComplete() throws Exception {
-		UUID assetId = assetId(intent(ownerId, "{\"purpose\":\"CAPTURE\",\"contentType\":\"image/jpeg\",\"byteSize\":64}"));
+		UUID assetId = assetId(intent(ownerId, "{\"purpose\":\"CAPTURE\",\"contentType\":\"image/jpeg\",\"byteSize\":2048}"));
 		storage.put(objectKey(assetId), JPEG, "image/jpeg");
 
 		expectAssetNotFound(cancel(strangerId, assetId));
@@ -285,7 +285,21 @@ class AssetApiTest {
 				values (?, ?, ?, 'ACTIVE', ?, now())""", UUID.randomUUID(), tripId, userId, joinOrder);
 	}
 
-	private static byte[] withPadding(byte[] head, int size) {
+	    private static byte[] realImage(String format) {
+        try {
+            var out = new java.io.ByteArrayOutputStream();
+            javax.imageio.ImageIO.write(new java.awt.image.BufferedImage(8, 6, java.awt.image.BufferedImage.TYPE_INT_RGB), format, out);
+            return Arrays.copyOf(out.toByteArray(), 2048);
+        } catch (Exception ex) { throw new IllegalStateException(ex); }
+    }
+    private static byte[] cleanPng() {
+        return new com.eodilog.asset.ImageSanitizer(new com.eodilog.asset.AssetProperties()).sanitize(PNG,"image/png").bytes();
+    }
+    private static byte[] heicFixture() {
+        try (var input = AssetApiTest.class.getResourceAsStream("/images/example.heic")) { return input.readAllBytes(); }
+        catch (Exception ex) { throw new IllegalStateException(ex); }
+    }
+private static byte[] withPadding(byte[] head, int size) {
 		return Arrays.copyOf(head, size);
 	}
 

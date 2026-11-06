@@ -19,6 +19,15 @@ spring:
       fail-on-unknown-properties: true
 
 app:
+  assets:
+    max-bytes: ${STORAGE_MAX_BYTES:${ASSET_MAX_BYTES:15728640}}
+    max-pixels: ${ASSET_MAX_PIXELS:40000000}
+    batch-ttl: ${ASSET_BATCH_TTL:24h}
+    incomplete-ttl: ${ASSET_INCOMPLETE_TTL:24h}
+    image-magick: ${IMAGE_MAGICK:magick}
+    conversion-timeout: ${IMAGE_CONVERSION_TIMEOUT:30s}
+    cleanup-enabled: true
+    cleanup-delay: 1h
   polls:
     # 1분마다 마감 시각이 지난 투표를 마감한다(정책 §13 V-12)
     auto-close-enabled: true
@@ -45,13 +54,14 @@ app:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:}
   storage:
     # 사진·캡처 파일을 두는 S3 버킷. 버킷은 비공개로 두고 다운로드는 서버가 권한을 확인해 전달한다
-    bucket: ${STORAGE_BUCKET}
-    region: ${STORAGE_REGION:ap-northeast-2}
+    bucket: ${STORAGE_BUCKET:${S3_BUCKET:}}
+    region: ${STORAGE_REGION:${AWS_REGION:ap-northeast-2}}
+    endpoint: ${STORAGE_ENDPOINT:${S3_ENDPOINT:}}
     # 로컬은 .env의 키를 쓴다. 비우면 AWS 기본 자격 증명 체인(EC2 IAM 역할 등)을 쓴다
     access-key-id: ${AWS_ACCESS_KEY_ID:}
     secret-access-key: ${AWS_SECRET_ACCESS_KEY:}
     # 업로드 URL 유효 시간. 지나면 새 업로드 요청을 받아야 한다
-    upload-url-ttl: 10m
+    upload-url-ttl: ${STORAGE_UPLOAD_URL_TTL:${ASSET_UPLOAD_TTL:10m}}
   auth:
     kakao-client-id: ${KAKAO_CLIENT_ID}
     kakao-client-secret: ${KAKAO_CLIENT_SECRET}

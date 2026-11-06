@@ -5,6 +5,7 @@ import com.eodilog.job.JobHandler;
 import com.eodilog.job.JobKind;
 import com.eodilog.job.JobOutcome;
 import com.eodilog.job.JobSubmission;
+import com.eodilog.global.storage.ObjectStorage;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -13,9 +14,9 @@ import org.springframework.stereotype.Component;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
-// TRIP_DELETE 실행기(정책 §14 D-3). 지금은 외부 파일이 없어 execute는 할 일이 없고, 물리 삭제는 작업 행을 잠근 complete에서
-// 같은 트랜잭션으로 한다. 사진 파일이 생기면 그 삭제가 execute에 들어간다. 여행 행은 tombstone으로 남겨 jobs FK와 404를 유지한다
-// 같은 jobId로 다시 실행돼도 이미 없는 행을 지우는 것뿐이라 멱등하다
+// TRIP_DELETE: execute는 원본/표시 객체를 지우고 각 완료 쌍의 DELETING 진행 상태를 독립 저장한다.
+// complete는 작업 행 잠금 트랜잭션에서 FK 순서대로 하위 자료를 지운다. 파일 키는 유예 정리를 위해 남긴다.
+// 재실행은 이미 지운 쌍을 건너뛰며, 여행 tombstone은 jobs FK와 즉시 404를 유지한다.
 @Component
 @RequiredArgsConstructor
 public class TripDeleteJobHandler implements JobHandler {
@@ -25,6 +26,7 @@ public class TripDeleteJobHandler implements JobHandler {
 
 	private final JdbcTemplate jdbcTemplate;
 	private final JsonMapper jsonMapper;
+	private final ObjectStorage objectStorage;
 
 	@Override
 	public JobKind kind() {
@@ -44,7 +46,17 @@ public class TripDeleteJobHandler implements JobHandler {
 
 	@Override
 	public JobOutcome execute(JobContext context) {
-		// 외부 I/O 없음. 결과는 명세 §9의 정리 result 형식이며 completedCount는 삭제한 여행 수다
+		// The trip is already logically deleted. Failed external deletes throw, so the durable job retries
+		// before complete removes child data. Deletion keys remain available to grace-period cleanup.
+		var pending = jdbcTemplate.query("select id, object_key, display_key from assets where trip_id = ? and status <> 'DELETING' order by id",
+				(rs, row) -> new Object[] {rs.getObject("id", UUID.class), rs.getString("object_key"), rs.getString("display_key")}, context.submission().tripId());
+		for (var asset : pending) {
+			objectStorage.delete((String)asset[1]);
+			objectStorage.delete((String)asset[2]);
+			// execute runs outside the completion transaction: persist each finished pair for retries.
+			jdbcTemplate.update("update assets set status='DELETING' where id=?", asset[0]);
+		}
+		// 명세 §9의 최소 정리 result이며 completedCount는 삭제한 여행 수다.
 		return JobOutcome.succeeded(jsonMapper.createObjectNode()
 				.put("scope", JobKind.TRIP_DELETE.name())
 				.put("completedCount", 1)
@@ -61,6 +73,11 @@ public class TripDeleteJobHandler implements JobHandler {
 			throw new IllegalStateException("Trip is not marked deleted");
 		}
 		// FK 순서: 자식 → 부모. 멤버십은 마지막, 여행 행은 남긴다
+		jdbcTemplate.update("delete from photos where trip_id = ?", tripId);
+		// A presigned PUT cannot be revoked. Keep deletion tombstones/keys throughout the grace period
+		// so cleanup can remove late uploads after this job completes and members disappear.
+		jdbcTemplate.update("update assets set status='DELETING', upload_batch_id=null where trip_id = ?", tripId);
+		jdbcTemplate.update("delete from photo_upload_batches where trip_id = ?", tripId);
 		jdbcTemplate.update("delete from settlement_transfers where settlement_id in (select id from settlements where trip_id = ?)", tripId);
 		jdbcTemplate.update("delete from settlement_members where settlement_id in (select id from settlements where trip_id = ?)", tripId);
 		jdbcTemplate.update("delete from settlements where trip_id = ?", tripId);

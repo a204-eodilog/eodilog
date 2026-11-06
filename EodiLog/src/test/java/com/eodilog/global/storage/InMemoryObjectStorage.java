@@ -58,6 +58,8 @@ public class InMemoryObjectStorage implements ObjectStorage {
 		objects.put(key, new Stored(bytes.clone(), contentType));
 	}
 
+	@Override public void write(String key, byte[] bytes, String contentType) { put(key, bytes, contentType); }
+
 	public boolean contains(String key) {
 		return objects.containsKey(key);
 	}
