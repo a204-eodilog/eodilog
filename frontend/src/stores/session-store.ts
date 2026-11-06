@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { DEV_MOCK_TOKENS } from '@/api/dev-mock';
 import type { Session } from '@/api/types';
 import { env } from '@/config/env';
+import { clearChatSession } from '@/features/chat/session-cleanup';
 import { clearInviteLinks } from '@/features/trip/invite-storage';
 import { secureStorage } from '@/lib/secure-storage';
 
@@ -111,6 +112,9 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     await persist(null).catch(() => undefined);
     // 이 기기에 남긴 초대 링크도 지운다(동행 초대 명세 FR-033)
     await clearInviteLinks().catch(() => undefined);
+    // 이 기기에 남은 채팅 상태(방 표·보내는 중 메시지)를 지운다(채팅 명세 FR-031).
+    // 실시간 연결은 여기서 끊지 않는다. 생명주기 훅이 로그인 상태를 보고 끊는다(순환 import 방지)
+    clearChatSession();
     set({
       accessToken: null,
       refreshToken: null,
