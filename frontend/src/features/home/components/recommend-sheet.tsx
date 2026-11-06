@@ -4,7 +4,7 @@ import BottomSheet, {
 } from '@gorhom/bottom-sheet';
 import { Image } from 'expo-image';
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 // 시트 안 가로 목록은 제스처 핸들러 스크롤이어야 시트 끌기와 손가락을 나눠 가진다(안드로이드)
 import { ScrollView } from 'react-native-gesture-handler';
 import Animated, { Easing, FadeInDown } from 'react-native-reanimated';
@@ -19,6 +19,7 @@ export const SHEET_COLLAPSED = 176;
 
 type Props = {
   items: readonly HomeRecommendation[];
+  status: 'loading' | 'error' | 'ready';
   /** 처음 펼친 채로 보여 줄지 (미리보기 '추천 시트 펼침') */
   initialExpanded?: boolean;
   onPress: (item: HomeRecommendation) => void;
@@ -42,7 +43,7 @@ const rowEntering = (i: number) =>
     .easing(Easing.out(Easing.cubic));
 
 /** S05 아래 시트 "좋아요한 여행과 비슷해요". 접으면 가로 카드, 펼치면 세로 목록 */
-export function RecommendSheet({ items, initialExpanded = false, onPress }: Props) {
+export function RecommendSheet({ items, status, initialExpanded = false, onPress }: Props) {
   const snapPoints = useMemo(() => [SHEET_COLLAPSED, '80%'], []);
   const [expanded, setExpanded] = useState(initialExpanded);
   // 시트가 튕기지 않고 목록 모션과 같은 속도로 올라오게 한다
@@ -68,7 +69,11 @@ export function RecommendSheet({ items, initialExpanded = false, onPress }: Prop
         <Icon name="heart" size={20} color={colors.brand.primary} />
         <Text style={styles.title}>좋아요한 여행과 비슷해요</Text>
       </View>
-      {items.length === 0 ? (
+      {status === 'loading' ? (
+        <ActivityIndicator color={colors.brand.primary} style={styles.loading} />
+      ) : status === 'error' && items.length === 0 ? (
+        <Text style={styles.empty}>추천을 불러오지 못했어요</Text>
+      ) : items.length === 0 ? (
         <Text style={styles.empty}>여행에 좋아요를 누르면 비슷한 곳을 추천해 드려요</Text>
       ) : expanded ? (
         <BottomSheetScrollView
@@ -173,6 +178,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing[12],
   },
   title: { ...typography.title3, color: colors.text.default },
+  loading: { marginTop: spacing[16] },
   empty: {
     ...typography.caption,
     color: colors.text.icon,
