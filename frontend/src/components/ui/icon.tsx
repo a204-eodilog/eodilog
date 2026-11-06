@@ -44,7 +44,8 @@ export type IconName =
   | 'gear'
   | 'person-plus'
   | 'person-minus'
-  | 'crown';
+  | 'crown'
+  | 'send';
 
 type IconProps = {
   name: IconName;
@@ -113,6 +114,8 @@ const PATHS: Record<IconName, string> = {
     'M10 12A4 4 0 1 0 10 4A4 4 0 0 0 10 12ZM3 20C3 16.7 6.2 15 10 15C11.4 15 12.7 15.2 13.8 15.7M15 17H21',
   // 방장 넘기기(S19 방장 메뉴). 왕관
   crown: 'M4 8L8 12L12 5L16 12L20 8L18.5 18H5.5L4 8Z',
+  // 메시지 보내기(피그마 S47 입력 칸 오른쪽). 종이비행기
+  send: 'M21 3L10.5 13.5M21 3L14.5 21L10.5 13.5L3 9.5L21 3Z',
 };
 
 /** 채워도 선으로만 남겨야 하는 부분. 가방 손잡이처럼 몸통과 따로 그린다. */

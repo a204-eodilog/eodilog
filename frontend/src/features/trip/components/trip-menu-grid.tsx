@@ -37,7 +37,13 @@ const MENU: MenuItem[] = [
     open: (tripId) => router.push(`/trips/${tripId}/expenses`),
   },
   { key: 'publish', label: '게시', icon: 'link' },
-  { key: 'chat', label: '채팅', icon: 'chat' },
+  {
+    key: 'chat',
+    label: '채팅',
+    icon: 'chat',
+    // S47 대화방(채팅 명세). 여행 아래 주소라 나가기의 dismissAll이 함께 닫는다
+    open: (tripId) => router.push({ pathname: '/trips/[tripId]/chat', params: { tripId } }),
+  },
 ];
 
 /**
