@@ -231,7 +231,7 @@ Table assets {
   status varchar(16) [not null, default: 'PENDING', note: 'PENDING/READY/DELETING/DELETED/CANCELLED']
   created_at timestamp [not null]
   deleted_at timestamp
-  Note: 'TRIP_PHOTO는 JPG/PNG/HEIC 및 같은 배치 필수. CAPTURE는 JPG/PNG, extraction당 최대 10장 검사. 영구 공개 URL 대신 객체 식별자 보관. CAPTURE 본인, TRIP_PHOTO 내부 멤버/게시된 사진 경로를 별도 검증. 파일 수명·삭제 복구 Q-7·11.'
+  Note: 'TRIP_PHOTO는 JPG/PNG/HEIC 및 같은 배치 필수. CAPTURE는 JPG/PNG, extraction당 최대 10장 검사. 영구 공개 URL 대신 객체 식별자 보관. CAPTURE 본인, TRIP_PHOTO 내부 멤버/게시된 사진 경로를 별도 검증. 파일 수명·삭제 복구 Q-7·11. 2026-11-06 V202611061300 구현: 파일 1개 최대 15MB, TRIP_PHOTO일 때만 trip_id(CHECK), object_key는 {용도}/{소유자}/{assetId}. upload_batch_id·metadata_json 열은 사진 등록 작업에서 추가'
 }
 
 Ref: users.profile_asset_id > assets.id

@@ -34,8 +34,24 @@ app:
     retry-delay: 30s
     batch-size: 1
     concurrency: 2
+  # 내부 AI 서버(ai/). 키가 없어도 서버는 시작한다. 토큰이 비면 AI가 401로 거부해 해당 작업만 실패한다
+  # 시간 예산: AI 45초 < 연결 5초 + 응답 50초 < jobs timeout 60초(AI spec §1.0)
+  ai:
+    base-url: ${AI_BASE_URL:http://localhost:8000}
+    internal-token: ${AI_INTERNAL_TOKEN:}
+    connect-timeout: 5s
+    read-timeout: 50s
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:}
+  storage:
+    # 사진·캡처 파일을 두는 S3 버킷. 버킷은 비공개로 두고 다운로드는 서버가 권한을 확인해 전달한다
+    bucket: ${STORAGE_BUCKET}
+    region: ${STORAGE_REGION:ap-northeast-2}
+    # 로컬은 .env의 키를 쓴다. 비우면 AWS 기본 자격 증명 체인(EC2 IAM 역할 등)을 쓴다
+    access-key-id: ${AWS_ACCESS_KEY_ID:}
+    secret-access-key: ${AWS_SECRET_ACCESS_KEY:}
+    # 업로드 URL 유효 시간. 지나면 새 업로드 요청을 받아야 한다
+    upload-url-ttl: 10m
   auth:
     kakao-client-id: ${KAKAO_CLIENT_ID}
     kakao-client-secret: ${KAKAO_CLIENT_SECRET}

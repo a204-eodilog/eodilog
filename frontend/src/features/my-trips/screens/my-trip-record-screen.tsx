@@ -25,7 +25,7 @@ export function MyTripRecordScreen() {
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
   const record = useTripRecord(tripId);
   const [confirming, setConfirming] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   if (record.isLoading || record.error || !record.trip) {
     return (
@@ -70,7 +70,7 @@ export function MyTripRecordScreen() {
         onExpense={() => router.push(`/trips/${tripId}/expenses`)}
         // 지도 핀 고치기 화면은 아직 없다
         onMovePin={notReady}
-        onDelete={() => setDeleting(true)}
+        onDelete={() => setDeleteOpen(true)}
         onPublish={() => setConfirming(true)}
         onVisibility={notReady}
         onDeleteFeed={notReady}
@@ -88,11 +88,11 @@ export function MyTripRecordScreen() {
         }}
       />
       <DeleteRecordSheet
-        visible={deleting}
-        onClose={() => setDeleting(false)}
+        visible={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
         // 기록 삭제 API가 아직 없다. 생기면 지운 뒤 S37로 간다
         onConfirm={() => {
-          setDeleting(false);
+          setDeleteOpen(false);
           notReady();
         }}
       />

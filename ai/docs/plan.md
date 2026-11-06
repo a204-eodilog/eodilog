@@ -3,7 +3,7 @@ title: "어디로그 AI 서버 구현 계획"
 status: draft
 version: "0.1"
 created: 2026-10-27
-spec: "./spec.md (v0.3)"
+spec: "./spec.md (v0.5)"
 ---
 
 # 어디로그 AI 서버 구현 계획
@@ -85,32 +85,29 @@ LLM이 하지 않는 일: 좌표·주소(네이버 장소 검색), 이동 시간
 
 ```
 ai/
-├─ pyproject.toml, uv.lock, .env.example
-├─ docs/  spec.md(v0.3), plan.md, tasks.md, verification.md
-├─ scripts/ eval_photos.py, compare_models.py   # 사진 정확도·모델 비교
+├─ pyproject.toml, uv.lock, .env.example, README.md
+├─ docs/  spec.md(v0.5), plan.md, tasks.md, verification.md
+├─ scripts/ eval_places.py   # 장소 추출 평가
 ├─ app/
-│  ├─ main.py               # 앱 생성, 라우터, 백엔드 형식 오류 처리({error:{code,message,fields,traceId}})
+│  ├─ main.py               # 앱 생성, 미들웨어·라우터 등록, 외부 클라이언트 조립, 내부 토큰 시작 검사
 │  ├─ core/
 │  │  ├─ config.py          # 환경변수
-│  │  ├─ schemas.py         # CamelModel, Data{data}, ApiError
-│  │  ├─ models.py          # 백엔드 DTO 모양: Place, Region, SavedPlace, ItineraryItem, RouteLeg, Weather
-│  │  ├─ llm.py             # GMS 클라이언트, 이름 별칭
-│  │  ├─ container.py       # 외부 의존성 묶음
+│  │  ├─ schemas.py         # CamelModel, Data{data}, ErrorField, ApiError
+│  │  ├─ errors.py          # 백엔드 형식 오류 처리({error:{code,message,fields,traceId}}), 추적 ID
+│  │  ├─ budget.py          # 요청 시간 예산
 │  │  ├─ security.py        # X-Internal-Token
-│  │  ├─ taste_match.py, place_rules.py, text.py   # 취향 일치, 실내·식사·머무는 시간, 조사
+│  │  └─ text.py            # 이름 비교용 정규화
 │  ├─ clients/              # naver_local(장소), travel(카카오 길찾기 3종), page_meta(SSRF 방지), images(EXIF·HEIC)
+│  │  └─ gms.py, errors.py  # GMS 클라이언트, 공급자 장애 오류
 │  └─ features/             # 백엔드 job kind 하나 = service.py + router.py
-│     ├─ places/            # PLACE_EXTRACTION
-│     ├─ tastes/            # 취향 추론
-│     ├─ group_rec/         # TRIP_RECOMMENDATION
-│     ├─ course/            # ITINERARY_PROPOSAL (INITIAL·PLACE_REMOVED·WEATHER)
-│     ├─ weather/           # WEATHER_ALTERNATIVES
-│     ├─ packing/           # CHECKLIST_SUGGESTIONS
-│     ├─ photos/            # PHOTO_CLASSIFICATION·VISIT_DETECTION, embedder(SigLIP2)
-│     ├─ similar/           # discovery-recommendations
-│     └─ friends/           # follow-suggestions
-└─ tests/                   # spec 검증 사례 T-xx, 가짜 LLM·장소·경로·임베더
+│     ├─ place_extraction/      # PLACE_EXTRACTION
+│     ├─ preference_inference/  # 취향 추론
+│     ├─ checklist_suggestion/  # CHECKLIST_SUGGESTIONS
+│     └─ weather_alternatives/  # WEATHER_ALTERNATIVES
+└─ tests/                   # spec 검증 사례 T-xx. 외부 HTTP 응답은 respx로 고정
 ```
+
+나머지 기능(추천, 코스, 사진, 방문 판정, 발견 추천, 친구 추천)은 [tasks.md](./tasks.md)의 해당 작업을 구현할 때 `features/`에 추가한다.
 
 v0.3에서 바뀐 점: 작업 관리는 백엔드가 하므로 모든 API가 동기 응답이다(사진 작업 저장소 제거). 날씨는 백엔드가 조회해 넘기므로 Open-Meteo 클라이언트를 뺐다.
 

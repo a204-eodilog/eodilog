@@ -246,3 +246,71 @@ def test_missing_body_field_is_400(client):
     response = client.post(PATH, json={"userId": "u"})
     assert response.status_code == 400
     assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+# 네이버 지역 검색 category는 '대분류>소분류'이고 분류 안의 낱말은 쉼표로 나뉜다 (spec §1.1, AS-13)
+NAVER_FOOD = (
+    "한식>국밥",
+    "한식>육류,고기요리",
+    "일식>초밥,롤",
+    "양식",
+    "중식>중식당",
+    "분식",
+    "육류,고기요리>소고기구이",
+    "해물,생선요리>회",
+    "아시아음식>베트남음식",
+    "치킨,닭강정",
+    "패스트푸드>햄버거",
+    "음식점>한식",
+)
+
+
+@respx.mock
+@pytest.mark.parametrize("category", NAVER_FOOD)
+def test_naver_food_category_is_food_without_llm(client, category):
+    route = respx.post(GMS_URL).mock(return_value=httpx.Response(500))
+    assert tags(client.post(PATH, json=body(places(*[category] * 5)))) == ["맛집"]
+    assert not route.called
+
+
+@respx.mock
+@pytest.mark.parametrize(
+    ("category", "expected"),
+    [
+        ("카페,디저트>카페", ["카페"]),
+        ("카페,디저트>베이커리", ["카페"]),
+        ("여행,명소>해수욕장", ["바다"]),
+        ("여행,명소>해수욕장,해변", ["바다"]),
+        ("여행,명소>공원", ["산책"]),
+        ("여행,명소>산", ["산"]),
+    ],
+)
+def test_naver_non_food_categories_keep_their_tags(client, category, expected):
+    route = respx.post(GMS_URL).mock(return_value=httpx.Response(500))
+    assert tags(client.post(PATH, json=body(places(*[category] * 5)))) == expected
+    assert not route.called
+
+
+@respx.mock
+@pytest.mark.parametrize(
+    "category", ["쇼핑,유통>편의점", "숙박>호텔", "여행,명소>문화마을", "생활,편의>약국"]
+)
+def test_naver_other_categories_are_not_food(client, category):
+    respx.post(GMS_URL).mock(return_value=httpx.Response(500))
+    assert tags(client.post(PATH, json=body(places(*[category] * 5)))) == []
+
+
+@respx.mock
+def test_naver_restaurants_stay_food_when_llm_is_down(client):
+    # 평가 P07: LLM 장애에서 [카페]만 나오던 경우
+    route = respx.post(GMS_URL).mock(return_value=httpx.Response(500))
+    saved = places(
+        "한식>육류,고기요리",
+        "한식>생선회",
+        "한식>국밥",
+        "카페,디저트>카페",
+        "카페,디저트>카페",
+        "여행,명소>해수욕장,해변",
+    )
+    assert tags(client.post(PATH, json=body(saved))) == ["맛집", "카페"]
+    assert not route.called

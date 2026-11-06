@@ -6,6 +6,7 @@ import httpx
 from fastapi import FastAPI, Request
 
 from app.clients.gms import GmsClient
+from app.clients.kakao_routing import KakaoRoutingClient
 from app.clients.naver_local import NaverLocalClient
 from app.clients.page_meta import PageMetaFetcher
 from app.core.budget import RequestBudgetMiddleware
@@ -13,10 +14,15 @@ from app.core.config import Settings, get_settings
 from app.core.errors import TRACE_HEADER, register_error_handlers, resolve_trace_id
 from app.features.checklist_suggestion.router import router as checklist_suggestion_router
 from app.features.checklist_suggestion.service import ChecklistSuggester
+from app.features.photo_classification.embedder import SiglipEmbedder
+from app.features.photo_classification.router import router as photo_classification_router
+from app.features.photo_classification.service import PhotoClassifier
 from app.features.place_extraction.router import router as place_extraction_router
 from app.features.place_extraction.service import PlaceExtractor
 from app.features.preference_inference.router import router as preference_inference_router
 from app.features.preference_inference.service import PreferenceInferrer
+from app.features.weather_alternatives.router import router as weather_alternatives_router
+from app.features.weather_alternatives.service import WeatherAlternativeSuggester
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 log = logging.getLogger("ai")
@@ -38,6 +44,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         _check_internal_token(app.state.settings)
+        if app.state.settings.photo_model_preload:
+            await app.state.photo_classifier.preload()
         yield
         await app.state.http.aclose()
 
@@ -50,6 +58,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.state.preference_inferrer = PreferenceInferrer(
         llm=_build_llm(app.state.settings, app.state.http)
+    )
+    app.state.weather_alternative_suggester = WeatherAlternativeSuggester(
+        routing=KakaoRoutingClient(
+            app.state.http,
+            api_key=app.state.settings.kakao_rest_api_key,
+            timeout_seconds=app.state.settings.kakao_timeout_seconds,
+        )
+    )
+    app.state.photo_classifier = PhotoClassifier(
+        embedder=SiglipEmbedder(
+            model_name=app.state.settings.clip_model,
+            pretrained=app.state.settings.clip_pretrained,
+        ),
+        similarity_threshold=app.state.settings.photo_similarity_threshold,
     )
 
     # 뒤에 등록한 미들웨어가 바깥을 감싼다. 예산 초과 503에도 trace가 추적 ID를 붙인다
@@ -80,6 +102,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(place_extraction_router)
     app.include_router(preference_inference_router)
     app.include_router(checklist_suggestion_router)
+    app.include_router(weather_alternatives_router)
+    app.include_router(photo_classification_router)
 
     return app
 

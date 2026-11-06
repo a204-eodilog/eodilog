@@ -7,6 +7,10 @@ import com.eodilog.checklist.dto.CreateChecklistItemRequest;
 import com.eodilog.checklist.dto.UpdateChecklistItemRequest;
 import com.eodilog.checklist.exception.ChecklistErrorCode;
 import com.eodilog.checklist.repository.ChecklistItemRepository;
+import com.eodilog.checklist.suggestion.ChecklistSuggestionAccess;
+import com.eodilog.checklist.suggestion.ChecklistSuggestionReader;
+import com.eodilog.checklist.suggestion.ChecklistSuggestionResult;
+import org.springframework.dao.DataIntegrityViolationException;
 import com.eodilog.global.common.error.BusinessException;
 import com.eodilog.global.common.error.CommonErrorCode;
 import com.eodilog.global.common.error.ErrorResponse.ErrorField;
@@ -31,6 +35,8 @@ public class ChecklistService {
 
 	private final ChecklistItemRepository checklistItemRepository;
 	private final TripAccessChecker tripAccessChecker;
+	private final ChecklistSuggestionAccess suggestionAccess;
+	private final ChecklistSuggestionReader suggestionReader;
 	private final Clock clock;
 
 	@Transactional(readOnly = true)
@@ -43,20 +49,60 @@ public class ChecklistService {
 		return new ChecklistResponse(items);
 	}
 
+	// sourceJobId·suggestionIndex가 없으면 직접 작성, 둘 다 있으면 AI 제안 채택(정책 S-9~S-11, S-13)
 	@Transactional
 	public ChecklistItemResponse addItem(UUID userId, UUID tripId, CreateChecklistItemRequest request) {
 		List<ErrorField> errors = new ArrayList<>();
 		String label = validateLabel(request.label(), errors);
-		// AI 준비물 제안(jobs)이 생기면 같은 여행의 성공 결과인지 검증해 이유와 함께 저장한다. 그 전에는 받지 않는다
-		if (request.sourceJobId() != null || request.suggestionIndex() != null) {
-			errors.add(new ErrorField("sourceJobId", "AI 준비물 제안은 아직 사용할 수 없습니다. 이름만 보내 주세요."));
+		boolean hasJob = request.sourceJobId() != null;
+		boolean hasIndex = request.suggestionIndex() != null;
+		if (hasJob != hasIndex) {
+			errors.add(new ErrorField(hasJob ? "suggestionIndex" : "sourceJobId",
+					"AI 제안을 추가하려면 sourceJobId와 suggestionIndex를 함께 보내 주세요."));
+		} else if (hasIndex && request.suggestionIndex() < 0) {
+			errors.add(new ErrorField("suggestionIndex", "제안 순번은 0 이상이어야 합니다."));
 		}
 		throwIfInvalid(errors);
 
 		TripMember member = tripAccessChecker.requireActiveMember(tripId, userId).member();
 		Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
-		ChecklistItem item = checklistItemRepository.save(ChecklistItem.createManual(tripId, label, member.getId(), now));
-		return ChecklistItemResponse.from(item);
+		if (!hasJob) {
+			ChecklistItem item = checklistItemRepository.save(
+					ChecklistItem.createManual(tripId, label, member.getId(), now));
+			return ChecklistItemResponse.from(item);
+		}
+		return adoptSuggestion(userId, tripId, label, request.sourceJobId(), request.suggestionIndex(), member, now);
+	}
+
+	private ChecklistItemResponse adoptSuggestion(UUID userId, UUID tripId, String label, UUID jobId, int index,
+			TripMember member, Instant now) {
+		// 채택도 결과 반영이라 채택하는 사람의 설정을 본다(명세 §3 "자동 작업 시작과 결과 반영 모두에 적용")
+		if (suggestionAccess.disabled(userId)) {
+			throw new BusinessException(ChecklistErrorCode.AI_FEATURE_DISABLED);
+		}
+		// 작업 행을 잠가 같은 작업의 채택을 줄 세운다. 아래 존재 확인과 저장 사이에 다른 채택이 끼지 못한다
+		ChecklistSuggestionResult result = suggestionReader.lockSucceeded(tripId, jobId)
+				.orElseThrow(() -> invalid("sourceJobId", "이 여행에서 추가할 수 있는 준비물 제안이 아닙니다."));
+		if (index >= result.items().size()) {
+			throw invalid("suggestionIndex", "제안 결과에 없는 순번입니다.");
+		}
+		if (checklistItemRepository.existsBySourceJobIdAndSuggestionIndex(jobId, index)) {
+			throw new BusinessException(ChecklistErrorCode.SUGGESTION_ALREADY_ADOPTED);
+		}
+		ChecklistSuggestionResult.Suggestion suggestion = result.items().get(index);
+		try {
+			ChecklistItem item = checklistItemRepository.saveAndFlush(ChecklistItem.adoptSuggestion(tripId, label,
+					suggestion.label(), suggestion.reason(), jobId, index, member.getId(), now));
+			return ChecklistItemResponse.from(item);
+		} catch (DataIntegrityViolationException ex) {
+			// 잠금으로 막히지만, 만일 유니크 제약에 걸리면 500 대신 같은 409로 응답한다
+			throw new BusinessException(ChecklistErrorCode.SUGGESTION_ALREADY_ADOPTED);
+		}
+	}
+
+	private BusinessException invalid(String field, String message) {
+		return new BusinessException(CommonErrorCode.VALIDATION_ERROR, CommonErrorCode.VALIDATION_ERROR.message(),
+				List.of(new ErrorField(field, message)));
 	}
 
 	// 항목 행을 잠근 뒤 expectedVersion을 비교해 다른 멤버의 수정·체크를 덮어쓰지 않는다

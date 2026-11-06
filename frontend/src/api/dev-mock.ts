@@ -6,6 +6,7 @@ import {
 } from 'axios';
 
 import { env } from '@/config/env';
+import { sampleFeed } from '@/features/feed/preview-data';
 import { addDays, seoulToday } from '@/lib/seoul-date';
 
 import { createChatMock } from './dev-mock-chat';
@@ -65,14 +66,61 @@ function user(id: string, nickname: string): UserCard {
 }
 
 const ME: MyProfile = {
-  ...user('user-me', '영광'),
+  ...user('user-me', '다온'),
   ageBand: null,
   ageUseConsent: false,
-  profileCompleted: true,
+  // 신규 가입자 모드: 카카오 닉네임만 있고 프로필(S02)은 아직
+  profileCompleted: !env.devMockNewUser,
   profileUrl: '',
 };
 
-const FRIENDS = ['세은', '승기', '인경', '수철', '성환'].map((name, i) =>
+/** S44 추천 친구·N9 프로필에 쓰는 예시 사람(테스트 모드). 한 명은 비공개 계정 */
+const PEOPLE = [
+  { ...user('people-1', '도윤'), feedCount: 3, followerCount: 12, followingCount: 9 },
+  { ...user('people-2', '하린'), feedCount: 1, followerCount: 4, followingCount: 6 },
+  {
+    ...user('people-3', '서준'),
+    accountVisibility: 'PRIVATE' as const,
+    followerCount: 5,
+    followingCount: 7,
+  },
+];
+let hiddenSuggestions: string[] = [];
+
+/** S39 내 노출 설정(테스트 모드 메모리). 처음엔 아무도 숨기지 않음 */
+let feedVisibility = {
+  hiddenViewerUserIds: [] as string[],
+  version: 1,
+  updatedAt: '2026-11-01T00:00:00Z',
+};
+
+/** S07 공동 피드 좋아요(테스트 모드 메모리) */
+const feedLikes = new Map<string, { liked: boolean; count: number }>();
+// 목록에서 내준 피드의 제목·기간·지역. 상세(S07)는 예시 하나를 쓰되 이 값으로 덮어 눌렀던 카드와 제목이 맞게 한다
+type FeedSummary = {
+  id: string;
+  title: string;
+  startDate?: string | null;
+  endDate?: string | null;
+  regions?: readonly unknown[];
+};
+const feedSummaries = new Map<string, Partial<FeedSummary>>();
+function remember<T extends FeedSummary>(list: T[]): T[] {
+  for (const f of list) {
+    // 값이 없는 칸은 넣지 않아 예시 피드 값이 그대로 남게 한다
+    const known: Partial<FeedSummary> = { title: f.title };
+    if (f.startDate) known.startDate = f.startDate;
+    if (f.endDate) known.endDate = f.endDate;
+    if (f.regions && f.regions.length > 0) known.regions = f.regions;
+    feedSummaries.set(f.id, known);
+  }
+  return list;
+}
+
+/** 신규 가입자 모드에서 S03에 저장한 취향. 저장 전에는 404 */
+let myPreferences: unknown = null;
+
+const FRIENDS = ['가람', '나래', '바다', '소라', '하늘'].map((name, i) =>
   user(`user-${i + 1}`, name),
 );
 
@@ -145,6 +193,54 @@ const REGIONS: Region[] = [
   ['region-gyeongju', '4713000000', '경상북도 경주시'],
 ].map(([id, code, name]) => ({ id, code, name, parentId: null, latitude: null, longitude: null }));
 
+/** S10 개인 즐겨찾기 예시(값 문서 S10 "예시 데이터"). 강문 해변·명주동은 공동 피드에서 담은 것 */
+const BOOKMARKS = [
+  ['광안리 바다뷰 카페', '부산광역시 수영구 광안해변로 219', 35.1532, 129.1186, null],
+  ['강문 해변', '강원특별자치도 강릉시 강문동 산1', 37.7953, 128.9184, 'feed-dev-1'],
+  ['전포 카페거리', '부산광역시 부산진구 전포대로 209', 35.1557, 129.0636, null],
+  ['흰여울문화마을', '부산광역시 영도구 영선동4가 1044', 35.0784, 129.0447, null],
+  ['명주동 골목 카페', '강원특별자치도 강릉시 명주동 15', 37.7537, 128.8957, 'feed-dev-2'],
+] as const;
+/** 명세 Bookmark 모양. 기능 폴더(features/saved) 타입을 api 쪽에서 불러오지 않으려고 여기 둔다 */
+type MockBookmark = {
+  place: {
+    id: string;
+    name: string;
+    address: string | null;
+    latitude: number;
+    longitude: number;
+    regionId: string | null;
+    provider: string | null;
+    providerPlaceId: string | null;
+    source: 'PROVIDER' | 'MANUAL';
+  };
+  retainedPlace: { name: string; latitude: number; longitude: number };
+  memo: string | null;
+  sourceFeedId: string | null;
+  sourceUnavailable: boolean;
+  createdAt: string;
+};
+let bookmarks: MockBookmark[] = BOOKMARKS.map(
+  ([name, address, latitude, longitude, sourceFeedId], i) => ({
+    place: {
+      id: `place-bookmark-${i + 1}`,
+      name,
+      address,
+      latitude,
+      longitude,
+      regionId: null,
+      provider: 'NAVER',
+      providerPlaceId: null,
+      source: 'PROVIDER' as const,
+    },
+    retainedPlace: { name, latitude, longitude },
+    memo: null,
+    sourceFeedId,
+    sourceUnavailable: false,
+    createdAt: new Date(Date.UTC(2026, 10, 5 - i)).toISOString(),
+  }),
+);
+
 let seq = 0;
 
 function makeTrip(input: {
@@ -199,7 +295,7 @@ function makeTrip(input: {
 }
 
 /** 상태 표 5행과 목록 묶음을 한 번에 볼 수 있게 고른 여행들. 만든 순서 최신부터 */
-let trips: Trip[] = [
+const SAMPLE_TRIPS: Trip[] = [
   makeTrip({ title: '부산 바다 여행', start: -1, days: 2, regions: ['region-busan'], friends: 2 }),
   makeTrip({
     title: '강릉 커피 투어',
@@ -226,9 +322,11 @@ let trips: Trip[] = [
   }),
   makeTrip({ title: '봄 소풍', start: -10, days: 0, friends: 1 }),
   // 동행 초대·관리 확인용: 내가 동행인 여행, 정원이 찬 여행
-  makeTrip({ title: '세은이 만든 여행', start: 20, days: 1, friends: 2, meAsMember: true }),
+  makeTrip({ title: '가람이 만든 여행', start: 20, days: 1, friends: 2, meAsMember: true }),
   makeTrip({ title: '스무 명 워크숍', start: 40, days: 1, crowd: true }),
 ];
+// 신규 가입자 모드는 여행 없이 시작해 첫 방문 홈을 본다
+let trips: Trip[] = env.devMockNewUser ? [] : SAMPLE_TRIPS;
 
 /** 이 여행에서 지금 쓸 수 있는 초대 링크의 토큰. 새로 만들거나 취소하면 바뀐다 */
 const inviteTokens = new Map<string, string>();
@@ -297,6 +395,38 @@ function fail(config: InternalAxiosRequestConfig, status: number, code: string, 
   return new AxiosError(message, 'ERR_BAD_REQUEST', config, null, response);
 }
 
+// GET·PATCH /me/settings. 첫 값은 서버 기본값(AI 네 개 CONFIRM, 날씨 SUGGEST_ONLY, 알림 셋 켜짐)과 같다
+let settings = {
+  version: 1,
+  ai: {
+    photoClassification: 'CONFIRM',
+    visitDetection: 'CONFIRM',
+    placeExtraction: 'CONFIRM',
+    checklist: 'CONFIRM',
+    weather: 'SUGGEST_ONLY',
+  },
+  notifications: { followRequests: true, voteCourse: true, tripChanges: true },
+};
+
+function patchSettings(config: InternalAxiosRequestConfig) {
+  const body = JSON.parse(String(config.data ?? '{}')) as {
+    expectedVersion?: number;
+    ai?: Partial<typeof settings.ai>;
+    notifications?: Partial<typeof settings.notifications>;
+  };
+  if (body.expectedVersion !== settings.version) {
+    throw fail(config, 409, 'VERSION_CONFLICT', '설정이 변경되었습니다. 다시 조회해 주세요.');
+  }
+  const next = {
+    version: settings.version,
+    ai: { ...settings.ai, ...body.ai },
+    notifications: { ...settings.notifications, ...body.notifications },
+  };
+  const changed = JSON.stringify(next) !== JSON.stringify(settings);
+  settings = { ...next, version: changed ? settings.version + 1 : settings.version };
+  return settings;
+}
+
 function page<T>(data: T[]) {
   return { data, page: { nextCursor: null, hasNext: false } };
 }
@@ -356,6 +486,78 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
     follows = follows.filter((f) => f.id !== found.id);
     return ok(config, undefined, 204);
   }
+  // S44 추천 친구(명세에 아직 없는 제안 경로)·숨기기
+  if (method === 'get' && url === '/me/friend-recommendations') {
+    const reasons = [
+      { kind: 'taste', tags: ['바다', '카페'] },
+      { kind: 'taste', tags: ['맛집'] },
+      { kind: 'trips', count: 4 },
+    ];
+    return ok(
+      config,
+      page(
+        PEOPLE.map((p, i) => ({ user: followCard(p), reason: reasons[i] })).filter(
+          (x) => !hiddenSuggestions.includes(x.user.id),
+        ),
+      ),
+    );
+  }
+  const hideMatch = /^\/me\/friend-recommendations\/([^/]+)\/hide$/.exec(url);
+  if (method === 'post' && hideMatch) {
+    hiddenSuggestions = [...hiddenSuggestions, decodeURIComponent(hideMatch[1])];
+    return ok(config, undefined, 204);
+  }
+  // S44 닉네임 검색
+  if (method === 'get' && url === '/users') {
+    const q = String((config.params as { query?: string } | undefined)?.query ?? '').trim();
+    const all = [...PEOPLE, ...FOLLOW_PEOPLE, ...FRIENDS];
+    return ok(config, page(q ? all.filter((p) => p.nickname.includes(q)).map(followCard) : []));
+  }
+  // N9 다른 사용자 프로필·공동 피드
+  const userMatch = /^\/users\/([^/]+)(\/feeds)?$/.exec(url);
+  if (method === 'get' && userMatch) {
+    const id = decodeURIComponent(userMatch[1]);
+    const found = [...PEOPLE, ...FOLLOW_PEOPLE, ...FRIENDS].find((p) => p.id === id);
+    if (!found) throw fail(config, 404, 'USER_NOT_FOUND', '사용자를 찾을 수 없어요');
+    const card = followCard(found);
+    if (!userMatch[2]) return ok(config, { data: { ...found, ...card } });
+    if (card.accountVisibility === 'PRIVATE' && card.followingStatus !== 'ACCEPTED') {
+      throw fail(config, 403, 'FORBIDDEN', '비공개 계정이에요');
+    }
+    const feed = (fid: string, title: string, code: string) => ({
+      id: `${id}-${fid}`,
+      tripId: `trip-${id}-${fid}`,
+      title,
+      regions: [{ id: `r-${code}`, code, name: title }],
+    });
+    return ok(
+      config,
+      page(
+        remember([
+          feed('1', '봄 경주', '4713000000'),
+          feed('2', '추석 전주', '5211000000'),
+          feed('3', '겨울 여행', '2635000000'),
+        ]),
+      ),
+    );
+  }
+  // 팔로우: 공개 계정이면 ACCEPTED, 비공개면 REQUESTED
+  const followMatch = /^\/users\/([^/]+)\/follow$/.exec(url);
+  if (method === 'post' && followMatch) {
+    const id = decodeURIComponent(followMatch[1]);
+    const target = [...PEOPLE, ...FOLLOW_PEOPLE, ...FRIENDS].find((p) => p.id === id);
+    if (!target) throw fail(config, 404, 'USER_NOT_FOUND', '사용자를 찾을 수 없어요');
+    const existing = follows.find((x) => x.follower.id === ME.id && x.followee.id === id);
+    if (existing) return ok(config, { data: followResponse(existing) });
+    const created = follow(
+      `follow-${id}`,
+      FOLLOW_ME,
+      target,
+      target.accountVisibility === 'PRIVATE' ? 'REQUESTED' : 'ACCEPTED',
+    );
+    follows = [...follows, created];
+    return ok(config, { data: followResponse(created) });
+  }
   const unfollowMatch = /^\/users\/([^/]+)\/follow$/.exec(url);
   const followerMatch = /^\/me\/followers\/([^/]+)$/.exec(url);
   if (method === 'delete' && (unfollowMatch || followerMatch)) {
@@ -370,7 +572,100 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
   }
 
   if (method === 'get' && url === '/me') return ok(config, { data: ME });
+  if (method === 'patch' && url === '/me') {
+    const body = JSON.parse(String(config.data ?? '{}')) as { nickname?: string };
+    if (body.nickname) ME.nickname = body.nickname;
+    ME.profileCompleted = true;
+    return ok(config, { data: ME });
+  }
+  if (method === 'get' && url === '/me/preferences') {
+    if (!myPreferences) throw fail(config, 404, 'NOT_FOUND', '아직 저장한 취향이 없어요');
+    return ok(config, { data: myPreferences });
+  }
+  if (method === 'put' && url === '/me/preferences') {
+    const body = JSON.parse(String(config.data ?? '{}')) as Record<string, unknown>;
+    myPreferences = { inferredItems: [], ...body, updatedAt: new Date().toISOString() };
+    return ok(config, { data: myPreferences });
+  }
+  if (method === 'get' && url === '/me/settings') return ok(config, { data: settings });
+  if (method === 'patch' && url === '/me/settings') {
+    return ok(config, { data: patchSettings(config) });
+  }
+  if (method === 'get' && url === '/me/bookmarks') return ok(config, page(bookmarks));
+  const bookmarkMatch = /^\/me\/bookmarks\/([^/]+)$/.exec(url);
+  if (bookmarkMatch) {
+    const placeId = decodeURIComponent(bookmarkMatch[1]);
+    const found = bookmarks.find((b) => b.place.id === placeId);
+    const body = (
+      typeof config.data === 'string' ? JSON.parse(config.data) : (config.data ?? {})
+    ) as {
+      memo?: string;
+      sourceFeedId?: string;
+    };
+    if (method === 'patch' && found) {
+      found.memo = body.memo ?? null;
+      return ok(config, { data: found });
+    }
+    if (method === 'delete' && found) {
+      bookmarks = bookmarks.filter((b) => b !== found);
+      return ok(config, undefined, 204);
+    }
+    // 되돌리기: 지운 예시 장소를 같은 자리 값으로 다시 넣는다
+    const index = BOOKMARKS.findIndex((_, i) => `place-bookmark-${i + 1}` === placeId);
+    if (method === 'put' && index >= 0) {
+      const [name, address, latitude, longitude] = BOOKMARKS[index];
+      const restored = {
+        place: {
+          id: placeId,
+          name,
+          address,
+          latitude,
+          longitude,
+          regionId: null,
+          provider: 'NAVER',
+          providerPlaceId: null,
+          source: 'PROVIDER' as const,
+        },
+        retainedPlace: { name, latitude, longitude },
+        memo: body.memo ?? null,
+        sourceFeedId: body.sourceFeedId ?? null,
+        sourceUnavailable: false,
+        createdAt: new Date().toISOString(),
+      };
+      bookmarks = [restored, ...bookmarks.filter((b) => b.place.id !== placeId)];
+      return ok(config, { data: restored });
+    }
+    throw fail(config, 404, 'NOT_FOUND', '저장한 장소를 찾을 수 없어요.');
+  }
+  // 그룹 즐겨찾기에 추가(S14): 담기만 하고 S20 목록은 아직 흉내 내지 않는다
+  if (method === 'put' && /^\/trips\/[^/]+\/saved-places\/[^/]+\/me$/.test(url)) {
+    return ok(config, { data: null });
+  }
   if (method === 'get' && url === '/me/trips') return ok(config, page(trips));
+  // S37 내가 게시한 공동 피드: 예시 여행 중 "남도 맛집 여행"을 경주로 게시한 것으로 본다
+  if (method === 'get' && url === '/me/feeds') {
+    const posted = trips.find((t) => t.title === '남도 맛집 여행');
+    return ok(
+      config,
+      page(
+        remember(
+          posted
+            ? [
+                {
+                  id: `feed-${posted.id}`,
+                  tripId: posted.id,
+                  title: '봄 경주',
+                  regions: [{ id: 'region-gyeongju', code: '4713000000', name: '경상북도 경주시' }],
+                  startDate: posted.startDate,
+                  endDate: posted.endDate,
+                  visibility: { feedId: `feed-${posted.id}`, ...feedVisibility },
+                },
+              ]
+            : [],
+        ),
+      ),
+    );
+  }
 
   if (method === 'post' && url === '/trips') {
     const key = String(config.headers['Idempotency-Key'] ?? '');
@@ -403,6 +698,179 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
   if (method === 'get' && url === '/regions') {
     const query = (params.query ?? '').trim();
     return ok(config, page(REGIONS.filter((r) => query && r.name.includes(query))));
+  }
+
+  // S05 홈. 팔로우한 친구가 다녀간 지역 네 곳(법정동 코드는 지도 경계와 같다)
+  if (method === 'get' && url === '/home/map') {
+    const marker = (code: string, name: string, members: string[]) => ({
+      region: { id: `home-${code}`, code, name, parentId: null, latitude: null, longitude: null },
+      feedIds: [`feed-${code}`],
+      visibleMemberUserIds: members,
+      visitCount: members.length,
+    });
+    return ok(config, {
+      data: {
+        markers: [
+          marker('5115000000', '강원특별자치도 강릉시', ['user-1', 'user-2', 'user-3']),
+          // 강원 주변(확대 확인용)
+          marker('5121000000', '강원특별자치도 속초시', ['user-1', 'user-4']),
+          marker('5183000000', '강원특별자치도 양양군', ['user-2']),
+          marker('5182000000', '강원특별자치도 고성군', ['user-5']),
+          marker('5117000000', '강원특별자치도 동해시', ['user-3', 'user-4']),
+          marker('5123000000', '강원특별자치도 삼척시', ['user-1']),
+          marker('5176000000', '강원특별자치도 평창군', ['user-2', 'user-3', 'user-4', 'user-5']),
+          marker('5111000000', '강원특별자치도 춘천시', ['user-5']),
+          marker('4713000000', '경상북도 경주시', ['user-2', 'user-4']),
+          marker('1213000000', '전남광주통합특별시 여수시', ['user-1']),
+          marker('5011000000', '제주특별자치도 제주시', ['user-3', 'user-5']),
+        ],
+        criteria: { from: null, to: null, regionGrouping: 'SIGUNGU' },
+        updatedAt: new Date().toISOString(),
+      },
+    });
+  }
+  // 좋아요 기반 추천(백엔드 아직 없음). 휴대폰 테스트에서 시트 카드가 보이게 예시를 준다
+  // S07 공동 피드: 어떤 ID든 예시 피드를 돌려준다. 좋아요는 메모리에 남는다
+  const visibilityMatch = /^\/feeds\/([^/]+)\/visibility\/me$/.exec(url);
+  if (method === 'put' && visibilityMatch) {
+    const body = JSON.parse(String(config.data ?? '{}')) as {
+      hiddenViewerUserIds: string[];
+      expectedVersion: number;
+    };
+    if (body.expectedVersion !== feedVisibility.version) {
+      throw fail(config, 409, 'VERSION_CONFLICT', '다른 곳에서 바뀌었어요');
+    }
+    feedVisibility = {
+      hiddenViewerUserIds: body.hiddenViewerUserIds,
+      version: feedVisibility.version + 1,
+      updatedAt: new Date().toISOString(),
+    };
+    return ok(config, { data: { feedId: visibilityMatch[1], ...feedVisibility } });
+  }
+  // S06 같은 지역 여행 목록: 홈 지도 지역마다 공동 피드 두 개(카드를 누르면 S07 예시 피드)
+  const regionFeedsMatch = /^\/home\/regions\/([^/]+)\/feeds$/.exec(url);
+  if (method === 'get' && regionFeedsMatch) {
+    const regionId = decodeURIComponent(regionFeedsMatch[1]);
+    const card = (n: number, title: string, start: string, end: string) => ({
+      id: `${regionId}-feed-${n}`,
+      tripId: `${regionId}-trip-${n}`,
+      title,
+      coverPhotoId: null,
+      regions: [],
+      startDate: start,
+      endDate: end,
+      publishedAt: `2026-1${n}-01T09:00:00Z`,
+      likedByMe: false,
+      likeCount: 3 * n,
+    });
+    return ok(
+      config,
+      page(
+        remember([
+          card(1, '겨울 바다 산책', '2026-01-17', '2026-01-18'),
+          card(0, '가을 맛집 투어', '2025-10-03', '2025-10-05'),
+        ]),
+      ),
+    );
+  }
+  const feedMatch = /^\/feeds\/([^/]+)(\/like)?$/.exec(url);
+  if (feedMatch) {
+    const [, feedId, like] = feedMatch;
+    const cur = feedLikes.get(feedId) ?? { liked: false, count: 12 };
+    if (!like && method === 'get') {
+      return ok(config, {
+        data: {
+          ...sampleFeed(feedId),
+          ...feedSummaries.get(feedId),
+          likedByMe: cur.liked,
+          likeCount: cur.count,
+        },
+      });
+    }
+    if (like && method === 'put') {
+      const next = { liked: true, count: cur.liked ? cur.count : cur.count + 1 };
+      feedLikes.set(feedId, next);
+      return ok(config, { data: next });
+    }
+    if (like && method === 'delete') {
+      feedLikes.set(feedId, { liked: false, count: cur.liked ? cur.count - 1 : cur.count });
+      return ok(config, undefined, 204);
+    }
+  }
+
+  if (method === 'get' && url === '/me/discovery-recommendations') {
+    const region = (code: string, name: string) => ({
+      id: `home-${code}`,
+      code,
+      name,
+      parentId: null,
+      latitude: null,
+      longitude: null,
+    });
+    const feed = (
+      id: string,
+      title: string,
+      code: string,
+      name: string,
+      start: string,
+      end: string,
+    ) => ({
+      type: 'FEED' as const,
+      feed: {
+        id,
+        tripId: `trip-${id}`,
+        title,
+        coverPhotoId: null,
+        regions: [region(code, name)],
+        startDate: start,
+        endDate: end,
+        publishedAt: '2026-10-20T09:00:00Z',
+        likedByMe: false,
+        likeCount: 3,
+      },
+      place: null,
+      reason: '좋아요한 여행과 비슷해요',
+    });
+    const remembered = (item: ReturnType<typeof feed>) => {
+      remember([item.feed]);
+      return item;
+    };
+    const place = (id: string, name: string, address: string) => ({
+      type: 'PLACE' as const,
+      feed: null,
+      place: { id, name, address, regionId: null },
+      reason: '좋아요한 여행과 비슷해요',
+    });
+    return ok(
+      config,
+      page([
+        remembered(
+          feed(
+            'rec-1',
+            '제주 동쪽 한 바퀴',
+            '5011000000',
+            '제주특별자치도 제주시',
+            '2026-09-12',
+            '2026-09-14',
+          ),
+        ),
+        place('rec-2', '명주동 골목 카페', '강원 강릉시 명주동'),
+        remembered(
+          feed(
+            'rec-3',
+            '여수 밤바다',
+            '1213000000',
+            '전남광주통합특별시 여수시',
+            '2026-08-02',
+            '2026-08-03',
+          ),
+        ),
+        place('rec-4', '안목 바다뷰 카페', '강원 강릉시 견소동'),
+      ]),
+    );
+  }
+  if (method === 'get' && url === '/me/notification-summary') {
+    return ok(config, { data: { unreadCount: 2, asOf: new Date().toISOString() } });
   }
 
   const regionMatch = /^\/regions\/([^/]+)$/.exec(url);
@@ -614,5 +1082,5 @@ export const DEV_MOCK_SESSION: Session = {
   ...DEV_MOCK_TOKENS,
   expiresIn: 3600,
   user: ME,
-  isNewUser: false,
+  isNewUser: env.devMockNewUser,
 };

@@ -1,36 +1,52 @@
-import { StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 
-import { Button } from '@/components/ui';
-import { signOut } from '@/features/auth/logout';
-import { colors, layout, spacing, typography } from '@/theme';
+import { toast } from '@/components/ui';
+import { HomeView } from '@/features/home/components/home-view';
+import { RegionTripsSheet } from '@/features/home/components/region-trips-sheet';
+import { useHome } from '@/features/home/hooks/use-home';
+import { useRegionTrips } from '@/features/home/hooks/use-region-trips';
+import type { RegionMark } from '@/features/home/types';
 
-/** S05 홈 자리. 지도와 탭은 지도 공통 부품 작업 뒤 채운다 */
-export function HomeScreen() {
+const soon = () => toast.show('준비 중이에요');
+
+/** S06 같은 지역 여행 목록 시트. 누른 지역마다 서버 목록을 받아 보인다 */
+function RegionSheet({ marks, onClose }: { marks: readonly RegionMark[]; onClose: () => void }) {
+  const trips = useRegionTrips(marks);
   return (
-    <SafeAreaView style={styles.screen}>
-      <View style={styles.body}>
-        <Text style={[typography.title2, styles.title]}>홈</Text>
-        <Text style={[typography.body, styles.text]}>
-          로그인했어요. 친구 여행 지도는 다음 작업에서 만들어요.
-        </Text>
-        {/* Button은 기본이 왼쪽 정렬(alignSelf flex-start)이라 가운데에 두려면 직접 정한다 */}
-        <Button label="로그아웃" variant="neutral" onPress={signOut} style={styles.logout} />
-      </View>
-    </SafeAreaView>
+    <RegionTripsSheet
+      groups={trips.groups}
+      onClose={onClose}
+      onTrip={(card) => router.push(`/feeds/${card.feedId}`)}
+      onRetry={trips.retry}
+    />
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.surface.white },
-  body: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing[12],
-    paddingHorizontal: layout.screenPaddingX,
-  },
-  title: { color: colors.text.default },
-  text: { color: colors.text.sub, textAlign: 'center' },
-  logout: { alignSelf: 'center' },
-});
+/** S05 홈 친구 여행 지도 */
+export function HomeScreen() {
+  const home = useHome();
+  return (
+    <HomeView
+      state={home.state}
+      marks={home.marks}
+      recommendations={home.recommendations}
+      recommendationsStatus={home.recommendationsStatus}
+      unreadCount={home.unreadCount}
+      friendCount={null}
+      onRetry={home.retry}
+      onTrend={soon}
+      onBell={soon}
+      onFindFriends={() => router.push('/find-friends')}
+      onNewTrip={() => router.push('/trips/new')}
+      onRegion={soon}
+      renderRegionSheet={(marks, onClose) => (
+        <RegionSheet
+          key={marks.map((m) => m.regionCode).join('-')}
+          marks={marks}
+          onClose={onClose}
+        />
+      )}
+      onRecommendation={(r) => (r.kind === 'trip' ? router.push(`/feeds/${r.targetId}`) : soon())}
+    />
+  );
+}

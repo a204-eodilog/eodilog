@@ -60,6 +60,10 @@ export const colors = {
   /** 홈·마이페이지 지도. step은 많이 간 정도(1이 가장 옅음). */
   map: {
     sea: '#EEF0EC',
+    /** S05 바다 원형 그라데이션 (가운데 → 바깥). Figma S05 값 */
+    seaCenter: '#F4F7FB',
+    seaMid: '#E9EEF5',
+    seaEdge: '#E2E8F0',
     seaGlow: '#F2F3F0',
     regionLine: '#EFF1EE',
     label: '#9AA2AD',
@@ -78,6 +82,8 @@ export const colors = {
   },
   /** 하단 시트·확인창 뒤 어두운 막 */
   overlay: 'rgba(0, 0, 0, 0.32)',
+  /** 지도 위 핀·말풍선 그림자 */
+  shadow: 'rgba(31, 36, 48, 0.14)',
   /** 파랑 블록 위 반투명 흰색(피그마 S15·S17). 칩 바탕 18%, 보조 글자 85% */
   onBrand: {
     chip: 'rgba(255, 255, 255, 0.18)',

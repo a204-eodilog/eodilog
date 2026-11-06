@@ -18,6 +18,7 @@ import { colors, layout, radius, spacing, typography } from '@/theme';
 
 import {
   getPreferences,
+  PREFERENCES_QUERY_KEY,
   removeInferredPreference,
   savePreferences,
   setTripPreferenceConsent,
@@ -32,8 +33,6 @@ import {
   toExplicitItems,
 } from '../preference-rules';
 import type { PreferenceItem, Preferences } from '../types';
-
-const PREFERENCES_KEY = ['me', 'preferences'] as const;
 
 const ADD_PROBLEM: Record<'empty' | 'duplicate' | 'full', string> = {
   empty: `1~${KEYWORD_MAX_LENGTH}자로 적어 주세요`,
@@ -57,7 +56,11 @@ export function PreferencesScreen() {
   const forRecommendation = from === 'recommendation' && Boolean(tripId);
   // 추천 직전과 설정에서 왔으면 끝나고 그 화면으로 돌아간다
   const returnsBack = forRecommendation || from === 'settings';
-  const prefs = useQuery({ queryKey: PREFERENCES_KEY, queryFn: getPreferences, retry: false });
+  const prefs = useQuery({
+    queryKey: PREFERENCES_QUERY_KEY,
+    queryFn: getPreferences,
+    retry: false,
+  });
 
   if (prefs.isPending) {
     return (
@@ -133,7 +136,7 @@ function PreferencesForm({
       return saved;
     },
     onSuccess: (saved) => {
-      queryClient.setQueryData(PREFERENCES_KEY, saved);
+      queryClient.setQueryData(PREFERENCES_QUERY_KEY, saved);
       leave();
     },
     onError: () =>
@@ -178,7 +181,9 @@ function PreferencesForm({
             onPress={leave}
             style={({ pressed }) => [styles.later, pressed && styles.pressed]}
           >
-            <Text style={[typography.bodyMedium, styles.laterText]}>나중에</Text>
+            <Text style={[typography.bodyMedium, styles.laterText]} numberOfLines={1}>
+              나중에
+            </Text>
           </Pressable>
         }
       />
@@ -375,7 +380,8 @@ const styles = StyleSheet.create({
     gap: spacing[32],
   },
   contentTight: { paddingTop: spacing[16], gap: spacing[28] },
-  later: { paddingHorizontal: spacing[12], height: 44, justifyContent: 'center' },
+  // 머리 오른쪽 칸(너비 72)에 한 줄로 들어가면서 화면 글자 여백(20)과 끝이 맞게 오른쪽만 띄운다
+  later: { paddingRight: spacing[12], height: 44, justifyContent: 'center' },
   laterText: { color: colors.brand.primaryDark },
   pressed: { opacity: 0.7 },
   notice: {

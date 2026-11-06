@@ -5,6 +5,9 @@ import type { DataResponse } from '@/api/types';
 
 import type { Preferences, PreferencesWrite, TripPreferenceScope } from './types';
 
+/** 내 취향 조회 키. S03과 S45가 같은 값을 본다 */
+export const PREFERENCES_QUERY_KEY = ['me', 'preferences'] as const;
+
 /**
  * 내 취향. 아직 한 번도 저장하지 않았으면(404) null.
  * 2026-11-04 기준 백엔드에 이 API가 아직 없어서 404가 나도 빈 취향으로 시작한다.
