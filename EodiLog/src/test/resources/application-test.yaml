@@ -3,12 +3,12 @@
 spring:
   datasource:
     hikari:
-      # 캐시된 테스트 컨텍스트마다 풀이 있어 기본(10개 상시 유지)이면 공유 PostgreSQL 연결 한도(100)를 넘는다
-      # 쉬는 컨텍스트는 1개만 남기고, 최대 크기는 기본 10 그대로 둬 동시성 테스트는 그대로 돈다
-      minimum-idle: 1
-      # Hikari는 밀리초 숫자만 받는다(10초)
-      idle-timeout: 10000
+      # Cached Spring test contexts share one Postgres server (100 connection default).
+      maximum-pool-size: 4
+      minimum-idle: 0
 app:
+  assets:
+    cleanup-enabled: false
   jobs:
     enabled: false
   polls:

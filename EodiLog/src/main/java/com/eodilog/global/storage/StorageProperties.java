@@ -15,7 +15,8 @@ public record StorageProperties(
 		@NotBlank String region,
 		String accessKeyId,
 		String secretAccessKey,
-		@NotNull Duration uploadUrlTtl) {
+		@NotNull Duration uploadUrlTtl,
+		String endpoint) {
 
 	private static final Duration DEFAULT_UPLOAD_URL_TTL = Duration.ofMinutes(10);
 

@@ -6,6 +6,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import software.amazon.awssdk.core.ResponseBytes;
+import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
@@ -17,6 +18,9 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
+import com.eodilog.asset.AssetErrorCode;
+import com.eodilog.global.common.error.BusinessException;
+import java.io.IOException;
 
 // 비공개 버킷 하나에 객체를 둔다. 공개 URL은 만들지 않고, 업로드는 짧은 서명 URL, 다운로드는 서버 전달로만 한다
 public class S3ObjectStorage implements ObjectStorage {
@@ -36,6 +40,7 @@ public class S3ObjectStorage implements ObjectStorage {
 
 	@Override
 	public PresignedUpload presignUpload(String key, String contentType, long byteSize, Duration ttl) {
+		try {
 		PutObjectRequest put = PutObjectRequest.builder()
 				.bucket(bucket)
 				.key(key)
@@ -54,6 +59,7 @@ public class S3ObjectStorage implements ObjectStorage {
 			}
 		});
 		return new PresignedUpload(presigned.url().toString(), "PUT", Map.copyOf(headers), presigned.expiration());
+		} catch (RuntimeException ex) { throw unavailable(); }
 	}
 
 	@Override
@@ -65,8 +71,9 @@ public class S3ObjectStorage implements ObjectStorage {
 			if (ex.statusCode() == NOT_FOUND) {
 				return Optional.empty();
 			}
-			throw ex;
+			throw unavailable();
 		}
+		catch (RuntimeException ex) { throw unavailable(); }
 	}
 
 	@Override
@@ -80,18 +87,39 @@ public class S3ObjectStorage implements ObjectStorage {
 			if (ex.statusCode() == RANGE_NOT_SATISFIABLE) {
 				return new byte[0];
 			}
-			throw ex;
+			throw unavailable();
 		}
+		catch (RuntimeException ex) { throw unavailable(); }
 	}
 
 	@Override
 	public InputStream open(String key) {
-		return s3Client.getObject(GetObjectRequest.builder().bucket(bucket).key(key).build());
+		try {
+			var source = s3Client.getObject(GetObjectRequest.builder().bucket(bucket).key(key).build());
+			return new InputStream() {
+				@Override public int read() { try { return source.read(); } catch (IOException | RuntimeException ex) { throw unavailable(); } }
+				@Override public int read(byte[] bytes, int offset, int count) {
+					try { return source.read(bytes, offset, count); } catch (IOException | RuntimeException ex) { throw unavailable(); }
+				}
+				@Override public void close() { try { source.close(); } catch (IOException | RuntimeException ex) { throw unavailable(); } }
+			};
+		} catch (RuntimeException ex) { throw unavailable(); }
 	}
 
 	@Override
 	public void delete(String key) {
-		s3Client.deleteObject(DeleteObjectRequest.builder().bucket(bucket).key(key).build());
+		try { s3Client.deleteObject(DeleteObjectRequest.builder().bucket(bucket).key(key).build()); }
+		catch (RuntimeException ex) { throw unavailable(); }
 	}
+
+	@Override
+	public void write(String key, byte[] bytes, String contentType) {
+		try {
+			s3Client.putObject(PutObjectRequest.builder().bucket(bucket).key(key).contentType(contentType)
+					.cacheControl("private, no-store").build(), RequestBody.fromBytes(bytes));
+		} catch (RuntimeException ex) { throw unavailable(); }
+	}
+
+	private BusinessException unavailable() { return new BusinessException(AssetErrorCode.STORAGE_UNAVAILABLE); }
 
 }
