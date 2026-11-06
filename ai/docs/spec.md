@@ -340,6 +340,8 @@ sources:
 - 모델: SigLIP2 `ViT-B-32-SigLIP2-256`, `webli` 가중치(`CLIP_MODEL`·`CLIP_PRETRAINED`). 선택 설치 `vision`이며 첫 요청 때 올린다. 올리기에 실패하면 503이고 다음 요청에서 다시 시도한다.
 - 모델에 넣기 전: EXIF 회전 적용, RGB 변환, 긴 변 448px 이하로 축소(`MAX_SIDE`). 형식은 파일 이름·Content-Type이 아니라 내용으로 판단한다.
 - 주제: `LANDSCAPE` 풍경, `FOOD` 음식, `PEOPLE` 사람, `OTHER` 기타. 주제마다 영어 문장 여러 개의 텍스트 벡터 평균과 코사인 유사도가 가장 높은 하나(SigLIP2 점수 순서와 같다). `topics`에는 하나만 담는다.
+  - `LANDSCAPE`는 바깥 풍경(자연 경관, 도시 전경, 거리)이다.
+  - 음식이나 사람이 주인공이 아닌 실내(호텔 객실, 박물관·미술관 내부, 가게·카페 내부, 기차·지하철 안)는 `OTHER`다. 문서, 표, 스크린샷, 안내판도 `OTHER`다.
 - 유사 묶음: 코사인 유사도 ≥ 0.94(`PHOTO_SIMILARITY_THRESHOLD`)인 사진끼리 연결한다. A·B와 B·C가 기준 이상이면 A·B·C가 한 묶음이다. 2장 이상 묶음에만 새 `groupId`(UUID). 실패한 사진은 묶지 않는다. 원본 삭제·대표 선정 없음.
 - 사진마다 독립 처리, 실패한 사진만 `FAILED`. 사진별 `errorCode`: 15MB 초과 `INPUT_LIMIT_EXCEEDED`, 지원하지 않는 형식 `UNSUPPORTED_INPUT`, 열 수 없는 파일 `IMAGE_DECODE_FAILED`. 모델 장애 → 503.
 - `meta`가 `photoIds` 목록이 있는 JSON이 아니거나 `photoIds`와 `files` 개수가 다르면 400 `VALIDATION_ERROR`.

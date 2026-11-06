@@ -425,6 +425,15 @@ def test_topic_sentences_are_embedded_only_once(client, embedder):
     assert embedder.text_calls == calls_after_first
 
 
+def test_indoor_scenes_are_other_and_landscape_is_outdoor():
+    # 음식·사람이 주인공이 아닌 실내(호텔 객실, 박물관 홀 등)는 기타다 (spec §8.1)
+    indoor_words = ("indoor", "interior", "room")
+
+    assert any(word in s for s in TOPICS["OTHER"] for word in indoor_words)
+    assert not any(word in s for s in TOPICS["LANDSCAPE"] for word in indoor_words)
+    assert all("outdoor" in sentence for sentence in TOPICS["LANDSCAPE"])
+
+
 def test_slow_model_does_not_block_the_request_budget():
     release = threading.Event()
 
