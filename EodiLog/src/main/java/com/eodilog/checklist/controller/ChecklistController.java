@@ -52,11 +52,17 @@ public class ChecklistController {
 		return ResponseEntity.ok(DataResponse.of(checklist));
 	}
 
-	@Operation(summary = "준비물 추가", description = """
-			여행의 ACTIVE 멤버라면 누구나 직접 준비물을 추가한다. 체크하지 않은 상태로 만들어진다.
-			AI 준비물 제안 채택(sourceJobId·suggestionIndex)은 AI 제안 기능 연동 전이라 아직 받지 않는다.""")
+	@Operation(summary = "준비물 추가·AI 제안 채택", description = """
+			여행의 ACTIVE 멤버라면 누구나 준비물을 추가한다. 체크하지 않은 상태로 만들어진다.
+			sourceJobId·suggestionIndex를 함께 보내면 AI 준비물 제안을 채택한다(source=AI, 제안 이유 보존).
+			같은 여행의 성공한 CHECKLIST_SUGGESTIONS 작업과 결과 items 안의 순번(0부터)만 받는다. 아니면 400.
+			label은 제안 이름을 그대로 보내거나 고쳐 보낸다. 고치면 modifiedByUser=true.
+			같은 제안은 한 번만 채택하며, 채택 후 지운 제안도 다시 채택할 수 없다(409).""")
 	@ApiResponse(responseCode = "201", description = "추가 성공")
 	@ApiResponse(responseCode = "404", description = "TRIP_NOT_FOUND: 없거나 볼 수 없는 여행",
+			content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+	@ApiResponse(responseCode = "409", description = """
+			AI_FEATURE_DISABLED: 내 준비물 추천 설정이 OFF / SUGGESTION_ALREADY_ADOPTED: 이미 채택한 제안""",
 			content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
 	@PostMapping
 	public ResponseEntity<DataResponse<ChecklistItemResponse>> addItem(
