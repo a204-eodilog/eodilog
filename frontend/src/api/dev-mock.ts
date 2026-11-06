@@ -310,6 +310,38 @@ function fail(config: InternalAxiosRequestConfig, status: number, code: string, 
   return new AxiosError(message, 'ERR_BAD_REQUEST', config, null, response);
 }
 
+// GET·PATCH /me/settings. 첫 값은 서버 기본값(AI 네 개 CONFIRM, 날씨 SUGGEST_ONLY, 알림 셋 켜짐)과 같다
+let settings = {
+  version: 1,
+  ai: {
+    photoClassification: 'CONFIRM',
+    visitDetection: 'CONFIRM',
+    placeExtraction: 'CONFIRM',
+    checklist: 'CONFIRM',
+    weather: 'SUGGEST_ONLY',
+  },
+  notifications: { followRequests: true, voteCourse: true, tripChanges: true },
+};
+
+function patchSettings(config: InternalAxiosRequestConfig) {
+  const body = JSON.parse(String(config.data ?? '{}')) as {
+    expectedVersion?: number;
+    ai?: Partial<typeof settings.ai>;
+    notifications?: Partial<typeof settings.notifications>;
+  };
+  if (body.expectedVersion !== settings.version) {
+    throw fail(config, 409, 'VERSION_CONFLICT', '설정이 변경되었습니다. 다시 조회해 주세요.');
+  }
+  const next = {
+    version: settings.version,
+    ai: { ...settings.ai, ...body.ai },
+    notifications: { ...settings.notifications, ...body.notifications },
+  };
+  const changed = JSON.stringify(next) !== JSON.stringify(settings);
+  settings = { ...next, version: changed ? settings.version + 1 : settings.version };
+  return settings;
+}
+
 function page<T>(data: T[]) {
   return { data, page: { nextCursor: null, hasNext: false } };
 }
@@ -380,6 +412,10 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
   }
 
   if (method === 'get' && url === '/me') return ok(config, { data: ME });
+  if (method === 'get' && url === '/me/settings') return ok(config, { data: settings });
+  if (method === 'patch' && url === '/me/settings') {
+    return ok(config, { data: patchSettings(config) });
+  }
   if (method === 'get' && url === '/me/bookmarks') return ok(config, page(bookmarks));
   if (method === 'get' && url === '/me/trips') return ok(config, page(trips));
 
