@@ -2,12 +2,14 @@ import { Redirect, useLocalSearchParams } from 'expo-router';
 
 import { toast } from '@/components/ui';
 import { HomeView, type HomeViewProps } from '@/features/home/components/home-view';
+import { RegionTripsSheet } from '@/features/home/components/region-trips-sheet';
 import {
   PREVIEW_LOCKED,
   PREVIEW_MARKS,
   PREVIEW_RECOMMENDATIONS,
   PREVIEW_CHUNCHEON,
   PREVIEW_ZOOM_MARKS,
+  previewRegionTrips,
 } from '@/features/home/preview-data';
 
 type PreviewState =
@@ -25,6 +27,15 @@ export function HomePreviewScreen() {
 
   const base: HomeViewProps = {
     state: 'ready',
+    renderRegionSheet: (marks, onClose) => (
+      <RegionTripsSheet
+        key={marks.map((mark) => mark.regionCode).join('-')}
+        groups={previewRegionTrips(marks)}
+        onClose={onClose}
+        onTrip={(c) => toast.show(`${c.title}: S07 친구 여행 상세로 가요`)}
+        onRetry={say('다시 불러와요')}
+      />
+    ),
     marks: PREVIEW_MARKS,
     recommendations: PREVIEW_RECOMMENDATIONS,
     unreadCount: 3,
