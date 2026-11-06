@@ -92,13 +92,8 @@ class PlaceExtractor:
         if not (page or captures or source.memo):
             return ExtractionResult(result_status="FAILED", candidates=[])
 
-        try:
-            mentions = await self._find_mentions(page, captures, source.memo)
-        except LLMUnavailable:
-            # spec §2: 링크 제목만 있으면 제목으로 계속한다
-            if not (page and page.title and not captures):
-                raise
-            mentions = [Mention(page.title, None, "LINK_TEXT")]
+        # LLM 장애는 503이다. 링크 제목은 장소 언급이 아니므로 대신 쓰지 않는다 (spec §2·§10)
+        mentions = await self._find_mentions(page, captures, source.memo)
         if not mentions:
             return ExtractionResult(result_status="NOT_FOUND", candidates=[])
 
