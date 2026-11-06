@@ -27,7 +27,8 @@ class UnsupportedImage(Exception):
     """지원하지 않는 형식. 422 UNSUPPORTED_INPUT으로 돌려준다."""
 
 
-def open_image(data: bytes, allowed: frozenset[str]) -> Image.Image:
+def open_image(data: bytes, allowed: frozenset[str], *, min_side: int | None = None) -> Image.Image:
+    """`min_side`를 주면 JPEG를 짧은 변이 그 이상인 크기까지만 풀어 디코딩 시간을 줄인다."""
     # Pillow는 깨진 파일에 다양한 예외를 던지므로 신뢰할 수 없는 입력에서는 모두 깨진 파일로 본다
     try:
         image = Image.open(io.BytesIO(data))
@@ -39,6 +40,8 @@ def open_image(data: bytes, allowed: frozenset[str]) -> Image.Image:
     if image.width * image.height > MAX_PIXELS:
         raise ImageDecodeError("이미지가 너무 큽니다.")
     try:
+        if min_side is not None:
+            image.draft("RGB", (min_side, min_side))
         image.load()
     except Exception as e:
         raise ImageDecodeError("이미지를 열 수 없습니다.") from e

@@ -102,11 +102,12 @@ ai/
 │  └─ features/             # 백엔드 job kind 하나 = service.py + router.py
 │     ├─ place_extraction/      # PLACE_EXTRACTION
 │     ├─ preference_inference/  # 취향 추론
-│     └─ checklist_suggestion/  # CHECKLIST_SUGGESTIONS
+│     ├─ checklist_suggestion/  # CHECKLIST_SUGGESTIONS
+│     └─ weather_alternatives/  # WEATHER_ALTERNATIVES
 └─ tests/                   # spec 검증 사례 T-xx. 외부 HTTP 응답은 respx로 고정
 ```
 
-나머지 기능(추천, 코스, 날씨 대안, 사진, 방문 판정, 발견 추천, 친구 추천)은 [tasks.md](./tasks.md)의 해당 작업을 구현할 때 `features/`에 추가한다.
+나머지 기능(추천, 코스, 사진, 방문 판정, 발견 추천, 친구 추천)은 [tasks.md](./tasks.md)의 해당 작업을 구현할 때 `features/`에 추가한다.
 
 v0.3에서 바뀐 점: 작업 관리는 백엔드가 하므로 모든 API가 동기 응답이다(사진 작업 저장소 제거). 날씨는 백엔드가 조회해 넘기므로 Open-Meteo 클라이언트를 뺐다.
 

@@ -26,6 +26,18 @@ export function formatTripPeriod(start: string | null, end: string | null): stri
   return formatShortDate((s ?? e) as Date);
 }
 
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+/** "01.17 – 01.18"(요일 없이 두 자리). 하루면 날짜 하나, 모르면 null. S07·S40 카드 */
+export function formatPeriodShort(start: string | null, end: string | null): string | null {
+  const s = parseDate(start);
+  const e = parseDate(end);
+  if (!s && !e) return null;
+  const md = (d: Date) => `${pad2(d.getMonth() + 1)}.${pad2(d.getDate())}`;
+  if (s && e && s.getTime() !== e.getTime()) return `${md(s)} – ${md(e)}`;
+  return md((s ?? e) as Date);
+}
+
 /** "1박 2일". 하루면 "당일치기", 날짜 미정이면 null */
 export function formatTripNights(start: string | null, end: string | null): string | null {
   const s = parseDate(start);

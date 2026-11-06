@@ -20,12 +20,13 @@ log = logging.getLogger("ai")
 MAX_SIDE = 448
 MAX_PHOTO_BYTES = 15 * 1024 * 1024
 
-# 주제 문장 (AS-7). 평가 사진 60장으로 고른 문장이다 (verification.md)
+# 주제 문장 (AS-7). 평가 사진 60장으로 고르고 실내 문장을 더했다 (verification.md)
 TOPICS: dict[str, list[str]] = {
     "LANDSCAPE": [
-        "a photo of a landscape",
-        "a photo of scenery with sky, sea or mountains",
-        "a photo of a city street and buildings",
+        # 실내가 "건물"에 끌려 풍경으로 가지 않도록 바깥 풍경임을 밝힌다
+        "an outdoor photo of a landscape",
+        "an outdoor photo of scenery with sky, sea or mountains",
+        "an outdoor photo of a city street and buildings",
     ],
     "FOOD": [
         "a close-up photo of a dish of food",
@@ -47,6 +48,11 @@ TOPICS: dict[str, list[str]] = {
         # 메뉴판·안내판은 음식·풍경으로 새기 쉽다
         "a photo of a restaurant menu with prices",
         "a photo of a sign with printed text",
+        # 음식·사람이 주인공이 아닌 실내는 기타다 (spec §8.1)
+        "a photo of an indoor room interior",
+        "a photo of a hotel room interior",
+        "a photo of a museum or gallery interior",
+        "a photo of the interior of a shop, cafe or train",
     ],
 }
 
@@ -78,6 +84,13 @@ class PhotoClassifier:
         self._embedder = embedder
         self._threshold = similarity_threshold
         self._topic_vectors: np.ndarray | None = None
+
+    async def preload(self) -> None:
+        """모델과 주제 벡터를 미리 준비한다. 실패해도 다른 기능은 살리고 요청 때 다시 시도한다."""
+        try:
+            await asyncio.to_thread(self._topics)
+        except Exception as e:
+            log.warning("photo_model_preload_failed error=%s", type(e).__name__)
 
     async def classify(self, uploads: list[PhotoUpload]) -> ClassificationResult:
         decoded = await asyncio.to_thread(_decode_all, uploads)
@@ -148,7 +161,8 @@ def _decode(data: bytes) -> Image.Image | str:
     if len(data) > MAX_PHOTO_BYTES:
         return "INPUT_LIMIT_EXCEEDED"
     try:
-        image = ImageOps.exif_transpose(open_image(data, PHOTO_FORMATS)).convert("RGB")
+        opened = open_image(data, PHOTO_FORMATS, min_side=MAX_SIDE)
+        image = ImageOps.exif_transpose(opened).convert("RGB")
         image.thumbnail((MAX_SIDE, MAX_SIDE))
     except UnsupportedImage:
         return "UNSUPPORTED_INPUT"

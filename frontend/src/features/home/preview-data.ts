@@ -1,4 +1,4 @@
-import type { HomeRecommendation, RegionMark } from './types';
+import type { HomeRecommendation, RegionMark, RegionTrips } from './types';
 
 /** /dev/home 예시 값. 이름은 실제 팀원이 아닌 예시 이름 */
 const mark = (
@@ -42,6 +42,7 @@ export const PREVIEW_ZOOM_MARKS: RegionMark[] = [
 export const PREVIEW_RECOMMENDATIONS: HomeRecommendation[] = [
   {
     id: 'r1',
+    targetId: 'r1',
     kind: 'trip',
     title: '제주 동쪽 한 바퀴',
     meta: '하늘',
@@ -50,15 +51,25 @@ export const PREVIEW_RECOMMENDATIONS: HomeRecommendation[] = [
   },
   {
     id: 'r2',
+    targetId: 'r2',
     kind: 'place',
     title: '명주동 골목 카페',
     meta: '강릉 명주동',
     nights: null,
     imageUrl: null,
   },
-  { id: 'r3', kind: 'trip', title: '여수 밤바다', meta: '가람', nights: '1박 2일', imageUrl: null },
+  {
+    id: 'r3',
+    targetId: 'r3',
+    kind: 'trip',
+    title: '여수 밤바다',
+    meta: '가람',
+    nights: '1박 2일',
+    imageUrl: null,
+  },
   {
     id: 'r4',
+    targetId: 'r4',
     kind: 'place',
     title: '안목 바다뷰 카페',
     meta: '강릉 견소동',
@@ -67,6 +78,7 @@ export const PREVIEW_RECOMMENDATIONS: HomeRecommendation[] = [
   },
   {
     id: 'r5',
+    targetId: 'r5',
     kind: 'trip',
     title: '경주 느린 산책',
     meta: '다온',
@@ -75,6 +87,7 @@ export const PREVIEW_RECOMMENDATIONS: HomeRecommendation[] = [
   },
   {
     id: 'r6',
+    targetId: 'r6',
     kind: 'place',
     title: '경포호 산책길',
     meta: '강릉 저동',
@@ -89,3 +102,31 @@ export const PREVIEW_LOCKED = [
   { name: '나래', regionCode: '1215000000' },
   { name: '다온', regionCode: '4831000000' },
 ];
+
+/** S06 미리보기 카드. 지역마다 한두 개, 사진은 비워 둔다 */
+export function previewRegionTrips(marks: readonly RegionMark[]): RegionTrips[] {
+  return marks.map((mark, i) => ({
+    mark,
+    state: 'ready' as const,
+    cards: [
+      {
+        feedId: `${mark.regionCode}-1`,
+        title: `${mark.name} 겨울 여행`,
+        period: '01.17 – 01.18',
+        nights: '1박 2일',
+        coverUrl: null,
+      },
+      ...(i % 2 === 0
+        ? [
+            {
+              feedId: `${mark.regionCode}-2`,
+              title: `${mark.name} 맛집 투어`,
+              period: '10.03 – 10.05',
+              nights: '2박 3일',
+              coverUrl: null,
+            },
+          ]
+        : []),
+    ],
+  }));
+}

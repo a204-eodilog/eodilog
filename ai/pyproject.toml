@@ -20,8 +20,19 @@ dependencies = [
 vision = [
     "open-clip-torch>=3.3.0",
     "torch>=2.15.0",
+    "torchvision>=0.29.2",
     "transformers>=5.22.1",
 ]
+
+# 배포 서버(EC2 c6g)에 GPU가 없어 CUDA 패키지를 받지 않는다
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+torchvision = { index = "pytorch-cpu" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
 
 [dependency-groups]
 dev = [
@@ -49,3 +60,5 @@ ignore = ["B008"]
 [tool.ruff.lint.per-file-ignores]
 # 한국어 프롬프트 문자열은 줄을 나누면 LLM에 그대로 전달된다
 "app/features/*/service.py" = ["E501"]
+# 캡처 평가 세트 생성기: HTML 목업 문자열과 이미지별 데이터를 한 줄에 둔다
+"scripts/make_captures.py" = ["E501"]

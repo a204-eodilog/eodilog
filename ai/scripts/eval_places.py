@@ -1,8 +1,8 @@
 """장소 추출 평가. 실제 GMS·네이버를 호출한다 (작업 6).
 
 사용: uv run python -m scripts.eval_places [--models gpt-5.6-luna gpt-4.1 gpt-5.5]
-입력: eval_data/places/{images,labels.json}
-출력: eval_data/places/results/<모델>.jsonl (이미 있는 사진은 건너뛰므로 이어서 돌릴 수 있다)
+입력: eval_data/places/{images,labels.json} (--data-dir로 다른 세트를 줄 수 있다)
+출력: <data-dir>/results/<모델>.jsonl (이미 있는 사진은 건너뛰므로 이어서 돌릴 수 있다)
 """
 
 import argparse
@@ -66,10 +66,10 @@ def summarize(rows: list[dict]) -> dict:
 
 
 async def evaluate_model(
-    http: httpx.AsyncClient, settings: Settings, model: str, limit: int | None
+    http: httpx.AsyncClient, settings: Settings, model: str, limit: int | None, data: Path = DATA
 ) -> list[dict]:
-    labels = json.loads((DATA / "labels.json").read_text("utf-8"))["images"]
-    output = DATA / "results" / f"{model}.jsonl"
+    labels = json.loads((data / "labels.json").read_text("utf-8"))["images"]
+    output = data / "results" / f"{model}.jsonl"
     output.parent.mkdir(exist_ok=True)
     rows = (
         [json.loads(line) for line in output.read_text("utf-8").splitlines()]
@@ -89,7 +89,7 @@ async def evaluate_model(
             error, mentions, with_place = None, [], 0
             try:
                 result = await extractor.extract(
-                    ExtractionInput(None, [(DATA / "images" / name).read_bytes()], None, None)
+                    ExtractionInput(None, [(data / "images" / name).read_bytes()], None, None)
                 )
                 mentions = list(dict.fromkeys(c.name for c in result.candidates))
                 with_place = len({c.name for c in result.candidates if c.place})
@@ -114,7 +114,7 @@ async def evaluate_model(
     return rows
 
 
-async def main() -> None:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--models", nargs="+", default=DEFAULT_MODELS)
     parser.add_argument("--limit", type=int, help="모델마다 새로 평가할 사진 수")
@@ -122,11 +122,19 @@ async def main() -> None:
         "--no-places", action="store_true", help="장소 검색을 호출하지 않고 이름 인식만 잰다"
     )
     parser.add_argument("--rescore", action="store_true", help="API 없이 저장된 응답만 다시 채점")
-    args = parser.parse_args()
+    parser.add_argument(
+        "--data-dir", type=Path, default=DATA, help="images/와 labels.json이 있는 평가 세트 폴더"
+    )
+    return parser.parse_args(argv)
+
+
+async def main() -> None:
+    args = parse_args()
+    data = args.data_dir
     if args.rescore:
-        labels = json.loads((DATA / "labels.json").read_text("utf-8"))["images"]
+        labels = json.loads((data / "labels.json").read_text("utf-8"))["images"]
         for model in args.models:
-            lines = (DATA / "results" / f"{model}.jsonl").read_text("utf-8").splitlines()
+            lines = (data / "results" / f"{model}.jsonl").read_text("utf-8").splitlines()
             rows = [json.loads(line) for line in lines]
             rows = [rescore(row, labels[row["file"]]) for row in rows]
             print(json.dumps({"model": model, **summarize(rows)}, ensure_ascii=False))
@@ -139,7 +147,7 @@ async def main() -> None:
         settings = settings.model_copy(update={"naver_client_id": "", "naver_client_secret": ""})
     async with httpx.AsyncClient() as http:
         for model in args.models:
-            rows = await evaluate_model(http, settings, model, args.limit)
+            rows = await evaluate_model(http, settings, model, args.limit, data)
             print(json.dumps({"model": model, **summarize(rows)}, ensure_ascii=False), flush=True)
 
 

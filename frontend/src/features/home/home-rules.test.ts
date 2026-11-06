@@ -6,8 +6,9 @@ import {
   fillStepsFor,
   clusterMarks,
   groupBySido,
+  toRegionTripCards,
   isGroup,
-  placePhotoPins,
+  nearLabel,
   fillsFor,
   homeState,
   nightsLabel,
@@ -187,44 +188,41 @@ describe('clusterMarks', () => {
   it('작게 보면 가까운 강릉·동해가 묶이고 친구 많은 강릉이 대표', () => {
     const items = clusterMarks(marks, 1, { width: 100, height: 44 });
     expect(items).toHaveLength(2);
-    expect(items[0]).toMatchObject({ label: '강릉 외 1곳', placeCount: 2, memberCount: 5 });
+    expect(items[0]).toMatchObject({ label: '강릉·동해', placeCount: 2, memberCount: 5 });
   });
   it('크게 보면 모두 따로', () => {
     expect(clusterMarks(marks, 50, { width: 100, height: 44 })).toHaveLength(3);
   });
 });
 
-describe('placePhotoPins', () => {
-  const m = (regionCode: string, name: string, n: number) => ({
-    regionCode,
-    name,
-    memberCount: n,
-    memberIds: Array.from({ length: n }, (_, i) => `${regionCode}-${i}`),
-    memberNames: [],
-    coverUrl: null,
-    visitCount: 1,
-    feedIds: [],
+describe('nearLabel', () => {
+  const m = (name: string) => ({ name }) as Parameters<typeof nearLabel>[0][number];
+  it('두 곳은 이름을 잇고, 세 곳부터 나머지를 센다', () => {
+    expect(nearLabel([m('강릉'), m('평창')])).toBe('강릉·평창');
+    expect(nearLabel([m('강릉'), m('평창'), m('동해'), m('정선')])).toBe('강릉·평창 외 2곳');
   });
-  // 강릉(584,153)·평창(530,178)·동해(612,190)·춘천(428,123)
-  const marks = [
-    m('5115000000', '강릉', 3),
-    m('5176000000', '평창', 4),
-    m('5117000000', '동해', 2),
-    m('5111000000', '춘천', 1),
-  ];
-  const card = { width: 176, height: 64, gap: 6 };
-  it('카드 네모가 겹치지 않는 쪽을 고르고, 양쪽 다 막히면 가까운 카드와 묶는다', () => {
-    const items = placePhotoPins(marks, 2, card);
-    // 가까운 세 곳 중 하나는 묶이고 춘천은 따로
-    const groups = items.filter(isGroup);
-    expect(groups).toHaveLength(1);
-    expect(groups[0].label).toMatch(/외 /);
-    expect(items.some((i) => !isGroup(i) && i.mark.name === '춘천')).toBe(true);
-  });
-  it('충분히 크게 보면 모두 따로 놓이고 겹치지 않는다', () => {
-    const items = placePhotoPins(marks, 6, card);
-    expect(items.filter(isGroup)).toHaveLength(0);
-    expect(items).toHaveLength(4);
+});
+
+describe('toRegionTripCards', () => {
+  it('최근 게시 먼저, 기간·박수 글자', () => {
+    const card = (id: string, publishedAt: string) => ({
+      id,
+      tripId: 't',
+      title: id,
+      coverPhotoId: null,
+      regions: [],
+      startDate: '2026-01-17',
+      endDate: '2026-01-18',
+      publishedAt,
+      likedByMe: false,
+      likeCount: 0,
+    });
+    const cards = toRegionTripCards([
+      card('old', '2025-10-01T00:00:00Z'),
+      card('new', '2026-01-20T00:00:00Z'),
+    ]);
+    expect(cards.map((c) => c.feedId)).toEqual(['new', 'old']);
+    expect(cards[0]).toMatchObject({ period: '01.17 – 01.18', nights: '1박 2일', coverUrl: null });
   });
 });
 

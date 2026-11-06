@@ -6,4 +6,17 @@ __pycache__/
 .ruff_cache/
 
 # 사진 평가용 이미지 (저작권·용량 때문에 커밋하지 않는다)
-eval_data/
+eval_data/*
+# LLM 기능 평가 세트(cases.json)는 커밋한다. 실행 결과는 장소 결과처럼 커밋하지 않는다
+!eval_data/preference_inference/
+!eval_data/checklist_suggestion/
+!eval_data/place_extraction/
+# 사진 평가는 라벨과 출처만 커밋하고 이미지는 커밋하지 않는다
+!eval_data/photos/
+eval_data/photos/images/
+eval_data/*/results/
+# 캡처 평가 세트는 정답표와 설명만 커밋한다 (이미지·결과는 생성 스크립트로 다시 만든다)
+!eval_data/captures/
+eval_data/captures/*
+!eval_data/captures/labels.json
+!eval_data/captures/README.md
