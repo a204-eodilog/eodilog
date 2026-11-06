@@ -150,7 +150,7 @@ sources:
 | 모든 자료를 읽지 못함(비공개 게시물, 깨진 파일) | `FAILED` |
 
 - 링크 일부·캡처 일부를 읽지 못해도 읽은 자료로 계속한다.
-- LLM 장애 → 503 `PROVIDER_UNAVAILABLE`(링크 제목만 있으면 제목으로 계속). 장소 검색 장애 → 언급은 `place: null`로 돌려준다.
+- LLM 장애 → 503 `PROVIDER_UNAVAILABLE`(링크 제목을 장소 언급으로 대신 쓰지 않는다. 메모·캡처가 함께 와도 같음). 장소 검색 장애 → 언급은 `place: null`로 돌려준다.
 - SSRF 방지(내부망 주소 차단, 리다이렉트마다 검사), 캡처는 EXIF를 지우고 1600px로 줄여 LLM에 보낸다. 장소 이름은 적힌 그대로(업종을 붙이지 않음).
 
 **검증:** T-01-1 링크 글·캡처 간판의 장소 2곳 / T-01-2 같은 이름 3지점 → `MULTIPLE_CANDIDATES` / T-01-3 장소 없음 → `NOT_FOUND` / T-01-4 사설 IP → 링크 실패 / T-01-5 403 링크+정상 캡처 → 캡처 결과 / T-01-6 403 링크만 → `FAILED` / T-01-7 검색 장애 → `place:null` / T-01-8 같은 장소 중복 언급 합침 / T-01-9 LLM 이미지에 EXIF 없음 / T-01-10 WebP 422 `UNSUPPORTED_INPUT`, 11장 422 `INPUT_LIMIT_EXCEEDED`

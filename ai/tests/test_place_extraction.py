@@ -59,11 +59,15 @@ async def resolver(host: str) -> list[str]:
 
 @pytest.fixture
 def client() -> TestClient:
+    return make_client()
+
+
+def make_client(gms_api_key: str = "k") -> TestClient:
     app = create_app(Settings(_env_file=None, internal_api_token=TOKEN))
     http = httpx.AsyncClient()
     app.state.place_extractor = PlaceExtractor(
         llm=GmsClient(
-            http, api_key="k", base_url="https://gms.test/v1", model="m", timeout_seconds=1
+            http, api_key=gms_api_key, base_url="https://gms.test/v1", model="m", timeout_seconds=1
         ),
         places=NaverLocalClient(http, client_id="i", client_secret="k", timeout_seconds=1),
         pages=PageMetaFetcher(http, timeout_seconds=1, resolver=resolver),
@@ -433,17 +437,50 @@ def test_llm_outage_with_capture_is_503(client):
     assert response.json()["error"]["code"] == "PROVIDER_UNAVAILABLE"
 
 
+def course_page(title: str) -> str:
+    return f'<meta property="og:title" content="{title}">'
+
+
 @respx.mock
-def test_llm_outage_with_link_title_continues_with_title(client):
-    respx.get(LINK_AT_IP).mock(return_value=httpx.Response(200, html=PAGE))
+def test_llm_outage_with_link_title_only_is_503_not_title_candidate(client):
+    respx.get(LINK_AT_IP).mock(
+        return_value=httpx.Response(200, html=course_page("부산 영도 하루 코스 정리"))
+    )
     respx.post(GMS_URL).mock(return_value=httpx.Response(500))
-    mock_places({"민락 수변공원 야경 산책": [document("민락 수변공원 야경 산책")]})
+    naver = mock_places({"부산 영도 하루 코스 정리": [document("부산 영도 하루 코스 정리")]})
 
-    data = post(client, url=LINK).json()["data"]
+    response = post(client, url=LINK)
 
-    assert data["resultStatus"] == "SUCCESS"
-    assert data["candidates"][0]["name"] == "민락 수변공원 야경 산책"
-    assert data["candidates"][0]["evidence"] == "게시물 글에서 찾았어요"
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "PROVIDER_UNAVAILABLE"
+    assert not naver.called
+
+
+@respx.mock
+def test_llm_outage_with_link_title_and_memo_is_503_not_title_candidate(client):
+    respx.get(LINK_AT_IP).mock(return_value=httpx.Response(200, html=course_page("주말 일상 기록")))
+    respx.post(GMS_URL).mock(return_value=httpx.Response(500))
+    naver = mock_places({"주말 일상 기록": [document("주말 일상 기록")]})
+
+    response = post(client, url=LINK, memo="흰여울문화마을이랑 태종대 가자")
+
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "PROVIDER_UNAVAILABLE"
+    assert not naver.called
+
+
+@respx.mock
+def test_missing_gms_key_with_link_title_is_503_not_title_candidate():
+    respx.get(LINK_AT_IP).mock(
+        return_value=httpx.Response(200, html=course_page("부산 영도 하루 코스 정리"))
+    )
+    naver = mock_places({"부산 영도 하루 코스 정리": [document("부산 영도 하루 코스 정리")]})
+
+    response = post(make_client(gms_api_key=""), url=LINK)
+
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "PROVIDER_UNAVAILABLE"
+    assert not naver.called
 
 
 @respx.mock
