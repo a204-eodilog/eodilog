@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: layout.screenPaddingX,
     paddingTop: spacing[8],
-    paddingBottom: 120,
+    paddingBottom: spacing[24],
     gap: spacing[20],
   },
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -178,5 +178,11 @@ const styles = StyleSheet.create({
   empty: { ...typography.caption, color: colors.text.muted, paddingVertical: spacing[12] },
   note: { flexDirection: 'row', alignItems: 'center', gap: spacing[6] },
   noteText: { ...typography.caption, color: colors.text.sub },
-  saveWrap: { position: 'absolute', right: layout.screenPaddingX, bottom: spacing[24] },
+  // 안전 영역 안에서 배치해 안드로이드 탐색 버튼에 저장 버튼이 가리지 않게 한다.
+  saveWrap: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: layout.screenPaddingX,
+    paddingVertical: spacing[24],
+  },
 });
