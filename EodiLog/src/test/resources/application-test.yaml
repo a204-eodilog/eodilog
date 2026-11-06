@@ -20,6 +20,10 @@ app:
   ai:
     base-url: http://127.0.0.1:9
     internal-token: test-internal-token
+  storage:
+    # 실제 S3에 붙지 않는다. 파일 API 테스트는 메모리 저장소(InMemoryObjectStorage)로 바꿔 끼운다
+    bucket: test-bucket
+    region: ap-northeast-2
   auth:
     kakao-client-id: test-client
     kakao-client-secret: test-secret

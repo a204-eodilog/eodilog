@@ -31,7 +31,8 @@ cd EodiLog
 작업을 완료로 보고하기 전에 `build`를 통과시킨다.
 
 - **Docker Desktop을 먼저 실행한다.** `build`의 스프링 테스트는 Testcontainers로 PostGIS 컨테이너를 띄우고, 서버 실행은 `compose.yaml`의 DB를 쓴다.
-- 서버를 띄우기 전에 `.env.example`을 `.env`로 복사해 **모든 키**를 채운다: DB 비밀번호, `KAKAO_CLIENT_ID`·`KAKAO_CLIENT_SECRET`, `KAKAO_ALLOWED_REDIRECTS`, `JWT_SECRET`(32바이트 이상). 인증 설정이 비어 있으면 서버가 시작되지 않는다. `.env`는 커밋하지 않는다.
+- 서버를 띄우기 전에 `.env.example`을 `.env`로 복사해 **모든 키**를 채운다: DB 비밀번호, `KAKAO_CLIENT_ID`·`KAKAO_CLIENT_SECRET`, `KAKAO_ALLOWED_REDIRECTS`, `JWT_SECRET`(32바이트 이상), `STORAGE_BUCKET`·`STORAGE_REGION`·`AWS_ACCESS_KEY_ID`·`AWS_SECRET_ACCESS_KEY`(S3 개발 버킷). 인증·버킷 설정이 비어 있으면 서버가 시작되지 않는다. `.env`는 커밋하지 않는다.
+- 실제 S3 버킷 왕복 테스트(`AssetRealS3Test`)는 기본 빌드에서 건너뛴다. `.env`를 채운 뒤 `.\gradlew.bat test --tests "*AssetRealS3Test" -PrealS3=true`로 돌린다.
 - `dev-up` 대신 직접 띄울 때는 `.\gradlew.bat bootRun --args="--spring.profiles.active=local"`을 쓴다. `local` 프로필이 `.env`를 읽는다. 자세한 실행·카카오 로그인 점검은 [로컬 실행 문서](docs/plan/local-development.md)를 본다.
 - 커버리지 리포트는 `build/reports/jacoco/test/html/index.html`에 생긴다([커버리지 문서](docs/plan/backend-test-coverage.md)).
 - compose 없이 다른 DB에 붙일 때는 `SPRING_DATASOURCE_URL`·`SPRING_DATASOURCE_USERNAME`·`SPRING_DATASOURCE_PASSWORD` 환경 변수를 쓴다. `application*.yaml`에 접속 정보를 적지 않는다.
@@ -50,8 +51,8 @@ cd EodiLog
 
 - 루트 패키지: `com.eodilog`
 - 공통 설정: `global.config` (`SwaggerConfig`, `SecurityConfig`, `TimeConfig`의 `Clock` 빈)
-- 공통 코드: `global.common`(응답·예외·traceId), `global.idempotency`(요청 중복 방지), `global.security`(`AuthUser`), `global.websocket`(STOMP `/ws` 연결·CONNECT 인증·ERROR 형식), `global.ai`(내부 AI 서버 호출 `AiServerClient`, 설정 `app.ai`)
-- 도메인: `domain.auth`(카카오 로그인·서비스 토큰·`BearerFilter`), `user`(회원·`/me`·`UserCardReader`), `trip`, `chat`(그룹 채팅방·메시지, `chat.realtime` 커밋 뒤 실시간 전달), `itinerary`, `checklist`(공동 준비물, `checklist.suggestion` AI 준비물 제안 작업·채택), `expense`(경비·정산), `invitation`(초대 링크), `poll`(지역·장소 투표), `region`, `visit`(실제 방문 기록·방문 평가). 새 도메인은 루트 아래에 둔다
+- 공통 코드: `global.common`(응답·예외·traceId), `global.idempotency`(요청 중복 방지), `global.security`(`AuthUser`), `global.websocket`(STOMP `/ws` 연결·CONNECT 인증·ERROR 형식), `global.ai`(내부 AI 서버 호출 `AiServerClient`, 설정 `app.ai`), `global.storage`(S3 파일 저장소 `ObjectStorage`, 설정 `app.storage`. 테스트는 `InMemoryStorageConfiguration`으로 메모리 저장소를 끼운다)
+- 도메인: `domain.auth`(카카오 로그인·서비스 토큰·`BearerFilter`), `user`(회원·`/me`·`UserCardReader`), `trip`, `chat`(그룹 채팅방·메시지, `chat.realtime` 커밋 뒤 실시간 전달), `itinerary`, `checklist`(공동 준비물, `checklist.suggestion` AI 준비물 제안 작업·채택), `expense`(경비·정산), `invitation`(초대 링크), `poll`(지역·장소 투표), `region`, `visit`(실제 방문 기록·방문 평가), `asset`(파일 업로드 요청·확인·취소·다운로드). 새 도메인은 루트 아래에 둔다
 - 공통 목록 커서: `global.common.response.CreatedAtCursor`(기본 정렬 `createdAt DESC, id DESC`)
 
 ## 백엔드 문서
