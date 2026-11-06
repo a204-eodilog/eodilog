@@ -55,6 +55,8 @@ export type DiscoveryItem = {
 /** 화면용 지역 표시. 서버 응답은 home-rules.toRegionMarks 한 곳에서만 이 모양으로 바꾼다 */
 export type RegionMark = {
   regionCode: string;
+  /** 서버 지역 ID. S06 같은 지역 여행 목록(GET /home/regions/{regionId}/feeds)을 부를 때 쓴다 */
+  regionId?: string;
   /** 짧은 이름. "강릉" */
   name: string;
   /** 다녀간 친구 수 */
@@ -95,6 +97,25 @@ export type HomeRecommendation = {
   imageUrl: string | null;
   /** 누르면 갈 곳의 서버 ID. 여행이면 피드 ID(S07), 장소면 장소 ID(N7) */
   targetId: string;
+};
+
+/** S06 같은 지역 여행 카드 한 장 */
+export type RegionTripCard = {
+  feedId: string;
+  title: string;
+  /** "01.17 – 01.18" */
+  period: string | null;
+  /** "1박 2일" */
+  nights: string | null;
+  /** 표지. FeedCard에는 사진 ID만 있어 지금은 비어 있다(백엔드 요청) */
+  coverUrl: string | null;
+};
+
+/** S06 시트에 넘기는 지역 하나의 목록 */
+export type RegionTrips = {
+  mark: RegionMark;
+  state: 'loading' | 'error' | 'ready';
+  cards: RegionTripCard[];
 };
 
 /** 홈 상태 (screen-list S05). 지도 확대·시트 펼침은 같은 ready 안의 보기 상태 */

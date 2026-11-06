@@ -472,6 +472,30 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
   }
   // 좋아요 기반 추천(백엔드 아직 없음). 휴대폰 테스트에서 시트 카드가 보이게 예시를 준다
   // S07 공동 피드: 어떤 ID든 예시 피드를 돌려준다. 좋아요는 메모리에 남는다
+  // S06 같은 지역 여행 목록: 홈 지도 지역마다 공동 피드 두 개(카드를 누르면 S07 예시 피드)
+  const regionFeedsMatch = /^\/home\/regions\/([^/]+)\/feeds$/.exec(url);
+  if (method === 'get' && regionFeedsMatch) {
+    const regionId = decodeURIComponent(regionFeedsMatch[1]);
+    const card = (n: number, title: string, start: string, end: string) => ({
+      id: `${regionId}-feed-${n}`,
+      tripId: `${regionId}-trip-${n}`,
+      title,
+      coverPhotoId: null,
+      regions: [],
+      startDate: start,
+      endDate: end,
+      publishedAt: `2026-1${n}-01T09:00:00Z`,
+      likedByMe: false,
+      likeCount: 3 * n,
+    });
+    return ok(
+      config,
+      page([
+        card(1, '겨울 바다 산책', '2026-01-17', '2026-01-18'),
+        card(0, '가을 맛집 투어', '2025-10-03', '2025-10-05'),
+      ]),
+    );
+  }
   const feedMatch = /^\/feeds\/([^/]+)(\/like)?$/.exec(url);
   if (feedMatch) {
     const [, feedId, like] = feedMatch;

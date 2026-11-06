@@ -6,6 +6,7 @@ import {
   fillStepsFor,
   clusterMarks,
   groupBySido,
+  toRegionTripCards,
   isGroup,
   placePhotoPins,
   fillsFor,
@@ -225,6 +226,29 @@ describe('placePhotoPins', () => {
     const items = placePhotoPins(marks, 6, card);
     expect(items.filter(isGroup)).toHaveLength(0);
     expect(items).toHaveLength(4);
+  });
+});
+
+describe('toRegionTripCards', () => {
+  it('최근 게시 먼저, 기간·박수 글자', () => {
+    const card = (id: string, publishedAt: string) => ({
+      id,
+      tripId: 't',
+      title: id,
+      coverPhotoId: null,
+      regions: [],
+      startDate: '2026-01-17',
+      endDate: '2026-01-18',
+      publishedAt,
+      likedByMe: false,
+      likeCount: 0,
+    });
+    const cards = toRegionTripCards([
+      card('old', '2025-10-01T00:00:00Z'),
+      card('new', '2026-01-20T00:00:00Z'),
+    ]);
+    expect(cards.map((c) => c.feedId)).toEqual(['new', 'old']);
+    expect(cards[0]).toMatchObject({ period: '01.17 – 01.18', nights: '1박 2일', coverUrl: null });
   });
 });
 

@@ -1,4 +1,4 @@
-import { parseDate } from '@/lib/format-date';
+import { formatPeriodShort, parseDate } from '@/lib/format-date';
 import { formatThousands } from '@/lib/format-number';
 
 import type { Feed, FeedDay, FeedDetail, FeedStop, TransportKind } from './types';
@@ -13,13 +13,7 @@ function monthDay(date: Date): string {
 }
 
 /** "01.17 – 01.18". 하루면 날짜 하나, 모르면 null */
-export function periodLabel(start: string | null, end: string | null): string | null {
-  const s = parseDate(start);
-  const e = parseDate(end);
-  if (!s && !e) return null;
-  if (s && e && s.getTime() !== e.getTime()) return `${monthDay(s)} – ${monthDay(e)}`;
-  return monthDay((s ?? e) as Date);
-}
+export const periodLabel = formatPeriodShort;
 
 /** "1박 2일", 하루면 "당일", 모르면 null */
 export function nightsLabel(start: string | null, end: string | null): string | null {
