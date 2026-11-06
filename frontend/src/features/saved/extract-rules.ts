@@ -1,0 +1,146 @@
+import type { ExtractionResult } from './types';
+
+/** 캡처는 한 번에 최대 10장(결정 Q-5a, API 명세 POST /extractions) */
+export const MAX_CAPTURES = 10;
+
+/** 캡처로 받을 수 있는 형식(API 명세: JPG/PNG) */
+export const CAPTURE_TYPES = ['image/jpeg', 'image/png'] as const;
+
+/**
+ * 장소를 찾을 수 없는 파일 링크. 문서·압축·영상·음성 파일은 글이나 사진이 아니라서 추출하지 않는다.
+ * 지원 사이트 목록은 아직 정해지지 않아(결정 Q-5) 웹 페이지 링크는 모두 보낸다
+ */
+const FILE_LINK =
+  /\.(pdf|docx?|xlsx?|pptx?|hwpx?|zip|rar|7z|apk|exe|dmg|mp3|wav|m4a|mp4|mov|avi|mkv)$/i;
+
+/** 붙여 넣은 글이 http(s) 링크인지. 앞뒤 공백은 무시한다 */
+export function isLink(text: string | null | undefined): boolean {
+  const value = (text ?? '').trim();
+  if (!/^https?:\/\/\S+$/i.test(value)) return false;
+  try {
+    return Boolean(new URL(value).hostname.includes('.'));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 링크 칸 상태. 비었으면 empty, 웹 페이지 링크면 ok, 링크가 아니거나 파일 링크면 unsupported
+ * (값 문서 "지원하지 않는 형식")
+ */
+export function linkStatus(text: string): 'empty' | 'ok' | 'unsupported' {
+  const value = text.trim();
+  if (!value) return 'empty';
+  if (!isLink(value)) return 'unsupported';
+  const path = new URL(value).pathname;
+  return FILE_LINK.test(path) ? 'unsupported' : 'ok';
+}
+
+/** [장소 찾기]를 누를 수 있는지. 링크가 맞거나 캡처가 있고, 링크 칸에 맞지 않는 글이 없어야 한다 */
+export function canFind(link: string, captureCount: number): boolean {
+  const status = linkStatus(link);
+  if (status === 'unsupported') return false;
+  return status === 'ok' || captureCount > 0;
+}
+
+/**
+ * 고른 캡처를 더한다. 10장을 넘는 것과 JPG·PNG가 아닌 것은 빼고, 몇 장을 뺐는지 알려 준다
+ */
+export function addCaptures<T extends { contentType: string }>(
+  current: T[],
+  picked: T[],
+): { captures: T[]; skippedType: number; skippedLimit: number } {
+  const allowed = picked.filter((p) =>
+    (CAPTURE_TYPES as readonly string[]).includes(p.contentType),
+  );
+  const room = Math.max(MAX_CAPTURES - current.length, 0);
+  return {
+    captures: [...current, ...allowed.slice(0, room)],
+    skippedType: picked.length - allowed.length,
+    skippedLimit: Math.max(allowed.length - room, 0),
+  };
+}
+
+/** 원본 요약 칩의 링크 글자. "sns.example.com/p/8Kd2"(www·끝 / 없이, 길면 줄인다) */
+export function linkLabel(url: string, max = 28): string {
+  let label = url.trim();
+  try {
+    const u = new URL(label);
+    label = `${u.hostname.replace(/^www\./, '')}${u.pathname === '/' ? '' : u.pathname}`;
+  } catch {
+    // 링크가 아니면 그대로 줄이기만 한다
+  }
+  label = label.replace(/\/$/, '');
+  return label.length > max ? `${label.slice(0, max - 1)}…` : label;
+}
+
+/** S12 화면 상태 */
+export type ExtractionView = 'progress' | 'success' | 'multiple' | 'notFound' | 'failed';
+
+/**
+ * 추출 응답 → S12 상태. 작업이 끝나지 않았으면 진행 중, 작업 실패·취소나 결과 FAILED면 처리 실패.
+ * 성공이어도 지도에서 찾은 후보가 하나도 없으면 식별 불가로 본다
+ */
+export function extractionView(result: ExtractionResult): ExtractionView {
+  const { job, resultStatus, candidates } = result;
+  if (job.status === 'QUEUED' || job.status === 'RUNNING') return 'progress';
+  if (job.status !== 'SUCCEEDED' || resultStatus === 'FAILED' || resultStatus === null) {
+    return 'failed';
+  }
+  if (resultStatus === 'NOT_FOUND') return 'notFound';
+  const found = candidates.filter((c) => c.place !== null);
+  if (found.length === 0) return 'notFound';
+  return resultStatus === 'MULTIPLE_CANDIDATES' && found.length > 1 ? 'multiple' : 'success';
+}
+
+/** 진행 단계(값 문서: 링크와 캡처 읽기 / 장소 이름 찾기 / 지도에 표시하기). 지금 하고 있는 단계 0~2 */
+export function progressStep(progress: number): 0 | 1 | 2 {
+  if (progress >= 67) return 2;
+  if (progress >= 34) return 1;
+  return 0;
+}
+
+/** 후보 글자 A·B·C(복수 후보 핀·줄) */
+export function candidateLetter(index: number): string {
+  return String.fromCharCode(65 + (index % 26));
+}
+
+/** 장소가 한 곳뿐이어도 너무 확대되지 않게 잡는 최소 범위 */
+const MIN_SPAN = 0.02;
+
+/** 장소 둘레 여유. 장소들이 차지하는 범위의 1.6배를 보여 준다 */
+const PADDING = 1.6;
+
+/**
+ * S12 지도 범위. 찾은 장소들이 지도 한가운데 오게 한다.
+ * 라이브러리 Region은 남서쪽 꼭짓점 + delta이고, 지도 칸과 가로세로 비율이 다르면 남서쪽에 붙여 그려
+ * 핀이 한쪽으로 쏠린다. 그래서 지도 칸 비율(aspect = 너비/높이)에 맞춰 짧은 쪽 delta를 늘린다.
+ * 메르카토르 지도라 경도 1도의 화면 길이는 위도 1도의 1/cos(위도)배다
+ */
+export function extractRegion(
+  points: { latitude: number; longitude: number }[],
+  aspect: number,
+): {
+  latitude: number;
+  longitude: number;
+  latitudeDelta: number;
+  longitudeDelta: number;
+} | null {
+  if (points.length === 0 || !(aspect > 0)) return null;
+  const lats = points.map((p) => p.latitude);
+  const lngs = points.map((p) => p.longitude);
+  const centerLat = (Math.min(...lats) + Math.max(...lats)) / 2;
+  const centerLng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
+  let latDelta = Math.max(Math.max(...lats) - Math.min(...lats), MIN_SPAN) * PADDING;
+  let lngDelta = Math.max(Math.max(...lngs) - Math.min(...lngs), MIN_SPAN) * PADDING;
+  // 화면에서 같은 길이일 때 경도 차이 / 위도 차이
+  const ratio = aspect / Math.cos((centerLat * Math.PI) / 180);
+  if (lngDelta < latDelta * ratio) lngDelta = latDelta * ratio;
+  else latDelta = lngDelta / ratio;
+  return {
+    latitude: centerLat - latDelta / 2,
+    longitude: centerLng - lngDelta / 2,
+    latitudeDelta: latDelta,
+    longitudeDelta: lngDelta,
+  };
+}

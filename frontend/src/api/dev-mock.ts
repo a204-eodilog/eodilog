@@ -197,6 +197,72 @@ let bookmarks: MockBookmark[] = BOOKMARKS.map(
 
 let seq = 0;
 
+/** 테스트 모드 추출 작업. 결과는 링크 글자로 정한다 */
+type MockExtraction = {
+  startedAt: number;
+  outcome: 'SUCCESS' | 'MULTIPLE_CANDIDATES' | 'NOT_FOUND' | 'FAILED';
+};
+const extractions = new Map<string, MockExtraction>();
+const EXTRACTION_MS = 4500;
+
+/** 즐겨찾기 예시 장소를 추출 후보 장소로 쓴다(저장하면 개인 즐겨찾기 PUT이 그대로 받는다) */
+function bookmarkPlace(index: number) {
+  const [name, address, latitude, longitude] = BOOKMARKS[index];
+  return {
+    id: `place-bookmark-${index + 1}`,
+    name,
+    address,
+    latitude,
+    longitude,
+    regionId: null,
+    provider: 'NAVER',
+    providerPlaceId: null,
+    source: 'PROVIDER' as const,
+  };
+}
+
+function extractionResult(id: string, job: MockExtraction) {
+  const elapsed = Date.now() - job.startedAt;
+  const done = elapsed >= EXTRACTION_MS;
+  const failed = done && job.outcome === 'FAILED';
+  const candidates = !done
+    ? []
+    : job.outcome === 'SUCCESS'
+      ? [
+          { index: 0, evidence: '게시물 글에서 찾았어요' },
+          { index: 2, evidence: '캡처 속 간판에서 찾았어요' },
+        ].map(({ index, evidence }, i) => ({
+          candidateId: `${id}-c${i + 1}`,
+          name: BOOKMARKS[index][0],
+          place: bookmarkPlace(index),
+          evidence,
+          confidence: 0.9,
+        }))
+      : job.outcome === 'MULTIPLE_CANDIDATES'
+        ? ['남천점', '광안점', '민락점'].map((branch, i) => ({
+            candidateId: `${id}-c${i + 1}`,
+            name: `바다 앞 카페 ${branch}`,
+            place: bookmarkPlace([0, 2, 3][i]),
+            evidence: '게시물 글에서 찾았어요',
+            confidence: 0.5,
+          }))
+        : [];
+  return {
+    job: {
+      id,
+      kind: 'PLACE_EXTRACTION',
+      status: !done ? (elapsed < 600 ? 'QUEUED' : 'RUNNING') : failed ? 'FAILED' : 'SUCCEEDED',
+      progress: done ? 100 : Math.min(Math.floor((elapsed / EXTRACTION_MS) * 100), 99),
+      result: null,
+      error: failed ? { code: 'SOURCE_UNREACHABLE', message: '링크를 열지 못했어요.' } : null,
+      createdAt: new Date(job.startedAt).toISOString(),
+      finishedAt: done ? new Date(job.startedAt + EXTRACTION_MS).toISOString() : null,
+    },
+    resultStatus: !done ? null : job.outcome,
+    candidates,
+  };
+}
+
 function makeTrip(input: {
   title: string;
   start?: number;
@@ -326,6 +392,11 @@ const createdByKey = new Map<string, Trip>();
 
 function ok<T>(config: InternalAxiosRequestConfig, data: T, status = 200): AxiosResponse<T> {
   return { data, status, statusText: 'OK', headers: {}, config };
+}
+
+/** 요청 본문(문자열이면 JSON으로 읽는다) */
+function parseBody<T>(config: InternalAxiosRequestConfig): T {
+  return (typeof config.data === 'string' ? JSON.parse(config.data) : (config.data ?? {})) as T;
 }
 
 function fail(config: InternalAxiosRequestConfig, status: number, code: string, message: string) {
@@ -503,6 +574,76 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
       return ok(config, { data: restored });
     }
     throw fail(config, 404, 'NOT_FOUND', '저장한 장소를 찾을 수 없어요.');
+  }
+  // S11 캡처 올리기(백엔드 미구현, API 명세 §7). 저장소가 없어 파일 PUT은 앱이 건너뛴다
+  if (method === 'post' && url === '/assets/upload-intents') {
+    seq += 1;
+    return ok(
+      config,
+      {
+        data: {
+          assetId: `asset-${seq}`,
+          uploadUrl: '',
+          method: 'PUT',
+          headers: {},
+          expiresAt: new Date(Date.now() + 10 * 60_000).toISOString(),
+        },
+      },
+      201,
+    );
+  }
+  const completeMatch = /^\/assets\/([^/]+)\/complete$/.exec(url);
+  if (method === 'post' && completeMatch) {
+    return ok(config, {
+      data: {
+        id: completeMatch[1],
+        purpose: 'CAPTURE',
+        status: 'READY',
+        contentType: 'image/png',
+        byteSize: 0,
+        tripId: null,
+      },
+    });
+  }
+  // S12 장소 추출(백엔드 미구현, API 명세 §5). 4.5초 동안 진행률이 오르고 끝난다.
+  // 링크에 many·none·fail이 들어 있으면 복수 후보·식별 불가·처리 실패
+  if (method === 'post' && url === '/extractions') {
+    const body = parseBody<{ url?: string; captureAssetIds?: string[] }>(config);
+    if (!body.url && !(body.captureAssetIds?.length ?? 0)) {
+      throw fail(config, 400, 'VALIDATION_ERROR', '링크나 캡처를 하나 이상 넣어 주세요.');
+    }
+    if ((body.captureAssetIds?.length ?? 0) > 10) {
+      throw fail(config, 422, 'INPUT_LIMIT_EXCEEDED', '캡처는 10장까지 넣을 수 있어요.');
+    }
+    seq += 1;
+    const id = `extraction-${seq}`;
+    const link = body.url ?? '';
+    extractions.set(id, {
+      startedAt: Date.now(),
+      outcome: /fail/i.test(link)
+        ? 'FAILED'
+        : /none/i.test(link)
+          ? 'NOT_FOUND'
+          : /many/i.test(link)
+            ? 'MULTIPLE_CANDIDATES'
+            : 'SUCCESS',
+    });
+    return ok(
+      config,
+      { data: { jobId: id, status: 'QUEUED', statusUrl: `/api/v1/jobs/${id}` } },
+      202,
+    );
+  }
+  const extractionMatch = /^\/extractions\/([^/]+)$/.exec(url);
+  if (extractionMatch) {
+    const id = decodeURIComponent(extractionMatch[1]);
+    const found = extractions.get(id);
+    if (!found) throw fail(config, 404, 'NOT_FOUND', '작업을 찾을 수 없어요.');
+    if (method === 'delete') {
+      extractions.delete(id);
+      return ok(config, undefined, 204);
+    }
+    if (method === 'get') return ok(config, { data: extractionResult(id, found) });
   }
   // 그룹 즐겨찾기에 추가(S14): 담기만 하고 S20 목록은 아직 흉내 내지 않는다
   if (method === 'put' && /^\/trips\/[^/]+\/saved-places\/[^/]+\/me$/.test(url)) {
