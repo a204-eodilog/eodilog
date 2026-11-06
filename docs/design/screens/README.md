@@ -15,6 +15,7 @@ B 담당 화면 17개 전부와 A 담당 S13·S45. 다른 화면은 필요할 �
 
 | 화면 | 문서 |
 | --- | --- |
+| S05 홈 친구 여행 지도 (SVG 물든 지도) | [S05-home-map.md](S05-home-map.md) |
 | S08 장소 저장 시트 | [S08-place-save-sheet.md](S08-place-save-sheet.md) |
 | S10 개인 즐겨찾기 | [S10-bookmarks.md](S10-bookmarks.md) |
 | S11 링크·캡처 등록 | [S11-link-capture.md](S11-link-capture.md) |
