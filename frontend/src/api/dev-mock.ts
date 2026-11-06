@@ -94,6 +94,26 @@ let feedVisibility = {
 
 /** S07 공동 피드 좋아요(테스트 모드 메모리) */
 const feedLikes = new Map<string, { liked: boolean; count: number }>();
+// 목록에서 내준 피드의 제목·기간·지역. 상세(S07)는 예시 하나를 쓰되 이 값으로 덮어 눌렀던 카드와 제목이 맞게 한다
+type FeedSummary = {
+  id: string;
+  title: string;
+  startDate?: string | null;
+  endDate?: string | null;
+  regions?: readonly unknown[];
+};
+const feedSummaries = new Map<string, Partial<FeedSummary>>();
+function remember<T extends FeedSummary>(list: T[]): T[] {
+  for (const f of list) {
+    // 값이 없는 칸은 넣지 않아 예시 피드 값이 그대로 남게 한다
+    const known: Partial<FeedSummary> = { title: f.title };
+    if (f.startDate) known.startDate = f.startDate;
+    if (f.endDate) known.endDate = f.endDate;
+    if (f.regions && f.regions.length > 0) known.regions = f.regions;
+    feedSummaries.set(f.id, known);
+  }
+  return list;
+}
 
 /** 신규 가입자 모드에서 S03에 저장한 취향. 저장 전에는 404 */
 let myPreferences: unknown = null;
@@ -495,11 +515,13 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
     });
     return ok(
       config,
-      page([
-        feed('1', '봄 경주', '4713000000'),
-        feed('2', '추석 전주', '5211000000'),
-        feed('3', '겨울 여행', '2635000000'),
-      ]),
+      page(
+        remember([
+          feed('1', '봄 경주', '4713000000'),
+          feed('2', '추석 전주', '5211000000'),
+          feed('3', '겨울 여행', '2635000000'),
+        ]),
+      ),
     );
   }
   // 팔로우: 공개 계정이면 ACCEPTED, 비공개면 REQUESTED
@@ -609,19 +631,21 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
     return ok(
       config,
       page(
-        posted
-          ? [
-              {
-                id: `feed-${posted.id}`,
-                tripId: posted.id,
-                title: '봄 경주',
-                regions: [{ id: 'region-gyeongju', code: '4713000000', name: '경상북도 경주시' }],
-                startDate: posted.startDate,
-                endDate: posted.endDate,
-                visibility: { feedId: `feed-${posted.id}`, ...feedVisibility },
-              },
-            ]
-          : [],
+        remember(
+          posted
+            ? [
+                {
+                  id: `feed-${posted.id}`,
+                  tripId: posted.id,
+                  title: '봄 경주',
+                  regions: [{ id: 'region-gyeongju', code: '4713000000', name: '경상북도 경주시' }],
+                  startDate: posted.startDate,
+                  endDate: posted.endDate,
+                  visibility: { feedId: `feed-${posted.id}`, ...feedVisibility },
+                },
+              ]
+            : [],
+        ),
       ),
     );
   }
@@ -724,10 +748,12 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
     });
     return ok(
       config,
-      page([
-        card(1, '겨울 바다 산책', '2026-01-17', '2026-01-18'),
-        card(0, '가을 맛집 투어', '2025-10-03', '2025-10-05'),
-      ]),
+      page(
+        remember([
+          card(1, '겨울 바다 산책', '2026-01-17', '2026-01-18'),
+          card(0, '가을 맛집 투어', '2025-10-03', '2025-10-05'),
+        ]),
+      ),
     );
   }
   const feedMatch = /^\/feeds\/([^/]+)(\/like)?$/.exec(url);
@@ -736,7 +762,12 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
     const cur = feedLikes.get(feedId) ?? { liked: false, count: 12 };
     if (!like && method === 'get') {
       return ok(config, {
-        data: { ...sampleFeed(feedId), likedByMe: cur.liked, likeCount: cur.count },
+        data: {
+          ...sampleFeed(feedId),
+          ...feedSummaries.get(feedId),
+          likedByMe: cur.liked,
+          likeCount: cur.count,
+        },
       });
     }
     if (like && method === 'put') {
@@ -783,6 +814,10 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
       place: null,
       reason: '좋아요한 여행과 비슷해요',
     });
+    const remembered = (item: ReturnType<typeof feed>) => {
+      remember([item.feed]);
+      return item;
+    };
     const place = (id: string, name: string, address: string) => ({
       type: 'PLACE' as const,
       feed: null,
@@ -792,22 +827,26 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
     return ok(
       config,
       page([
-        feed(
-          'rec-1',
-          '제주 동쪽 한 바퀴',
-          '5011000000',
-          '제주특별자치도 제주시',
-          '2026-09-12',
-          '2026-09-14',
+        remembered(
+          feed(
+            'rec-1',
+            '제주 동쪽 한 바퀴',
+            '5011000000',
+            '제주특별자치도 제주시',
+            '2026-09-12',
+            '2026-09-14',
+          ),
         ),
         place('rec-2', '명주동 골목 카페', '강원 강릉시 명주동'),
-        feed(
-          'rec-3',
-          '여수 밤바다',
-          '1213000000',
-          '전남광주통합특별시 여수시',
-          '2026-08-02',
-          '2026-08-03',
+        remembered(
+          feed(
+            'rec-3',
+            '여수 밤바다',
+            '1213000000',
+            '전남광주통합특별시 여수시',
+            '2026-08-02',
+            '2026-08-03',
+          ),
         ),
         place('rec-4', '안목 바다뷰 카페', '강원 강릉시 견소동'),
       ]),
