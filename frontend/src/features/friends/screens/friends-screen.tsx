@@ -1,3 +1,5 @@
+import { router } from 'expo-router';
+
 import { toast } from '@/components/ui';
 import { FriendsView } from '@/features/friends/components/friends-view';
 import { useFriends } from '@/features/friends/hooks/use-friends';
@@ -14,7 +16,7 @@ export function FriendsScreen() {
       accepted={friends.accepted}
       onAction={friends.run}
       onPerson={() => toast.show('준비 중이에요')}
-      onFind={() => toast.show('준비 중이에요')}
+      onFind={() => router.push('/find-friends')}
     />
   );
 }

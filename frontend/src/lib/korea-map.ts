@@ -91,3 +91,10 @@ export function koreaBbox(): string {
  * 손가락으로 옮기면 볼 수 있다. korea-regions.json이 바뀌면 다시 계산한다
  */
 export const MAINLAND_BOUNDS = { x0: 175, y0: 0, x1: 686, y1: 929 } as const;
+
+/** 배율 1에서 지도 1단위가 몇 px인지. 본토가 보이는 높이 안에 들어오게 맞춘다(KoreaMap과 같은 계산) */
+export function mapFit(box: { width: number; height: number }, insetTop = 0, insetBottom = 0) {
+  const b = MAINLAND_BOUNDS;
+  const visibleH = Math.max(1, box.height - insetTop - insetBottom);
+  return Math.min(box.width / (b.x1 - b.x0), visibleH / (b.y1 - b.y0)) * 0.9;
+}

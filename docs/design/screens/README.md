@@ -30,13 +30,18 @@ B 담당 화면 17개 전부와 A 담당 S13·S45. 다른 화면은 필요할 �
 | S34 평점·평가 작성 | [S34-review-write.md](S34-review-write.md) |
 | S35 경비 목록·지출 입력 | [S35-expenses.md](S35-expenses.md) |
 | S36 정산 결과 | [S36-settlement.md](S36-settlement.md) |
-| N4 내 여행 목록 | [N4-my-trips.md](N4-my-trips.md) |
+| S37 마이페이지 | [S37-mypage.md](S37-mypage.md) |
 | S38 내 여행 기록·공동 피드 게시 | [S38-my-trip-record.md](S38-my-trip-record.md) |
+| S39 내 노출 설정 (공동 피드 삭제 확인 시트 포함) | [S39-feed-visibility.md](S39-feed-visibility.md) |
+| S40 친구에게 보이는 모습 | [S40-visible-to.md](S40-visible-to.md) |
 | S41 타임라인 | [S41-timeline.md](S41-timeline.md) |
 | S42 여행 요약 카드 | [S42-trip-summary-card.md](S42-trip-summary-card.md) |
 | S43 친구 목록 | [S43-friends.md](S43-friends.md) |
+| S44 친구 추천·검색 | [S44-find-friends.md](S44-find-friends.md) |
 | S45 프로필·취향·설정 (AI 상세·편집안 포함) | [S45-settings.md](S45-settings.md) |
 | S50 삭제·나가기·탈퇴 확인 | [S50-confirm.md](S50-confirm.md) |
+| N4 내 여행 목록 | [N4-my-trips.md](N4-my-trips.md) |
+| N9 다른 사용자 프로필 | [N9-user-profile.md](N9-user-profile.md) |
 
 **여러 화면에 반복되는 것** (공통으로 만들면 좋은 것): 회색 상자 입력칸(S11·S34·S35), 둥글기 8 작은 태그(S12·S14·S33·N4·S41), 사진 고르기 칸(S30·S31·S32), 버튼이 있는 토스트(S08·S33), "나" 얼굴 연파랑(S31·S35·S36), 흰 테두리 카드(S38·S42), 새로고침·카드·계산기·별 아이콘.
 
