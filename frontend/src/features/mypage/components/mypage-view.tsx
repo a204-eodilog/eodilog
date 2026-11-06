@@ -36,16 +36,18 @@ export function MyPageView(props: MyPageViewProps) {
   const { state, summary } = props;
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
+      {/* 홈·저장 탭처럼 제목 줄은 스크롤 밖에 고정 */}
+      <View style={styles.bar}>
+        <Text style={styles.pageTitle} accessibilityRole="header">
+          마이페이지
+        </Text>
+      </View>
       {state === 'error' ? (
         <ErrorState title="마이페이지를 불러오지 못했어요" onRetry={props.onRetry} />
       ) : state === 'loading' || !summary ? (
         <ActivityIndicator style={styles.flex} color={colors.brand.primary} />
       ) : (
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <Text style={styles.pageTitle} accessibilityRole="header">
-            마이페이지
-          </Text>
-
           <View style={styles.profile}>
             <Avatar name={summary.nickname} imageUrl={summary.profileImageUrl} size={48} me />
             <View style={styles.profileText}>
@@ -249,10 +251,11 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.7 },
   content: {
     paddingHorizontal: layout.screenPaddingX,
-    paddingTop: spacing[24],
+    paddingTop: spacing[8],
     paddingBottom: spacing[32],
     gap: spacing[20],
   },
+  bar: { height: 56, justifyContent: 'center', paddingHorizontal: layout.screenPaddingX },
   pageTitle: { ...typography.title1, color: colors.text.default },
   profile: { flexDirection: 'row', alignItems: 'center', gap: spacing[14] },
   profileText: { flex: 1, minWidth: 0, gap: 2 },
