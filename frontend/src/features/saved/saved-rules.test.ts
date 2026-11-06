@@ -2,6 +2,8 @@ import { describe, expect, it } from '@jest/globals';
 
 import {
   addressParts,
+  bookmarkSource,
+  findBookmark,
   cityGroups,
   masonryColumns,
   regionFor,
@@ -112,6 +114,30 @@ it('cityGroups는 지역별로 묶어 가운데 위치와 개수를 낸다', () 
 it('syncedAtLabel은 기기 시각 "HH:mm 기준이에요"', () => {
   const at = new Date(2026, 10, 5, 9, 5).getTime();
   expect(syncedAtLabel(at)).toBe('09:05 기준이에요');
+});
+
+describe('S14 즐겨찾기 찾기', () => {
+  const kept = bookmark('강문 해변', '강원특별자치도 강릉시 강문동', 37, 128, 'f1');
+  const lost: Bookmark = {
+    ...bookmark('x', null),
+    place: null,
+    sourceFeedId: null,
+    sourceUnavailable: true,
+    retainedPlace: { name: '사라진 곳', latitude: 37, longitude: 127 },
+  };
+
+  it('목록 카드의 key로 즐겨찾기를 찾는다(원본이 사라져도)', () => {
+    const list = [kept, lost];
+    expect(findBookmark(list, toSavedItem(kept).key)).toBe(kept);
+    expect(findBookmark(list, toSavedItem(lost).key)).toBe(lost);
+    expect(findBookmark(list, 'nope')).toBeNull();
+  });
+
+  it('가져온 곳: 공동 피드 / 원본 없음 / 그 밖', () => {
+    expect(bookmarkSource(kept)).toBe('feed');
+    expect(bookmarkSource(lost)).toBe('lost');
+    expect(bookmarkSource(bookmark('a', null))).toBe('none');
+  });
 });
 
 describe('regionFor', () => {
