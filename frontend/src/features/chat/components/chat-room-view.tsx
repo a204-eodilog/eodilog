@@ -51,6 +51,10 @@ type Props = {
 /** 맨 아래에서 이 거리 안이면 새 메시지가 올 때 따라 내려간다(FR-019) */
 const FOLLOW_THRESHOLD = 80;
 
+/** 목록 맨 끝 빈 줄. 떠 있는 입력 칸 높이만큼 자리를 비운다 */
+type Row = ChatItem | { kind: 'bottom-space'; key: string };
+const BOTTOM_SPACE: Row = { kind: 'bottom-space', key: '__bottom-space' };
+
 /**
  * S47 대화방 표시(피그마 201-25069). 상태를 속성으로만 받아 /dev/chats에서 서버 없이 그대로 그린다.
  * 목록은 뒤집지 않은 FlashList이고 아래 기준으로 그린다. 위에 이전 메시지를 붙여도 읽던 자리를 지킨다(research R9)
@@ -72,7 +76,7 @@ export function ChatRoomView({
   onLeaveBlocked,
   previewNewMessage = false,
 }: Props) {
-  const listRef = useRef<FlashListRef<ChatItem>>(null);
+  const listRef = useRef<FlashListRef<Row>>(null);
   const [atBottom, setAtBottom] = useState(true);
   // 입력 칸은 목록 위에 떠 있다(배경 투명, 2026-11-05 사용자 요청). 마지막 메시지가 가리지 않게 그 높이만큼 아래를 띄운다
   const [composerHeight, setComposerHeight] = useState(0);
@@ -118,6 +122,12 @@ export function ChatRoomView({
     );
   }
 
+  // 입력 칸 자리는 contentContainerStyle의 paddingBottom이 아니라 목록 끝 빈 줄로 비운다.
+  // FlashList는 메시지가 화면보다 적으면 아래에 붙여 그리는데(startRenderingFromBottom), 이 계산에 paddingBottom을 넣지 않아
+  // 새로 연 방에서 마지막 메시지가 입력 칸 밑에 가려졌다(2026-11-06 기기 확인). 빈 줄은 목록 높이에 들어가 계산에 포함된다
+  const rows: Row[] = items.length > 0 ? [...items, BOTTOM_SPACE] : items;
+  const bottomSpace = composerHeight + spacing[8];
+
   let body: ReactNode;
   if (status === 'loading') {
     body = <ActivityIndicator style={styles.loading} color={colors.brand.primary} />;
@@ -127,7 +137,7 @@ export function ChatRoomView({
     body = (
       <FlashList
         ref={listRef}
-        data={items}
+        data={rows}
         onScroll={onScroll}
         scrollEventThrottle={100}
         keyExtractor={(item) => item.key}
@@ -140,16 +150,22 @@ export function ChatRoomView({
         }}
         onStartReached={hasOlder && olderState === 'idle' ? onLoadOlder : undefined}
         onStartReachedThreshold={0.5}
-        contentContainerStyle={[styles.content, { paddingBottom: composerHeight + spacing[8] }]}
+        contentContainerStyle={styles.content}
         ListHeaderComponent={
           <OlderHeader state={hasOlder ? olderState : 'idle'} onRetry={onLoadOlder} />
         }
         ListEmptyComponent={
           <Text style={[typography.sub, styles.emptyText]}>첫 메시지를 보내 보세요</Text>
         }
-        renderItem={({ item }) => (
-          <View style={styles.item}>{renderItem(item, { onResend, onDiscard, renderSystem })}</View>
-        )}
+        renderItem={({ item }) =>
+          item.kind === 'bottom-space' ? (
+            <View style={{ height: bottomSpace }} />
+          ) : (
+            <View style={styles.item}>
+              {renderItem(item, { onResend, onDiscard, renderSystem })}
+            </View>
+          )
+        }
         keyboardShouldPersistTaps="handled"
       />
     );
