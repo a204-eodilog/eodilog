@@ -46,6 +46,8 @@ export function MapMarker({
   highlighted = false,
   dot = 'dark',
 }: MapMarkerProps) {
+  // 좌표가 숫자가 아니면 네이버 지도가 오류 화면을 띄우므로 그 핀만 그리지 않는다
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
   const number = isNumber(label);
   const brand = dot === 'brand' || number;
   const image = number

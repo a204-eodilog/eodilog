@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { fitRegion, spreadMarkers } from './map-spread';
+import { dashSegments, fitRegion, spreadMarkers } from './map-spread';
 
 const box = { width: 330, height: 180 };
 
@@ -69,5 +69,34 @@ describe('spreadMarkers', () => {
   it('지도 크기를 모르면(0) 그대로', () => {
     const r = fitRegion(close, 0.01)!;
     expect(spreadMarkers(close, r, { width: 0, height: 0 })).toEqual(close);
+  });
+});
+
+describe('dashSegments', () => {
+  it('선을 짧은 조각 여러 개로 나누고, 조각은 모두 선 위에 있다', () => {
+    const line = [
+      { latitude: 37.77, longitude: 128.9 },
+      { latitude: 37.9, longitude: 128.82 },
+    ];
+    const parts = dashSegments(line);
+    expect(parts.length).toBeGreaterThan(10);
+    for (const part of parts) {
+      expect(part.length).toBeGreaterThanOrEqual(2);
+      for (const p of part) {
+        expect(p.latitude).toBeGreaterThanOrEqual(37.77);
+        expect(p.latitude).toBeLessThanOrEqual(37.9);
+      }
+    }
+    expect(parts[0][0]).toEqual(line[0]);
+  });
+
+  it('점이 하나거나 같은 자리면 비운다', () => {
+    expect(dashSegments([{ latitude: 1, longitude: 1 }])).toEqual([]);
+    expect(
+      dashSegments([
+        { latitude: 1, longitude: 1 },
+        { latitude: 1, longitude: 1 },
+      ]),
+    ).toEqual([]);
   });
 });

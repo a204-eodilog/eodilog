@@ -814,7 +814,7 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
       name: string,
       minutes: number,
       availability: string | null,
-      angle = Number(id.replace(/D/g, '')) * 2.1,
+      angle = Number(id.replace(/\D/g, '')) * 2.1,
     ) => ({
       providerId: id,
       name,

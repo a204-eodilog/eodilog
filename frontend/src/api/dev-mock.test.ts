@@ -47,3 +47,20 @@ describe('테스트 모드 개인 저장(S08 나만 보기)', () => {
     await expect(put('/me/bookmarks/place-missing')).rejects.toBeTruthy();
   });
 });
+
+describe('테스트 모드 편의시설(S28)', () => {
+  it('시설 좌표가 모두 숫자다(지도 오류 방지)', async () => {
+    const res = await devMockAdapter({
+      method: 'get',
+      url: '/places/p1/facilities',
+      headers: {},
+      params: { type: 'EV_CHARGER' },
+    } as unknown as InternalAxiosRequestConfig);
+    const items = (res.data as { data: { latitude: number; longitude: number }[] }).data;
+    expect(items.length).toBeGreaterThan(0);
+    for (const f of items) {
+      expect(Number.isFinite(f.latitude)).toBe(true);
+      expect(Number.isFinite(f.longitude)).toBe(true);
+    }
+  });
+});

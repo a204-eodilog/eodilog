@@ -88,3 +88,52 @@ export function spreadMarkers<P extends LatLng>(
   }
   return out;
 }
+
+/**
+ * 점선 조각. 라이브러리(2.9.1) 선 부품이 pattern 값을 지도에 넘기지 않아(받기만 하고 버림)
+ * 선을 짧은 조각 여러 개로 나눠 점선처럼 그린다. 칠한 길이는 선 전체 범위 대각선의 1/28, 빈 길이는 그 0.75배
+ */
+export function dashSegments(coords: readonly LatLng[], parts = 28): LatLng[][] {
+  if (coords.length < 2) return [];
+  const lats = coords.map((p) => p.latitude);
+  const lngs = coords.map((p) => p.longitude);
+  const cos = Math.cos((((Math.min(...lats) + Math.max(...lats)) / 2) * Math.PI) / 180);
+  const diag = Math.hypot(
+    Math.max(...lats) - Math.min(...lats),
+    (Math.max(...lngs) - Math.min(...lngs)) * cos,
+  );
+  if (diag === 0) return [];
+  const dash = diag / parts;
+  const gap = dash * 0.75;
+  const at = (a: LatLng, b: LatLng, t: number): LatLng => ({
+    latitude: a.latitude + (b.latitude - a.latitude) * t,
+    longitude: a.longitude + (b.longitude - a.longitude) * t,
+  });
+  const out: LatLng[][] = [];
+  // 지금 칠하는 중인지와 이번 칸에서 남은 길이(위도 기준 도)
+  let drawing = true;
+  let left = dash;
+  let current: LatLng[] = [coords[0]];
+  for (let i = 1; i < coords.length; i += 1) {
+    const a = coords[i - 1];
+    const b = coords[i];
+    const len = Math.hypot(b.latitude - a.latitude, (b.longitude - a.longitude) * cos);
+    let done = 0;
+    while (len - done > left) {
+      done += left;
+      const p = at(a, b, done / len);
+      if (drawing) {
+        current.push(p);
+        out.push(current);
+      } else {
+        current = [p];
+      }
+      drawing = !drawing;
+      left = drawing ? dash : gap;
+    }
+    left -= len - done;
+    if (drawing) current.push(b);
+  }
+  if (drawing && current.length > 1) out.push(current);
+  return out;
+}
