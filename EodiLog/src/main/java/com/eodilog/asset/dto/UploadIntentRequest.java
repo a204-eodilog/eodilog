@@ -22,7 +22,7 @@ public record UploadIntentRequest(
 				requiredMode = Schema.RequiredMode.REQUIRED)
 		Long byteSize,
 
-		@Schema(description = "사진 업로드 묶음 ID. 사진 묶음 기능이 생기기 전까지는 보내지 않는다",
+		@Schema(description = "같은 여행·본인의 사진 업로드 배치 ID. 사진 등록에 필수, 기존 배치 없는 업로드도 호환한다",
 				example = "0193c2a1-7e2b-7c4d-9a1e-2f3b4c5d6ec0")
 		UUID batchId
 ) {

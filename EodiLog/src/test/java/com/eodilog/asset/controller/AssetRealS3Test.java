@@ -46,8 +46,7 @@ class AssetRealS3Test {
 
 	// HttpClient가 직접 정하는 헤더. 서명 URL 헤더 중 이것들은 넣지 않아도 같은 값이 나간다
 	private static final Set<String> RESTRICTED_HEADERS = Set.of("content-length", "host");
-	private static final byte[] PNG = Arrays.copyOf(
-			new byte[] {(byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n'}, 128);
+	private static final byte[] PNG = realPng();
 
 	@Autowired
 	private MockMvc mockMvc;
@@ -89,9 +88,10 @@ class AssetRealS3Test {
 					.andExpect(status().isOk()).andExpect(jsonPath("$.data.status").value("READY"));
 			byte[] body = mockMvc.perform(get("/api/v1/assets/{assetId}/download", assetId).with(authUser(userId)))
 					.andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray();
-			assertThat(body).isEqualTo(PNG);
+			assertThat(javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(body)).getWidth()).isEqualTo(8);
 		} finally {
 			objectStorage.delete(key);
+            objectStorage.delete("display/"+assetId);
 		}
 		assertThat(objectStorage.head(key)).isEmpty();
 	}
@@ -116,6 +116,7 @@ class AssetRealS3Test {
 			assertThat(objectStorage.head(key)).isEmpty();
 		} finally {
 			objectStorage.delete(key);
+            objectStorage.delete("display/"+assetId);
 		}
 	}
 
@@ -143,7 +144,14 @@ class AssetRealS3Test {
 		return jdbcTemplate.queryForObject("select object_key from assets where id = ?", String.class, assetId);
 	}
 
-	private UUID insertUser() {
+	private static byte[] realPng() {
+        try {
+            var out=new java.io.ByteArrayOutputStream();
+            javax.imageio.ImageIO.write(new java.awt.image.BufferedImage(8,6,java.awt.image.BufferedImage.TYPE_INT_RGB),"png",out);
+            return out.toByteArray();
+        } catch (Exception ex) {throw new IllegalStateException(ex);}
+    }
+    private UUID insertUser() {
 		UUID id = UUID.randomUUID();
 		jdbcTemplate.update("""
 				insert into users (id, nickname, profile_completed, created_at, updated_at)
