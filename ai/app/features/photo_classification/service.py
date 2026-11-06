@@ -85,6 +85,13 @@ class PhotoClassifier:
         self._threshold = similarity_threshold
         self._topic_vectors: np.ndarray | None = None
 
+    async def preload(self) -> None:
+        """모델과 주제 벡터를 미리 준비한다. 실패해도 다른 기능은 살리고 요청 때 다시 시도한다."""
+        try:
+            await asyncio.to_thread(self._topics)
+        except Exception as e:
+            log.warning("photo_model_preload_failed error=%s", type(e).__name__)
+
     async def classify(self, uploads: list[PhotoUpload]) -> ClassificationResult:
         decoded = await asyncio.to_thread(_decode_all, uploads)
         images = [item for item in decoded if isinstance(item, Image.Image)]
@@ -154,7 +161,8 @@ def _decode(data: bytes) -> Image.Image | str:
     if len(data) > MAX_PHOTO_BYTES:
         return "INPUT_LIMIT_EXCEEDED"
     try:
-        image = ImageOps.exif_transpose(open_image(data, PHOTO_FORMATS)).convert("RGB")
+        opened = open_image(data, PHOTO_FORMATS, min_side=MAX_SIDE)
+        image = ImageOps.exif_transpose(opened).convert("RGB")
         image.thumbnail((MAX_SIDE, MAX_SIDE))
     except UnsupportedImage:
         return "UNSUPPORTED_INPUT"

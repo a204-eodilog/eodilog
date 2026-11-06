@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     clip_model: str = "ViT-B-32-SigLIP2-256"
     clip_pretrained: str = "webli"
     photo_similarity_threshold: float = 0.94
+    # 켜면 서버 시작 때 모델을 올려 첫 요청이 느려지지 않는다. Docker 이미지는 켠다
+    photo_model_preload: bool = False
 
     # 요청 하나의 상한. 백엔드 호출 타임아웃 50초, worker 제한 60초보다 먼저 끝난다 (spec §1.0)
     request_budget_seconds: float = 45

@@ -300,9 +300,9 @@ def test_photo_over_15mb_fails_alone_before_decoding(client, embedder, monkeypat
     opened = []
     original = service_module.open_image
 
-    def spying_open(data, allowed):
+    def spying_open(data, allowed, **options):
         opened.append(len(data))
-        return original(data, allowed)
+        return original(data, allowed, **options)
 
     monkeypatch.setattr(service_module, "open_image", spying_open)
 
@@ -492,3 +492,38 @@ def test_requires_internal_token(client):
 
     assert response.status_code == 401
     assert error(response)["code"] == "UNAUTHENTICATED"
+
+
+def test_model_is_not_loaded_at_startup_by_default(embedder):
+    with make_client(embedder):
+        assert embedder.text_calls == 0
+
+
+def test_preload_prepares_the_model_before_serving(embedder):
+    with make_client(embedder, photo_model_preload=True) as client:
+        assert embedder.text_calls == len(TOPICS)
+        assert post(client, [encode()]).status_code == 200
+        assert embedder.text_calls == len(TOPICS)
+
+
+def test_failed_preload_keeps_the_server_up_and_photos_retry(embedder):
+    embedder.error = RuntimeError("no model")
+    with make_client(embedder, photo_model_preload=True) as client:
+        assert client.get("/ai/v1/health").status_code == 200
+        assert post(client, [encode()]).status_code == 503
+        embedder.error = None
+        assert post(client, [encode()]).status_code == 200
+
+
+def test_large_jpeg_is_not_fully_decoded(client, monkeypatch):
+    sizes = []
+    original = service_module.ImageOps.exif_transpose
+
+    def spying(image):
+        sizes.append(image.size)
+        return original(image)
+
+    monkeypatch.setattr(service_module.ImageOps, "exif_transpose", spying)
+    assert post(client, [encode(GREEN, size=(4000, 3000))]).status_code == 200
+
+    assert sizes == [(1000, 750)]
