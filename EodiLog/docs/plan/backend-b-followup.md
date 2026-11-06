@@ -1,6 +1,6 @@
 # 백엔드 B 후속 작업 — 준비물 체크리스트·멤버 관리·경비·초대·정산·채팅·나가기·투표·코스
 
-작성일: 2026-10-29 · 상태: 체크리스트·멤버 관리 병합 완료(MR !49·!50), 경비·정산 상태 병합 완료(MR !56, 2026-10-30), 초대 링크 병합 완료(MR !58·!62), 정산 계산 병합 완료(MR !69), 채팅 REST 병합 완료(MR !71), 기본 나가기 병합 완료(MR !76), 투표 구현(EODI-161), 나가기 내 채팅 삭제·방문 기록 구현(2026-11-04, §15·§16), 초대 링크 취소 병합 완료(MR !108, §9 I-11), 채팅 실시간 전달 구현(EODI-192, §12-1), 도메인 알림 이벤트 발행 병합(MR !123, §17), 방문 평가 구현(EODI-199, §18)
+작성일: 2026-10-29 · 상태: 체크리스트·멤버 관리 병합 완료(MR !49·!50), 경비·정산 상태 병합 완료(MR !56, 2026-10-30), 초대 링크 병합 완료(MR !58·!62), 정산 계산 병합 완료(MR !69), 채팅 REST 병합 완료(MR !71), 기본 나가기 병합 완료(MR !76), 투표 구현(EODI-161), 나가기 내 채팅 삭제·방문 기록 구현(2026-11-04, §15·§16), 초대 링크 취소 병합 완료(MR !108, §9 I-11), 채팅 실시간 전달 구현(EODI-192, §12-1), 도메인 알림 이벤트 발행 병합(MR !123, §17), 방문 평가 구현(EODI-199, §18), AI 준비물 추천·채택 구현(EODI-218, §19)
 
 [B 첫 작업](backend-b-trip-basic.md)(여행 생성·조회·수정)이 끝난 뒤 A의 카카오 로그인을 기다리는 동안 진행한 B 작업이다. [분담안](../../../docs/plan/backend-first-work-split.md) §6은 이 기능들을 "첫 통합 뒤 배분"으로 두었지만, 로그인 없이 개발할 수 있고 여행 패키지 안에서 끝나는 것부터 B가 먼저 맡았다. A와 겹치는 파일(`user`·`auth` 패키지, `SecurityConfig`)은 건드리지 않는다.
 
@@ -26,6 +26,7 @@
 | 방문 기록 | `POST/GET /trips/{tripId}/visits`, `DELETE /trips/{tripId}/visits/{visitId}` | EODI-183 | 구현(§16) |
 | 도메인 알림 이벤트 발행 | 새 API 없음(`GET /me/notifications`에 투표·초대 수락·코스 알림이 생김), 주기 작업 `PollReminderScheduler` | EODI-196 | 병합(MR !123, §17) |
 | 방문 평가 | `PUT/DELETE /trips/{tripId}/visits/{visitId}/review`, `GET /trips/{tripId}/reviews`, 방문 목록·해제 보강 | EODI-199 | 구현(§18) |
+| AI 준비물 추천·채택 | `POST /trips/{tripId}/checklist-suggestions`, CHECKLIST_SUGGESTIONS 작업, `POST /trips/{tripId}/checklist`의 제안 채택 | EODI-218 | 구현(§19) |
 
 검증은 B 첫 작업과 같이 테스트에서 `AuthUser` principal을 넣어 했다. A 로그인 병합 뒤 실제 카카오 계정 2개로 여행 API 통합 검증(B-7)을 마쳤다([계약 §8](backend-a-b-contract.md)).
 
@@ -42,7 +43,7 @@ B 첫 작업의 규칙을 그대로 따른다.
 
 | # | 질문 | 결정 | 근거 |
 | --- | --- | --- | --- |
-| C-1 | AI 제안 채택(`sourceJobId`·`suggestionIndex`) | 요청 DTO에는 두되 보내면 `400 VALIDATION_ERROR`(필드 `sourceJobId`). `source_job_id` FK는 `jobs` 테이블이 생길 때 추가 | 검증할 `jobs`·AI 제안 기능이 없다. 명세 필드를 지우지 않아 나중에 계약을 바꾸지 않는다 |
+| C-1 | AI 제안 채택(`sourceJobId`·`suggestionIndex`) | ~~보내면 400~~ → 2026-11-06 §19로 대체. 채택을 받고 `source_job_id` FK·`suggestion_index`를 추가했다(V202611061000) | AI 준비물 추천(EODI-218)이 붙었다 |
 | C-2 | 삭제 방식 | `deleted_at` 논리 삭제. 목록·수정·재삭제에서 제외 | 명세 "AI 재생성 시 삭제한 항목 강제 부활 금지". AI 서버 요청의 `deletedLabels`를 여기서 얻는다 |
 | C-3 | 체크한 사람 | 서버가 요청자 멤버십으로 기록, 해제하면 `checkedByMemberId`·`checkedAt` 모두 null. 요청으로 지정 불가 | 명세 "타인 ID 입력 금지". DB CHECK로 체크 여부와 두 값을 묶었다 |
 | C-4 | 이미 체크된 항목을 다시 체크 | 처음 체크한 멤버·시각 유지, version 그대로 | 바뀐 값 없음(P-8) |
@@ -51,7 +52,7 @@ B 첫 작업의 규칙을 그대로 따른다.
 | C-7 | 목록 정렬·페이지 | `created_at ASC, id ASC`, 페이지 없이 전체 | 여행당 공동 목록 하나. 명세에 정렬 기준이 없다 |
 | C-8 | 항목 없음·다른 여행의 항목 | `404 CHECKLIST_ITEM_NOT_FOUND` | 다른 여행 경로로 항목을 고칠 수 없게 `trip_id`까지 함께 조회 |
 
-AI 준비물 제안(`POST /trips/{tripId}/checklist-suggestions`)은 `jobs`, 날씨 조회, 코스 항목이 생긴 뒤 붙인다. AI가 붙지 않아도 직접 작성 목록은 그대로 동작한다. AI를 빼기로 하면 C-1의 요청 필드를 명세와 함께 지운다.
+AI 준비물 제안(`POST /trips/{tripId}/checklist-suggestions`)은 2026-11-06 §19로 붙였다. 날씨 조회는 아직 없어 AI에 빈 날씨를 보낸다.
 
 ## 4. 멤버 관리 정책
 
@@ -484,3 +485,44 @@ A가 만든 알림 기반(`events`·`notifications`, `GET /me/notifications`)에
 | R-7 | 응답 | 명세 `Review`에 `visit{placeId,visitedAt}`·`place{name,address}` 요약을 덧붙인다. 장소는 `PlaceReader.findAll`로 한 페이지 분을 한 번에 읽는다. PUT 응답도 같은 모양 | 화면이 방문 목록과 다시 조합하지 않아도 된다. N+1 방지 |
 | R-8 | 방문 API 보강 | `Visit.reviewId`·`reviewScore`를 채우고(같은 장소 재체크 200 응답 포함), `reviewStatus=WRITTEN/UNWRITTEN`을 실제로 거른다. 평가가 있는 방문의 체크 해제는 409 `REVIEW_EXISTS`(방문 404 → 본인 403 → 평가 409 순) | 명세 §6 제안 확정(VS-6·VS-7 갱신) |
 | R-9 | 이탈·여행 삭제 | 나가도 평가는 남고 다른 멤버가 목록에서 본다. 나간 사람은 404. TRIP_DELETE 작업이 `visits`보다 먼저 `reviews`를 지운다(FK) | 방문 VS-8과 같은 원칙 |
+
+## 19. AI 준비물 추천·채택 정책 (EODI-218, 2026-11-06 사용자 확정)
+
+명세 §6 `POST /trips/{tripId}/checklist-suggestions`와 준비물 추가의 제안 채택을 구현했다. 실행은 jobs `CHECKLIST_SUGGESTIONS`(실행기·정책은 `checklist.suggestion`), AI 호출은 `global.ai`(`AiServerClient`)다. AI 서버 계약은 [AI 명세](../../../ai/docs/spec.md) §1.0·§7.
+
+| # | 질문 | 결정 | 근거 |
+| --- | --- | --- | --- |
+| S-1 | 요청 본문 `{date}` | 삭제. 본문은 생략하거나 `{}`. 다른 필드는 400 | 백엔드 날씨 조회가 없고 AI 요청에도 date가 없다. 명세 §2 "명시된 필드만" |
+| S-2 | 중복 요청 | `Idempotency-Key` 필수(명세 §2). 같은 키는 처음 JobRef | 비동기 작업 생성 POST 공통 규칙 |
+| S-3 | 판정 순서 | 키 400 → 여행 행 잠금 후 비멤버 404 → 요청자 설정 OFF 409 `AI_FEATURE_DISABLED` → 등록. 기간·코스가 비어도 거부하지 않음 | AI가 기본 준비물(신분증·충전기)로 처리한다 |
+| S-4 | 입력 스냅샷 | 등록 때 여행 기간, 코스 항목(장소 id·이름·일차·시작 시각·체류 분, category=null), 살아 있는 준비물(label·source·modifiedByUser), 지운 준비물 이름(중복 제거)을 `input_json`에 고정. 실행 때 jobId와 빈 weather를 붙인다. 재시도에서 다시 읽지 않음 | jobs 기반 "허용 입력 스냅샷". 주소·좌표·멤버 정보는 보내지 않는다 |
+| S-5 | 실행·완료 권한 | 요청자 활성 + 여행 삭제 안 됨 + 요청자 ACTIVE + 요청자 설정 OFF 아님. 깨지면 CANCELLED(`POLICY_REVOKED`) | 명세 §3 "기능 설정은 자동 작업 시작과 결과 반영 모두에 적용" |
+| S-6 | 조회 권한 | 그 여행의 현재 ACTIVE 멤버 누구나. 요청자도 나가면 404. result는 label·reason·sourceJobId만 다시 골라 공개 | 공동 목록 하나(Q-8b). 명세 §9 AI 작업 권한표 |
+| S-7 | AI 호출 | `POST {app.ai.base-url}/ai/v1/checklist-suggestions`, `X-Internal-Token`·`X-Trace-Id`(=jobId), 연결 5초·응답 50초 | AI spec §1.0 시간 예산(45 < 50 < jobs 60초) |
+| S-8 | 실패 분류 | 5xx·연결 실패·타임아웃 → `TEMPORARY_FAILURE`(최초 포함 3회, 30초 간격). 4xx·응답 형식 오류(items 아님, label 빈값·255자 초과, reason 1,000자 초과, items 50개 초과, sourceJobId≠jobId) → `EXECUTION_FAILED` | AI spec §1.0. 무기한 RUNNING은 jobs 60초 제한이 막는다 |
+| S-9 | 채택 요청 | 기존 `POST /checklist`에 `sourceJobId`·`suggestionIndex`를 함께. 하나만 보내면 400(빠진 쪽 필드). label 필수, 제안과 다르면 `modifiedByUser=true`. reason은 제안에서 복사, source=AI | 명세 §6. 정책 C-5와 같은 뜻 |
+| S-10 | 채택 검증 | 작업 없음·다른 여행·다른 kind·성공 아님(QUEUED·RUNNING·FAILED·CANCELLED) → 400 `sourceJobId`. 순번 음수·범위 밖 → 400 `suggestionIndex`. 채택자 설정 OFF → 409 `AI_FEATURE_DISABLED` | 요청 본문의 ID라 입력 오류(M-4와 같음) |
+| S-11 | 중복 채택 | `(source_job_id, suggestion_index)` 유니크(지운 행 포함). 다시 채택하면 409 `SUGGESTION_ALREADY_ADOPTED`. 채택 후 지운 제안도 409 | 명세 "삭제한 항목 강제 부활 금지" |
+| S-12 | AUTO 모드 | CONFIRM과 같게 제안만. 자동 채택 없음 | 명세 §3 "자동 적용 판정 기준 미합의 기능은 AUTO 비활성" |
+| S-13 | 동시 채택 | 채택 트랜잭션에서 jobs 행을 `FOR UPDATE`로 잠근 뒤 존재 확인. 그래도 생긴 유니크 위반은 409 | worker는 RUNNING 행만 잠가 성공한 행과 겹치지 않는다 |
+| S-14 | 작업 결과 읽기 | 공통 job 패키지를 고치지 않고 `ChecklistSuggestionReader`가 `jobs`를 직접 읽는다 | A 공통 코드 변경 없음 |
+| S-15 | 설정 읽기 | `user_settings.checklist_mode`만 읽고 행이 없으면 CONFIRM. `UserSettingsService.get`(첫 조회 때 행 생성)은 쓰지 않는다 | 검사에서 쓰기를 만들지 않는다 |
+| S-16 | 설정 키 | `app.ai.base-url`(`AI_BASE_URL`, 기본 `http://localhost:8000`), `app.ai.internal-token`(`AI_INTERNAL_TOKEN`, 기본 빈 값). 토큰이 비면 헤더를 보내지 않아 AI가 401 → 그 작업만 실패 | 키가 없는 개발자의 서버도 뜬다 |
+| S-17 | 빈 제안 | `items: []`도 SUCCEEDED | 결과 없음과 실패를 구분(명세 §2 503 원칙과 같은 뜻) |
+| S-19~S-21 | 테스트 격리 | `ChecklistSuggestionApiTest`는 끝날 때 AI 준비물·준비물 작업을 지운다(`JobIntegrationTest`의 `DELETE FROM jobs`가 새 FK에 막히지 않게). 테스트 프로필은 AI 주소를 닫힌 포트로 둔다 | 테스트 DB 컨테이너 공유 |
+| S-23 | AI HTTP 연결 | JDK HttpClient를 HTTP/1.1로 고정하고 본문은 UTF-8 바이트로 보낸다. 4xx·연결 실패는 경로·traceId·상태·응답 본문(500자)을 WARN으로 남긴다. `app.ai.*`는 yaml이 없어도 기본값(`http://localhost:8000`, 5초, 50초)으로 뜬다 | 실제 연동에서 기본 HTTP/2의 h2c 업그레이드를 uvicorn이 지원하지 않아 400이 났다. mock 테스트로는 드러나지 않았다 |
+
+### 19-0. 실제 AI 서버 연동 확인 (2026-11-06)
+
+- 방법: 로컬 `ai/`(uvicorn, `INTERNAL_API_TOKEN` 지정)를 띄우고 `AI_E2E_BASE_URL`·`AI_E2E_INTERNAL_TOKEN`을 준 뒤 `ChecklistSuggestionRealAiTest`만 실행. 평소 build에서는 환경 변수가 없어 건너뛴다.
+- 결과: 요청 → 202 → worker 실행 → SUCCEEDED → 결과 조회 → 첫 제안 채택 201(source=AI). AI가 이미 있는 "충전기"는 빼고 4개(여벌 양말·신분증·세면도구·갈아입을 옷)를 돌려줬다.
+- 한계: GMS 키가 없어 AI 서버는 LLM을 건너뛰고 규칙 기반 제안만 냈다(`checklist_llm_skipped`). LLM 경로와 날씨 입력은 확인하지 않았다.
+- 첫 실행은 400으로 실패했다. 원인과 조치는 S-23.
+
+### 19-1. A에게 공유할 것
+
+- 명세 §6 `checklist-suggestions`의 `date` 필드를 뺐다(S-1). 프론트는 본문 없이 `Idempotency-Key`만 보내면 된다.
+- 공통 설정에 `app.ai`(base-url·internal-token·connect-timeout·read-timeout)와 `global.ai.AiServerClient`를 추가했다. 다른 AI 작업도 이 클라이언트를 쓰면 된다. `.env.example`에 `AI_BASE_URL`·`AI_INTERNAL_TOKEN`을 추가했다(AI 쪽 `INTERNAL_API_TOKEN`과 같은 값).
+- `checklist_items`에 `jobs` FK가 생겼다(V202611061000). 테스트에서 `DELETE FROM jobs`를 하면 AI 준비물 행을 먼저 지워야 한다.
+- 오류 코드 `AI_FEATURE_DISABLED`는 `ChecklistErrorCode`에 두었다. 다른 AI 기능도 같은 코드 이름을 쓰면 된다.
+- 테스트 프로필(`application-test.yaml`)에 Hikari `minimum-idle: 1`, `idle-timeout: 10s`를 넣었다. 캐시된 테스트 컨텍스트(설정이 다른 `@SpringBootTest`마다 하나)가 각자 커넥션 10개를 들고 있어, 컨텍스트가 늘면 공유 PostgreSQL 한도 100을 넘었다(`too many clients already`). 그 뒤 테스트는 연결 대기 30초씩 걸리며 실패한다. 새 `@MockitoBean` 테스트를 더할 때도 이 설정이 있으면 괜찮다.

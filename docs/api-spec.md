@@ -51,7 +51,7 @@
 | 상태 | 대표 업무 오류 |
 | --- | --- |
 | 404 | `TRIP_NOT_FOUND`, `FEED_NOT_FOUND`, `JOB_NOT_FOUND` — 존재를 공개할 수 없는 자료도 같은 응답. 여행 안의 하위 자료는 `MEMBER_NOT_FOUND`(없거나 이탈한 멤버십), `CHECKLIST_ITEM_NOT_FOUND`(없거나 삭제된 준비물), `EXPENSE_NOT_FOUND`(없거나 삭제된 경비), `SETTLEMENT_NOT_FOUND`(없거나 다른 여행의 정산 계산), `CHAT_ROOM_NOT_FOUND`(없거나 삭제된 여행·참여하지 않았거나 나간 채팅방), `POLL_NOT_FOUND`(없거나 다른 여행의 투표), `VISIT_NOT_FOUND`(없거나 체크 해제한·다른 여행의 방문), `REVIEW_NOT_FOUND`(평가를 쓰지 않았거나 지운 방문), `ASSET_NOT_FOUND`(없거나 남의·볼 수 없는 파일) |
-| 409 | `VERSION_CONFLICT`, `POLL_CLOSED`, `ALREADY_MEMBER`, `ALREADY_APPLIED`, `TRIP_FULL`(여행 ACTIVE 멤버 정원 초과), `CLIENT_MESSAGE_ID_REUSED`(같은 clientMessageId를 다른 방·본문에 재사용), `REVIEW_EXISTS`(평가가 있는 방문의 체크 해제), `ASSET_NOT_PENDING`(이미 확인했거나 취소한 파일의 complete·취소), `UPLOAD_NOT_FOUND`(complete 때 저장소에 아직 파일이 없음) |
+| 409 | `VERSION_CONFLICT`, `POLL_CLOSED`, `ALREADY_MEMBER`, `ALREADY_APPLIED`, `TRIP_FULL`(여행 ACTIVE 멤버 정원 초과), `CLIENT_MESSAGE_ID_REUSED`(같은 clientMessageId를 다른 방·본문에 재사용), `REVIEW_EXISTS`(평가가 있는 방문의 체크 해제), `AI_FEATURE_DISABLED`(내 AI 기능 설정이 OFF인데 명시적 요청·채택), `SUGGESTION_ALREADY_ADOPTED`(이미 채택한 준비물 제안), `ASSET_NOT_PENDING`(이미 확인했거나 취소한 파일의 complete·취소), `UPLOAD_NOT_FOUND`(complete 때 저장소에 아직 파일이 없음) |
 | 410 | `INVITATION_EXPIRED`·`INVITATION_REVOKED` — 사용자가 제시한 유효 형식의 초대 토큰 검증 결과. 새 링크 발급이나 취소로 무효가 된 링크만 `INVITATION_REVOKED`, 없는 토큰·기간 지남·삭제된 여행·초대자 이탈은 `INVITATION_EXPIRED` |
 | 422 | `INSUFFICIENT_DATA`, `CURRENCY_MISMATCH`, `INVALID_PARTICIPANTS`, `UNSUPPORTED_INPUT`, `INVALID_ROUTE_LEGS`(코스 구간이 빠지거나 겹치거나 인접하지 않음), `UPLOAD_MISMATCH`(올린 파일의 크기·실제 형식이 업로드 요청과 다름) |
 | 503 | `PROVIDER_UNAVAILABLE` — 지도·날씨·장소 공급자 장애. 결과 없음과 구분 |
@@ -187,10 +187,10 @@
 | POST | `/trips/{tripId}/weather-alternatives` | 멤버 | `{date:date,placeId:id,expectedVersion:integer}` | `JobRef` / 202 | 실제 공급자 날씨 데이터로 생성 |
 | GET | `/places/{placeId}/facilities` | 로그인 | `type:string,radiusMeters:integer` + 페이지 | `Facility[]` / 200 | 시설 종류·반경 Q-8, 장애와 빈 결과 구분 |
 | GET | `/trips/{tripId}/checklist` | 멤버 | 없음 | `{items:ChecklistItem[]}` / 200 | 여행 공동 목록 하나, checkedByMemberId 포함. 페이지 없이 추가한 순(createdAt ASC, id ASC) |
-| POST | `/trips/{tripId}/checklist` | 멤버 | `{label:string,sourceJobId?:id,suggestionIndex?:integer}` | `ChecklistItem` / 201 | sourceJobId/index 동시 지정 시 같은 여행 성공 결과 검증·이유 보존, 없으면 직접 작성. AI 준비물 제안 연동 전에는 sourceJobId/index를 400으로 거부 |
+| POST | `/trips/{tripId}/checklist` | 멤버 | `{label:string,sourceJobId?:id,suggestionIndex?:integer}` | `ChecklistItem` / 201 | 둘 다 없으면 직접 작성. 둘 다 있으면 AI 제안 채택: 같은 여행의 성공한 `CHECKLIST_SUGGESTIONS` 결과 items 순번(0부터)만 받고(아니면 400, 하나만 보내도 400) 이유 보존·source=AI. label을 제안과 다르게 보내면 modifiedByUser=true. 같은 제안은 한 번만 채택하며 채택 후 지운 제안도 409 `SUGGESTION_ALREADY_ADOPTED`. 채택자 준비물 추천 설정 OFF면 409 `AI_FEATURE_DISABLED` |
 | PATCH | `/trips/{tripId}/checklist/{itemId}` | 멤버 | `{label?:string,checked?:boolean,expectedVersion:integer}` | `ChecklistItem` / 200 | 체크 시 서버가 checkedByMemberId/checkedAt 기록, 해제 시 둘 다 null. 타인 ID 입력 금지 |
 | DELETE | `/trips/{tripId}/checklist/{itemId}` | 멤버 | 없음 | 204 | 행을 남기는 논리 삭제. AI 재생성 시 삭제한 항목 강제 부활 금지 |
-| POST | `/trips/{tripId}/checklist-suggestions` | 멤버 | `{date:date}` | `JobRef` / 202 | 제안만 생성. 수동 편집·체크 목록을 덮어쓰지 않음 |
+| POST | `/trips/{tripId}/checklist-suggestions` | 멤버 | 없음(본문 생략 또는 `{}`) + `Idempotency-Key` | `JobRef` / 202 | 제안만 생성. 수동 편집·체크 목록을 덮어쓰지 않음. 요청 시점의 여행 기간·코스 장소·현재/지운 준비물 이름을 고정해 AI에 보냄(지운 항목 재제안 없음, 날씨는 조회 기능 전까지 빈 값). 요청자 준비물 추천 설정 OFF면 409 `AI_FEATURE_DISABLED`, AUTO도 자동 반영 기준 확정 전이라 제안만. 요청자가 실행 전 이탈·설정 OFF면 작업 CANCELLED. 2026-11-06 `date` 필드 삭제(쓰는 곳 없음) |
 
 경로는 구간별 수단을 가진 Itinerary.legs로 반환하며 순서/장소/수단 변경 시 영향 구간을 재계산한다. 실패는 durationSeconds=null/status=UNAVAILABLE이다. 코스 저장·AI 적용·되돌리기·경로 반영은 현재 version을 검사하고 원자적으로 증가시키는 서버 제안이다. AI 결과 baseVersion이 다르면 409 VERSION_CONFLICT로 거부하되 별도의 오래된 변경안 확인 화면을 요구하지 않는다. 실시간 중 자동 재계산/재시도·복귀 충돌 UX는 Q-15 합의 대상이며 REST만으로 실시간 구현을 완료했다고 취급하지 않는다. 코스 변경 알림 묶음은 Q-16이다. 투표 마감은 타이머·조회·쓰기에서 같은 규칙으로 한 번만 처리한다. 최다 후보 전부를 FINALIZED, 0표는 CLOSED/NO_VOTES·selectedCandidateIds=[]로 마감한다. 0표를 결정권자 대기 상태로 해석하지 않는다. 지역 투표가 확정되면 확정 지역을 여행지 끝에 추가(이미 있으면 건너뜀)하고 여행 version을 올린다. 장소 확정은 코스를 바꾸지 않는다(2026-11-02).
 
@@ -296,7 +296,7 @@
 
 삭제 작업 응답에는 사진·메시지 내용이나 다른 사람의 자료를 포함하지 않는다. 재시도는 최초 승인된 대상 ID만 처리하며 신규 멤버십/동의가 없다고 기존 삭제 작업을 중단하지 않는다.
 
-jobs 공통 기반은 PostgreSQL 등록·실행·조회만 제공한다. kind별 실행기와 등록·실행·완료·조회 정책이 모두 등록된 기능만 활성화하며, 현재 운영 실행기는 정리 작업 TRIP_DELETE·LEAVE_CLEANUP뿐이다. 공개 생성·재시도·취소 API는 제공하지 않는다. 조회 불가·없는 작업은 모두 404 `JOB_NOT_FOUND`다. 정리 result는 `{scope:LEAVE_CLEANUP|PHOTO_DELETE|TRIP_DELETE,completedCount:integer,failedCount:integer}`만 공개한다. `scope`는 작업 종류이며 대상 ID·본문·파일은 반환하지 않는다. 내부 SPI와 재시도·임대 보장은 [jobs 기반 문서](../EodiLog/docs/plan/jobs-foundation.md)를 따른다.
+jobs 공통 기반은 PostgreSQL 등록·실행·조회만 제공한다. kind별 실행기와 등록·실행·완료·조회 정책이 모두 등록된 기능만 활성화하며, 현재 운영 실행기는 정리 작업 TRIP_DELETE·LEAVE_CLEANUP과 AI 준비물 제안 CHECKLIST_SUGGESTIONS다. 공개 생성·재시도·취소 API는 제공하지 않는다. 조회 불가·없는 작업은 모두 404 `JOB_NOT_FOUND`다. 정리 result는 `{scope:LEAVE_CLEANUP|PHOTO_DELETE|TRIP_DELETE,completedCount:integer,failedCount:integer}`만 공개한다. `scope`는 작업 종류이며 대상 ID·본문·파일은 반환하지 않는다. 내부 SPI와 재시도·임대 보장은 [jobs 기반 문서](../EodiLog/docs/plan/jobs-foundation.md)를 따른다.
 
 사용자가 임의 알림·시스템 메시지를 만드는 API는 없다. 서버 이벤트로 알림과 시스템 메시지를 생성하고 `eventId`로 중복을 막는다. 전송 시점과 링크 진입 시점에 모두 권한을 검사한다. 팔로우 요청/수락·투표 마감/자동 결과·여행 참여·코스 변경 이벤트를 포함한다. 정산 완료·사진 동의·코스 승인 이벤트는 제거한다. 코스 연속 변경의 묶음 키/시간창·최종 상태·시스템 카드 연동은 Q-16 합의 전 확정하지 않는다. 실제 송금 확인·푸시·채팅 첨부·일반 메시지 수정/삭제·대화 전체 읽음 규격은 추가하지 않았다. 시스템 카드 읽음은 event_receipts를 통해 알림과 연결한다. 그룹 이탈 시 삭제 선택은 §4 이탈 API로 제공한다.
 
@@ -418,7 +418,7 @@ STOMP over WebSocket으로 서버 → 앱 전달만 한다. 메시지 보내기�
 | VISIT_DETECTION | `{candidates:VisitCandidate[]}`. CONFIRM 모드는 후보만, AUTO도 근거 있는 본인 후보만 확정하며 Q-7 판정 정책 확정 전 자동 실행 비활성 |
 | ROUTE_RECALCULATION | `{baseVersion:integer,legs:RouteLeg[]}`. 버전 일치 시 현재 코스 경로만 갱신 |
 | WEATHER_ALTERNATIVES | `{alternatives:{alternativeId:id,type:PLACE_SWAP\|TIME_SHIFT\|INFO,place:Place\|null,itemId:id\|null,targetStartTime:string\|null,activity:string,reason:string}[],weather:Weather,baseVersion:integer}`. 해당 ID를 선택해 proposal 생성 후 적용 |
-| CHECKLIST_SUGGESTIONS | `{items:{label:string,reason:string,sourceJobId:id}[]}`. 제안 선택 후 일반 checklist POST로 추가 |
+| CHECKLIST_SUGGESTIONS | `{items:{label:string,reason:string,sourceJobId:id}[]}`. 제안 선택 후 일반 checklist POST로 추가(`suggestionIndex`=items 순번). 공동 목록 제안이라 그 여행의 현재 ACTIVE 멤버 누구나 조회. 빈 items도 성공 |
 | PHOTO_CLASSIFICATION | `{photos:{photoId:id,status:SUCCEEDED\|FAILED,topics:string[],groupId:id\|null,errorCode:string\|null}[]}` |
 | LEAVE_CLEANUP / PHOTO_DELETE / TRIP_DELETE | `{scope:string,completedCount:integer,failedCount:integer}`. 실제 보존 범위 Q-11. ACCOUNT_DELETE는 서버 내부 작업이며 사용자 폴링 결과 없음 |
 
