@@ -1,5 +1,13 @@
 # JPA·Flyway·Jackson·로그 설정은 src/main/resources/application.yaml에서 상속한다.
 # 실제 .env나 공급자 자격 증명 없이 테스트할 수 있는 인증 값만 덮어쓴다.
+spring:
+  datasource:
+    hikari:
+      # 캐시된 테스트 컨텍스트마다 풀이 있어 기본(10개 상시 유지)이면 공유 PostgreSQL 연결 한도(100)를 넘는다
+      # 쉬는 컨텍스트는 1개만 남기고, 최대 크기는 기본 10 그대로 둬 동시성 테스트는 그대로 돈다
+      minimum-idle: 1
+      # Hikari는 밀리초 숫자만 받는다(10초)
+      idle-timeout: 10000
 app:
   jobs:
     enabled: false
@@ -8,6 +16,10 @@ app:
     auto-close-enabled: false
     # 마감 1시간 전 알림도 끄고 테스트가 PollReminderSender를 직접 부른다
     reminder-enabled: false
+  # 로컬에 AI 서버가 떠 있어도 테스트가 실제로 부르지 않게 닫힌 포트를 쓴다. AI가 필요한 테스트는 클라이언트를 가짜로 바꾼다
+  ai:
+    base-url: http://127.0.0.1:9
+    internal-token: test-internal-token
   auth:
     kakao-client-id: test-client
     kakao-client-secret: test-secret
