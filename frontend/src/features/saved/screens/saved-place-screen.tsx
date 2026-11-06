@@ -91,7 +91,9 @@ export function SavedPlaceScreen() {
 
   // 해제 요청이 끝날 때까지 같은 항목의 다른 변경(다시 해제·메모 고치기·그룹에 추가)을 막는다
   const busy = remove.isPending;
-  const tripsStatus = trips.isError ? 'error' : trips.data ? 'ready' : 'loading';
+  // 실패 뒤 [다시 시도] 중에도 isError가 true로 남아 있어 다시 읽는 동안은 오류로 보지 않는다
+  const tripsStatus =
+    trips.isError && !trips.isFetching ? 'error' : trips.data ? 'ready' : 'loading';
 
   const onUnsave = () => {
     if (unsaving.current) return;
