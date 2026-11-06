@@ -26,3 +26,24 @@ describe('테스트 모드 피드 상세', () => {
     expect(detail.data.title).toBe(second.title);
   });
 });
+
+describe('테스트 모드 개인 저장(S08 나만 보기)', () => {
+  const put = (url: string) =>
+    devMockAdapter({
+      method: 'put',
+      url,
+      headers: {},
+      data: '{}',
+    } as unknown as InternalAxiosRequestConfig);
+
+  it('S07·N3 예시 장소는 저장되고 목록에 들어간다', async () => {
+    await put('/me/bookmarks/p1');
+    const list = await get('/me/bookmarks');
+    const items = (list as unknown as { data: { place: { id: string } }[] }).data;
+    expect(items.some((b) => b.place.id === 'p1')).toBe(true);
+  });
+
+  it('테스트 모드에 없는 장소는 404', async () => {
+    await expect(put('/me/bookmarks/place-missing')).rejects.toBeTruthy();
+  });
+});

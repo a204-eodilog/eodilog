@@ -35,7 +35,8 @@ export function TrendsScreen() {
 export function DestinationScreen() {
   const { regionId = '' } = useLocalSearchParams<{ regionId: string }>();
   const detail = useQuery({
-    queryKey: ['regions', regionId],
+    // ['regions', id]는 여행 기능이 Region(지역 하나)으로 기억해 두는 자리라 겹치지 않게 따로 둔다
+    queryKey: ['regions', regionId, 'detail'],
     queryFn: () => getRegionDetail(regionId),
   });
   const [placeId, setPlaceId] = useState<string | null>(null);

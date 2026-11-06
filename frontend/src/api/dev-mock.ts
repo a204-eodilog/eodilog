@@ -191,6 +191,17 @@ const REGIONS: Region[] = [
   ['region-gyeongju', '4713000000', '경상북도 경주시'],
 ].map(([id, code, name]) => ({ id, code, name, parentId: null, latitude: null, longitude: null }));
 
+/** 홈 추천 장소·S07 예시 피드·N3 대표 장소에 나오는 예시 장소. N7 장소 정보와 S08 개인 저장이 쓴다 */
+const EXAMPLE_PLACES: Record<string, [string, string]> = {
+  'rec-2': ['명주동 골목 카페', '강원 강릉시 명주동'],
+  'rec-4': ['안목 바다뷰 카페', '강원 강릉시 견소동'],
+  p1: ['강문 해변', '강원 강릉시 강문동'],
+  p2: ['안목 바다뷰 카페', '강원 강릉시 견소동'],
+  p3: ['초당 순두부집', '강원 강릉시 초당동'],
+  p4: ['경포호 산책길', '강원 강릉시 저동'],
+  p5: ['주문진 어시장', '강원 강릉시 주문진읍'],
+};
+
 /** S10 개인 즐겨찾기 예시(값 문서 S10 "예시 데이터"). 강문 해변·명주동은 공동 피드에서 담은 것 */
 const BOOKMARKS = [
   ['광안리 바다뷰 카페', '부산광역시 수영구 광안해변로 219', 35.1532, 129.1186, null],
@@ -618,6 +629,31 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
       bookmarks = [restored, ...bookmarks.filter((b) => b.place.id !== placeId)];
       return ok(config, { data: restored });
     }
+    // S08 나만 보기: S07·N3·N7의 예시 장소는 새로 담는다(이미 있으면 메모만 바꾼다). 그 밖의 장소는 404
+    const example = EXAMPLE_PLACES[placeId];
+    if (method === 'put' && (found || example)) {
+      const saved = found ?? {
+        place: {
+          id: placeId,
+          name: example[0],
+          address: example[1],
+          latitude: 37.7718,
+          longitude: 128.9478,
+          regionId: 'region-gangneung',
+          provider: 'KTO',
+          providerPlaceId: placeId,
+          source: 'PROVIDER' as const,
+        },
+        retainedPlace: { name: example[0], latitude: 37.7718, longitude: 128.9478 },
+        memo: null as string | null,
+        sourceFeedId: null as string | null,
+        sourceUnavailable: false,
+        createdAt: new Date().toISOString(),
+      };
+      saved.memo = body.memo ?? null;
+      if (!found) bookmarks = [saved, ...bookmarks];
+      return ok(config, { data: saved });
+    }
     throw fail(config, 404, 'NOT_FOUND', '저장한 장소를 찾을 수 없어요.');
   }
   // 그룹 즐겨찾기에 추가(S14): 담기만 하고 S20 목록은 아직 흉내 내지 않는다
@@ -799,16 +835,7 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
   const placeInfoMatch = /^\/places\/([^/]+)(\/social-summary|\/public-reviews)?$/.exec(url);
   if (method === 'get' && placeInfoMatch && placeInfoMatch[1] !== 'search') {
     const id = decodeURIComponent(placeInfoMatch[1]);
-    const known: Record<string, [string, string]> = {
-      'rec-2': ['명주동 골목 카페', '강원 강릉시 명주동'],
-      'rec-4': ['안목 바다뷰 카페', '강원 강릉시 견소동'],
-      p1: ['강문 해변', '강원 강릉시 강문동'],
-      p2: ['안목 바다뷰 카페', '강원 강릉시 견소동'],
-      p3: ['초당 순두부집', '강원 강릉시 초당동'],
-      p4: ['경포호 산책길', '강원 강릉시 저동'],
-      p5: ['주문진 어시장', '강원 강릉시 주문진읍'],
-    };
-    const [name, address] = known[id] ?? ['예시 장소', null];
+    const [name, address] = EXAMPLE_PLACES[id] ?? ['예시 장소', null];
     const place = {
       id,
       name,
