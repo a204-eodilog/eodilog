@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, BackHandler, Pressable, StyleSheet, Text, View } from 'react-native';
 // 시트 안 가로 목록은 제스처 핸들러 스크롤이어야 시트 끌기와 손가락을 나눠 가진다(안드로이드)
 import { ScrollView } from 'react-native-gesture-handler';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon } from '@/components/ui';
 import { assetSource } from '@/lib/asset-image';
@@ -27,7 +26,6 @@ export type RegionTripsSheetProps = {
  */
 export function RegionTripsSheet({ groups, onClose, onTrip, onRetry }: RegionTripsSheetProps) {
   const snapPoints = useMemo(() => ['60%', '82%'], []);
-  const insets = useSafeAreaInsets();
   const [selected, setSelected] = useState<string | null>(null);
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -46,7 +44,7 @@ export function RegionTripsSheet({ groups, onClose, onTrip, onRetry }: RegionTri
   return (
     <BottomSheet
       index={0}
-      bottomInset={insets.bottom}
+      // 하단 탭이 안전 영역을 처리하므로 시트 아래에 다시 여백을 넣지 않는다.
       snapPoints={snapPoints}
       enableDynamicSizing={false}
       enablePanDownToClose
