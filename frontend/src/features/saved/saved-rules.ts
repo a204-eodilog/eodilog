@@ -154,3 +154,29 @@ export function regionFor(items: SavedItem[]): MapRegion | null {
     longitudeDelta: lngSpan * 1.6,
   };
 }
+
+/** S08 저장 위치 선택. 나만 보기 / 동행과 같이 */
+export type SaveChoice = 'personal' | 'trip';
+
+/**
+ * S08 장소 저장 시트에서 실제 저장 위치와 [저장]을 누를 수 있는지.
+ * 내 여행을 불러왔는데 하나도 없으면 동행과 같이를 막고 나만 보기로 저장한다(결정 F-10).
+ * 동행과 같이는 내 여행을 불러왔고 여행을 하나 골랐을 때만 저장할 수 있다
+ */
+export function placeSaveState(input: {
+  choice: SaveChoice;
+  tripsStatus: 'loading' | 'error' | 'ready';
+  tripCount: number;
+  selectedTripId: string | null;
+}): { target: SaveChoice; tripDisabled: boolean; canSave: boolean } {
+  const tripDisabled = input.tripsStatus === 'ready' && input.tripCount === 0;
+  const target = tripDisabled ? 'personal' : input.choice;
+  const canSave =
+    target === 'personal' || (input.tripsStatus === 'ready' && input.selectedTripId !== null);
+  return { target, tripDisabled, canSave };
+}
+
+/** S08 저장 완료 토스트 문구. 여행이면 "강릉 바다에 담았어요"(S14 그룹에 추가와 같은 문구) */
+export function placeSavedMessage(tripTitle: string | null): string {
+  return tripTitle ? `${tripTitle}에 담았어요` : '개인 즐겨찾기에 저장했어요';
+}
