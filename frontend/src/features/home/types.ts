@@ -74,7 +74,7 @@ export type RegionMark = {
 /** 여러 지역을 하나로 묶은 핀. 전국 보기는 시도로, 확대하면 화면에서 겹치는 지역끼리 묶는다 */
 export type RegionGroup = {
   key: string;
-  /** 핀 글자. "강원 8곳", "강릉 외 2곳" */
+  /** 핀 글자. "강원 8곳", "강릉·평창 외 1곳" */
   label: string;
   /** 묶인 지역 수 */
   placeCount: number;
