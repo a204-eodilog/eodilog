@@ -706,6 +706,129 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
     };
     return ok(config, { data: { feedId: visibilityMatch[1], ...feedVisibility } });
   }
+  // S09 최근 트렌드 여행지: 예시 지역 다섯 곳
+  if (method === 'get' && url === '/trends/regions') {
+    const p = (config.params ?? {}) as { from?: string; to?: string };
+    const row = (
+      rank: number,
+      id: string,
+      trips: number,
+      friends: number,
+      move: { isNew?: boolean; change?: number },
+    ) => {
+      const region = REGIONS.find((r) => r.id === id) ?? REGIONS[0];
+      return {
+        region,
+        rank,
+        previousRank: null,
+        rankChange: move.change ?? null,
+        isNew: move.isNew ?? false,
+        publishedTripCount: trips,
+        followingCount: friends,
+        from: p.from ?? '',
+        to: p.to ?? '',
+        sampleSize: 400,
+        updatedAt: new Date(new Date().setHours(6, 0, 0, 0)).toISOString(),
+        insufficientData: false,
+      };
+    };
+    return ok(
+      config,
+      page([
+        row(1, 'region-gangneung', 128, 3, { change: 2 }),
+        row(2, 'region-gyeongju', 104, 2, { change: -1 }),
+        row(3, 'region-yeosu', 97, 1, { isNew: true }),
+        row(4, 'region-jeju', 88, 2, { change: -2 }),
+        row(5, 'region-busan', 71, 0, { change: 0 }),
+      ]),
+    );
+  }
+  // S28 주변 편의시설: 전기차 충전소만 세 곳, 다른 유형은 빈 결과
+  const facilitiesMatch = /^\/places\/([^/]+)\/facilities$/.exec(url);
+  if (method === 'get' && facilitiesMatch) {
+    const type = String((config.params as { type?: string } | undefined)?.type ?? '');
+    const at = new Date(new Date().setHours(10, 15, 0, 0)).toISOString();
+    const fac = (id: string, name: string, minutes: number, availability: string | null) => ({
+      providerId: id,
+      name,
+      type,
+      latitude: 37.7718 + minutes / 5000,
+      longitude: 128.9478 - minutes / 6000,
+      walkingSeconds: minutes * 60,
+      availability,
+      queriedAt: at,
+    });
+    return ok(
+      config,
+      page(
+        type === 'EV_CHARGER'
+          ? [
+              fac('f1', '안목 공영주차장 충전소', 5, '급속 2대 사용 가능'),
+              fac('f2', '견소동 주차빌딩 충전소', 9, null),
+              fac('f3', '송정 공영주차장 충전소', 12, null),
+            ]
+          : [],
+      ),
+    );
+  }
+  // N7 장소 정보: 예시 장소(홈 추천 장소, S07 예시 피드 장소). 모르는 ID도 이름만 바꿔 돌려준다
+  const placeInfoMatch = /^\/places\/([^/]+)(\/social-summary|\/public-reviews)?$/.exec(url);
+  if (method === 'get' && placeInfoMatch && placeInfoMatch[1] !== 'search') {
+    const id = decodeURIComponent(placeInfoMatch[1]);
+    const known: Record<string, [string, string]> = {
+      'rec-2': ['명주동 골목 카페', '강원 강릉시 명주동'],
+      'rec-4': ['안목 바다뷰 카페', '강원 강릉시 견소동'],
+      p1: ['강문 해변', '강원 강릉시 강문동'],
+      p2: ['안목 바다뷰 카페', '강원 강릉시 견소동'],
+      p3: ['초당 순두부집', '강원 강릉시 초당동'],
+      p4: ['경포호 산책길', '강원 강릉시 저동'],
+      p5: ['주문진 어시장', '강원 강릉시 주문진읍'],
+    };
+    const [name, address] = known[id] ?? ['예시 장소', null];
+    const place = {
+      id,
+      name,
+      address,
+      latitude: 37.7718,
+      longitude: 128.9478,
+      regionId: 'region-gangneung',
+      provider: 'KTO',
+      providerPlaceId: id,
+      source: 'PROVIDER',
+    };
+    if (!placeInfoMatch[2]) return ok(config, { data: place });
+    if (placeInfoMatch[2] === '/social-summary') {
+      return ok(config, {
+        data: {
+          place,
+          visitorCount: 2,
+          visitors: [FRIENDS[0], FRIENDS[1]],
+          averageScore: 4.5,
+          reviewCount: 2,
+          partialErrors: [],
+        },
+      });
+    }
+    return ok(
+      config,
+      page([
+        {
+          id: `${id}-r1`,
+          author: FRIENDS[0],
+          score: 5,
+          body: '조용히 쉬기 좋아요',
+          writtenAt: '2026-10-20T09:00:00Z',
+        },
+        {
+          id: `${id}-r2`,
+          author: FRIENDS[1],
+          score: 4,
+          body: '주말엔 자리가 없어요',
+          writtenAt: '2026-10-21T09:00:00Z',
+        },
+      ]),
+    );
+  }
   // S06 같은 지역 여행 목록: 홈 지도 지역마다 공동 피드 두 개(카드를 누르면 S07 예시 피드)
   const regionFeedsMatch = /^\/home\/regions\/([^/]+)\/feeds$/.exec(url);
   if (method === 'get' && regionFeedsMatch) {
@@ -821,8 +944,32 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
   if (method === 'get' && regionMatch) {
     const region = REGIONS.find((r) => r.id === regionMatch[1]);
     if (!region) throw fail(config, 404, 'REGION_NOT_FOUND', '지역을 찾을 수 없습니다.');
+    // N3 여행지 정보: 강릉만 소개·대표 장소 예시가 있다
+    const gangneung = region.id === 'region-gangneung';
+    const spot = (id: string, name: string, address: string) => ({
+      id,
+      name,
+      address,
+      latitude: 37.77,
+      longitude: 128.9,
+      regionId: region.id,
+      provider: 'KTO',
+      providerPlaceId: id,
+      source: 'PROVIDER',
+    });
     return ok(config, {
-      data: { region, introduction: null, representativePlaces: [], partialErrors: [] },
+      data: {
+        region,
+        introduction: gangneung ? '겨울 바다와 커피 거리' : null,
+        representativePlaces: gangneung
+          ? [
+              spot('p1', '강문 해변', '강원 강릉시 강문동'),
+              spot('p2', '안목 바다뷰 카페', '강원 강릉시 견소동'),
+              spot('p5', '주문진 어시장', '강원 강릉시 주문진읍'),
+            ]
+          : [],
+        partialErrors: [],
+      },
     });
   }
 
