@@ -63,14 +63,18 @@ function user(id: string, nickname: string): UserCard {
 }
 
 const ME: MyProfile = {
-  ...user('user-me', '영광'),
+  ...user('user-me', '다온'),
   ageBand: null,
   ageUseConsent: false,
-  profileCompleted: true,
+  // 신규 가입자 모드: 카카오 닉네임만 있고 프로필(S02)은 아직
+  profileCompleted: !env.devMockNewUser,
   profileUrl: '',
 };
 
-const FRIENDS = ['세은', '승기', '인경', '수철', '성환'].map((name, i) =>
+/** 신규 가입자 모드에서 S03에 저장한 취향. 저장 전에는 404 */
+let myPreferences: unknown = null;
+
+const FRIENDS = ['가람', '나래', '바다', '소라', '하늘'].map((name, i) =>
   user(`user-${i + 1}`, name),
 );
 
@@ -245,7 +249,7 @@ function makeTrip(input: {
 }
 
 /** 상태 표 5행과 목록 묶음을 한 번에 볼 수 있게 고른 여행들. 만든 순서 최신부터 */
-let trips: Trip[] = [
+const SAMPLE_TRIPS: Trip[] = [
   makeTrip({ title: '부산 바다 여행', start: -1, days: 2, regions: ['region-busan'], friends: 2 }),
   makeTrip({
     title: '강릉 커피 투어',
@@ -272,9 +276,11 @@ let trips: Trip[] = [
   }),
   makeTrip({ title: '봄 소풍', start: -10, days: 0, friends: 1 }),
   // 동행 초대·관리 확인용: 내가 동행인 여행, 정원이 찬 여행
-  makeTrip({ title: '세은이 만든 여행', start: 20, days: 1, friends: 2, meAsMember: true }),
+  makeTrip({ title: '가람이 만든 여행', start: 20, days: 1, friends: 2, meAsMember: true }),
   makeTrip({ title: '스무 명 워크숍', start: 40, days: 1, crowd: true }),
 ];
+// 신규 가입자 모드는 여행 없이 시작해 첫 방문 홈을 본다
+let trips: Trip[] = env.devMockNewUser ? [] : SAMPLE_TRIPS;
 
 /** 이 여행에서 지금 쓸 수 있는 초대 링크의 토큰. 새로 만들거나 취소하면 바뀐다 */
 const inviteTokens = new Map<string, string>();
@@ -433,6 +439,21 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
   }
 
   if (method === 'get' && url === '/me') return ok(config, { data: ME });
+  if (method === 'patch' && url === '/me') {
+    const body = JSON.parse(String(config.data ?? '{}')) as { nickname?: string };
+    if (body.nickname) ME.nickname = body.nickname;
+    ME.profileCompleted = true;
+    return ok(config, { data: ME });
+  }
+  if (method === 'get' && url === '/me/preferences') {
+    if (!myPreferences) throw fail(config, 404, 'NOT_FOUND', '아직 저장한 취향이 없어요');
+    return ok(config, { data: myPreferences });
+  }
+  if (method === 'put' && url === '/me/preferences') {
+    const body = JSON.parse(String(config.data ?? '{}')) as Record<string, unknown>;
+    myPreferences = { inferredItems: [], ...body, updatedAt: new Date().toISOString() };
+    return ok(config, { data: myPreferences });
+  }
   if (method === 'get' && url === '/me/settings') return ok(config, { data: settings });
   if (method === 'patch' && url === '/me/settings') {
     return ok(config, { data: patchSettings(config) });
@@ -520,6 +541,103 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
   if (method === 'get' && url === '/regions') {
     const query = (params.query ?? '').trim();
     return ok(config, page(REGIONS.filter((r) => query && r.name.includes(query))));
+  }
+
+  // S05 홈. 팔로우한 친구가 다녀간 지역 네 곳(법정동 코드는 지도 경계와 같다)
+  if (method === 'get' && url === '/home/map') {
+    const marker = (code: string, name: string, members: string[]) => ({
+      region: { id: `home-${code}`, code, name, parentId: null, latitude: null, longitude: null },
+      feedIds: [`feed-${code}`],
+      visibleMemberUserIds: members,
+      visitCount: members.length,
+    });
+    return ok(config, {
+      data: {
+        markers: [
+          marker('5115000000', '강원특별자치도 강릉시', ['user-1', 'user-2', 'user-3']),
+          // 강원 주변(확대 확인용)
+          marker('5121000000', '강원특별자치도 속초시', ['user-1', 'user-4']),
+          marker('5183000000', '강원특별자치도 양양군', ['user-2']),
+          marker('5182000000', '강원특별자치도 고성군', ['user-5']),
+          marker('5117000000', '강원특별자치도 동해시', ['user-3', 'user-4']),
+          marker('5123000000', '강원특별자치도 삼척시', ['user-1']),
+          marker('5176000000', '강원특별자치도 평창군', ['user-2', 'user-3', 'user-4', 'user-5']),
+          marker('5111000000', '강원특별자치도 춘천시', ['user-5']),
+          marker('4713000000', '경상북도 경주시', ['user-2', 'user-4']),
+          marker('1213000000', '전남광주통합특별시 여수시', ['user-1']),
+          marker('5011000000', '제주특별자치도 제주시', ['user-3', 'user-5']),
+        ],
+        criteria: { from: null, to: null, regionGrouping: 'SIGUNGU' },
+        updatedAt: new Date().toISOString(),
+      },
+    });
+  }
+  // 좋아요 기반 추천(백엔드 아직 없음). 휴대폰 테스트에서 시트 카드가 보이게 예시를 준다
+  if (method === 'get' && url === '/me/discovery-recommendations') {
+    const region = (code: string, name: string) => ({
+      id: `home-${code}`,
+      code,
+      name,
+      parentId: null,
+      latitude: null,
+      longitude: null,
+    });
+    const feed = (
+      id: string,
+      title: string,
+      code: string,
+      name: string,
+      start: string,
+      end: string,
+    ) => ({
+      type: 'FEED' as const,
+      feed: {
+        id,
+        tripId: `trip-${id}`,
+        title,
+        coverPhotoId: null,
+        regions: [region(code, name)],
+        startDate: start,
+        endDate: end,
+        publishedAt: '2026-10-20T09:00:00Z',
+        likedByMe: false,
+        likeCount: 3,
+      },
+      place: null,
+      reason: '좋아요한 여행과 비슷해요',
+    });
+    const place = (id: string, name: string, address: string) => ({
+      type: 'PLACE' as const,
+      feed: null,
+      place: { id, name, address, regionId: null },
+      reason: '좋아요한 여행과 비슷해요',
+    });
+    return ok(
+      config,
+      page([
+        feed(
+          'rec-1',
+          '제주 동쪽 한 바퀴',
+          '5011000000',
+          '제주특별자치도 제주시',
+          '2026-09-12',
+          '2026-09-14',
+        ),
+        place('rec-2', '명주동 골목 카페', '강원 강릉시 명주동'),
+        feed(
+          'rec-3',
+          '여수 밤바다',
+          '1213000000',
+          '전남광주통합특별시 여수시',
+          '2026-08-02',
+          '2026-08-03',
+        ),
+        place('rec-4', '안목 바다뷰 카페', '강원 강릉시 견소동'),
+      ]),
+    );
+  }
+  if (method === 'get' && url === '/me/notification-summary') {
+    return ok(config, { data: { unreadCount: 2, asOf: new Date().toISOString() } });
   }
 
   const regionMatch = /^\/regions\/([^/]+)$/.exec(url);
@@ -731,5 +849,5 @@ export const DEV_MOCK_SESSION: Session = {
   ...DEV_MOCK_TOKENS,
   expiresIn: 3600,
   user: ME,
-  isNewUser: false,
+  isNewUser: env.devMockNewUser,
 };

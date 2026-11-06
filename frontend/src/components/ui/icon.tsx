@@ -45,6 +45,9 @@ export type IconName =
   | 'person-plus'
   | 'person-minus'
   | 'crown'
+  | 'trending'
+  | 'heart'
+  | 'moon'
   | 'list'
   | 'wifi-off';
 
@@ -115,6 +118,9 @@ const PATHS: Record<IconName, string> = {
     'M10 12A4 4 0 1 0 10 4A4 4 0 0 0 10 12ZM3 20C3 16.7 6.2 15 10 15C11.4 15 12.7 15.2 13.8 15.7M15 17H21',
   // 방장 넘기기(S19 방장 메뉴). 왕관
   crown: 'M4 8L8 12L12 5L16 12L20 8L18.5 18H5.5L4 8Z',
+  trending: 'M3 17L9 11L13 15L21 7M15 7H21V13',
+  heart: 'M12 20S4 14.6 4 9.2A4.2 4.2 0 0 1 12 7A4.2 4.2 0 0 1 20 9.2C20 14.6 12 20 12 20Z',
+  moon: 'M20 14.5A8 8 0 1 1 9.5 4A6.5 6.5 0 0 0 20 14.5Z',
   // S10 목록 보기. 점 세 개 + 줄 세 개
   list: 'M9 6H20M9 12H20M9 18H20M4.5 6H4.51M4.5 12H4.51M4.5 18H4.51',
   // S10 연결 끊김. 와이파이 부채꼴 + 사선

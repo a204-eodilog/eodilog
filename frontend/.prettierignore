@@ -4,3 +4,5 @@ dist
 android
 ios
 package-lock.json
+# 지도 경계 데이터(생성물, 한 줄 JSON 유지)
+assets/map/*.json
