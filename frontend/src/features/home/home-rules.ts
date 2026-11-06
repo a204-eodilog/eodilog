@@ -5,15 +5,18 @@ import {
   shortSidoName,
   sidoCodeOf,
 } from '@/lib/korea-map';
+import { formatPeriodShort } from '@/lib/format-date';
 import { colors } from '@/theme';
 
 import type {
   DiscoveryItem,
+  FeedCard,
   HomeRecommendation,
   HomeState,
   MapResult,
   RegionGroup,
   RegionMark,
+  RegionTripCard,
 } from './types';
 
 /**
@@ -23,12 +26,13 @@ import type {
 export function toRegionMarks(result: MapResult): RegionMark[] {
   const merged = new Map<
     string,
-    { name: string; members: Set<string>; visits: number; feeds: Set<string> }
+    { id: string; name: string; members: Set<string>; visits: number; feeds: Set<string> }
   >();
   for (const m of result.markers) {
     const shape = findMapRegion(m.region.code);
     if (!shape) continue;
     const cur = merged.get(m.region.code) ?? {
+      id: m.region.id,
       name: shortRegionName(m.region.name || shape.name),
       members: new Set<string>(),
       visits: 0,
@@ -42,6 +46,7 @@ export function toRegionMarks(result: MapResult): RegionMark[] {
   return [...merged.entries()]
     .map(([regionCode, v]) => ({
       regionCode,
+      regionId: v.id,
       name: v.name,
       memberCount: v.members.size,
       memberIds: [...v.members],
@@ -218,6 +223,19 @@ export function fillStepsFor(marks: readonly RegionMark[]): { code: string; colo
 
 export function fillsFor(marks: readonly RegionMark[]): Record<string, string> {
   return Object.fromEntries(marks.map((m) => [m.regionCode, markFill(m.memberCount)]));
+}
+
+/** GET /home/regions/{regionId}/feeds(FeedCard[]) → S06 카드. 최근 게시 먼저 */
+export function toRegionTripCards(feeds: readonly FeedCard[]): RegionTripCard[] {
+  return [...feeds]
+    .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt))
+    .map((f) => ({
+      feedId: f.id,
+      title: f.title,
+      period: formatPeriodShort(f.startDate, f.endDate),
+      nights: nightsLabel(f.startDate, f.endDate),
+      coverUrl: null,
+    }));
 }
 
 /** "2박 3일", 당일이면 "당일", 날짜가 없으면 null */

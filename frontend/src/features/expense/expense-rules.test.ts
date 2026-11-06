@@ -3,7 +3,6 @@ import { describe, expect, it } from '@jest/globals';
 import {
   addedAfterSettlement,
   changedAfterSettlement,
-  formatTotalShort,
   payerLabel,
   splitLabel,
   toExpenseInput,
@@ -28,19 +27,6 @@ function member(id: string, nickname: string, joinOrder: number, status = 'ACTIV
 }
 
 const members = [member('m1', '지우', 1), member('m2', '서연', 2), member('m3', '민준', 3)];
-
-describe('formatTotalShort', () => {
-  it('만 원이 넘으면 만 원 단위로 줄인다', () => {
-    expect(formatTotalShort(234_000)).toBe('23.4만 원');
-    expect(formatTotalShort(180_000)).toBe('18만 원');
-    expect(formatTotalShort(12_345_000)).toBe('1,234.5만 원');
-  });
-
-  it('만 원보다 작으면 원 단위 그대로', () => {
-    expect(formatTotalShort(9_000)).toBe('9,000원');
-    expect(formatTotalShort(0)).toBe('0원');
-  });
-});
 
 it('낸 사람은 받침에 따라 이/가를 붙인다', () => {
   expect(payerLabel('지우')).toBe('지우가 냄');

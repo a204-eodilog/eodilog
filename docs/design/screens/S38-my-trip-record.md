@@ -32,7 +32,7 @@
 게시 전 화면 위에 어두운 막과 아래 시트. 공통 `BottomSheet`, 좌우 20·아래 34.
 
 1. **제목 줄** — "공동 피드를 게시할까요?" `typography.title1`, 간격 2, [여행 아이콘 16 + "겨울 여행 · 동행 3명의 기록" `typography.caption` `colors.text.icon`]. 오른쪽 [닫기]
-2. **안내 카드** — 위 16·아래 20. 흰 바탕 테두리 카드(`Card variant="outline" rounded="xl"`, 둥글기 24, 안쪽 18), 가로 간격 16: 연파랑 동그라미 40(`colors.brand.primaryBg`) 안에 지구본 아이콘 20 · 오른쪽 글자 세 줄 `typography.body` 줄 높이 20 — "모두에게 공개돼요"(굵게), "사진·코스·평가·경비가 함께 올라가요", "숨길 친구는 게시 후 고를 수 있어요". 그 아래 글자 링크 "친구에게 보이는 모습 미리 보기" `typography.captionMedium` `colors.brand.primary` → S40(A)
+2. **안내 카드** — 위 16·아래 20. 흰 바탕 테두리 카드(`Card variant="outline" rounded="xxl"`, 둥글기 24, 안쪽 18), 가로 간격 16: 연파랑 동그라미 40(`colors.brand.primaryBg`) 안에 지구본 아이콘 20 · 오른쪽 글자 세 줄 `typography.body` 줄 높이 20 — "모두에게 공개돼요"(굵게), "사진·코스·평가·경비가 함께 올라가요", "숨길 친구는 게시 후 고를 수 있어요". 그 아래 글자 링크 "친구에게 보이는 모습 미리 보기" `typography.captionMedium` `colors.brand.primary` → S40(A)
 3. **버튼** — 가로 꽉 찬 알약 주 버튼 48 "게시"(이 화면만 전체 폭). 누르면 게시 API, 성공하면 시트가 닫히고 "게시됨" 상태 + 토스트 "공동 피드를 게시했어요"
 
 피그마의 이 상태는 글자 크기가 12/18·16/24처럼 토큰과 조금 다르게 그려져 있다. 게시 전 화면과 같은 토큰(`caption`·`bodyBold`)으로 맞춘다.

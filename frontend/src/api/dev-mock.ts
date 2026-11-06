@@ -171,6 +171,33 @@ const REGIONS: Region[] = [
   ['region-gyeongju', '4713000000', '경상북도 경주시'],
 ].map(([id, code, name]) => ({ id, code, name, parentId: null, latitude: null, longitude: null }));
 
+/** S10 개인 즐겨찾기 예시(값 문서 S10 "예시 데이터"). 강문 해변·명주동은 공동 피드에서 담은 것 */
+const BOOKMARKS = [
+  ['광안리 바다뷰 카페', '부산광역시 수영구 광안해변로 219', 35.1532, 129.1186, null],
+  ['강문 해변', '강원특별자치도 강릉시 강문동 산1', 37.7953, 128.9184, 'feed-dev-1'],
+  ['전포 카페거리', '부산광역시 부산진구 전포대로 209', 35.1557, 129.0636, null],
+  ['흰여울문화마을', '부산광역시 영도구 영선동4가 1044', 35.0784, 129.0447, null],
+  ['명주동 골목 카페', '강원특별자치도 강릉시 명주동 15', 37.7537, 128.8957, 'feed-dev-2'],
+] as const;
+const bookmarks = BOOKMARKS.map(([name, address, latitude, longitude, sourceFeedId], i) => ({
+  place: {
+    id: `place-bookmark-${i + 1}`,
+    name,
+    address,
+    latitude,
+    longitude,
+    regionId: null,
+    provider: 'NAVER',
+    providerPlaceId: null,
+    source: 'PROVIDER' as const,
+  },
+  retainedPlace: { name, latitude, longitude },
+  memo: null,
+  sourceFeedId,
+  sourceUnavailable: false,
+  createdAt: new Date(Date.UTC(2026, 10, 5 - i)).toISOString(),
+}));
+
 let seq = 0;
 
 function makeTrip(input: {
@@ -468,6 +495,7 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
     myPreferences = { inferredItems: [], ...body, updatedAt: new Date().toISOString() };
     return ok(config, { data: myPreferences });
   }
+  if (method === 'get' && url === '/me/bookmarks') return ok(config, page(bookmarks));
   if (method === 'get' && url === '/me/trips') return ok(config, page(trips));
   // S37 내가 게시한 공동 피드: 예시 여행 중 "남도 맛집 여행"을 경주로 게시한 것으로 본다
   if (method === 'get' && url === '/me/feeds') {
@@ -571,6 +599,30 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
       updatedAt: new Date().toISOString(),
     };
     return ok(config, { data: { feedId: visibilityMatch[1], ...feedVisibility } });
+  }
+  // S06 같은 지역 여행 목록: 홈 지도 지역마다 공동 피드 두 개(카드를 누르면 S07 예시 피드)
+  const regionFeedsMatch = /^\/home\/regions\/([^/]+)\/feeds$/.exec(url);
+  if (method === 'get' && regionFeedsMatch) {
+    const regionId = decodeURIComponent(regionFeedsMatch[1]);
+    const card = (n: number, title: string, start: string, end: string) => ({
+      id: `${regionId}-feed-${n}`,
+      tripId: `${regionId}-trip-${n}`,
+      title,
+      coverPhotoId: null,
+      regions: [],
+      startDate: start,
+      endDate: end,
+      publishedAt: `2026-1${n}-01T09:00:00Z`,
+      likedByMe: false,
+      likeCount: 3 * n,
+    });
+    return ok(
+      config,
+      page([
+        card(1, '겨울 바다 산책', '2026-01-17', '2026-01-18'),
+        card(0, '가을 맛집 투어', '2025-10-03', '2025-10-05'),
+      ]),
+    );
   }
   const feedMatch = /^\/feeds\/([^/]+)(\/like)?$/.exec(url);
   if (feedMatch) {

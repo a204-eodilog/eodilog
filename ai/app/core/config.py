@@ -18,6 +18,11 @@ class Settings(BaseSettings):
     naver_client_secret: str = ""
     kakao_rest_api_key: str = ""
 
+    # 사진 모델(open_clip). 기준값은 모델마다 달라 모델을 바꾸면 함께 다시 잡는다 (spec AS-7, AS-8)
+    clip_model: str = "ViT-B-32-SigLIP2-256"
+    clip_pretrained: str = "webli"
+    photo_similarity_threshold: float = 0.94
+
     # 요청 하나의 상한. 백엔드 호출 타임아웃 50초, worker 제한 60초보다 먼저 끝난다 (spec §1.0)
     request_budget_seconds: float = 45
     llm_timeout_seconds: float = 30

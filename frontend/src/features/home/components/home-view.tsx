@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -35,6 +35,11 @@ export type HomeViewProps = {
   /** 처음 확대해서 볼 지역 (미리보기 '지도 확대') */
   initialZoom?: { regionCode: string; scale: number };
   initialSheetExpanded?: boolean;
+  /**
+   * S06 같은 지역 여행 목록 시트. 있으면 지역 핀(모든 단계)·사진 카드 단계의 묶음 핀을 눌렀을 때
+   * 추천 시트 대신 이 시트를 연다. 닫으면 추천 시트로 돌아간다
+   */
+  renderRegionSheet?: (marks: readonly RegionMark[], onClose: () => void) => ReactNode;
   onRetry: () => void;
   onTrend: () => void;
   onBell: () => void;
@@ -128,6 +133,7 @@ export function HomeView(props: HomeViewProps) {
 function MapBody(props: HomeViewProps) {
   const { state, marks } = props;
   const [stage, setStage] = useState<MapStage>();
+  const [selectedMarks, setSelectedMarks] = useState<readonly RegionMark[] | null>(null);
   const [zoomTo, setZoomTo] = useState<{ key: number; point: MapPoint; scale: number }>();
   // 처음 등장 애니메이션이 끝나면, 확대하며 새로 생기는 핀은 기다리지 않고 바로 보인다
   const [entered, setEntered] = useState(false);
@@ -152,6 +158,10 @@ function MapBody(props: HomeViewProps) {
       : pinEnterStartMs(fillSteps.length) + (order.get(code) ?? 0) * MAP_MOTION.pinStaggerMs;
   // 묶음 핀을 누르면 그 자리로 한 단계 더 확대. 마지막 단계에서도 겹치면 친구가 가장 많은 곳으로 간다
   const openGroup = (g: RegionGroup) => {
+    if (detail && props.renderRegionSheet) {
+      setSelectedMarks(g.marks);
+      return;
+    }
     const next = MAP_STAGES[index + 1];
     if (next === undefined) {
       props.onRegion(g.marks[0]);
@@ -195,7 +205,8 @@ function MapBody(props: HomeViewProps) {
         const side = 'mark' in entry ? entry.side : 'right';
         const r = findMapRegion(item.regionCode);
         if (!r) return [];
-        const press = () => props.onRegion(item);
+        const press = () =>
+          props.renderRegionSheet ? setSelectedMarks([item]) : props.onRegion(item);
         return [
           {
             key: detail ? `${item.regionCode}-photo` : item.regionCode,
@@ -271,7 +282,9 @@ function MapBody(props: HomeViewProps) {
           {caption}
         </Text>
       ) : null}
-      {ready ? (
+      {selectedMarks && props.renderRegionSheet ? (
+        props.renderRegionSheet(selectedMarks, () => setSelectedMarks(null))
+      ) : ready ? (
         <RecommendSheet
           items={props.recommendations}
           initialExpanded={props.initialSheetExpanded}

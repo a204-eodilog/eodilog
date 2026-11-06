@@ -39,3 +39,14 @@ export function parseAmount(text: string): number | null {
 export function formatWon(amount: number): string {
   return `${formatThousands(amount)}원`;
 }
+
+/**
+ * 짧은 원화 표시(S35 합계 상자, S38 경비 카드). 만 원이 넘으면 만 원 단위 소수 첫째 자리까지 줄인다(Figma "23.4만 원").
+ * 만 원보다 작으면 원 단위 그대로.
+ */
+export function formatTotalShort(amount: number): string {
+  if (amount < 10_000) return formatWon(amount);
+  const tenThousands = Math.round(amount / 1_000) / 10;
+  const [whole, decimal] = String(tenThousands).split('.');
+  return `${formatThousands(whole)}${decimal ? `.${decimal}` : ''}만 원`;
+}

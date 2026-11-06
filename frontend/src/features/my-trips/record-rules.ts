@@ -1,6 +1,6 @@
-import { formatTotalShort } from '@/features/expense/expense-rules';
-import type { Expense, SettlementState } from '@/features/expense/types';
-import type { ItineraryItem, Visit } from '@/features/visit/types';
+import type { Expense, SettlementState } from '@/features/expense';
+import type { ItineraryItem, Visit } from '@/features/visit';
+import { formatTotalShort } from '@/lib/format-number';
 import { withWa } from '@/lib/korean';
 
 /** S38 요약 카드 한 장의 값과 보조 줄. "4곳 다녀옴" / "계획 5곳" */

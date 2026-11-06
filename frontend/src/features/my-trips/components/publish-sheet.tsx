@@ -53,7 +53,6 @@ export function PublishSheet({
       </View>
 
       <View style={styles.body}>
-        {/* 값 문서는 rounded="xl"이라 적었지만 둥글기 24는 xxl이다 */}
         <Card rounded="xxl" style={styles.guide}>
           <View style={styles.globe}>
             <Icon name="globe" size={20} color={colors.brand.primary} />
