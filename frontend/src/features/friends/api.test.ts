@@ -12,6 +12,10 @@ import {
   unfollow,
 } from '@/features/friends/api';
 
+// jest는 .env를 읽지 않는다. dev-mock이 불러오는 환경 설정을 테스트 값으로 둔다
+jest.mock('@/config/env', () => ({
+  env: { appEnv: 'local', apiBaseUrl: 'http://test', kakaoRedirectUri: null, devMock: false },
+}));
 jest.mock('@/api/client', () => {
   const axios = jest.requireActual<typeof import('axios')>('axios');
   const mock = jest.requireActual<typeof import('@/api/dev-mock')>('@/api/dev-mock');

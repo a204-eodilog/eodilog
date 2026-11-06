@@ -8,6 +8,8 @@ import {
 import { env } from '@/config/env';
 import { addDays, seoulToday } from '@/lib/seoul-date';
 
+import { createChatMock } from './dev-mock-chat';
+
 import type { Follow, MyProfile, Session, UserCard } from './types';
 
 /**
@@ -237,12 +239,24 @@ function bump(trip: Trip) {
   trip.version += 1;
 }
 
+/** 채팅 가짜 서버. 여행 목록(trips)에 없는 여행의 방은 404다 */
+const chatMock = createChatMock({ getTrips: () => trips, me: ME, ok, fail });
+
 /**
  * 웹 테스트 모드 콘솔에서 다른 동행의 변경을 흉내 낸다(동행 명세 research R15).
  * globalThis.__devMock.bumpVersion('trip-1') → 다음 저장·나가기가 409를 받는다
  * globalThis.__devMock.giveOwner('trip-1', 'member-1-2') → 내가 방장이 아니게 된다(403 확인)
  */
 export const devMockControls = {
+  /** 채팅: globalThis.__devMock.chat.incoming('trip-1', '안녕') 등(contracts/realtime.md "테스트 모드") */
+  chat: chatMock.controls,
+  /**
+   * 다른 기기에서 내가 내보내졌거나 여행이 삭제된 것을 흉내 낸다. 그 여행과 대화방이 모두 404가 된다.
+   * globalThis.__devMock.kickMe('trip-1') 뒤 S47에서 보내기·새로고침을 하면 차단 화면이 나온다(채팅 quickstart 4-1)
+   */
+  kickMe(tripId: string) {
+    trips = trips.filter((t) => t.id !== tripId);
+  },
   /** 지금 가짜 서버의 여행. 확인용 */
   peek(tripId: string) {
     return trips.find((t) => t.id === tripId);
@@ -291,6 +305,9 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
   const method = (config.method ?? 'get').toLowerCase();
   const url = config.url ?? '';
   const params = (config.params ?? {}) as Record<string, string>;
+
+  const chat = chatMock.handle(config, method, url, params);
+  if (chat) return chat;
 
   if (method === 'get' && url === '/me/following') {
     return followPage(
