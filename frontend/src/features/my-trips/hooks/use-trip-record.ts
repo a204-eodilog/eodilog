@@ -1,11 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { getAllExpenses, getSettlementState } from '@/features/expense/api';
-import { expenseKeys } from '@/features/expense/hooks/use-expense-board';
-import { getItineraryItems, getMyVisits } from '@/features/visit/api';
-import { visitKeys } from '@/features/visit/hooks/use-visit-board';
+import { expenseKeys, getAllExpenses, getSettlementState } from '@/features/expense';
+import { getItineraryItems, getMyVisits, visitKeys } from '@/features/visit';
+import { useMe } from '@/hooks/use-me';
 
-import { getMe, getRecordTrip } from '../api';
+import { getRecordTrip } from '../api';
 
 /**
  * S38에 필요한 것을 한꺼번에 읽는다: 여행(이름·기간·동행), 코스, 내 방문, 지출, 정산 상태, 나.
@@ -29,7 +28,7 @@ export function useTripRecord(tripId: string) {
     queryKey: expenseKeys.settlement(tripId),
     queryFn: () => getSettlementState(tripId),
   });
-  const me = useQuery({ queryKey: ['me'], queryFn: getMe });
+  const me = useMe();
 
   const queries = [trip, itinerary, visits, expenses, settlement, me];
 
