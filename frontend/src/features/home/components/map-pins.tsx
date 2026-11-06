@@ -1,4 +1,3 @@
-import { Image } from 'expo-image';
 import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
@@ -52,7 +51,7 @@ export function RegionPill({
   );
 }
 
-/** 여러 지역을 묶은 핀. "강원 8곳 · 친구 5", "강릉 외 2곳 · 친구 6". 누르면 그곳으로 한 단계 확대 */
+/** 여러 지역을 묶은 핀. "강원 8곳 · 친구 5", "강릉·평창 외 1곳 · 친구 6". 누르면 그곳으로 한 단계 확대 */
 export function GroupPill({
   group,
   onPress,
@@ -107,55 +106,6 @@ function Ripple() {
   return <Animated.View style={[styles.ripple, style]} pointerEvents="none" />;
 }
 
-/** 확대 보기 핀. 지역 점 옆에 표지 사진 + 지역 이름 + 다녀간 친구 얼굴 카드. side는 카드가 놓일 쪽 */
-export function PhotoPin({
-  mark,
-  side,
-  onPress,
-}: {
-  mark: RegionMark;
-  side: 'left' | 'right';
-  onPress?: () => void;
-}) {
-  const faces = mark.memberNames.slice(0, 3);
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={`${mark.name}, 친구 ${mark.memberCount}명`}
-      style={[styles.photoWrap, side === 'left' ? styles.photoWrapLeft : styles.photoWrapRight]}
-    >
-      <View style={styles.ringDot} />
-      <View style={styles.photoCard}>
-        {mark.coverUrl ? (
-          <Image source={{ uri: mark.coverUrl }} style={styles.photo} contentFit="cover" />
-        ) : (
-          <View style={[styles.photo, styles.photoEmpty]}>
-            <Icon name="image" size={20} color={colors.brand.primary} />
-          </View>
-        )}
-        <View style={styles.photoText}>
-          <Text style={styles.photoName}>{mark.name}</Text>
-          {faces.length > 0 ? (
-            <View style={styles.faces}>
-              {faces.map((name, i) => (
-                <View key={`${name}-${i}`} style={styles.face}>
-                  <Text style={styles.faceText}>{name.slice(0, 1)}</Text>
-                </View>
-              ))}
-            </View>
-          ) : (
-            <View style={styles.countRow}>
-              <Icon name="people" size={14} color={colors.text.icon} />
-              <Text style={styles.pillCount}>{mark.memberCount}</Text>
-            </View>
-          )}
-        </View>
-      </View>
-    </Pressable>
-  );
-}
-
 /** 친구 없음: 친구가 생기면 들어올 자리 (점선 동그라미 + 더하기) */
 export function InviteSpot() {
   return (
@@ -208,47 +158,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.surface.white,
   },
-  // 점(16)의 가운데가 지도 위 지역 자리에 오게 반 칸(8)만큼 바깥으로 민다
-  photoWrap: { flexDirection: 'row', alignItems: 'center', gap: spacing[6] },
-  photoWrapRight: { marginLeft: -8 },
-  photoWrapLeft: { flexDirection: 'row-reverse', marginRight: -8 },
-  ringDot: {
-    width: 16,
-    height: 16,
-    borderRadius: radius.full,
-    backgroundColor: colors.surface.white,
-    borderWidth: 3,
-    borderColor: colors.brand.primary,
-  },
-  photoCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[10],
-    padding: spacing[6],
-    paddingRight: spacing[14],
-    borderRadius: radius.lg,
-    backgroundColor: colors.surface.white,
-    boxShadow: SHADOW,
-  },
-  photo: { width: 52, height: 52, borderRadius: radius.md },
-  photoEmpty: {
-    backgroundColor: colors.brand.primaryBg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  photoText: { gap: spacing[4] },
-  photoName: { ...typography.bodyBold, color: colors.text.default },
-  faces: { flexDirection: 'row', gap: spacing[2] },
-  face: {
-    width: 22,
-    height: 22,
-    borderRadius: radius.full,
-    backgroundColor: colors.surface.default,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  faceText: { ...typography.micro, color: colors.text.icon },
-  countRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
   invite: {
     width: 44,
     height: 44,

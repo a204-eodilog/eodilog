@@ -100,7 +100,7 @@ export function groupBySido(marks: readonly RegionMark[]): (RegionMark | RegionG
 
 /**
  * 확대 단계(2~5단계) 핀 묶기. 그 단계 배율에서 핀끼리 화면에서 겹치면(room 안) 하나로 묶는다.
- * 친구가 많은 지역이 대표가 되어 "강릉 외 2곳"이 된다. pxPerUnit은 지도 좌표 1이 화면에서 몇 px인지
+ * 친구가 많은 지역부터 이름을 적어 "강릉·평창", "강릉·평창 외 1곳"이 된다. pxPerUnit은 지도 좌표 1이 화면에서 몇 px인지
  */
 export function clusterMarks(
   marks: readonly RegionMark[],
@@ -129,73 +129,20 @@ export function clusterMarks(
   return clusters.map((c) => {
     if (c.list.length === 1) return c.list[0];
     const codes = c.list.map((m) => m.regionCode).sort();
-    return toGroup(
-      `near-${codes.join('-')}`,
-      `${c.list[0].name} 외 ${c.list.length - 1}곳`,
-      c.list,
-      [c.x, c.y],
-    );
+    return toGroup(`near-${codes.join('-')}`, nearLabel(c.list), c.list, [c.x, c.y]);
   });
 }
 
-type Rect = { x0: number; y0: number; x1: number; y1: number };
-const overlaps = (a: Rect, b: Rect, gap: number) =>
-  a.x0 < b.x1 + gap && b.x0 < a.x1 + gap && a.y0 < b.y1 + gap && b.y0 < a.y1 + gap;
-
-export type PlacedPhoto = { mark: RegionMark; side: 'left' | 'right' };
-
-/**
- * 사진 카드 단계(4~5단계) 핀 놓기. 카드는 점 옆으로 뻗어 나가므로 점 사이 거리가 아니라
- * 카드 네모가 실제로 겹치는지 본다. 친구가 많은 지역부터 오른쪽 → 왼쪽 순으로 빈 자리를 찾고,
- * 양쪽 다 겹치면 가장 가까운 카드와 묶는다("강릉 외 1곳"). 좌표는 화면 px 기준(pxPerUnit)
- */
-export function placePhotoPins(
-  marks: readonly RegionMark[],
-  pxPerUnit: number,
-  card: { width: number; height: number; gap: number },
-  /** 묶이면 카드 대신 점 위에 알약이 놓인다. 그 자리까지 미리 잡아 두어 다른 카드가 올라타지 않게 한다 */
-  pill = { width: 120, height: 48 },
-): (PlacedPhoto | RegionGroup)[] {
-  const placed: { rect: Rect; x: number; y: number; list: RegionMark[]; side: 'left' | 'right' }[] =
-    [];
-  const sorted = [...marks].sort((a, b) => b.memberCount - a.memberCount);
-  for (const m of sorted) {
-    const p = pointOf(m);
-    if (!p) continue;
-    const x = p[0] * pxPerUnit;
-    const y = p[1] * pxPerUnit;
-    const rectOf = (side: 'left' | 'right'): Rect => ({
-      x0: Math.min(side === 'right' ? x : x - card.width, x - pill.width / 2),
-      x1: Math.max(side === 'right' ? x + card.width : x, x + pill.width / 2),
-      y0: y - Math.max(card.height / 2, pill.height),
-      y1: y + card.height / 2,
-    });
-    const free = (['right', 'left'] as const).find((side) => {
-      const rect = rectOf(side);
-      return !placed.some((q) => overlaps(q.rect, rect, card.gap));
-    });
-    if (free) {
-      placed.push({ rect: rectOf(free), x, y, list: [m], side: free });
-      continue;
-    }
-    const near = placed.reduce((a, q) =>
-      Math.hypot(q.x - x, q.y - y) < Math.hypot(a.x - x, a.y - y) ? q : a,
-    );
-    near.list.push(m);
-  }
-  return placed.map((c) => {
-    if (c.list.length === 1) return { mark: c.list[0], side: c.side };
-    const codes = c.list.map((m) => m.regionCode).sort();
-    return toGroup(
-      `near-${codes.join('-')}`,
-      `${c.list[0].name} 외 ${c.list.length - 1}곳`,
-      c.list,
-      pointOf(c.list[0]),
-    );
-  });
+/** 가까워 묶인 지역 이름. 두 곳은 "강릉·평창", 세 곳부터 "강릉·평창 외 1곳"(친구 많은 순) */
+export function nearLabel(list: readonly RegionMark[]) {
+  const names = list
+    .slice(0, 2)
+    .map((m) => m.name)
+    .join('·');
+  return list.length > 2 ? `${names} 외 ${list.length - 2}곳` : names;
 }
 
-export function isGroup(item: RegionMark | RegionGroup | PlacedPhoto): item is RegionGroup {
+export function isGroup(item: RegionMark | RegionGroup): item is RegionGroup {
   return 'marks' in item;
 }
 

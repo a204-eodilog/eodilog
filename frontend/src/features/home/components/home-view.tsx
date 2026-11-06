@@ -17,10 +17,10 @@ import {
 import { findMapRegion, type MapPoint } from '@/lib/korea-map';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
-import { clusterMarks, fillStepsFor, groupBySido, isGroup, placePhotoPins } from '../home-rules';
+import { clusterMarks, fillStepsFor, groupBySido, isGroup } from '../home-rules';
 import type { HomeRecommendation, HomeState, RegionGroup, RegionMark } from '../types';
 
-import { GroupPill, InviteSpot, LockedFace, PhotoPin, RegionPill } from './map-pins';
+import { GroupPill, InviteSpot, LockedFace, RegionPill } from './map-pins';
 import { RecommendSheet, SHEET_COLLAPSED } from './recommend-sheet';
 
 export type HomeViewProps = {
@@ -51,12 +51,10 @@ export type HomeViewProps = {
   onRecommendation: (item: HomeRecommendation) => void;
 };
 
-// 핀이 화면에서 차지하는 크기(겹침 판단). 이름표는 알약+점, 사진 카드는 점 옆 카드
+// 핀이 화면에서 차지하는 크기(겹침 판단). 이름표 알약 + 점
 const PILL_ROOM = { width: 86, height: 40 };
-// 사진 카드 한 장의 화면 크기(점 16 + 카드). 겹침은 placePhotoPins가 카드 네모로 본다
-const CARD = { width: 176, height: 64, gap: 6 };
-/** 이 단계부터 사진 카드 (0부터: 4단계) */
-const PHOTO_STAGE = 3;
+/** 이 단계부터 묶음 핀을 누르면 더 확대하지 않고 S06 시트를 연다 (0부터: 4단계) */
+const SHEET_STAGE = 3;
 
 /**
  * 그 단계에서 핀끼리 겹친다고 볼 거리(지도 좌표). 확대할수록 묶음이 풀리기만 하도록
@@ -152,15 +150,15 @@ function MapBody(props: HomeViewProps) {
     return () => clearTimeout(t);
   }, [fillSteps.length]);
   const index = stage?.index ?? 0;
-  const detail = index >= PHOTO_STAGE;
+  const nearLast = index >= SHEET_STAGE;
   // 처음에는 Figma 순서대로, 그 뒤 단계가 바뀌어 새로 생긴 핀은 바로 올라오며 나타난다
   const enterDelay = (code: string) =>
     entered
       ? 0
       : pinEnterStartMs(fillSteps.length) + (order.get(code) ?? 0) * MAP_MOTION.pinStaggerMs;
-  // 묶음 핀을 누르면 그 자리로 한 단계 더 확대. 마지막 단계에서도 겹치면 친구가 가장 많은 곳으로 간다
+  // 묶음 핀을 누르면 그 자리로 한 단계 더 확대. 4·5단계에서는 묶인 지역 전체를 S06 시트로 연다
   const openGroup = (g: RegionGroup) => {
-    if (detail && props.renderRegionSheet) {
+    if (nearLast && props.renderRegionSheet) {
       setSelectedMarks(g.marks);
       return;
     }
@@ -194,32 +192,24 @@ function MapBody(props: HomeViewProps) {
           : [];
       });
     }
-    // 1단계는 시도로, 2~3단계는 이름표끼리 겹치면 묶고, 4단계부터는 사진 카드 네모가 겹치지 않게 놓는다
+    // 1단계는 시도로 묶고, 2단계부터는 시군 이름표끼리 겹칠 때만 묶는다. 사진은 S06 시트에서 본다
     const items =
       index === 0 || !stage
         ? groupBySido(marks)
-        : detail
-          ? placePhotoPins(marks, stage.pxPerUnit, CARD)
-          : clusterMarks(marks, 1, roomInMap(index, stage.pxPerUnit));
+        : clusterMarks(marks, 1, roomInMap(index, stage.pxPerUnit));
     return items.flatMap((entry): KoreaMapPin[] => {
       if (!isGroup(entry)) {
-        const item = 'mark' in entry ? entry.mark : entry;
-        const side = 'mark' in entry ? entry.side : 'right';
+        const item = entry;
         const r = findMapRegion(item.regionCode);
         if (!r) return [];
         const press = () => (props.renderRegionSheet ? setSelectedMarks([item]) : onRegion(item));
         return [
           {
-            key: detail ? `${item.regionCode}-photo` : item.regionCode,
+            key: item.regionCode,
             point: r.point,
-            // 카드가 점 왼쪽이면 핀 오른쪽 끝이 점에 닿는다
-            anchor: detail ? (side === 'left' ? 'right' : 'left') : 'bottom',
+            anchor: 'bottom',
             enterDelayMs: enterDelay(item.regionCode),
-            children: detail ? (
-              <PhotoPin mark={item} side={side} onPress={press} />
-            ) : (
-              <RegionPill mark={item} onPress={press} pulse={item.regionCode === top} />
-            ),
+            children: <RegionPill mark={item} onPress={press} pulse={item.regionCode === top} />,
           },
         ];
       }
