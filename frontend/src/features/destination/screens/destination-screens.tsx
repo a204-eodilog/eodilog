@@ -3,16 +3,13 @@ import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 
 import { toast } from '@/components/ui';
-import { PlaceInfoSheet } from '@/features/place';
+import { PlaceInfoSheet, usePlaceSave } from '@/features/place';
 
 import { getRegionDetail, getTrends } from '../api';
 import { DestinationView } from '../components/destination-view';
 import { TrendsView } from '../components/trends-view';
 import { toDestinationInfo, toTrendBoard, trendRange } from '../destination-rules';
 import type { DestinationInfo, TrendRegion } from '../types';
-
-// S08 장소 저장 시트(B)는 아직 없다
-const soon = () => toast.show('준비 중이에요');
 
 /** S09 최근 트렌드 여행지 /trends. S05 [요즘 뜨는 여행지]에서 들어온다 */
 export function TrendsScreen() {
@@ -42,17 +39,26 @@ export function DestinationScreen() {
     queryFn: () => getRegionDetail(regionId),
   });
   const [placeId, setPlaceId] = useState<string | null>(null);
+  const placeSave = usePlaceSave();
   return (
     <>
       <DestinationView
         state={detail.isError ? 'error' : detail.data ? 'ready' : 'loading'}
         info={detail.data ? toDestinationInfo(detail.data) : undefined}
         onPlace={setPlaceId}
-        onSavePlace={soon}
+        onSavePlace={placeSave.open}
         onNewTrip={() => router.push({ pathname: '/trips/new', params: { regionId } })}
         onRetry={() => void detail.refetch()}
       />
-      <PlaceInfoSheet placeId={placeId} onClose={() => setPlaceId(null)} onSave={soon} />
+      <PlaceInfoSheet
+        placeId={placeId}
+        onClose={() => setPlaceId(null)}
+        onSave={(place) => {
+          setPlaceId(null);
+          placeSave.open(place);
+        }}
+      />
+      {placeSave.sheet}
     </>
   );
 }

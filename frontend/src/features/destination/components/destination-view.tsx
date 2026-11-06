@@ -12,13 +12,13 @@ export type DestinationViewProps = {
   state: 'loading' | 'error' | 'ready';
   info?: DestinationInfo;
   onPlace: (placeId: string) => void;
-  onSavePlace: (placeId: string) => void;
+  onSavePlace: (place: { id: string; name: string }) => void;
   onNewTrip: () => void;
   onRetry: () => void;
 };
 
 /**
- * N3 여행지 정보(WD-FR-11). S09에서 들어온다. 지역 소개, 대표 장소([저장]은 S08),
+ * N3 여행지 정보(WD-FR-11). S09에서 들어온다. 지역 소개, 대표 장소([저장]은 S08 장소 저장 시트),
  * [새 여행]은 이 여행지를 넣은 채 S16으로(결정 F-23)
  */
 export function DestinationView(props: DestinationViewProps) {
@@ -83,7 +83,7 @@ export function DestinationView(props: DestinationViewProps) {
                       </View>
                     </Pressable>
                     <Pressable
-                      onPress={() => props.onSavePlace(p.id)}
+                      onPress={() => props.onSavePlace({ id: p.id, name: p.name })}
                       style={({ pressed }) => [styles.save, pressed && styles.pressed]}
                       accessibilityRole="button"
                       accessibilityLabel={`${p.name} 저장`}

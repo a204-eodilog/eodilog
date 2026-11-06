@@ -10,7 +10,7 @@
 | 불러오기 실패 | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-28309) | 예                                  |
 
 - 머리: 지역 이름. 사진 자리(180), 지역 이름(`title1`) + 📍 상위 시도 + 소개 한 줄
-- **대표 장소**: 사진 자리 56 + 이름 + 주소, 오른쪽 [저장](S08, 준비 중). 줄을 누르면 N7 장소 정보 시트
+- **대표 장소**: 사진 자리 56 + 이름 + 주소, 오른쪽 [저장](S08 장소 저장 시트). 줄을 누르면 N7 장소 정보 시트
 - 오른쪽 아래 [+ 새 여행] → S16 `/trips/new?regionId=` (이 여행지를 넣은 채, 결정 F-23)
 
 값: `GET /regions/{regionId}`(RegionDetail). 명세상 `introduction`·`representativePlaces`가 아직 비어 올 수 있어, 비면 소개 줄을 빼고 "아직 소개할 장소가 없어요".

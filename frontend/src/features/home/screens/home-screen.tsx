@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 
 import { toast } from '@/components/ui';
-import { PlaceInfoSheet } from '@/features/place';
+import { PlaceInfoSheet, usePlaceSave } from '@/features/place';
 import { HomeView } from '@/features/home/components/home-view';
 import { RegionTripsSheet } from '@/features/home/components/region-trips-sheet';
 import { useHome } from '@/features/home/hooks/use-home';
@@ -28,6 +28,7 @@ function RegionSheet({ marks, onClose }: { marks: readonly RegionMark[]; onClose
 export function HomeScreen() {
   const home = useHome();
   const [placeId, setPlaceId] = useState<string | null>(null);
+  const placeSave = usePlaceSave();
   return (
     <>
       <HomeView
@@ -58,8 +59,12 @@ export function HomeScreen() {
         placeId={placeId}
         reason="좋아요한 여행과 비슷해요"
         onClose={() => setPlaceId(null)}
-        onSave={soon}
+        onSave={(place) => {
+          setPlaceId(null);
+          placeSave.open(place);
+        }}
       />
+      {placeSave.sheet}
     </>
   );
 }

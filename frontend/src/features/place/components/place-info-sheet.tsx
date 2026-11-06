@@ -112,7 +112,8 @@ export function PlaceInfoSheet({
   placeId: string | null;
   reason?: string | null;
   onClose: () => void;
-  onSave: (placeId: string) => void;
+  /** [저장]. S08 장소 저장 시트에 넘길 장소 id와 이름 */
+  onSave: (place: { id: string; name: string }) => void;
   onVisitors?: (placeId: string) => void;
 }) {
   const id = placeId ?? '';
@@ -144,7 +145,7 @@ export function PlaceInfoSheet({
           : undefined
       }
       onClose={onClose}
-      onSave={() => placeId && onSave(placeId)}
+      onSave={() => place.data && onSave({ id: place.data.id, name: place.data.name })}
       onVisitors={() => placeId && onVisitors?.(placeId)}
       onRetry={() => void place.refetch()}
     />
