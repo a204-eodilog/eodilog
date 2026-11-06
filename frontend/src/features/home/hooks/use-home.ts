@@ -21,7 +21,6 @@ export function useHome() {
     queryKey: KEYS.map,
     queryFn: async () => toRegionMarks(await getHomeMap(koreaBbox())),
     enabled: trip.data === true,
-    retry: false,
   });
   // 아래 셋은 없어도 지도는 보여 준다. 실패하면 모름/0으로 둔다
   const following = useQuery({ queryKey: KEYS.following, queryFn: hasAnyFollowing, retry: false });
@@ -38,7 +37,7 @@ export function useHome() {
     : homeState({
         hasTrip: trip.data,
         mapFailed: map.isError,
-        following: following.isSuccess ? following.data : null,
+        following: following.isSuccess ? following.data : following.isError ? null : undefined,
         marks: map.data,
       });
 
@@ -46,6 +45,11 @@ export function useHome() {
     state,
     marks: map.data ?? [],
     recommendations: discovery.data ?? [],
+    recommendationsStatus: discovery.isError
+      ? ('error' as const)
+      : discovery.data
+        ? ('ready' as const)
+        : ('loading' as const),
     unreadCount: unread.data ?? 0,
     retry: () => {
       void trip.refetch();

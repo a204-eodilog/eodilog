@@ -231,7 +231,7 @@ describe('placePhotoPins', () => {
 describe('nightsLabel', () => {
   it('박·일과 당일', () => {
     expect(nightsLabel('2026-11-14', '2026-11-16')).toBe('2박 3일');
-    expect(nightsLabel('2026-11-14', '2026-11-14')).toBe('당일');
+    expect(nightsLabel('2026-11-14', '2026-11-14')).toBe('당일치기');
     expect(nightsLabel(null, '2026-11-14')).toBeNull();
   });
 });
@@ -299,6 +299,11 @@ describe('homeState', () => {
     );
     expect(homeState({ hasTrip: true, mapFailed: false, following: null, marks: [] })).toBe(
       'no-public',
+    );
+  });
+  it('지도가 비었는데 팔로우 조회 중이면 기다린다', () => {
+    expect(homeState({ hasTrip: true, mapFailed: false, following: undefined, marks: [] })).toBe(
+      'loading',
     );
   });
   it('표시할 지역이 있으면 기본', () => {

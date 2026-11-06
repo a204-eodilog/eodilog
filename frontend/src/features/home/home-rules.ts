@@ -5,6 +5,7 @@ import {
   shortSidoName,
   sidoCodeOf,
 } from '@/lib/korea-map';
+import { formatTripNights } from '@/lib/format-date';
 import { colors } from '@/theme';
 
 import type {
@@ -220,13 +221,8 @@ export function fillsFor(marks: readonly RegionMark[]): Record<string, string> {
   return Object.fromEntries(marks.map((m) => [m.regionCode, markFill(m.memberCount)]));
 }
 
-/** "2박 3일", 당일이면 "당일", 날짜가 없으면 null */
-export function nightsLabel(start: string | null, end: string | null): string | null {
-  if (!start || !end) return null;
-  const days = Math.round((Date.parse(end) - Date.parse(start)) / 86_400_000);
-  if (!Number.isFinite(days) || days < 0) return null;
-  return days === 0 ? '당일' : `${days}박 ${days + 1}일`;
-}
+/** "2박 3일", 하루면 "당일치기", 날짜가 없으면 null. 공통 formatTripNights와 같은 문구 */
+export const nightsLabel = formatTripNights;
 
 /** 추천 응답 → 시트 줄. 표지 사진 주소는 아직 만들 수 없어 비워 둔다 */
 export function toRecommendations(items: readonly DiscoveryItem[]): HomeRecommendation[] {
@@ -262,12 +258,12 @@ export function toRecommendations(items: readonly DiscoveryItem[]): HomeRecommen
 
 /**
  * 어떤 홈을 보여 줄지 (screen-list S05).
- * following은 팔로우 목록을 못 읽었으면 null(모름) — 이때는 '친구 없음'으로 단정하지 않는다
+ * following: 아직 조회 중이면 undefined(기다림), 못 읽었으면 null(모름 — '친구 없음'으로 단정하지 않는다)
  */
 export function homeState(input: {
   hasTrip: boolean | undefined;
   mapFailed: boolean;
-  following: boolean | null;
+  following: boolean | null | undefined;
   marks: readonly RegionMark[] | undefined;
 }): HomeState {
   if (input.hasTrip === undefined) return 'loading';
@@ -275,5 +271,7 @@ export function homeState(input: {
   if (input.mapFailed) return 'error';
   if (!input.marks) return 'loading';
   if (input.marks.length > 0) return 'ready';
+  // 지도는 비었는데 팔로우 조회가 아직이면, 잠깐 '공개된 기록 없음'을 보였다가 '친구 없음'으로 바뀌지 않게 기다린다
+  if (input.following === undefined) return 'loading';
   return input.following === false ? 'no-friends' : 'no-public';
 }

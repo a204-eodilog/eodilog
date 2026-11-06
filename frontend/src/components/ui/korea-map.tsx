@@ -70,6 +70,9 @@ export const MAP_STAGES = [1, 1.6, 2.4, 3.2, 4.2] as const;
 /** index: 0부터 단계 번호, pxPerUnit: 그 단계가 시작하는 배율에서 지도 좌표 1이 화면 몇 px인지(핀 겹침 계산용) */
 export type MapStage = { index: number; pxPerUnit: number };
 
+/** fills를 안 넘길 때 기본값. 그릴 때마다 새 객체가 되면 경로 700여 개를 매번 다시 만든다 */
+const NO_FILLS: Readonly<Record<string, string>> = {};
+
 const MIN_SCALE = 1;
 /** 핀 내용이 꺾이지 않고 놓일 너비. 이보다 넓은 핀은 없다 */
 const PIN_ROOM = 280;
@@ -107,7 +110,7 @@ const AnimatedPath = Animated.createAnimatedComponent(Path);
  * S05 홈·S37 마이페이지·S40·S07·S42가 같이 쓴다. 화면별 값(색 단계, 핀 모양)은 부르는 쪽이 정한다.
  */
 export function KoreaMap({
-  fills = {},
+  fills = NO_FILLS,
   fillSteps = [],
   pins = [],
   stages = MAP_STAGES,
