@@ -11,6 +11,8 @@ export { KOREA_REGION } from './korea';
 export type { LatLng } from './korea';
 export { MapHint } from './map-hint';
 export type { MapHintProps } from './map-hint';
+export { MapLine } from './map-line';
+export type { MapLineProps } from './map-line';
 export { MapMarker } from './map-marker';
 export type { MapMarkerProps } from './map-marker';
 export { MAP_MARKER_HEIGHT, MapPill } from './map-pill';

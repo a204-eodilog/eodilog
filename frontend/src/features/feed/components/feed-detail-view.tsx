@@ -20,7 +20,7 @@ import { colors, layout, radius, spacing, typography } from '@/theme';
 import { membersLabel, minutesLabel, wonShort } from '../feed-rules';
 import type { FeedDetail, FeedStop, TransportKind } from '../types';
 
-import { RouteSketch } from './route-sketch';
+import { RouteMap } from './route-map';
 
 export type FeedDetailViewProps = {
   state: 'loading' | 'error' | 'ready';
@@ -202,7 +202,7 @@ function Body({ detail, ...props }: FeedDetailViewProps & { detail: FeedDetail }
         <>
           <View style={styles.section} onLayout={mark('route')}>
             <Text style={styles.sectionTitle}>경로</Text>
-            <RouteSketch days={detail.days} />
+            <RouteMap days={detail.days} />
           </View>
 
           <View style={styles.section} onLayout={mark('places')}>
