@@ -118,6 +118,22 @@ const TIE: Poll = poll({
   selectedCandidateIds: ['c1', 'c2'],
 });
 
+/** 긴 이름·후보 30곳(점검표 "최대 길이 예시") */
+const LONG: Poll = poll({
+  ...OPEN,
+  title: '이번 겨울 여행에서 꼭 가 보고 싶은 곳을 모두 골라 주세요. 마감 전까지 바꿀 수 있어요',
+  candidates: Array.from({ length: 30 }, (_, i) =>
+    candidate(`l${i + 1}`, { voteCount: i % 4, addedAt: AT }),
+  ),
+  myCandidateIds: ['l1', 'l2'],
+});
+const LONG_NAMES: Record<string, string> = Object.fromEntries(
+  Array.from({ length: 30 }, (_, i) => [
+    `l${i + 1}`,
+    i === 0 ? '제주특별자치도 서귀포시 안덕면 산방산 아래 바닷가 카페 거리' : `후보 지역 ${i + 1}`,
+  ]),
+);
+
 const SOURCES = {
   c1: { icon: 'bookmark' as const, text: '그룹 즐겨찾기 3곳' },
   c2: { icon: 'bookmark' as const, text: '그룹 즐겨찾기 2곳' },
@@ -130,7 +146,13 @@ type Example =
   | { kind: 'tie' }
   | { kind: 'noVotes' }
   | { kind: 'notFound' }
-  | { kind: 'open'; poll: Poll; fail?: [string, string]; addSheet?: boolean }
+  | {
+      kind: 'open';
+      poll: Poll;
+      fail?: [string, string];
+      addSheet?: boolean;
+      names?: Record<string, string>;
+    }
   | { kind: 'n8'; type: 'REGION' | 'PLACE'; options: CandidateOption[]; selected: string[] };
 
 const EXAMPLES: { group: string; label: string; example: Example }[] = [
@@ -177,6 +199,11 @@ const EXAMPLES: { group: string; label: string; example: Example }[] = [
   { group: 'S22 그 밖', label: '볼 수 없는 투표', example: { kind: 'notFound' } },
   {
     group: 'S22 그 밖',
+    label: '긴 제목 · 후보 30곳',
+    example: { kind: 'open', poll: LONG, names: LONG_NAMES },
+  },
+  {
+    group: 'S22 그 밖',
     label: '아직 투표 안 함',
     example: { kind: 'open', poll: { ...OPEN, myCandidateIds: [], votedMemberCount: 1 } },
   },
@@ -215,7 +242,7 @@ export default function PollStates() {
       <Frame title="지역 투표">
         <PollOpenView
           poll={example.poll}
-          names={NAMES}
+          names={example.names ?? NAMES}
           myName="영광"
           now={NOW}
           failLines={example.fail ?? null}

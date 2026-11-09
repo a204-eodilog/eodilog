@@ -8,6 +8,8 @@ import {
   type ScrollViewInstance,
 } from 'react-native';
 
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 import { Button, EmptyState, Icon, type IconName } from '@/components/ui';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -74,6 +76,8 @@ export function PollOpenView({
   onAddCandidate,
 }: OpenViewProps) {
   const scrollRef = useRef<ScrollViewInstance>(null);
+  // 아래에 뜨는 안내·버튼이 홈 표시줄에 가리지 않게 안전 영역만큼 올린다
+  const bottom = useSafeAreaInsets().bottom + spacing[16];
   const mine = new Set(poll.myCandidateIds);
   const hasNew = poll.candidates.some((c) => isNewCandidate(c, poll.candidates));
   const myNames = poll.candidates.filter((c) => mine.has(c.id)).map((c) => names[c.id]);
@@ -132,7 +136,7 @@ export function PollOpenView({
         />
       </ScrollView>
       {failLines ? (
-        <View style={styles.failBar} accessibilityRole="alert">
+        <View style={[styles.failBar, { bottom }]} accessibilityRole="alert">
           <Icon name="info" size={20} color={colors.brand.primarySoft} />
           <View style={styles.failTexts}>
             <Text style={styles.failText}>{failLines[0]}</Text>
@@ -176,7 +180,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: layout.screenPaddingX,
     right: layout.screenPaddingX,
-    bottom: spacing[24],
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[12],
@@ -192,7 +195,6 @@ const styles = StyleSheet.create({
   actionWrap: {
     position: 'absolute',
     right: layout.screenPaddingX,
-    bottom: spacing[24],
   },
   // 피그마 201-11213: 회색 면, 둥글기 16, 안쪽 좌우 16 위아래 14
   tieLine: {
@@ -281,6 +283,7 @@ export function PollResultView({
 }: ResultProps) {
   const selected = new Set(poll.selectedCandidateIds);
   const mine = new Set(poll.myCandidateIds);
+  const bottom = useSafeAreaInsets().bottom + spacing[16];
   return (
     <View style={styles.fill}>
       <ScrollView contentContainerStyle={styles.scroll}>
@@ -320,7 +323,7 @@ export function PollResultView({
         </View>
       </ScrollView>
       {action ? (
-        <View style={styles.actionWrap} pointerEvents="box-none">
+        <View style={[styles.actionWrap, { bottom }]} pointerEvents="box-none">
           <Button
             label={action.label}
             size="lg"

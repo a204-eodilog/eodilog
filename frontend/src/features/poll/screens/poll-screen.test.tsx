@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import {
   addCandidate,
@@ -152,10 +153,17 @@ function renderScreen() {
   lastClient = client;
   // 여행 상세 캐시가 있는 것처럼 둔다(지역 확정 뒤 무효화 확인)
   client.setQueryData(['trips', 'trip-1'], { id: 'trip-1', title: '겨울 여행' });
+  // 아래에 뜨는 안내가 안전 영역을 읽는다. 테스트에서는 크기를 정해 준다
+  const metrics = {
+    frame: { x: 0, y: 0, width: 375, height: 812 },
+    insets: { top: 47, left: 0, right: 0, bottom: 34 },
+  };
   return render(
-    <QueryClientProvider client={client}>
-      <PollScreen />
-    </QueryClientProvider>,
+    <SafeAreaProvider initialMetrics={metrics}>
+      <QueryClientProvider client={client}>
+        <PollScreen />
+      </QueryClientProvider>
+    </SafeAreaProvider>,
   );
 }
 
