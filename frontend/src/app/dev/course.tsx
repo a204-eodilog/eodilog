@@ -1,9 +1,17 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { Button } from '@/components/ui';
-import { toDraft } from '@/features/course/course-rules';
+import { AvatarGroup, Button, Header } from '@/components/ui';
+import {
+  dayLegs,
+  moveItem,
+  removeItem,
+  setLegMode,
+  toDraft,
+  type CourseDraft,
+} from '@/features/course/course-rules';
+import { DraftView, type DraftOrigin } from '@/features/course/screens/course-edit-screen';
 import { CourseView, type Person } from '@/features/course/screens/course-screen';
 import { sampleCourse } from '@/features/course/testing';
 import { colors, layout, spacing, typography } from '@/theme';
@@ -28,6 +36,8 @@ const EXAMPLES: Example[] = [
   { state: 'view', label: '기본 201-13969', group: 'S24' },
   { state: 'view-fail', label: '이동 시간 갱신 실패 201-29705', group: 'S24' },
   { state: 'load-error', label: '불러오기 실패', group: 'S24' },
+  { state: 'draft', label: '코스 초안 201-12879', group: 'S23' },
+  { state: 'item-sheet', label: '장소 교체·순서·삭제 201-13071', group: 'S23' },
 ];
 
 export default function DevCourse() {
@@ -57,6 +67,18 @@ export default function DevCourse() {
         onEdit={back}
         onRetry={() => setState('view')}
       />
+    );
+  }
+
+  if (state === 'draft' || state === 'item-sheet') {
+    return (
+      <EditFrame>
+        <DevDraft
+          initial={toDraft(sampleCourse(true), 2)}
+          origin="proposal"
+          openSheet={state === 'item-sheet' ? 1 : null}
+        />
+      </EditFrame>
     );
   }
 
@@ -91,3 +113,72 @@ const styles = StyleSheet.create({
   heading: { color: colors.text.default },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[8] },
 });
+
+/** S23 머리. 실제 화면과 같은 제목·여행 이름·동행 얼굴 */
+function EditFrame({ children }: { children: React.ReactNode }) {
+  return (
+    <View style={styles.screen}>
+      <Header
+        title="코스 짜기"
+        subtitle="겨울 여행"
+        subtitleIcon="trip"
+        right={<AvatarGroup people={PEOPLE.map((p) => ({ name: p.name, me: p.me }))} max={3} />}
+      />
+      {children}
+    </View>
+  );
+}
+
+/** 미리보기 안에서도 순서·빼기·수단을 바꿔 볼 수 있는 초안 */
+function DevDraft(props: { initial: CourseDraft; origin: DraftOrigin; openSheet: number | null }) {
+  const [draft, setDraft] = useState(props.initial);
+  const [dirty, setDirty] = useState(false);
+  const [day, setDay] = useState(0);
+  const [leg, setLeg] = useState<string | null>(null);
+  const [sheet, setSheet] = useState<number | null>(null);
+  // 웹의 아래 시트는 화면이 그려진 뒤에 열어야 올라오는 모습이 보인다
+  useEffect(() => {
+    if (props.openSheet === null) return;
+    const timer = setTimeout(() => setSheet(props.openSheet), 300);
+    return () => clearTimeout(timer);
+  }, [props.openSheet]);
+  const change = (next: CourseDraft) => {
+    setDraft(next);
+    setDirty(true);
+  };
+  return (
+    <DraftView
+      draft={draft}
+      origin={props.origin}
+      dirty={dirty}
+      startDate={START}
+      day={day}
+      onSelectDay={setDay}
+      selectedLeg={leg}
+      onSelectLeg={setLeg}
+      onChangeMode={(mode) => {
+        const target = dayLegs(draft, day).find((l) => l.key === leg) ?? dayLegs(draft, day)[0];
+        if (target) change(setLegMode(draft, target.key, mode));
+      }}
+      basis="10.26(월) 20:40 기준"
+      onMore={setSheet}
+      sheetIndex={sheet}
+      onCloseSheet={() => setSheet(null)}
+      onReplace={() => setSheet(null)}
+      onMove={(delta) => {
+        if (sheet === null) return;
+        change(moveItem(draft, day, sheet, delta));
+        setSheet(sheet + delta);
+      }}
+      onRemove={() => {
+        if (sheet === null) return;
+        change(removeItem(draft, day, sheet));
+        setSheet(null);
+      }}
+      onRecalculate={() => {}}
+      onRedo={() => {}}
+      onDone={() => setDirty(false)}
+      saving={false}
+    />
+  );
+}
