@@ -380,3 +380,37 @@ describe('직접 추가, 고치기, 지우기', () => {
     expect(screen.queryByLabelText('손난로')).toBeNull();
   });
 });
+
+describe('항목 없음', () => {
+  it('목록이 비면 안내와 제안 받기, 직접 추가가 보인다', async () => {
+    mockGet.mockResolvedValue([]);
+    await renderScreen();
+    expect(await screen.findByText('준비물이 없어요')).toBeTruthy();
+    expect(screen.getByText('날씨·일정 기준 준비물')).toBeTruthy();
+    expect(screen.getByText('제안 받기')).toBeTruthy();
+    expect(screen.queryByLabelText('챙길 것 추가')).toBeNull();
+  });
+
+  it('직접 추가를 누르면 입력이 나타나고, 첫 항목을 더하면 목록이 보인다', async () => {
+    mockGet.mockResolvedValue([]);
+    mockAdd.mockResolvedValue(checklistItem({ id: 'warmer', label: '손난로' }));
+    await renderScreen();
+    await fireEvent.press(await screen.findByText('직접 추가'));
+    const input = screen.getByLabelText('챙길 것 추가');
+    expect(input.props.autoFocus).toBe(true);
+    await fireEvent.changeText(input, '손난로');
+    await fireEvent.press(screen.getByLabelText('추가'));
+
+    expect(await screen.findByText('1개 중 0개 챙겼어요')).toBeTruthy();
+    expect(screen.queryByText('준비물이 없어요')).toBeNull();
+  });
+
+  it('마지막 항목을 지우면 항목 없음으로 바뀐다', async () => {
+    mockGet.mockResolvedValue([warmer()]);
+    mockDelete.mockResolvedValue(undefined);
+    await renderScreen();
+    await fireEvent.press(await screen.findByLabelText('손난로 고치기'));
+    await fireEvent.press(screen.getByText('지우기'));
+    expect(await screen.findByText('준비물이 없어요')).toBeTruthy();
+  });
+});

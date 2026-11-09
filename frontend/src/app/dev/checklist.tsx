@@ -52,11 +52,14 @@ function sampleItems(): ChecklistItem[] {
   ];
 }
 
-type State = 'default' | 'edit-sheet' | 'loading' | 'load-error' | 'not-found';
+type State =
+  'default' | 'edit-sheet' | 'empty' | 'empty-adding' | 'loading' | 'load-error' | 'not-found';
 
 const STATES: { state: State; label: string }[] = [
   { state: 'default', label: '기본 201-15314' },
   { state: 'edit-sheet', label: '고치기 시트' },
+  { state: 'empty', label: '항목 없음 201-15518' },
+  { state: 'empty-adding', label: '항목 없음 · 직접 추가' },
   { state: 'loading', label: '불러오는 중' },
   { state: 'load-error', label: '불러오기 실패' },
   { state: 'not-found', label: '여행 없음' },
@@ -65,6 +68,8 @@ const STATES: { state: State; label: string }[] = [
 const STATUS: Record<State, 'ready' | 'loading' | 'error' | 'notFound'> = {
   default: 'ready',
   'edit-sheet': 'ready',
+  empty: 'ready',
+  'empty-adding': 'ready',
   loading: 'loading',
   'load-error': 'error',
   'not-found': 'notFound',
@@ -74,7 +79,7 @@ export default function DevChecklist() {
   const params = useLocalSearchParams<{ state?: string }>();
   const initial = STATES.find((s) => s.state === params.state)?.state ?? null;
   const [state, setState] = useState<State | null>(initial);
-  const [items, setItems] = useState(sampleItems);
+  const [items, setItems] = useState(() => (initial?.startsWith('empty') ? [] : sampleItems()));
   const [editingId, setEditingId] = useState<string | null>(null);
 
   // 웹의 아래 시트는 화면이 그려진 뒤에 열어야 올라오는 모습이 보인다
@@ -126,6 +131,7 @@ export default function DevChecklist() {
         onDelete={(item) => setItems((list) => list.filter((i) => i.id !== item.id))}
         onSuggest={() => {}}
         suggesting={false}
+        initialAddOpen={state === 'empty-adding'}
       />
     );
   }
@@ -141,7 +147,7 @@ export default function DevChecklist() {
             size="sm"
             variant="secondary"
             onPress={() => {
-              setItems(sampleItems());
+              setItems(s.state.startsWith('empty') ? [] : sampleItems());
               setState(s.state);
             }}
           />
