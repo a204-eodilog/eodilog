@@ -6,8 +6,9 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { toast } from '@/components/ui';
 import { getAllMyTrips } from '@/features/my-trips/api';
+import { getTrip } from '@/features/trip/api';
 
-import { getNotifications, readAllNotifications } from '../api';
+import { getNotifications, readAllNotifications, readNotification } from '../api';
 import { SAMPLE_NOW, sampleNotifications } from '../testing';
 
 import { NotificationsScreen } from './notifications-screen';
@@ -28,6 +29,7 @@ jest.mock('../api', () => ({
   dismissNotification: jest.fn(),
 }));
 jest.mock('@/features/my-trips/api', () => ({ getAllMyTrips: jest.fn() }));
+jest.mock('@/features/trip/api', () => ({ getTrip: jest.fn() }));
 jest.mock('@/components/ui', () => {
   const actual = jest.requireActual<typeof import('@/components/ui/icon')>('@/components/ui/icon');
   const { Pressable, Text, View } =
@@ -52,6 +54,8 @@ jest.mock('@/components/ui', () => {
 const mockList = jest.mocked(getNotifications);
 const mockReadAll = jest.mocked(readAllNotifications);
 const mockTrips = jest.mocked(getAllMyTrips);
+const mockTrip = jest.mocked(getTrip);
+const mockRead = jest.mocked(readNotification);
 
 const page = (data = sampleNotifications()) => ({
   data,
@@ -81,6 +85,8 @@ beforeEach(() => {
   mockList.mockResolvedValue(page());
   mockReadAll.mockResolvedValue(3);
   mockTrips.mockResolvedValue([{ id: 'trip-1' }] as Awaited<ReturnType<typeof getAllMyTrips>>);
+  mockTrip.mockResolvedValue({ id: 'trip-1' } as Awaited<ReturnType<typeof getTrip>>);
+  mockRead.mockImplementation(async (id) => ({ ...sampleNotifications()[0], id, readAt: 'now' }));
 });
 afterEach(() => {
   jest.useRealTimers();
@@ -106,7 +112,7 @@ describe('S49 알림 목록', () => {
     await renderScreen();
     await fireEvent.press(await screen.findByText('모두 읽음'));
     expect(mockReadAll).toHaveBeenCalledWith('2026-11-18T11:40:00Z');
-    expect(screen.queryByRole('button', { name: /^읽지 않음/ })).toBeNull();
+    await waitFor(() => expect(screen.queryByRole('button', { name: /^읽지 않음/ })).toBeNull());
     const button = screen.getByRole('button', { name: '모두 읽음' });
     expect(button.props.accessibilityState).toMatchObject({ disabled: true });
   });
@@ -142,5 +148,28 @@ describe('S49 알림 목록', () => {
     await renderScreen();
     expect(await screen.findByText('가을 소풍 투표가 시작됐어요')).toBeTruthy();
     expect(screen.queryByText('나간 여행')).toBeNull();
+  });
+
+  it('알림을 누르면 읽음으로 바꾸고 대상 화면으로 간다', async () => {
+    await renderScreen();
+    await fireEvent.press(await screen.findByText('겨울 여행 투표가 시작됐어요'));
+    await waitFor(() => expect(mockRouter.push).toHaveBeenCalledWith('/trips/trip-1/polls/poll-1'));
+    expect(mockRead).toHaveBeenCalledWith('n-1');
+    expect(
+      await screen.findByRole('button', { name: '겨울 여행 투표가 시작됐어요, 투표 시작, 20:40' }),
+    ).toBeTruthy();
+  });
+
+  it('나간 여행 알림은 바로 볼 수 없음으로 간다', async () => {
+    await renderScreen();
+    await screen.findByText('나간 여행');
+    await fireEvent.press(screen.getByText('가을 소풍 투표가 시작됐어요'));
+    await waitFor(() =>
+      expect(mockRouter.push).toHaveBeenCalledWith({
+        pathname: '/notifications/gone',
+        params: { id: 'n-9' },
+      }),
+    );
+    expect(mockTrip).not.toHaveBeenCalled();
   });
 });

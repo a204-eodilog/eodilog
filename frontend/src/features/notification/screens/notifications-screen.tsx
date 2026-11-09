@@ -9,6 +9,7 @@ import { colors, layout, spacing, typography } from '@/theme';
 import { NotificationRow } from '../components/notification-row';
 import { NotificationsEmpty, NotificationsError } from '../components/notification-states';
 import { useNotifications } from '../hooks/use-notifications';
+import { useOpenNotification } from '../hooks/use-open-notification';
 import { toSections, type NotificationLine, type Section } from '../notification-rules';
 
 export type NotificationsViewProps = {
@@ -94,6 +95,7 @@ const Gap = () => <View style={styles.gap} />;
 /** S49 알림 목록. 홈 종 아이콘에서 연다 */
 export function NotificationsScreen() {
   const list = useNotifications();
+  const open = useOpenNotification();
   const [now] = useState(() => new Date());
   const sections = useMemo(
     () => toSections(list.items, now, list.myTripIds),
@@ -107,7 +109,10 @@ export function NotificationsScreen() {
       loadingMore={list.isFetchingNextPage}
       onBack={() => router.back()}
       onReadAll={() => void list.readAll()}
-      onOpen={() => {}}
+      onOpen={(line) => {
+        const n = list.items.find((x) => x.id === line.id);
+        if (n) void open(n, { leftTrip: line.leftTrip });
+      }}
       onRetry={list.retry}
       onEndReached={list.loadMore}
     />
