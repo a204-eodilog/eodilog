@@ -1,5 +1,5 @@
 import { useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AvatarGroup, Button, Header } from '@/components/ui';
@@ -214,6 +214,19 @@ const EXAMPLES: { group: string; label: string; example: Example }[] = [
 
 const noop = () => undefined;
 
+/**
+ * 첫 그리기 뒤에 true. 주소로 바로 연 미리보기에서 하단 시트가 준비되기 전에 visible이 켜지면 뜨지 않아서 한 박자 늦춘다.
+ * 앱에서는 사용자가 누를 때 시트를 열어 해당 없다
+ */
+function useShownAfterMount() {
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setShown(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+  return shown;
+}
+
 function Frame({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <View style={styles.screen}>
@@ -235,6 +248,7 @@ export default function PollStates() {
     () => EXAMPLES.find((e) => e.label === state)?.example ?? null,
   );
   const back = () => setExample(null);
+  const sheetReady = useShownAfterMount();
 
   if (example?.kind === 'empty') {
     return (
@@ -259,7 +273,7 @@ export default function PollStates() {
           onAddCandidate={noop}
         />
         <AddCandidateSheet
-          visible={!!example.addSheet}
+          visible={!!example.addSheet && sheetReady}
           onClose={back}
           tripId="trip-1"
           poll={example.poll}
@@ -357,7 +371,7 @@ export default function PollStates() {
     return (
       <Frame title="그룹 즐겨찾기">
         <OpenPollSheet
-          visible
+          visible={sheetReady}
           onClose={back}
           tripId="trip-1"
           onOpened={noop}
