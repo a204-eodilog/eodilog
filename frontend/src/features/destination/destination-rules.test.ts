@@ -60,8 +60,7 @@ describe('S09 트렌드', () => {
       [1, '강릉', '강원'],
       [2, '경주', '경북'],
     ]);
-    expect(board.periodLine).toBe('최근 30일 · 09.24 – 10.23');
-    expect(board.updatedLine).toBe('오늘 06:00 기준');
+    expect(board.basisLine).toBe('09.24 – 10.23 · 게시된 여행 수 · 매일 06:00 갱신');
     expect(board.insufficient).toBe(false);
   });
   it('비었거나 모두 자료 부족이면 순위를 보이지 않는다', () => {
@@ -73,7 +72,7 @@ describe('S09 트렌드', () => {
     ).toBe(true);
   });
   it('갱신 시각이 오늘이 아니면 날짜를 붙인다', () => {
-    expect(updatedLine('2026-11-05T06:00:00', '2026-11-06')).toBe('11.05 06:00 기준');
+    expect(updatedLine('2026-11-05T06:00:00', '2026-11-06')).toBe('11.05 06:00 갱신');
     expect(updatedLine(null)).toBeNull();
   });
   it('시도 자신은 상위 지역이 없다', () => {

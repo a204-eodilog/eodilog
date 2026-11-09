@@ -76,22 +76,9 @@ export function TrendsView(props: TrendsViewProps) {
   );
 }
 
+/** 순위 기준 한 줄(기간 · 무엇을 셌는지 · 갱신). 아이콘 없이 작은 회색 글씨 */
 function Basis({ board }: { board: TrendBoard }) {
-  const lines: [IconName, string][] = [
-    ...(board.periodLine ? ([['calendar', board.periodLine]] as [IconName, string][]) : []),
-    ['trip', '게시된 여행 수 기준'],
-    ['refresh', `매일 오전 6시 갱신${board.updatedLine ? ` · ${board.updatedLine}` : ''}`],
-  ];
-  return (
-    <View style={styles.basis}>
-      {lines.map(([icon, text]) => (
-        <View key={text} style={styles.basisRow}>
-          <Icon name={icon} size={14} color={colors.text.icon} />
-          <Text style={styles.basisText}>{text}</Text>
-        </View>
-      ))}
-    </View>
-  );
+  return <Text style={styles.basisText}>{board.basisLine}</Text>;
 }
 
 function Row({ row, onPress }: { row: TrendRow; onPress: () => void }) {
@@ -116,7 +103,7 @@ function Row({ row, onPress }: { row: TrendRow; onPress: () => void }) {
         </Text>
         <View style={styles.counts}>
           <Icon name="trip" size={14} color={colors.text.icon} />
-          <Text style={styles.count}>{row.tripCount}</Text>
+          <Text style={styles.count}>여행 {row.tripCount}</Text>
           {row.friendCount > 0 ? (
             <>
               <Icon name="people" size={14} color={colors.text.icon} />
@@ -155,9 +142,12 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   pressed: { opacity: 0.7 },
   content: { paddingHorizontal: layout.screenPaddingX, paddingBottom: spacing[32], flexGrow: 1 },
-  basis: { gap: spacing[8], paddingTop: spacing[8], paddingBottom: spacing[16] },
-  basisRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[8] },
-  basisText: { ...typography.caption, color: colors.text.sub },
+  basisText: {
+    ...typography.caption,
+    color: colors.text.sub,
+    paddingTop: spacing[4],
+    paddingBottom: spacing[16],
+  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

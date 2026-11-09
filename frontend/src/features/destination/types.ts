@@ -57,10 +57,8 @@ export type TrendRow = {
 };
 
 export type TrendBoard = {
-  /** "최근 30일 · 09.24 – 10.23" */
-  periodLine: string | null;
-  /** "오늘 06:00 기준" / "11.05 06:00 기준" */
-  updatedLine: string | null;
+  /** "09.24 – 10.23 · 게시된 여행 수 · 매일 06:00 갱신" */
+  basisLine: string;
   /** 자료가 적어 순위를 보이지 않음 */
   insufficient: boolean;
   rows: TrendRow[];
