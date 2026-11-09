@@ -31,6 +31,7 @@ import {
   dayLegs,
   emptyDraft,
   latestQueriedAt,
+  legLabel,
   moveItem,
   proposalToDraft,
   removeItem,
@@ -41,6 +42,7 @@ import {
 } from '../course-rules';
 import { useAutoCourse } from '../hooks/use-auto-course';
 import { useItinerary } from '../hooks/use-itinerary';
+import { useRecalculate } from '../hooks/use-recalculate';
 import { useSaveItinerary } from '../hooks/use-save-itinerary';
 import { useTripSavedPlaces } from '../hooks/use-saved-places';
 import type { Place, TransportMode } from '../types';
@@ -90,6 +92,11 @@ export function DraftView(props: DraftViewProps) {
   const legs = dayLegs(draft, day);
   const selected = legs.find((l) => l.key === props.selectedLeg) ?? legs[0] ?? null;
   const editing = props.dirty || props.sheetIndex !== null;
+  // 경로를 못 구한 구간은 0분이나 직선거리로 채우지 않고 그렇게 알린다(Figma 201-13272)
+  const noRoute = legs.some((l) => legLabel(l) === null);
+  const warning: MapBadge[] = noRoute
+    ? [{ label: '두 곳 사이 경로를 찾지 못했어요', tone: 'warning' }]
+    : [];
   const badges: MapBadge[] = editing
     ? [
         { label: '고치는 중', tone: 'editing' },
@@ -98,6 +105,7 @@ export function DraftView(props: DraftViewProps) {
     : props.origin === 'proposal'
       ? [{ label: '추천안', tone: 'draft' }]
       : [];
+  badges.push(...warning);
 
   return (
     <>
@@ -142,6 +150,12 @@ export function DraftView(props: DraftViewProps) {
               onRecalculate={props.onRecalculate}
             />
           )}
+          {noRoute ? (
+            <View style={styles.hint}>
+              <Icon name="info" size={14} color={colors.text.sub} />
+              <Text style={[typography.caption, styles.hintText]}>이동 수단을 바꿔 보세요</Text>
+            </View>
+          ) : null}
         </View>
       </ScrollView>
       <View style={[styles.bottom, { paddingBottom: Math.max(insets.bottom, spacing[16]) }]}>
@@ -209,6 +223,8 @@ export function CourseEditScreen() {
   const [savingDates, setSavingDates] = useState(false);
   const saved = useTripSavedPlaces(tripId, mode !== 'draft');
   const auto = useAutoCourse(tripId);
+  const recalc = useRecalculate(tripId);
+  const [syncedFrom, setSyncedFrom] = useState<unknown>(null);
   const queryClient = useQueryClient();
   const regionNames = useRegionNames(trip.data?.destinationRegionIds ?? []);
 
@@ -217,8 +233,22 @@ export function CourseEditScreen() {
   // 코스가 오면 처음 한 번 정한다(렌더 중 초기화). 비어 있으면 구성 방식 선택부터
   if (!started && itinerary.data && trip.data) {
     setStarted(true);
+    setSyncedFrom(itinerary.data);
     if (itinerary.data.items.length > 0) setDraft(toDraft(itinerary.data, days));
     else setMode('setup');
+  }
+  // 고치지 않은 저장 코스는 다시 받은 코스(다시 계산 뒤 등)로 맞춘다
+  if (
+    started &&
+    itinerary.data &&
+    itinerary.data !== syncedFrom &&
+    mode === 'draft' &&
+    origin === 'saved' &&
+    !dirty &&
+    itinerary.data.items.length > 0
+  ) {
+    setSyncedFrom(itinerary.data);
+    setDraft(toDraft(itinerary.data, days));
   }
 
   const people: Person[] = (trip.data?.members ?? [])
@@ -444,7 +474,14 @@ export function CourseEditScreen() {
         basis={queried ? basisLine(queried) : null}
         onMore={setSheetIndex}
         {...sheetHandlers(current, draft)}
-        onRecalculate={() => undefined}
+        onRecalculate={() => {
+          // 다시 계산은 저장된 코스에만 할 수 있다
+          if (dirty || origin !== 'saved' || !itinerary.data) {
+            toast.show('완료로 저장한 뒤 다시 계산할 수 있어요');
+            return;
+          }
+          void recalc.start(itinerary.data.version);
+        }}
         onRedo={() => void runAuto()}
         onDone={() => void done()}
         saving={saver.saving}

@@ -47,6 +47,7 @@ const EXAMPLES: Example[] = [
   { state: 'auto-loading', label: '자동 추천 생성 중 201-12610', group: 'S23' },
   { state: 'auto-fail', label: '자동 추천 실패 201-12684', group: 'S23' },
   { state: 'draft', label: '코스 초안 201-12879', group: 'S23' },
+  { state: 'no-route', label: '이동 시간 계산 불가 201-13272', group: 'S23' },
   { state: 'item-sheet', label: '장소 교체·순서·삭제 201-13071', group: 'S23' },
   { state: 'manual', label: '직접 만들기 201-12753', group: 'S23' },
   { state: 'manual-placed', label: '직접 만들기 · 장소 놓은 뒤 523-349', group: 'S23' },
@@ -79,6 +80,14 @@ export default function DevCourse() {
         onEdit={back}
         onRetry={() => setState('view')}
       />
+    );
+  }
+
+  if (state === 'no-route') {
+    return (
+      <EditFrame>
+        <DevDraft initial={toDraft(sampleCourse(false), 2)} origin="proposal" openSheet={null} />
+      </EditFrame>
     );
   }
 

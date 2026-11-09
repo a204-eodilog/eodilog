@@ -12,7 +12,9 @@ import { updateTrip } from '@/features/trip/api';
 import {
   getAutoCourse,
   getItinerary,
+  getJob,
   getTripSavedPlaces,
+  recalculateRoutes,
   replaceItinerary,
   requestAutoCourse,
 } from '../api';
@@ -175,6 +177,8 @@ const mockSaved = jest.mocked(getTripSavedPlaces);
 const mockRequestAuto = jest.mocked(requestAutoCourse);
 const mockGetAuto = jest.mocked(getAutoCourse);
 const mockUpdateTrip = jest.mocked(updateTrip);
+const mockRecalc = jest.mocked(recalculateRoutes);
+const mockJob = jest.mocked(getJob);
 
 function renderScreen() {
   const client = new QueryClient({
@@ -529,5 +533,49 @@ describe('구성 방식과 준비 상태', () => {
     await fireEvent.press(await screen.findByText('재추천'));
     expect(await screen.findByText('추천 장소 A')).toBeTruthy();
     expect(mockRequestAuto).toHaveBeenCalledWith('trip-1', 3);
+  });
+});
+
+describe('이동 시간 계산 불가', () => {
+  beforeEach(() => {
+    mockGet.mockResolvedValue(sampleCourse(false));
+  });
+
+  it('구간 시간이 없으면 0분으로 채우지 않고 경고와 다시 계산을 보인다', async () => {
+    await renderScreen();
+    expect(await screen.findByText('두 곳 사이 경로를 찾지 못했어요')).toBeTruthy();
+    expect(screen.getAllByText('이동 시간을 못 구했어요')).toHaveLength(2);
+    expect(screen.getByText('이동 수단을 바꿔 보세요')).toBeTruthy();
+    expect(screen.queryByText(/0분/)).toBeNull();
+  });
+
+  it('저장된 코스면 다시 계산을 요청하고 끝나면 시간을 보인다', async () => {
+    mockRecalc.mockResolvedValue({ jobId: 'job-r', status: 'QUEUED', statusUrl: '' });
+    mockJob.mockResolvedValue({
+      id: 'job-r',
+      kind: 'ROUTE_RECALCULATION',
+      status: 'SUCCEEDED',
+      progress: 100,
+      result: null,
+      error: null,
+      createdAt: '',
+      finishedAt: '',
+    });
+    await renderScreen();
+    await screen.findByText('두 곳 사이 경로를 찾지 못했어요');
+    mockGet.mockResolvedValue(sampleCourse(true));
+    await fireEvent.press(screen.getAllByText('다시 계산')[0]);
+    expect(mockRecalc).toHaveBeenCalledWith('trip-1', 3);
+    expect(await screen.findByText('대중교통 22분')).toBeTruthy();
+    expect(screen.queryByText('두 곳 사이 경로를 찾지 못했어요')).toBeNull();
+  });
+
+  it('고친 초안이면 저장한 뒤 다시 계산하라고 안내한다', async () => {
+    await renderScreen();
+    await fireEvent.press(await screen.findByLabelText('서면 돼지국밥집 고치기'));
+    await fireEvent.press(screen.getByLabelText('위로'));
+    await fireEvent.press(screen.getAllByText('다시 계산')[0]);
+    expect(mockRecalc).not.toHaveBeenCalled();
+    expect(toast.show).toHaveBeenCalledWith('완료로 저장한 뒤 다시 계산할 수 있어요');
   });
 });
