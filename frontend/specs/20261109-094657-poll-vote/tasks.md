@@ -132,6 +132,6 @@ MVP는 Phase 2 + US2 + US1(투표 열고 표 던지기). 이어서 US4 결과, U
 
 ## Phase 11: Review 2
 
-- [ ] T062 투표 카드 제목과 결과 제목이 좁은 화면에서 낱말 가운데서 끊기지 않게 한글 낱말 단위 줄바꿈을 준다 in src/features/poll/components/poll-header-card.tsx, poll-views.tsx
-- [ ] T063 결과 목록 후보 줄 tone 계산을 resultTone 함수로 빼고 죽은 갈래를 지운다 in src/features/poll/components/poll-views.tsx
-- [ ] T064 투표 바꾸기 실패 안내의 [다시 시도] 누르는 자리를 44 이상으로 한다 in src/features/poll/components/poll-views.tsx
+- [X] T062 투표 카드 제목과 결과 제목이 좁은 화면에서 낱말 가운데서 끊기지 않게 한글 낱말 단위 줄바꿈을 준다 in src/features/poll/components/poll-header-card.tsx, poll-views.tsx
+- [X] T063 결과 목록 후보 줄 tone 계산을 resultTone 함수로 빼고 죽은 갈래를 지운다 in src/features/poll/components/poll-views.tsx
+- [X] T064 투표 바꾸기 실패 안내의 [다시 시도] 누르는 자리를 44 이상으로 한다 in src/features/poll/components/poll-views.tsx
