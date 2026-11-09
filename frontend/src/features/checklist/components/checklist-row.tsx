@@ -22,6 +22,8 @@ export function ChecklistRow({ item, members, onToggle, onMore }: Props) {
   const tag = sourceTag(item);
   const meta = metaLine(item, members);
   const hasReason = Boolean(item.reason?.trim());
+  // 화면 읽기 기능이 이름 뒤에 출처, 이유, 챙긴 사람을 이어 읽는다
+  const hint = [tag, meta].filter((t): t is string => Boolean(t)).join(', ');
   return (
     <View style={styles.row}>
       <Pressable
@@ -30,6 +32,7 @@ export function ChecklistRow({ item, members, onToggle, onMore }: Props) {
         accessibilityRole="checkbox"
         accessibilityState={{ checked: item.checked }}
         accessibilityLabel={item.label}
+        accessibilityHint={hint || undefined}
         hitSlop={{ top: 4, bottom: 4 }}
       >
         <View style={[styles.box, item.checked ? styles.boxOn : styles.boxOff]}>

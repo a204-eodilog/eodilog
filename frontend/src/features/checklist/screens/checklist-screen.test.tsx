@@ -204,6 +204,11 @@ describe('목록 보고 체크하기', () => {
     expect(screen.getByText('오전 비 70% · 세은이 챙겨요')).toBeTruthy();
     expect(screen.getByText('오전 비 70%')).toBeTruthy();
     expect(screen.getByText('직접 추가')).toBeTruthy();
+    // 화면 읽기 기능도 이유와 챙긴 사람, 출처를 듣는다
+    expect(screen.getByLabelText('우산').props.accessibilityHint).toBe(
+      '오전 비 70% · 세은이 챙겨요',
+    );
+    expect(screen.getByLabelText('손난로').props.accessibilityHint).toBe('직접 추가');
   });
 
   it('체크하면 저장을 기다리지 않고 진행 숫자와 내 이름이 바뀐다', async () => {
