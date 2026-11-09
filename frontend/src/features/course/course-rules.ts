@@ -271,6 +271,12 @@ export function editedLine(updatedAt: string, name: string): string {
   return `${seoul(updatedAt).date} ${name}님이 마지막으로 고쳤어요`;
 }
 
+/** AI 변경안 적용 직후 "11.14(토) 12:10 승기님이 적용했어요"(Figma 201-16198) */
+export function appliedLine(updatedAt: string, name: string): string {
+  const s = seoul(updatedAt);
+  return `${s.date} ${s.time} ${name}님이 적용했어요`;
+}
+
 /** "10.26(월) 20:40 기준" */
 export function basisLine(iso: string): string {
   const s = seoul(iso);

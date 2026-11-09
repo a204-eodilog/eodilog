@@ -19,6 +19,7 @@ import {
   dayCount,
   dayDate,
   dayLegs,
+  appliedLine,
   editedLine,
   hasUnavailable,
   latestQueriedAt,
@@ -172,15 +173,25 @@ export function CourseScreen() {
   useReconnected(() => void itinerary.refetch());
   const recalc = useRecalculate(tripId);
   const undo = useUndo(tripId);
+  // 적용하고 온 작업. 주소값은 알린 뒤 지우므로 처음 값을 따로 기억한다
+  const [appliedJob, setAppliedJob] = useState(applied ?? null);
   // AI 변경안을 적용하고 왔으면 한 번만 알리고 [되돌리기]를 단다. 되돌리기는 이 알림에서만(Q-11-4)
   const notified = useRef(false);
   useEffect(() => {
-    if (!applied || notified.current || !itinerary.data) return;
+    if (!appliedJob || notified.current || !itinerary.data) return;
     notified.current = true;
     toast.success('새 코스를 적용했어요', {
-      action: { label: '되돌리기', onPress: () => void undo(applied) },
+      action: {
+        label: '되돌리기',
+        onPress: () =>
+          void undo(appliedJob).then((r) => {
+            if (r === 'undone') setAppliedJob(null);
+          }),
+      },
     });
-  }, [applied, itinerary.data, undo]);
+    // 다시 열거나 새로 고쳐도 알림이 또 뜨지 않게 주소값을 지운다
+    router.setParams({ applied: undefined });
+  }, [appliedJob, itinerary.data, undo]);
 
   const members = trip.data?.members ?? [];
   const people: Person[] = members
@@ -226,7 +237,13 @@ export function CourseScreen() {
       status={status}
       draft={draft}
       startDate={trip.data?.startDate ?? null}
-      edited={data ? editedLine(data.updatedAt, editor) : null}
+      edited={
+        data
+          ? appliedJob
+            ? appliedLine(data.updatedAt, editor)
+            : editedLine(data.updatedAt, editor)
+          : null
+      }
       routeFail={failed ? { basis: queried ? basisLine(queried) : null } : undefined}
       recalcBusy={recalc.busy}
       onRecalculate={() => data && void recalc.start(data.version)}
@@ -237,7 +254,7 @@ export function CourseScreen() {
           params: { tripId, removePlaceId: item.place.id },
         })
       }
-      applied={Boolean(applied)}
+      applied={appliedJob !== null}
       onEdit={() => router.push({ pathname: '/trips/[tripId]/course/edit', params: { tripId } })}
       onRetry={() => void itinerary.refetch()}
     />

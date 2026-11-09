@@ -15,7 +15,7 @@ import { httpError, itinerary, sampleCourse } from '../testing';
 import { CourseScreen } from './course-screen';
 
 const mockParams: { tripId: string; applied?: string } = { tripId: 'trip-1' };
-const mockRouter = { replace: jest.fn(), back: jest.fn(), push: jest.fn() };
+const mockRouter = { replace: jest.fn(), back: jest.fn(), push: jest.fn(), setParams: jest.fn() };
 
 jest.mock('@/config/env', () => ({
   env: { appEnv: 'local', apiBaseUrl: 'http://test', kakaoRedirectUri: null, devMock: false },
@@ -259,13 +259,24 @@ describe('AI 변경안 적용 뒤', () => {
     ).toHaveLength(1);
   });
 
-  it('되돌리기는 지금 version과 적용한 작업으로 보낸다', async () => {
+  it('되돌리기는 지금 version과 적용한 작업으로 보내고 적용 줄을 숨긴다', async () => {
     mockUndo.mockResolvedValue({ ...sampleCourse(true), version: 6 });
     await renderScreen();
     await screen.findByText('바뀐 코스가 지금 코스예요. 동행에게 알렸어요');
     await pressUndo();
     await waitFor(() => expect(mockUndo).toHaveBeenCalledWith('trip-1', 3, 'job-p'));
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith('되돌렸어요'));
+    await waitFor(() =>
+      expect(screen.queryByText('바뀐 코스가 지금 코스예요. 동행에게 알렸어요')).toBeNull(),
+    );
+    expect(screen.queryByText(/님이 적용했어요/)).toBeNull();
+  });
+
+  it('알린 뒤 주소값을 지우고 고친 사람 줄은 적용했어요', async () => {
+    await renderScreen();
+    await screen.findByText('바뀐 코스가 지금 코스예요. 동행에게 알렸어요');
+    expect(mockRouter.setParams).toHaveBeenCalledWith({ applied: undefined });
+    expect(screen.getByText(/세은님이 적용했어요$/)).toBeTruthy();
   });
 
   it('그 사이 코스가 바뀌었으면 되돌릴 수 없다고 알린다', async () => {
