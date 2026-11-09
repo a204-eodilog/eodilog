@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui';
@@ -52,10 +52,11 @@ function sampleItems(): ChecklistItem[] {
   ];
 }
 
-type State = 'default' | 'loading' | 'load-error' | 'not-found';
+type State = 'default' | 'edit-sheet' | 'loading' | 'load-error' | 'not-found';
 
 const STATES: { state: State; label: string }[] = [
   { state: 'default', label: '기본 201-15314' },
+  { state: 'edit-sheet', label: '고치기 시트' },
   { state: 'loading', label: '불러오는 중' },
   { state: 'load-error', label: '불러오기 실패' },
   { state: 'not-found', label: '여행 없음' },
@@ -63,6 +64,7 @@ const STATES: { state: State; label: string }[] = [
 
 const STATUS: Record<State, 'ready' | 'loading' | 'error' | 'notFound'> = {
   default: 'ready',
+  'edit-sheet': 'ready',
   loading: 'loading',
   'load-error': 'error',
   'not-found': 'notFound',
@@ -73,6 +75,14 @@ export default function DevChecklist() {
   const initial = STATES.find((s) => s.state === params.state)?.state ?? null;
   const [state, setState] = useState<State | null>(initial);
   const [items, setItems] = useState(sampleItems);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  // 웹의 아래 시트는 화면이 그려진 뒤에 열어야 올라오는 모습이 보인다
+  useEffect(() => {
+    if (state !== 'edit-sheet') return;
+    const timer = setTimeout(() => setEditingId('raincoat'), 300);
+    return () => clearTimeout(timer);
+  }, [state]);
 
   if (state) {
     return (
@@ -95,13 +105,25 @@ export default function DevChecklist() {
             ),
           )
         }
-        onMore={() => {}}
-        onAdd={async () => true}
+        onMore={(item) => setEditingId(item.id)}
+        onAdd={async (label) => {
+          setItems((list) => [...list, checklistItem({ label: label.trim() })]);
+          return true;
+        }}
         adding={false}
-        editing={null}
-        onCloseEdit={() => {}}
-        onSave={async () => true}
-        onDelete={() => {}}
+        editing={items.find((i) => i.id === editingId) ?? null}
+        onCloseEdit={() => setEditingId(null)}
+        onSave={async (item, label) => {
+          setItems((list) =>
+            list.map((i) =>
+              i.id === item.id
+                ? { ...i, label: label.trim(), modifiedByUser: i.source === 'AI' }
+                : i,
+            ),
+          );
+          return true;
+        }}
+        onDelete={(item) => setItems((list) => list.filter((i) => i.id !== item.id))}
       />
     );
   }
