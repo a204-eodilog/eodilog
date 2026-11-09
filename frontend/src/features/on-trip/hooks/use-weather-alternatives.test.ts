@@ -14,6 +14,8 @@ jest.mock('../api', () => ({
   requestWeatherAlternatives: jest.fn(),
   requestWeatherProposal: jest.fn(),
 }));
+let mockKeySeq = 0;
+jest.mock('expo-crypto', () => ({ randomUUID: () => `key-${++mockKeySeq}` }));
 
 const mockRequest = jest.mocked(requestWeatherAlternatives);
 const mockPropose = jest.mocked(requestWeatherProposal);
@@ -81,11 +83,11 @@ it('날씨 대안 작업이 끝나면 결과를 두고, 고른 대안으로 변�
     ok = await p;
   });
   expect(ok).toBe(true);
-  expect(mockPropose).toHaveBeenCalledWith('trip-1', {
-    expectedVersion: 3,
-    sourceWeatherJobId: 'job-w',
-    selectedAlternativeId: 'alt-2',
-  });
+  expect(mockPropose).toHaveBeenCalledWith(
+    'trip-1',
+    { expectedVersion: 3, sourceWeatherJobId: 'job-w', selectedAlternativeId: 'alt-2' },
+    expect.stringMatching(/^key-/),
+  );
   expect(result.current.proposal).toEqual({ phase: 'done', jobId: 'job-p' });
   await act(async () => result.current.closeProposal());
   expect(result.current.proposal.phase).toBe('idle');
@@ -131,4 +133,27 @@ it('화면을 나가면 더 확인하지 않는다', async () => {
   await unmount();
   await act(() => jest.advanceTimersByTimeAsync(6000));
   expect(mockJob.mock.calls.length).toBe(calls);
+});
+
+it('변경안 요청이 응답 없이 끊기면 같은 키로, 서버가 답했으면 새 키로 다시 보낸다', async () => {
+  mockJob.mockResolvedValueOnce(job('SUCCEEDED', alternativesResult()));
+  mockPropose.mockRejectedValueOnce(new Error('Network Error')).mockRejectedValueOnce(
+    Object.assign(new Error('400'), {
+      isAxiosError: true,
+      response: { status: 400, data: {}, headers: {} },
+    }),
+  );
+  mockProposal.mockResolvedValue(proposalOf('FAILED'));
+  const { result } = await renderHook(() => useWeatherAlternatives('trip-1'));
+  await act(async () => {
+    await result.current.start('2026-11-14', 'p-haeundae', 3);
+  });
+  for (let i = 0; i < 3; i += 1) {
+    await act(async () => {
+      await result.current.makeProposal('alt-2');
+    });
+  }
+  const keys = mockPropose.mock.calls.map((c) => c[2]);
+  expect(keys[1]).toBe(keys[0]);
+  expect(keys[2]).not.toBe(keys[1]);
 });
