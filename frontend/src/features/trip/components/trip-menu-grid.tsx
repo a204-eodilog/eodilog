@@ -25,7 +25,12 @@ const MENU: MenuItem[] = [
     // S24 코스(course/index.tsx). 코스가 비어 있으면 그 화면이 S23 코스 짜기로 바꿔 연다
     open: (tripId) => router.push(`/trips/${tripId}/course`),
   },
-  { key: 'today', label: '여행 중', icon: 'trip' },
+  {
+    key: 'today',
+    label: '여행 중',
+    icon: 'trip',
+    open: (tripId) => router.push({ pathname: '/trips/[tripId]/today', params: { tripId } }),
+  },
   {
     key: 'photos',
     label: '사진',
