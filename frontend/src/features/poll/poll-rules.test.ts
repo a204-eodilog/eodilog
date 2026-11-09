@@ -1,6 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 
 import {
+  applyMyBallot,
   ballotFailLines,
   closesAtLabel,
   defaultClosesAt,
@@ -160,5 +161,27 @@ describe('pickPoll', () => {
   });
   it('투표가 없으면 null', () => {
     expect(pickPoll([], NOW)).toBeNull();
+  });
+});
+
+describe('applyMyBallot', () => {
+  const saved = poll({
+    candidates: [candidate('c1', { voteCount: 2 }), candidate('c2', { voteCount: 1 })],
+    myCandidateIds: ['c1'],
+    votedMemberCount: 2,
+  });
+  it('저장된 내 표를 빼고 화면의 선택을 더한다', () => {
+    const view = applyMyBallot(saved, ['c2']);
+    expect(view.candidates.map((c) => c.voteCount)).toEqual([1, 2]);
+    expect(view.myCandidateIds).toEqual(['c2']);
+    expect(view.votedMemberCount).toBe(2);
+  });
+  it('모두 빼면 투표한 인원에서도 나를 뺀다', () => {
+    const view = applyMyBallot(saved, []);
+    expect(view.votedMemberCount).toBe(1);
+    expect(view.candidates[0].voteCount).toBe(1);
+  });
+  it('선택이 서버와 같으면 그대로 돌려준다', () => {
+    expect(applyMyBallot(saved, ['c1'])).toBe(saved);
   });
 });
