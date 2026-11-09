@@ -10,6 +10,7 @@ import { sampleFeed } from '@/features/feed/preview-data';
 import { addDays, seoulToday } from '@/lib/seoul-date';
 
 import { createChatMock } from './dev-mock-chat';
+import { mockMyTimeline, mockTripSummary, mockTripTimeline } from './dev-mock-timeline';
 
 import type { Follow, MyProfile, Session, UserCard } from './types';
 
@@ -661,6 +662,22 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
   if (chat) return chat;
   const photo = handlePhotos(config, method, url);
   if (photo) return photo;
+
+  // S41 타임라인·S42 여행 요약(서버에 아직 없는 API, 명세 모양). 게시한 여행은 /me/feeds와 같은 "남도 맛집 여행"
+  if (method === 'get' && url === '/me/timeline') {
+    const posted = trips.find((t) => t.title === '남도 맛집 여행')?.id ?? null;
+    return ok(config, page(mockMyTimeline(trips, posted)));
+  }
+  const timelineMatch = /^\/trips\/([^/]+)\/(timeline|summary)$/.exec(url);
+  if (method === 'get' && timelineMatch) {
+    const trip = trips.find((t) => t.id === timelineMatch[1]);
+    if (!trip) throw fail(config, 404, 'TRIP_NOT_FOUND', '여행을 찾을 수 없습니다.');
+    if (timelineMatch[2] === 'timeline') {
+      return ok(config, { data: { items: mockTripTimeline(trip) } });
+    }
+    const photoCount = tripPhotos.filter((p) => p.tripId === trip.id).length;
+    return ok(config, { data: mockTripSummary(trip, photoCount) });
+  }
 
   if (method === 'get' && url === '/me/following') {
     return followPage(
