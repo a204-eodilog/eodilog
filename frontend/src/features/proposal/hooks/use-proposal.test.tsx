@@ -1,0 +1,127 @@
+import { afterEach, beforeEach, expect, it, jest } from '@jest/globals';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { act, renderHook } from '@testing-library/react-native';
+import type { ReactNode } from 'react';
+
+import { getAutoCourse, getItinerary } from '@/features/course/api';
+import { httpError, sampleCourse } from '@/features/course/testing';
+
+import { applyProposal, requestRemoval } from '../api';
+import { job, proposal } from '../testing';
+
+import { useProposal, type ProposalSource } from './use-proposal';
+
+jest.mock('@/config/env', () => ({
+  env: { appEnv: 'local', apiBaseUrl: 'http://test', kakaoRedirectUri: null, devMock: false },
+}));
+jest.mock('@/features/course/api', () => ({ getAutoCourse: jest.fn(), getItinerary: jest.fn() }));
+jest.mock('../api', () => ({ requestRemoval: jest.fn(), applyProposal: jest.fn() }));
+
+const mockGet = jest.mocked(getAutoCourse);
+const mockItinerary = jest.mocked(getItinerary);
+const mockRemove = jest.mocked(requestRemoval);
+const mockApply = jest.mocked(applyProposal);
+
+let client: QueryClient;
+function render(source: ProposalSource) {
+  client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } });
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  );
+  return renderHook(() => useProposal('trip-1', source), { wrapper });
+}
+
+beforeEach(() => {
+  jest.useFakeTimers();
+  jest.clearAllMocks();
+  mockItinerary.mockResolvedValue(sampleCourse(true));
+  mockRemove.mockResolvedValue({ jobId: 'job-p', status: 'QUEUED', statusUrl: '' });
+  mockGet.mockReset();
+  mockApply.mockReset();
+});
+
+afterEach(() => {
+  jest.useRealTimers();
+});
+
+it('장소 빼기는 지금 version으로 작업을 만들고 끝날 때까지 기다린다', async () => {
+  mockGet
+    .mockResolvedValueOnce(proposal({ job: job('RUNNING'), proposed: null }))
+    .mockResolvedValueOnce(proposal());
+  const { result } = await render({ removePlaceId: 'p-gwangalli' });
+  await act(async () => {
+    void result.current.start();
+    await jest.advanceTimersByTimeAsync(0);
+  });
+  expect(mockRemove).toHaveBeenCalledWith('trip-1', 3, 'p-gwangalli');
+  expect(result.current.phase).toBe('running');
+  await act(() => jest.advanceTimersByTimeAsync(1500));
+  expect(result.current.phase).toBe('done');
+  expect(result.current.jobId).toBe('job-p');
+  expect(result.current.canRecreate).toBe(true);
+});
+
+it('날씨 작업 번호로 열면 작업을 만들지 않고 기다린다', async () => {
+  mockGet.mockResolvedValue(proposal({ reason: 'WEATHER' }));
+  const { result } = await render({ jobId: 'job-w' });
+  await act(async () => {
+    await result.current.start();
+  });
+  expect(mockRemove).not.toHaveBeenCalled();
+  expect(mockGet).toHaveBeenCalledWith('trip-1', 'job-w', expect.anything());
+  expect(result.current.phase).toBe('done');
+  expect(result.current.canRecreate).toBe(false);
+});
+
+it('작업이 실패하면 failed', async () => {
+  mockGet.mockResolvedValue(proposal({ job: job('FAILED'), proposed: null }));
+  const { result } = await render({ jobId: 'job-w' });
+  await act(async () => {
+    await result.current.start();
+  });
+  expect(result.current.phase).toBe('failed');
+});
+
+it('적용은 기준 version으로 보내고 코스 캐시를 바꾼다. 두 번 눌러도 한 번', async () => {
+  mockGet.mockResolvedValue(proposal());
+  let finish: () => void = () => {};
+  mockApply.mockReturnValue(
+    new Promise((r) => {
+      finish = () => r({ ...sampleCourse(true), version: 4 });
+    }),
+  );
+  const { result } = await render({ jobId: 'job-p' });
+  await act(async () => {
+    await result.current.start();
+  });
+  let first: Promise<string> = Promise.resolve('');
+  let second = '';
+  await act(async () => {
+    first = result.current.apply();
+    second = await result.current.apply();
+  });
+  expect(second).toBe('busy');
+  await act(async () => finish());
+  expect(await first).toBe('applied');
+  expect(mockApply).toHaveBeenCalledTimes(1);
+  expect(mockApply).toHaveBeenCalledWith('trip-1', 'job-p', 3);
+  expect(client.getQueryData<{ version: number }>(['trips', 'trip-1', 'itinerary'])?.version).toBe(
+    4,
+  );
+});
+
+it('적용 409와 422를 구분한다', async () => {
+  mockGet.mockResolvedValue(proposal());
+  const { result } = await render({ jobId: 'job-p' });
+  await act(async () => {
+    await result.current.start();
+  });
+  mockApply.mockRejectedValueOnce(httpError(409, 'VERSION_CONFLICT'));
+  await act(async () => {
+    expect(await result.current.apply()).toBe('conflict');
+  });
+  mockApply.mockRejectedValueOnce(httpError(422, 'UNSCHEDULABLE_ALTERNATIVE'));
+  await act(async () => {
+    expect(await result.current.apply()).toBe('unschedulable');
+  });
+});
