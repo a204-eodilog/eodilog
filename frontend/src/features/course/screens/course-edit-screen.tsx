@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams, usePreventRemove } from 'expo-router';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -384,8 +384,14 @@ export function CourseEditScreen() {
 
   // 연결이 끊긴 동안 동행이 바꾼 코스를 놓치지 않게 다시 연결되면 최신 코스를 받는다(Q-8-1).
   // 고친 것이 없으면 받은 코스로 조용히 맞춰지고(위 맞추기), 고친 것이 있으면 같은 규칙으로 비교한다
+  // 받는 사이 다시 그려졌으면(그 사이 고쳤거나 저장을 눌렀으면) 그때의 초안과 상태로 비교한다
+  const live = useRef({ reconcile, dirty, origin, busy: false });
+  useEffect(() => {
+    live.current = { reconcile, dirty, origin, busy: saver.saving || conflict !== null };
+  });
   useReconnected(() => {
-    if (!draft || conflict) return;
+    // 저장 중이면 저장 결과(409)가 같은 비교를 하므로 건너뛴다
+    if (!draft || conflict || saver.saving) return;
     void queryClient
       .fetchQuery({
         queryKey: itineraryKey(tripId),
@@ -393,7 +399,9 @@ export function CourseEditScreen() {
         staleTime: 0,
       })
       .then((latest) => {
-        if (dirty || origin !== 'saved') reconcile(latest);
+        const now = live.current;
+        if (now.busy) return;
+        if (now.dirty || now.origin !== 'saved') now.reconcile(latest);
       })
       .catch(() => undefined);
   });

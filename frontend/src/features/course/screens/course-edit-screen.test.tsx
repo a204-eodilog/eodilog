@@ -814,6 +814,30 @@ describe('연결이 끊겼다 돌아옴', () => {
     expect(toast.show).not.toHaveBeenCalled();
   });
 
+  it('최신 코스를 받는 사이 고친 내용도 비교에 들어간다', async () => {
+    await renderScreen();
+    await send('start', 'connected');
+    await screen.findByText('서면 돼지국밥집');
+    await send('dropped');
+    // 세은은 2일차 시각을 바꿨다. 응답은 내가 1일차를 고친 뒤에 온다
+    const latest = sampleCourse(true);
+    latest.version = 4;
+    latest.updatedByMemberId = 'm-seeun';
+    latest.items[3] = { ...latest.items[3], startTime: '11:30' };
+    let answer: (c: Itinerary) => void = () => {};
+    mockGet.mockReturnValueOnce(new Promise((r) => (answer = r)));
+    await send('connected');
+    await fireEvent.press(screen.getByLabelText('해운대 해변 고치기'));
+    await fireEvent.press(screen.getByText('코스에서 빼기'));
+    await act(async () => answer(latest));
+    await waitFor(() =>
+      expect(toast.show).toHaveBeenCalledWith(
+        '세은님이 다른 날을 고쳐서 최신 코스에 내 변경을 다시 얹었어요. 확인하고 완료를 눌러 주세요',
+      ),
+    );
+    expect(screen.queryByText('해운대 해변')).toBeNull();
+  });
+
   it('처음 연결될 때는 다시 받지 않는다', async () => {
     await renderScreen();
     await screen.findByText('서면 돼지국밥집');
