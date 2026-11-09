@@ -6,7 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { toast } from '@/components/ui';
 
-import { getChecklist, updateChecklistItem } from '../api';
+import { addChecklistItem, deleteChecklistItem, getChecklist, updateChecklistItem } from '../api';
 import { checklistItem, httpError, networkError } from '../testing';
 import type { ChecklistItem } from '../types';
 
@@ -131,6 +131,8 @@ jest.setTimeout(20_000);
 
 const mockGet = jest.mocked(getChecklist);
 const mockUpdate = jest.mocked(updateChecklistItem);
+const mockAdd = jest.mocked(addChecklistItem);
+const mockDelete = jest.mocked(deleteChecklistItem);
 
 function renderScreen() {
   const client = new QueryClient({
@@ -280,5 +282,101 @@ describe('불러오기', () => {
     expect(await screen.findByText('여행을 찾을 수 없어요')).toBeTruthy();
     await fireEvent.press(screen.getByText('돌아가기'));
     expect(mockRouter.back).toHaveBeenCalled();
+  });
+});
+
+describe('직접 추가, 고치기, 지우기', () => {
+  it('이름을 쓰고 추가하면 목록 끝에 직접 추가로 붙고 입력이 비워진다', async () => {
+    mockAdd.mockResolvedValue(checklistItem({ id: 'snack', label: '간식' }));
+    await renderScreen();
+    const input = await screen.findByLabelText('챙길 것 추가');
+    await fireEvent.changeText(input, '  간식 ');
+    await fireEvent.press(screen.getByLabelText('추가'));
+
+    expect(mockAdd).toHaveBeenCalledWith('trip-1', '간식');
+    expect(await screen.findByText('4개 중 1개 챙겼어요')).toBeTruthy();
+    expect(screen.getByLabelText('간식')).toBeTruthy();
+    expect(screen.getByLabelText('챙길 것 추가').props.value).toBe('');
+  });
+
+  it('비었거나 공백뿐이면 추가하지 않는다', async () => {
+    await renderScreen();
+    const input = await screen.findByLabelText('챙길 것 추가');
+    await fireEvent.changeText(input, '   ');
+    await fireEvent.press(screen.getByLabelText('추가'));
+    expect(mockAdd).not.toHaveBeenCalled();
+  });
+
+  it('추가를 두 번 빨리 눌러도 하나만 보낸다', async () => {
+    let resolve: (item: ChecklistItem) => void = () => {};
+    mockAdd.mockReturnValue(
+      new Promise<ChecklistItem>((r) => {
+        resolve = r;
+      }),
+    );
+    await renderScreen();
+    await fireEvent.changeText(await screen.findByLabelText('챙길 것 추가'), '간식');
+    await act(async () => {
+      fireEvent(screen.getByLabelText('챙길 것 추가'), 'submitEditing');
+      fireEvent.press(screen.getByLabelText('추가'));
+    });
+    expect(mockAdd).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      resolve(checklistItem({ id: 'snack', label: '간식' }));
+    });
+  });
+
+  it('더보기로 이름을 고치면 시트가 닫히고 이름이 바뀐다', async () => {
+    mockUpdate.mockResolvedValue({
+      ...raincoat(),
+      label: '우비 2벌',
+      modifiedByUser: true,
+      version: 2,
+    });
+    await renderScreen();
+    await fireEvent.press(await screen.findByLabelText('우비 고치기'));
+    expect(screen.getByText('준비물 고치기')).toBeTruthy();
+    await fireEvent.changeText(screen.getByLabelText('준비물 이름'), '우비 2벌');
+    await fireEvent.press(screen.getByText('저장'));
+
+    expect(mockUpdate).toHaveBeenCalledWith('trip-1', 'raincoat', {
+      expectedVersion: 1,
+      label: '우비 2벌',
+    });
+    expect(await screen.findByLabelText('우비 2벌')).toBeTruthy();
+    expect(screen.getByText('직접 고침')).toBeTruthy();
+    expect(screen.queryByText('준비물 고치기')).toBeNull();
+  });
+
+  it('이름이 그대로면 저장해도 보내지 않는다', async () => {
+    await renderScreen();
+    await fireEvent.press(await screen.findByLabelText('우비 고치기'));
+    await fireEvent.press(screen.getByText('저장'));
+    expect(mockUpdate).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.queryByText('준비물 고치기')).toBeNull());
+  });
+
+  it('고칠 때 다른 동행이 먼저 바꿨으면 덮어쓰지 않고 다시 받는다', async () => {
+    mockUpdate.mockRejectedValue(httpError(409, 'VERSION_CONFLICT'));
+    await renderScreen();
+    await fireEvent.press(await screen.findByLabelText('우비 고치기'));
+    await fireEvent.changeText(screen.getByLabelText('준비물 이름'), '우비 2벌');
+    await fireEvent.press(screen.getByText('저장'));
+    await waitFor(() =>
+      expect(toast.show).toHaveBeenCalledWith('다른 동행이 먼저 바꿨어요. 최신 목록을 불러왔어요'),
+    );
+    await waitFor(() => expect(mockGet).toHaveBeenCalledTimes(2));
+    expect(screen.queryByText('준비물 고치기')).toBeNull();
+  });
+
+  it('지우기를 누르면 확인 없이 목록에서 빠진다', async () => {
+    mockDelete.mockResolvedValue(undefined);
+    await renderScreen();
+    await fireEvent.press(await screen.findByLabelText('손난로 고치기'));
+    await fireEvent.press(screen.getByText('지우기'));
+
+    expect(mockDelete).toHaveBeenCalledWith('trip-1', 'warmer');
+    expect(await screen.findByText('2개 중 1개 챙겼어요')).toBeTruthy();
+    expect(screen.queryByLabelText('손난로')).toBeNull();
   });
 });
