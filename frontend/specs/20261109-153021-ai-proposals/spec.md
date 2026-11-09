@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-09
 
-**Status**: Draft
+**Status**: Implemented — 변경안 백엔드·기기 확인 대기(tasks T014·T015)
 
 **Input**: User description: "AI 변경안 S29. 상태: 비교(동행 누구나 적용) 201-16028 / 적용 후 201-16198 / 재계산 실패 201-16329. API: POST /trips/{tripId}/itinerary/proposals → JobRef, GET .../proposals/{jobId}, POST .../proposals/{jobId}/apply {expectedVersion}, POST /trips/{tripId}/itinerary/undo {expectedVersion, appliedJobId}. 백엔드 없음 → 가짜 서버. 승인 단계 없음(누구나 적용). 되돌리기는 직후 1단계만, 409 UNDO_UNAVAILABLE 처리. baseVersion이 다르면 409, 별도 오래된 변경안 화면은 만들지 않는다. S24 장소 빼기와 S26에서 들어온다."
 

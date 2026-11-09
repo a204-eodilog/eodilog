@@ -14,3 +14,6 @@ npx eslint src/features/proposal src/app/dev/proposal.tsx
 3. 다시 [빼기] → [적용] → `__devMock.course.editByOther('trip-1', 1)` → [되돌리기] → 되돌릴 수 없다는 안내.
 4. `__devMock.course.failNextProposal()` → [빼기] → 재계산 실패 → [다시 시도].
 5. 여행 중 → 날씨 대안 → 변경안 만들기 → [변경안 보기] → 날씨 변경안 비교.
+6. 적용 뒤 코스의 고친 사람 줄은 "…님이 적용했어요", 되돌리면 평소 줄로 돌아온다. 다시 열어도 적용 알림은 또 뜨지 않는다.
+
+참고: 웹 미리보기의 적용 알림은 몇 초 뒤 사라진다. 되돌리기는 알림이 떠 있을 때 누른다.
