@@ -255,8 +255,8 @@ function PreferencesForm({
                       setDraftError(undefined);
                     }}
                     placeholder="직접 쓰기 (예: 온천, 전시)"
+                    // 20자가 차면 더 써지지 않아서, 왜 안 써지는지 보이게 "18/20"을 띄운다(S02 닉네임과 같음)
                     maxLength={KEYWORD_MAX_LENGTH}
-                    hideCount
                     error={draftError}
                     returnKeyType="done"
                     onSubmitEditing={() => add(draft) && setDraft('')}
