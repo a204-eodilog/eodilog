@@ -31,6 +31,7 @@ const mockRouter = {
   canGoBack: jest.fn(() => true),
 };
 
+jest.mock('expo-crypto', () => ({ randomUUID: () => 'key-1' }));
 jest.mock('@/config/env', () => ({
   env: { appEnv: 'local', apiBaseUrl: 'http://test', kakaoRedirectUri: null, devMock: false },
 }));
@@ -597,7 +598,7 @@ describe('구성 방식과 준비 상태', () => {
     await renderScreen();
     await fireEvent.press(await screen.findByText('재추천'));
     expect(await screen.findByText('추천 장소 A')).toBeTruthy();
-    expect(mockRequestAuto).toHaveBeenCalledWith('trip-1', 3);
+    expect(mockRequestAuto).toHaveBeenCalledWith('trip-1', 3, expect.any(String));
   });
 });
 

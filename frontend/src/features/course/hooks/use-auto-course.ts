@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 
+import { toApiError } from '@/api/errors';
+import { createIdempotencyKeyStore } from '@/api/idempotency';
+
 import { getAutoCourse, requestAutoCourse } from '../api';
 import type { CourseContent } from '../types';
 import { JobStopped, waitForJob } from '../wait-job';
@@ -15,11 +18,16 @@ export const AUTO_MIN_REQUEST_MS = 400;
  * 백엔드에 아직 없어 실서버에서는 실패로 끝난다(가정 Q-6-5). 화면을 나가면 기다림을 멈춘다.
  * requesting은 요청을 보내고 서버가 받기 전, running은 서버가 받아 작업을 기다리는 중이다.
  * 화면은 running이 된 뒤에만 '코스를 짜고 있어요'를 보여, 요청이 바로 실패할 때 그 화면이 잠깐 번쩍이지 않게 한다.
+ *
+ * Idempotency-Key: 응답을 못 받은 채 다시 보내면 같은 키를 써서 작업이 두 개 생기지 않게 한다.
+ * 서버가 한 번이라도 답했으면(작업을 받았거나 거절했으면) 그 키는 끝난 것이라 버린다.
+ * 그러지 않으면 같은 version으로 다시 시도할 때 서버가 이미 실패한 첫 작업을 그대로 돌려준다.
  */
 export function useAutoCourse(tripId: string) {
   const [status, setStatus] = useState<'idle' | 'requesting' | 'running' | 'failed'>('idle');
   const running = useRef(false);
   const controller = useRef<AbortController | null>(null);
+  const keys = useRef(createIdempotencyKeyStore()).current;
 
   useEffect(() => () => controller.current?.abort(), []);
 
@@ -39,7 +47,14 @@ export function useAutoCourse(tripId: string) {
     const startedAt = Date.now();
     let accepted = false;
     try {
-      const ref = await requestAutoCourse(tripId, expectedVersion);
+      let ref;
+      try {
+        ref = await requestAutoCourse(tripId, expectedVersion, keys.keyFor({ expectedVersion }));
+        keys.clear();
+      } catch (e) {
+        if (toApiError(e).status !== null) keys.clear();
+        throw e;
+      }
       if (abort.signal.aborted) return null;
       accepted = true;
       setStatus('running');
