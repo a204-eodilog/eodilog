@@ -13,7 +13,7 @@ const notReady = () => toast.show('준비 중이에요');
 
 /**
  * S10 개인 즐겨찾기. 저장 탭 첫 화면.
- * 카드·핀은 S14 저장 장소 상세로 간다. S11 링크·캡처 등록, S20 그룹 즐겨찾기(C)는 아직 없어 준비 중 안내를 띄운다
+ * 카드·핀은 S14 저장 장소 상세, [+]는 S11 링크·캡처 등록으로 간다. S20 그룹 즐겨찾기(C)는 아직 없어 준비 중 안내를 띄운다
  */
 export function SavedScreen() {
   const insets = useSafeAreaInsets();
@@ -61,7 +61,7 @@ export function SavedScreen() {
       offlineSince={online ? null : syncedAtLabel(bookmarks.dataUpdatedAt)}
       onGroup={notReady}
       onOpen={(item) => router.push({ pathname: '/saved/[key]', params: { key: item.key } })}
-      onAdd={notReady}
+      onAdd={() => router.push('/saved/add')}
     />
   );
 }

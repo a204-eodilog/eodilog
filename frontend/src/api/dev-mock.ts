@@ -254,6 +254,90 @@ let bookmarks: MockBookmark[] = BOOKMARKS.map(
 
 let seq = 0;
 
+/** 테스트 모드 추출 작업. 결과는 링크 글자로 정한다 */
+type MockExtraction = {
+  startedAt: number;
+  /** STUCK은 끝나지 않고 진행 중에 머문다(S12 시간 초과 확인용) */
+  outcome: 'SUCCESS' | 'MULTIPLE_CANDIDATES' | 'NOT_FOUND' | 'FAILED' | 'STUCK';
+};
+const extractions = new Map<string, MockExtraction>();
+/** 추출 요청 Idempotency-Key → 처음 만든 작업 id와 본문 */
+const extractionByKey = new Map<string, { id: string; body: string }>();
+const EXTRACTION_MS = 4500;
+
+/** 즐겨찾기 예시 장소를 추출 후보 장소로 쓴다(저장하면 개인 즐겨찾기 PUT이 그대로 받는다) */
+function bookmarkPlace(index: number) {
+  const [name, address, latitude, longitude] = BOOKMARKS[index];
+  return {
+    id: `place-bookmark-${index + 1}`,
+    name,
+    address,
+    latitude,
+    longitude,
+    regionId: null,
+    provider: 'NAVER',
+    providerPlaceId: null,
+    source: 'PROVIDER' as const,
+  };
+}
+
+function extractionResult(id: string, job: MockExtraction) {
+  const elapsed = Date.now() - job.startedAt;
+  const done = job.outcome !== 'STUCK' && elapsed >= EXTRACTION_MS;
+  const failed = done && job.outcome === 'FAILED';
+  const candidates = !done
+    ? []
+    : job.outcome === 'SUCCESS'
+      ? [
+          { index: 0, evidence: '게시물 글에서 찾았어요' },
+          { index: 2, evidence: '캡처 속 간판에서 찾았어요' },
+        ].map(({ index, evidence }, i) => ({
+          candidateId: `${id}-c${i + 1}`,
+          name: BOOKMARKS[index][0],
+          place: bookmarkPlace(index),
+          evidence,
+          confidence: 0.9,
+        }))
+      : job.outcome === 'MULTIPLE_CANDIDATES'
+        ? // AI 서버처럼 언급(name)마다 후보를 이어 붙인다: 한 곳으로 정해진 가게 + 지점이 둘인 카페
+          // (지점 이름은 place.name) + 지도에서 못 찾은 빵집(place: null)
+          [
+            {
+              name: BOOKMARKS[3][0],
+              place: bookmarkPlace(3),
+              evidence: '캡처 속 간판에서 찾았어요',
+              confidence: 1,
+            },
+            ...(['광안점', '전포점'] as const).map((branch, i) => ({
+              name: '바다 앞 카페',
+              place: { ...bookmarkPlace([0, 2][i]), name: `바다 앞 카페 ${branch}` },
+              evidence: '게시물 글에서 찾았어요',
+              confidence: 0.8,
+            })),
+            {
+              name: '골목 빵집',
+              place: null,
+              evidence: '게시물 글에서 찾았어요',
+              confidence: null,
+            },
+          ].map((c, i) => ({ candidateId: `${id}-c${i + 1}`, ...c }))
+        : [];
+  return {
+    job: {
+      id,
+      kind: 'PLACE_EXTRACTION',
+      status: !done ? (elapsed < 600 ? 'QUEUED' : 'RUNNING') : failed ? 'FAILED' : 'SUCCEEDED',
+      progress: done ? 100 : Math.min(Math.floor((elapsed / EXTRACTION_MS) * 100), 99),
+      result: null,
+      error: failed ? { code: 'SOURCE_UNREACHABLE', message: '링크를 열지 못했어요.' } : null,
+      createdAt: new Date(job.startedAt).toISOString(),
+      finishedAt: done ? new Date(job.startedAt + EXTRACTION_MS).toISOString() : null,
+    },
+    resultStatus: !done ? null : job.outcome,
+    candidates,
+  };
+}
+
 function makeTrip(input: {
   title: string;
   start?: number;
@@ -397,6 +481,11 @@ function ok<T>(config: InternalAxiosRequestConfig, data: T, status = 200): Axios
   return { data, status, statusText: 'OK', headers: {}, config };
 }
 
+/** 요청 본문(문자열이면 JSON으로 읽는다) */
+function parseBody<T>(config: InternalAxiosRequestConfig): T {
+  return (typeof config.data === 'string' ? JSON.parse(config.data) : (config.data ?? {})) as T;
+}
+
 function fail(config: InternalAxiosRequestConfig, status: number, code: string, message: string) {
   const response = ok(
     config,
@@ -449,7 +538,7 @@ const photoBatches = new Map<string, { id: string; tripId: string; fileCount: nu
 const photoBatchByKey = new Map<string, string>();
 const assets = new Map<
   string,
-  { status: 'PENDING' | 'READY' | 'DELETED'; batchId: string | null }
+  { status: 'PENDING' | 'READY' | 'DELETED'; batchId: string | null; purpose: string }
 >();
 type MockPhoto = {
   id: string;
@@ -546,7 +635,11 @@ function handlePhotos(
   }
   if (method === 'post' && url === '/assets/upload-intents') {
     const assetId = `asset-${(photoSeq += 1)}`;
-    assets.set(assetId, { status: 'PENDING', batchId: (body.batchId as string) ?? null });
+    assets.set(assetId, {
+      status: 'PENDING',
+      batchId: (body.batchId as string) ?? null,
+      purpose: String(body.purpose ?? 'TRIP_PHOTO'),
+    });
     return ok(
       config,
       {
@@ -572,8 +665,9 @@ function handlePhotos(
       asset.status = 'DELETED';
       return ok(config, null, 204);
     }
-    completeCalls += 1;
-    if (completeCalls % 5 === 3) {
+    // 일부 실패는 S30 사진 올리기에서만 본다. S11 캡처는 늘 성공
+    if (asset.purpose === 'TRIP_PHOTO') completeCalls += 1;
+    if (asset.purpose === 'TRIP_PHOTO' && completeCalls % 5 === 3) {
       throw fail(config, 422, 'UPLOAD_MISMATCH', '올린 파일이 요청한 크기나 형식과 다릅니다.');
     }
     asset.status = 'READY';
@@ -906,6 +1000,70 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
       return ok(config, { data: saved });
     }
     throw fail(config, 404, 'NOT_FOUND', '저장한 장소를 찾을 수 없어요.');
+  }
+  // S12 장소 추출(백엔드 미구현, API 명세 §5). 4.5초 동안 진행률이 오르고 끝난다.
+  // 링크나 메모에 many·none·fail·stuck이 들어 있으면 복수 후보·식별 불가·처리 실패·끝나지 않음
+  // (캡처만 보낼 때는 메모로 고른다)
+  // Idempotency-Key 필수. 같은 키 + 같은 본문이면 처음 작업 id, 다른 본문이면 409
+  if (method === 'post' && url === '/extractions') {
+    const body = parseBody<{ url?: string; captureAssetIds?: string[]; memo?: string }>(config);
+    const key = String(config.headers['Idempotency-Key'] ?? '');
+    if (!key) throw fail(config, 400, 'VALIDATION_ERROR', 'Idempotency-Key 헤더가 필요해요.');
+    const serialized = JSON.stringify(body);
+    const previous = extractionByKey.get(key);
+    if (previous && previous.body !== serialized) {
+      throw fail(config, 409, 'IDEMPOTENCY_KEY_REUSED', '다른 요청에 쓴 키예요.');
+    }
+    if (previous) {
+      return ok(
+        config,
+        {
+          data: { jobId: previous.id, status: 'QUEUED', statusUrl: `/api/v1/jobs/${previous.id}` },
+        },
+        202,
+      );
+    }
+    if (!body.url && !(body.captureAssetIds?.length ?? 0)) {
+      throw fail(config, 400, 'VALIDATION_ERROR', '링크나 캡처를 하나 이상 넣어 주세요.');
+    }
+    if ((body.captureAssetIds?.length ?? 0) > 10) {
+      throw fail(config, 422, 'INPUT_LIMIT_EXCEEDED', '캡처는 10장까지 넣을 수 있어요.');
+    }
+    if (settings.ai.placeExtraction === 'OFF') {
+      throw fail(config, 409, 'AI_FEATURE_DISABLED', '장소 찾기 설정이 꺼져 있어요.');
+    }
+    seq += 1;
+    const id = `extraction-${seq}`;
+    const hint = `${body.url ?? ''} ${body.memo ?? ''}`;
+    extractions.set(id, {
+      startedAt: Date.now(),
+      outcome: /stuck/i.test(hint)
+        ? 'STUCK'
+        : /fail/i.test(hint)
+          ? 'FAILED'
+          : /none/i.test(hint)
+            ? 'NOT_FOUND'
+            : /many/i.test(hint)
+              ? 'MULTIPLE_CANDIDATES'
+              : 'SUCCESS',
+    });
+    extractionByKey.set(key, { id, body: serialized });
+    return ok(
+      config,
+      { data: { jobId: id, status: 'QUEUED', statusUrl: `/api/v1/jobs/${id}` } },
+      202,
+    );
+  }
+  const extractionMatch = /^\/extractions\/([^/]+)$/.exec(url);
+  if (extractionMatch) {
+    const id = decodeURIComponent(extractionMatch[1]);
+    const found = extractions.get(id);
+    if (!found) throw fail(config, 404, 'NOT_FOUND', '작업을 찾을 수 없어요.');
+    if (method === 'delete') {
+      extractions.delete(id);
+      return ok(config, undefined, 204);
+    }
+    if (method === 'get') return ok(config, { data: extractionResult(id, found) });
   }
   // 그룹 즐겨찾기에 추가(S14): 담기만 하고 S20 목록은 아직 흉내 내지 않는다
   if (method === 'put' && /^\/trips\/[^/]+\/saved-places\/[^/]+\/me$/.test(url)) {
