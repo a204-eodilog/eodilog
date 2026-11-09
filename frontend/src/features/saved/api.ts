@@ -79,9 +79,17 @@ export async function uploadCapture(file: CaptureFile): Promise<string> {
   return intent.assetId;
 }
 
-/** AI 장소 추출 시작. 작업 id를 돌려준다 */
-export async function startExtraction(input: ExtractionInput): Promise<string> {
-  const { data } = await apiClient.post<DataResponse<JobRef>>('/extractions', input);
+/**
+ * AI 장소 추출 시작. 작업 id를 돌려준다. Idempotency-Key 필수(명세 §2 비동기 작업 생성).
+ * 같은 키 + 같은 본문이면 처음 받은 작업 id를 다시 준다
+ */
+export async function startExtraction(
+  input: ExtractionInput,
+  idempotencyKey: string,
+): Promise<string> {
+  const { data } = await apiClient.post<DataResponse<JobRef>>('/extractions', input, {
+    headers: { 'Idempotency-Key': idempotencyKey },
+  });
   return data.data.jobId;
 }
 

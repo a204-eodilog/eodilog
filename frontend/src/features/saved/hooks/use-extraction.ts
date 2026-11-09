@@ -1,5 +1,7 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+
+import { createIdempotencyKeyStore } from '@/api/idempotency';
 
 import { type CaptureFile, getExtraction, startExtraction, uploadCapture } from '../api';
 import { EXTRACTION_TIMEOUT_MS, linkLabel } from '../extract-rules';
@@ -43,6 +45,7 @@ export function useExtraction(jobId: string) {
  * 한 장이라도 못 올리면 작업을 보내지 않는다(같은 캡처로 다시 누르면 처음부터 올린다)
  */
 export function useStartExtraction() {
+  const keys = useRef(createIdempotencyKeyStore()).current;
   return useMutation({
     mutationFn: async (input: { link: string; captures: CaptureFile[]; memo: string }) => {
       const captureAssetIds = await Promise.all(input.captures.map(uploadCapture));
@@ -53,7 +56,9 @@ export function useStartExtraction() {
         ...(captureAssetIds.length > 0 ? { captureAssetIds } : {}),
         ...(memo ? { memo } : {}),
       };
-      const jobId = await startExtraction(body);
+      const jobId = await startExtraction(body, keys.keyFor(body));
+      // 접수됐으니 다음 [장소 찾기]는 같은 입력이어도 새 작업이다
+      keys.clear();
       rememberExtraction(jobId, {
         input: body,
         link: url ? linkLabel(url) : null,
@@ -64,11 +69,16 @@ export function useStartExtraction() {
   });
 }
 
-/** S12 [다시 시도]: 같은 입력(이미 올린 캡처 그대로)으로 작업을 다시 보낸다 */
+/**
+ * S12 [다시 시도]: 같은 입력(이미 올린 캡처 그대로)으로 작업을 다시 보낸다.
+ * 처음 보낸 것과 본문이 같아도 다른 동작이라 새 키를 쓴다. 응답을 못 받고 다시 누르면 같은 키다
+ */
 export function useRetryExtraction() {
+  const keys = useRef(createIdempotencyKeyStore()).current;
   return useMutation({
     mutationFn: async (sent: Parameters<typeof rememberExtraction>[1]) => {
-      const jobId = await startExtraction(sent.input);
+      const jobId = await startExtraction(sent.input, keys.keyFor(sent.input));
+      keys.clear();
       rememberExtraction(jobId, sent);
       return jobId;
     },

@@ -250,6 +250,8 @@ type MockExtraction = {
   outcome: 'SUCCESS' | 'MULTIPLE_CANDIDATES' | 'NOT_FOUND' | 'FAILED' | 'STUCK';
 };
 const extractions = new Map<string, MockExtraction>();
+/** 추출 요청 Idempotency-Key → 처음 만든 작업 id와 본문 */
+const extractionByKey = new Map<string, { id: string; body: string }>();
 const EXTRACTION_MS = 4500;
 
 /** 즐겨찾기 예시 장소를 추출 후보 장소로 쓴다(저장하면 개인 즐겨찾기 PUT이 그대로 받는다) */
@@ -742,8 +744,25 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
   // S12 장소 추출(백엔드 미구현, API 명세 §5). 4.5초 동안 진행률이 오르고 끝난다.
   // 링크나 메모에 many·none·fail·stuck이 들어 있으면 복수 후보·식별 불가·처리 실패·끝나지 않음
   // (캡처만 보낼 때는 메모로 고른다)
+  // Idempotency-Key 필수. 같은 키 + 같은 본문이면 처음 작업 id, 다른 본문이면 409
   if (method === 'post' && url === '/extractions') {
     const body = parseBody<{ url?: string; captureAssetIds?: string[]; memo?: string }>(config);
+    const key = String(config.headers['Idempotency-Key'] ?? '');
+    if (!key) throw fail(config, 400, 'VALIDATION_ERROR', 'Idempotency-Key 헤더가 필요해요.');
+    const serialized = JSON.stringify(body);
+    const previous = extractionByKey.get(key);
+    if (previous && previous.body !== serialized) {
+      throw fail(config, 409, 'IDEMPOTENCY_KEY_REUSED', '다른 요청에 쓴 키예요.');
+    }
+    if (previous) {
+      return ok(
+        config,
+        {
+          data: { jobId: previous.id, status: 'QUEUED', statusUrl: `/api/v1/jobs/${previous.id}` },
+        },
+        202,
+      );
+    }
     if (!body.url && !(body.captureAssetIds?.length ?? 0)) {
       throw fail(config, 400, 'VALIDATION_ERROR', '링크나 캡처를 하나 이상 넣어 주세요.');
     }
@@ -765,6 +784,7 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
               ? 'MULTIPLE_CANDIDATES'
               : 'SUCCESS',
     });
+    extractionByKey.set(key, { id, body: serialized });
     return ok(
       config,
       { data: { jobId: id, status: 'QUEUED', statusUrl: `/api/v1/jobs/${id}` } },

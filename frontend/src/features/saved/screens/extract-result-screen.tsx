@@ -109,10 +109,11 @@ export function ExtractResultScreen() {
       router.back();
       return;
     }
-    // 멈춘 작업은 새 작업을 보내기 전에 취소를 요청한다(실패해도 다시 시도는 막지 않는다)
-    if (stuck) void cancelExtraction(jobId).catch(() => {});
     retry.mutate(sent, {
       onSuccess: (next) => {
+        // 멈춘 작업은 새 작업이 접수된 뒤에 취소한다. 먼저 취소하면 그 작업에만 쓴 캡처가 지워져
+        // 새 작업이 400(captureAssetIds)을 받는다. 취소가 실패해도 다시 시도는 막지 않는다
+        if (stuck) void cancelExtraction(jobId).catch(() => {});
         forgetExtraction(jobId);
         router.replace({ pathname: '/saved/extract/[jobId]', params: { jobId: next } });
       },
