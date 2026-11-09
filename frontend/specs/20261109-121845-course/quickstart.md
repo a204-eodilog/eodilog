@@ -2,7 +2,7 @@
 
 ## 테스트
 ```bash
-npx jest src/features/course
+npx jest src/features/course   # 60개
 npx tsc --noEmit
 npx eslint src/features/course src/app/dev/course.tsx
 ```
@@ -17,6 +17,10 @@ npx eslint src/features/course src/app/dev/course.tsx
 4. 콘솔 `globalThis.__devMock.course.editByOther('trip-1')` 뒤 [완료] → 충돌 안내와 최신 코스.
 5. [재추천] → 생성 중 → 추천안. `globalThis.__devMock.course.failNextProposal()` 뒤 → 실패 화면.
 6. S24 [다시 계산] → 가짜 서버가 구간 시간을 채움. `failNextRecalculate()` 뒤 → 실패 안내.
+7. 초안에서 수단을 바꾼 뒤 `editByOther('trip-1')` → [완료] → 화면에 머물고 최신 코스로 다시 채워짐.
+8. 초안 [재추천] 실패 → [고치던 코스로 돌아가기].
+9. 여러 지역 trip-3 → 구성 방식 → [직접 만들기] → 1일차 지역 줄. `/trips/trip-3/course/edit?split=1`이면 바로 직접 만들기.
+10. `globalThis.__devMock.course.reset()` 뒤 화면을 다시 열면 처음 코스로.
 
 ## 실서버(사용자 몫)
 로컬 백엔드 + 웹, 안드로이드 기기(지도 핀·선, 달력).
