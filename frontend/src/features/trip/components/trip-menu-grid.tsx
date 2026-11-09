@@ -21,7 +21,12 @@ const MENU: MenuItem[] = [
     icon: 'bookmark',
     open: (tripId) => router.push({ pathname: '/trips/[tripId]/favorites', params: { tripId } }),
   },
-  { key: 'recommend', label: '추천', icon: 'search' },
+  {
+    key: 'recommend',
+    label: '추천',
+    icon: 'search',
+    open: (tripId) => router.push({ pathname: '/trips/[tripId]/recommend', params: { tripId } }),
+  },
   { key: 'poll', label: '투표', icon: 'check' },
   { key: 'course', label: '코스', icon: 'map-pin' },
   { key: 'today', label: '여행 중', icon: 'trip' },

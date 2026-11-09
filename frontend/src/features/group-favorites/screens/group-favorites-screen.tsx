@@ -244,6 +244,8 @@ export function GroupFavoritesScreen() {
   const status = notFound ? 'notFound' : list.data ? 'ready' : list.isError ? 'error' : 'loading';
 
   const notReady = () => toast.show('준비 중이에요');
+  const recommend = () =>
+    router.push({ pathname: '/trips/[tripId]/recommend', params: { tripId } });
   const myMemberId = people.find((p) => p.me)?.id ?? null;
   const openItem = list.items.find((i) => i.place.id === openId) ?? null;
   const nameOf = (memberId: string | null) => people.find((p) => p.id === memberId)?.name ?? '동행';
@@ -297,14 +299,14 @@ export function GroupFavoritesScreen() {
         setView('list');
         setSelecting(new Set());
       }}
-      onRecommend={notReady}
+      onRecommend={recommend}
       onCancelSelect={() => setSelecting(null)}
       // 투표 열기 시트는 투표 쪽 작업과 합칠 때 고른 장소로 연다. 그 전까지는 안내만 띄우고 고른 것은 둔다
       onConfirmSelect={notReady}
       onRetry={() => void list.refetch()}
       empty={
         list.totals?.allPlaceCount === 0 ? (
-          <FavoritesEmpty onAdd={() => setAdding(true)} onRecommend={notReady} />
+          <FavoritesEmpty onAdd={() => setAdding(true)} onRecommend={recommend} />
         ) : undefined
       }
     >

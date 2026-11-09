@@ -415,11 +415,26 @@ describe('후보 고르기와 추천', () => {
     expect(screen.getByText('투표 열기')).toBeTruthy();
   });
 
-  it('추천 받기는 준비 중 안내', async () => {
+  it('추천 받기는 추천 결과를 연다', async () => {
     mockList.mockResolvedValue(page(sampleSaved()));
     await renderScreen();
     await fireEvent.press(await screen.findByText('추천 받기'));
-    expect(toast.show).toHaveBeenCalledWith('준비 중이에요');
+    expect(mockRouter.push).toHaveBeenCalledWith({
+      pathname: '/trips/[tripId]/recommend',
+      params: { tripId: 'trip-1' },
+    });
+    expect(toast.show).not.toHaveBeenCalledWith('준비 중이에요');
+  });
+
+  it('장소 없음의 추천 받기도 추천 결과를 연다', async () => {
+    mockList.mockResolvedValue(page([]));
+    await renderScreen();
+    await screen.findByText('아직 모은 장소가 없어요');
+    await fireEvent.press(screen.getByText('추천 받기'));
+    expect(mockRouter.push).toHaveBeenCalledWith({
+      pathname: '/trips/[tripId]/recommend',
+      params: { tripId: 'trip-1' },
+    });
   });
 });
 
