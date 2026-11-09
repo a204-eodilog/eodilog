@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { toast } from '@/components/ui';
@@ -156,5 +156,44 @@ describe('S21 추천 결과', () => {
     await fireEvent.press(await screen.findByText('맛집과 스팟 3'));
     expect(screen.getByTestId('recommend-list')).toBeTruthy();
     expect(toast.show).not.toHaveBeenCalled();
+  });
+});
+
+describe('결과로 다음 행동', () => {
+  it('맛집 담기를 누르면 그룹 즐겨찾기에 담고 담김으로 바뀐다. 두 번 눌러도 한 번', async () => {
+    let resolve: () => void = () => {};
+    mockPut.mockReturnValue(
+      new Promise((r) => {
+        resolve = () => r(saved(groupPlace('place-jagalchi', '자갈치 회 골목'), ['m-me']));
+      }),
+    );
+    await renderScreen();
+    const button = await screen.findByLabelText('자갈치 회 골목 그룹 즐겨찾기에 담기');
+    await fireEvent.press(button);
+    await fireEvent.press(button);
+    resolve();
+    expect(await screen.findByLabelText('자갈치 회 골목 담김')).toBeTruthy();
+    expect(mockPut).toHaveBeenCalledTimes(1);
+    expect(mockPut).toHaveBeenCalledWith('trip-1', 'p-jagalchi');
+  });
+
+  it('내가 이미 담은 곳은 처음부터 담김이다', async () => {
+    mockList.mockResolvedValue(
+      page([...sampleSaved(), saved(groupPlace('p-igidae', '이기대 산책로'), ['m-me'])]),
+    );
+    await renderScreen();
+    expect(await screen.findByLabelText('이기대 산책로 담김')).toBeTruthy();
+  });
+
+  it('여행지 투표 후보로는 지금은 준비 중 안내', async () => {
+    await renderScreen();
+    await fireEvent.press(await screen.findByLabelText('영도 흰여울 일대 투표 후보로'));
+    expect(toast.show).toHaveBeenCalledWith('준비 중이에요');
+  });
+
+  it('재추천은 새 작업을 만든다', async () => {
+    await renderScreen();
+    await fireEvent.press(await screen.findByText('재추천'));
+    await waitFor(() => expect(mockRequest).toHaveBeenCalledTimes(2));
   });
 });
