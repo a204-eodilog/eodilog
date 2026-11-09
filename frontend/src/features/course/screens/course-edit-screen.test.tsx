@@ -69,8 +69,15 @@ jest.mock('@/features/trip/hooks/use-trip', () => ({
   useTrip: () => ({ data: mockTrip, error: null }),
 }));
 
+const mockRegionNames: Record<string, string> = {
+  'region-busan': '부산광역시',
+  'region-gangneung': '강원특별자치도 강릉시',
+};
 jest.mock('@/features/trip/hooks/use-region-names', () => ({
-  useRegionNames: (ids: string[]) => ids.map((id) => (id === 'region-busan' ? '부산' : id)),
+  useRegions: (ids: string[]) => ({
+    regions: ids.map((id) => ({ id, name: mockRegionNames[id] ?? id })),
+    ready: true,
+  }),
 }));
 jest.mock('@/features/trip/api', () => ({ updateTrip: jest.fn() }));
 jest.mock('@/features/trip/hooks/trip-cache', () => ({ invalidateTripLists: jest.fn() }));

@@ -9,7 +9,8 @@ import { AvatarGroup, ConfirmSheet, ErrorState, Header, Icon, toast } from '@/co
 import { pickPlace } from '@/features/place/place-picker';
 import { updateTrip } from '@/features/trip/api';
 import { invalidateTripLists } from '@/features/trip/hooks/trip-cache';
-import { useRegionNames } from '@/features/trip/hooks/use-region-names';
+import { useRegions } from '@/features/trip/hooks/use-region-names';
+import { shortRegionName } from '@/features/trip/trip-rules';
 import { tripKey, useTrip } from '@/features/trip/hooks/use-trip';
 import { formatTripPeriod } from '@/lib/format-date';
 import { useMe } from '@/hooks/use-me';
@@ -21,6 +22,7 @@ import { CourseMap, type MapBadge } from '../components/course-map';
 import { DayTabs } from '../components/day-tabs';
 import { ItemSheet } from '../components/item-sheet';
 import { ManualBuilder } from '../components/manual-builder';
+import { RegionSplit } from '../components/region-split';
 import { ChooseView, NoDatesView, NoRegionView } from '../components/setup-views';
 import { TransportChips } from '../components/transport-chips';
 import {
@@ -29,6 +31,7 @@ import {
   dayCount,
   dayDate,
   dayLegs,
+  dayRegions,
   emptyDraft,
   latestQueriedAt,
   legLabel,
@@ -204,7 +207,12 @@ export function DraftView(props: DraftViewProps) {
 
 /** S23 코스 짜기. S24 [편집]이나 빈 코스에서 온다 */
 export function CourseEditScreen() {
-  const { tripId, entry } = useLocalSearchParams<{ tripId: string; entry?: string }>();
+  const { tripId, entry, split } = useLocalSearchParams<{
+    tripId: string;
+    entry?: string;
+    /** 투표 동률에서 [코스에서 날짜별로 나누기]로 왔을 때 1(가정 Q-6-4) */
+    split?: string;
+  }>();
   const trip = useTrip(tripId);
   const me = useMe();
   const itinerary = useItinerary(tripId);
@@ -226,7 +234,16 @@ export function CourseEditScreen() {
   const recalc = useRecalculate(tripId);
   const [syncedFrom, setSyncedFrom] = useState<unknown>(null);
   const queryClient = useQueryClient();
-  const regionNames = useRegionNames(trip.data?.destinationRegionIds ?? []);
+  const regionIds = trip.data?.destinationRegionIds ?? [];
+  const { regions } = useRegions(regionIds);
+  const regionList = regionIds.map((id) => ({
+    id,
+    name: shortRegionName(regions.find((r) => r.id === id)?.name ?? ''),
+  }));
+  const regionNames = regionList.map((r) => r.name);
+  /** 날짜마다 고른 지역 ID. 여행지가 두 곳 이상일 때만 쓴다 */
+  const [dayRegion, setDayRegion] = useState<string[] | null>(null);
+  const multiRegion = regionIds.length >= 2;
 
   const days = dayCount(trip.data?.startDate ?? null, trip.data?.endDate ?? null);
   const [started, setStarted] = useState(false);
@@ -235,8 +252,28 @@ export function CourseEditScreen() {
     setStarted(true);
     setSyncedFrom(itinerary.data);
     if (itinerary.data.items.length > 0) setDraft(toDraft(itinerary.data, days));
-    else setMode('setup');
+    else if (split === '1' && regionIds.length >= 2) {
+      // 투표 동률에서 왔으면 바로 날짜별 지역을 고르며 직접 만든다
+      setDraft(emptyDraft(itinerary.data.version, days ?? 1));
+      setOrigin('manual');
+      setMode('manual');
+    } else setMode('setup');
   }
+  // 날짜별 지역 처음 값은 초안이 생긴 뒤 한 번 정한다
+  if (multiRegion && draft && (!dayRegion || dayRegion.length !== draft.days.length)) {
+    setDayRegion(dayRegions(draft, regionIds));
+  }
+  const nameOf = (id: string) => regionList.find((r) => r.id === id)?.name ?? '';
+  const dayRegionNames = multiRegion && dayRegion ? dayRegion.map(nameOf) : undefined;
+  const regionRow = (current: number) =>
+    multiRegion && dayRegion ? (
+      <RegionSplit
+        day={current}
+        regions={regionList}
+        value={dayRegion[current] ?? ''}
+        onChange={(id) => setDayRegion(dayRegion.map((r, i) => (i === current ? id : r)))}
+      />
+    ) : undefined;
   // 고치지 않은 저장 코스는 다시 받은 코스(다시 계산 뒤 등)로 맞춘다
   if (
     started &&
@@ -447,6 +484,9 @@ export function CourseEditScreen() {
           setDay(d);
           setSheetIndex(i);
         }}
+        dayRegionIds={multiRegion && dayRegion ? dayRegion : undefined}
+        dayRegionNames={dayRegionNames}
+        extra={regionRow(current)}
         {...sheetHandlers(current, draft)}
       />
     );
@@ -459,6 +499,8 @@ export function CourseEditScreen() {
         origin={origin}
         dirty={dirty}
         startDate={trip.data.startDate}
+        dayRegionNames={dayRegionNames}
+        extra={regionRow(current)}
         day={current}
         onSelectDay={(d) => {
           setDay(d);
