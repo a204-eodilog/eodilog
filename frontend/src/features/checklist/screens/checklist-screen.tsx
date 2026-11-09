@@ -1,6 +1,14 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { toApiError } from '@/api/errors';
@@ -159,7 +167,13 @@ export function ChecklistView(props: ChecklistViewProps) {
           ) : undefined
         }
       />
-      {body}
+      <KeyboardAvoidingView
+        style={styles.flex}
+        // 안드로이드도 화면 끝까지 그리는 모드라 채팅처럼 키보드만큼 직접 띄운다
+        behavior="padding"
+      >
+        {body}
+      </KeyboardAvoidingView>
       <EditItemSheet
         item={props.editing}
         onClose={props.onCloseEdit}
@@ -230,6 +244,7 @@ export function ChecklistScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.surface.white },
+  flex: { flex: 1 },
   loading: { marginTop: spacing[32] },
   content: {
     paddingHorizontal: layout.screenPaddingX,
