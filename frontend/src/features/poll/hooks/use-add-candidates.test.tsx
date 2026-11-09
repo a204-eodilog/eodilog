@@ -44,7 +44,9 @@ async function setup(initial: Poll) {
   return { ...hook, client };
 }
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+});
 
 describe('useAddCandidates', () => {
   it('고른 후보를 차례로 넣고 매번 받은 version으로 다음을 넣는다', async () => {
