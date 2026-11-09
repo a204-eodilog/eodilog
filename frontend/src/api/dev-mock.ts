@@ -432,6 +432,7 @@ function page<T>(data: T[]) {
 }
 
 // S30 사진 업로드(백엔드 assets·photos). 바이트는 보내지 않는다(putPhoto가 테스트 모드면 건너뜀).
+// 사진 응답은 복사본으로 돌려준다(저장한 객체를 그대로 주면 고친 뒤에도 같은 객체라 화면이 바뀐 줄 모른다)
 // 완료 확인 5번에 1번은 실패해서 일부 실패 화면과 [다시 시도]를 볼 수 있다
 const photoBatches = new Map<string, { id: string; tripId: string; fileCount: number }>();
 const photoBatchByKey = new Map<string, string>();
@@ -439,9 +440,70 @@ const assets = new Map<
   string,
   { status: 'PENDING' | 'READY' | 'DELETED'; batchId: string | null }
 >();
-const tripPhotos: { id: string; assetId: string; tripId: string; batchId: string }[] = [];
+type MockPhoto = {
+  id: string;
+  assetId: string;
+  tripId: string;
+  batchId: string | null;
+  uploaderMemberId: string;
+  placeId: string | null;
+  capturedAt: string | null;
+  topics: string[];
+  groupId: null;
+  version: number;
+};
 let photoSeq = 0;
 let completeCalls = 0;
+
+// S31 확인용: 첫 여행(부산 바다 여행)의 코스 장소 3곳과 사진 10장(장소 미지정 3장, 그중 1장은 동행 것)
+const PHOTO_COURSE = [
+  {
+    id: 'it-1',
+    place: { id: 'place-haeundae', name: '해운대 해변' },
+    day: 1,
+    order: 1,
+    startTime: null,
+  },
+  {
+    id: 'it-2',
+    place: { id: 'place-seomyeon', name: '서면 돼지국밥집' },
+    day: 1,
+    order: 2,
+    startTime: null,
+  },
+  {
+    id: 'it-3',
+    place: { id: 'place-gamcheon', name: '감천문화마을' },
+    day: 2,
+    order: 1,
+    startTime: null,
+  },
+];
+const tripPhotos: MockPhoto[] = (
+  [
+    ['member-1-1', 'place-haeundae', ['LANDSCAPE']],
+    ['member-1-1', 'place-haeundae', ['LANDSCAPE', 'PEOPLE']],
+    ['member-1-2', 'place-haeundae', ['PEOPLE']],
+    ['member-1-3', 'place-seomyeon', ['FOOD']],
+    ['member-1-1', 'place-seomyeon', ['FOOD']],
+    ['member-1-2', 'place-gamcheon', ['LANDSCAPE']],
+    ['member-1-1', 'place-gamcheon', ['OTHER']],
+    ['member-1-1', null, []],
+    ['member-1-1', null, ['FOOD']],
+    ['member-1-2', null, []],
+  ] as const
+).map(([uploaderMemberId, placeId, topics], i) => ({
+  id: `photo-seed-${i + 1}`,
+  assetId: `asset-seed-${i + 1}`,
+  tripId: 'trip-1',
+  batchId: null,
+  uploaderMemberId,
+  placeId,
+  capturedAt: null,
+  topics: [...topics],
+  groupId: null,
+  version: 1,
+}));
 
 function handlePhotos(
   config: InternalAxiosRequestConfig,
@@ -513,28 +575,79 @@ function handlePhotos(
     if (assets.get(assetId)?.status !== 'READY') {
       throw fail(config, 409, 'ASSET_NOT_READY', '업로드를 마치지 않은 파일입니다.');
     }
+    const tripId = photosMatch[1];
+    const myMember = trips
+      .find((t) => t.id === tripId)
+      ?.members.find((m) => m.user.id === ME.id)?.id;
     const found =
       tripPhotos.find((p) => p.assetId === assetId) ??
       (() => {
-        const photo = { id: `photo-${(photoSeq += 1)}`, assetId, tripId: photosMatch[1], batchId };
-        tripPhotos.push(photo);
-        return photo;
-      })();
-    return ok(
-      config,
-      {
-        data: {
-          ...found,
-          uploaderMemberId: 'm-me',
+        const photo: MockPhoto = {
+          id: `photo-${(photoSeq += 1)}`,
+          assetId,
+          tripId,
+          batchId,
+          uploaderMemberId: myMember ?? 'member-me',
           placeId: null,
           capturedAt: (body.capturedAt as string) ?? null,
           topics: [],
           groupId: null,
           version: 1,
-        },
-      },
-      201,
+        };
+        tripPhotos.unshift(photo);
+        return photo;
+      })();
+    return ok(config, { data: { ...found, topics: [...found.topics] } }, 201);
+  }
+  if (method === 'get' && photosMatch) {
+    return ok(
+      config,
+      page(
+        tripPhotos
+          .filter((p) => p.tripId === photosMatch[1])
+          .map((p) => ({ ...p, topics: [...p.topics] })),
+      ),
     );
+  }
+  const summaryMatch = /^\/trips\/([^/]+)\/photo-summary$/.exec(url);
+  if (method === 'get' && summaryMatch) {
+    const list = tripPhotos.filter((p) => p.tripId === summaryMatch[1]);
+    const count = (pick: (p: MockPhoto) => string[]) => {
+      const m = new Map<string, number>();
+      list.forEach((p) => pick(p).forEach((k) => m.set(k, (m.get(k) ?? 0) + 1)));
+      return [...m.entries()];
+    };
+    return ok(config, {
+      data: {
+        totalCount: list.length,
+        unplacedCount: list.filter((p) => !p.placeId).length,
+        topics: count((p) => p.topics).map(([topic, n]) => ({ topic, count: n })),
+        places: count((p) => (p.placeId ? [p.placeId] : [])).map(([placeId, n]) => ({
+          placeId,
+          count: n,
+        })),
+        groups: [],
+      },
+    });
+  }
+  const photoMatch = /^\/trips\/([^/]+)\/photos\/([^/]+)$/.exec(url);
+  if (method === 'patch' && photoMatch) {
+    const photo = tripPhotos.find((p) => p.id === photoMatch[2] && p.tripId === photoMatch[1]);
+    if (!photo) throw fail(config, 404, 'PHOTO_NOT_FOUND', '사진을 찾을 수 없습니다.');
+    if (body.expectedVersion !== photo.version) {
+      throw fail(config, 409, 'VERSION_CONFLICT', '다른 곳에서 바뀌었어요');
+    }
+    if ('placeId' in body) photo.placeId = (body.placeId as string | null) ?? null;
+    if (Array.isArray(body.topics)) photo.topics = body.topics as string[];
+    photo.version += 1;
+    return ok(config, { data: { ...photo, topics: [...photo.topics] } });
+  }
+  // S31 코스 장소. 첫 여행만 코스가 있고 나머지는 빈 코스
+  const itineraryMatch = /^\/trips\/([^/]+)\/itinerary$/.exec(url);
+  if (method === 'get' && itineraryMatch) {
+    return ok(config, {
+      data: { version: 1, items: itineraryMatch[1] === 'trip-1' ? PHOTO_COURSE : [] },
+    });
   }
   return null;
 }

@@ -13,7 +13,8 @@ import type { PickedPhoto } from '../types';
 
 /**
  * S30 사진 선택·업로드(/trips/[tripId]/photos/upload). S17 [사진 올리기]·S33 [사진 올리기]에서 온다.
- * 다 올리면 S31(아직 없음) 대신 앞 화면으로 돌아가며 토스트. 올리는 중 [뒤로]·기기 뒤로는 '올리기 취소' 확인
+ * 다 올리면·[나중에]·[올리기 취소] 뒤에는 S31로 간다(뒤에 S31이 있으면 그리로 돌아가고, 없으면 S30 자리에 S31).
+ * 올리는 중 [뒤로]·기기 뒤로는 '올리기 취소' 확인
  */
 export function PhotoUploadScreen() {
   const { tripId = '' } = useLocalSearchParams<{ tripId: string }>();
@@ -32,17 +33,17 @@ export function PhotoUploadScreen() {
   // 올리는 중에 기기 뒤로·뒤로 몸짓으로 나가려 하면 확인을 띄운다
   usePreventRemove(uploading && !leaving, () => setConfirmCancel(true));
 
-  // 취소·나중에: 막기를 푼 다음 화면에서 나간다
+  // 취소·나중에: 막기를 푼 다음 화면에서 S31로
   useEffect(() => {
-    if (leaving) router.back();
-  }, [leaving]);
+    if (leaving) router.dismissTo(`/trips/${tripId}/photos`);
+  }, [leaving, tripId]);
 
-  // 다 올리면(이때는 막기가 이미 풀려 있다) 토스트와 함께 앞 화면으로. S31이 생기면 S31로 바꾼다
+  // 다 올리면(이때는 막기가 이미 풀려 있다) 토스트와 함께 S31로
   useEffect(() => {
     if (upload.phase !== 'done') return;
     toast.success(`사진 ${upload.items.length}장을 올렸어요`);
-    router.back();
-  }, [upload.phase, upload.items.length]);
+    router.dismissTo(`/trips/${tripId}/photos`);
+  }, [upload.phase, upload.items.length, tripId]);
 
   const pick = async () => {
     const remaining = MAX_PHOTOS - picked.length;

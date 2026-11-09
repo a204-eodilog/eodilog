@@ -51,7 +51,26 @@ export type TripPhoto = {
   uploaderMemberId: string;
   placeId: string | null;
   capturedAt: string | null;
-  topics: string[];
+  topics: PhotoTopic[];
   groupId: string | null;
   version: number;
+};
+
+/** 사진 주제(백엔드 topic 값) */
+export type PhotoTopic = 'LANDSCAPE' | 'FOOD' | 'PEOPLE' | 'OTHER';
+
+/** GET /trips/{tripId}/photo-summary. 목록 필터와 상관없는 전체 집계 */
+export type PhotoSummary = {
+  totalCount: number;
+  unplacedCount: number;
+  topics: { topic: PhotoTopic; count: number }[];
+  places: { placeId: string; count: number }[];
+};
+
+/** 코스 장소(GET /trips/{tripId}/itinerary의 items 중 쓰는 값) */
+export type CoursePlace = {
+  id: string;
+  place: { id: string; name: string };
+  day: number;
+  order: number;
 };

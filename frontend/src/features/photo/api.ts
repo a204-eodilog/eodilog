@@ -1,15 +1,82 @@
 import { apiClient } from '@/api/client';
 import { toApiError } from '@/api/errors';
-import type { DataResponse, Trip } from '@/api/types';
+import type { DataResponse, PageResponse, Trip } from '@/api/types';
 import { env } from '@/config/env';
 
 import { isBusy } from './photo-rules';
-import type { PhotoBatch, PickedPhoto, TripPhoto, UploadIntent } from './types';
+import type {
+  CoursePlace,
+  PhotoBatch,
+  PhotoSummary,
+  PickedPhoto,
+  TripPhoto,
+  UploadIntent,
+} from './types';
 
 /** 머리에 쓸 여행 이름. GET /trips/{tripId} */
 export async function getTripTitle(tripId: string): Promise<string> {
+  return (await getTrip(tripId)).title;
+}
+
+/** 여행(이름·시작일·동행). 올린 사람 얼굴과 일차 계산에 쓴다 */
+export async function getTrip(tripId: string): Promise<Trip> {
   const { data } = await apiClient.get<DataResponse<Trip>>(`/trips/${encodeURIComponent(tripId)}`);
-  return data.data.title;
+  return data.data;
+}
+
+/** 서버 최대 페이지 크기. 한 여행 사진은 끝까지 읽는다 */
+const PAGE_LIMIT = 100;
+
+/** 여행 사진 전부(올린 최신순). 지운 사진은 서버가 뺀다 */
+export async function getTripPhotos(tripId: string): Promise<TripPhoto[]> {
+  const all: TripPhoto[] = [];
+  let cursor: string | null = null;
+  do {
+    const { data }: { data: PageResponse<TripPhoto> } = await apiClient.get(
+      `/trips/${encodeURIComponent(tripId)}/photos`,
+      { params: { limit: PAGE_LIMIT, ...(cursor ? { cursor } : {}) } },
+    );
+    all.push(...data.data);
+    cursor = data.page.hasNext ? data.page.nextCursor : null;
+  } while (cursor);
+  return all;
+}
+
+/** 주제별·장소별·장소 미지정 수 */
+export async function getPhotoSummary(tripId: string): Promise<PhotoSummary> {
+  const { data } = await apiClient.get<DataResponse<PhotoSummary>>(
+    `/trips/${encodeURIComponent(tripId)}/photo-summary`,
+  );
+  return data.data;
+}
+
+/** 여행 코스 장소(장소 이름·일차) */
+export async function getCoursePlaces(tripId: string): Promise<CoursePlace[]> {
+  const { data } = await apiClient.get<DataResponse<{ items: CoursePlace[] }>>(
+    `/trips/${encodeURIComponent(tripId)}/itinerary`,
+  );
+  return data.data.items;
+}
+
+/** 코스에 없는 장소의 이름. GET /places/{placeId} */
+export async function getPlaceName(placeId: string): Promise<string> {
+  const { data } = await apiClient.get<DataResponse<{ id: string; name: string }>>(
+    `/places/${encodeURIComponent(placeId)}`,
+  );
+  return data.data.name;
+}
+
+/** 사진을 장소에 연결(올린 사람만). 버전이 다르면 409 VERSION_CONFLICT */
+export async function updatePhotoPlace(
+  tripId: string,
+  photo: Pick<TripPhoto, 'id' | 'version'>,
+  placeId: string | null,
+): Promise<TripPhoto> {
+  const { data } = await apiClient.patch<DataResponse<TripPhoto>>(
+    `/trips/${encodeURIComponent(tripId)}/photos/${encodeURIComponent(photo.id)}`,
+    { expectedVersion: photo.version, placeId },
+  );
+  return data.data;
 }
 
 /** 업로드 배치. 같은 고르기의 재요청은 같은 Idempotency-Key로 보내 배치가 두 번 생기지 않는다 */
