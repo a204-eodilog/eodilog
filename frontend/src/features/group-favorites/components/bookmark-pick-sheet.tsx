@@ -10,7 +10,7 @@ type Props = {
   onClose(): void;
   /** 내 개인 즐겨찾기. 받는 중이면 undefined */
   bookmarks: Bookmark[] | undefined;
-  /** 이미 그룹에 있는 장소 */
+  /** 내가 이미 그룹에 담은 장소 */
   inGroup: Set<string>;
   onConfirm(placeIds: string[]): void;
   busy: boolean;
@@ -18,7 +18,8 @@ type Props = {
 
 /**
  * 내 개인 즐겨찾기에서 그룹에 담을 장소 고르기. 고른 장소만 동행에게 보인다.
- * 이미 그룹에 있는 장소는 '담김', 원본이 사라진 장소는 고를 수 없다.
+ * 내가 이미 담은 장소는 '담김', 원본이 사라진 장소는 고를 수 없다.
+ * 동행만 담은 장소는 골라서 내 저장을 더할 수 있다.
  */
 export function BookmarkPickSheet({
   visible,

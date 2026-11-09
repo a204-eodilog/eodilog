@@ -25,6 +25,7 @@ import { PlaceSheet } from '../components/place-sheet';
 import { useCoursePlaces } from '../hooks/use-course-places';
 import { useFavoriteMutations } from '../hooks/use-favorite-mutations';
 import { useGroupFavorites } from '../hooks/use-group-favorites';
+import { isMine } from '../group-rules';
 import type { SavedFilter, SavedPlace, SavedPlacePage } from '../types';
 
 export type Person = { id: string; name: string; imageUrl: string | null; me: boolean };
@@ -330,7 +331,8 @@ export function GroupFavoritesScreen() {
         visible={picking}
         onClose={() => setPicking(false)}
         bookmarks={bookmarks.data}
-        inGroup={new Set(list.items.map((i) => i.place.id))}
+        // 동행만 담은 장소는 내가 더 담아 겹치게 할 수 있어 내가 담은 장소만 막는다
+        inGroup={new Set(list.items.filter((i) => isMine(i, myMemberId)).map((i) => i.place.id))}
         busy={mutations.busy}
         onConfirm={(ids) =>
           void mutations.add(ids).then((n) => {

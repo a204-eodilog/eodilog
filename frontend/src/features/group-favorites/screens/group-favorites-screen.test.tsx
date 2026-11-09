@@ -266,9 +266,9 @@ describe('담기와 빼기', () => {
     expect(toast.show).toHaveBeenCalledWith('준비 중이에요');
   });
 
-  it('개인 즐겨찾기에서 여러 곳을 골라 담고, 이미 있는 곳은 담김이다', async () => {
+  it('개인 즐겨찾기에서 여러 곳을 골라 담고, 내가 이미 담은 곳은 담김이다', async () => {
     mockBookmarks.mockResolvedValue([
-      bookmark(place('p-haeundae', '해운대 해변')),
+      bookmark(place('p-gamcheon', '감천문화마을')),
       bookmark(place('p-b1', '전포 카페거리')),
       bookmark(place('p-b2', '강문 해변')),
     ]);
@@ -282,6 +282,18 @@ describe('담기와 빼기', () => {
     await waitFor(() => expect(mockPut).toHaveBeenCalledTimes(2));
     expect(mockPut.mock.calls.map(([, id]) => id)).toEqual(['p-b1', 'p-b2']);
     expect(toast.success).toHaveBeenCalledWith('2곳을 그룹 즐겨찾기에 담았어요');
+  });
+
+  it('동행만 담은 장소는 골라서 내 저장을 더할 수 있다', async () => {
+    mockBookmarks.mockResolvedValue([bookmark(place('p-haeundae', '해운대 해변'))]);
+    await renderScreen();
+    await fireEvent.press(await screen.findByLabelText('장소 추가'));
+    await fireEvent.press(screen.getByText('내 개인 즐겨찾기에서'));
+    const row = await screen.findByRole('checkbox', { name: '해운대 해변' });
+    expect(screen.queryByText('담김')).toBeNull();
+    await fireEvent.press(row);
+    await fireEvent.press(screen.getByText('1곳 담기'));
+    await waitFor(() => expect(mockPut).toHaveBeenCalledWith('trip-1', 'p-haeundae'));
   });
 
   it('안 담은 장소는 나도 담기를 두 번 눌러도 한 번 담는다', async () => {
