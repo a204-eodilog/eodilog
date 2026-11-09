@@ -20,7 +20,13 @@ const MENU: MenuItem[] = [
   { key: 'poll', label: '투표', icon: 'check' },
   { key: 'course', label: '코스', icon: 'map-pin' },
   { key: 'today', label: '여행 중', icon: 'trip' },
-  { key: 'photos', label: '사진', icon: 'copy' },
+  {
+    key: 'photos',
+    label: '사진',
+    icon: 'image',
+    // S31 여행 사진 목록(photos/index.tsx). 경비처럼 실제 주소로 보낸다
+    open: (tripId) => router.push(`/trips/${tripId}/photos`),
+  },
   {
     key: 'review',
     label: '평가',
