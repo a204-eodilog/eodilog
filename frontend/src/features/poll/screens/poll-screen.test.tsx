@@ -3,8 +3,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
 
-import { createPoll, getPoll, getPolls, getTripSavedPlaces } from '../api';
-import { poll, savedPlace } from '../testing';
+import { createPoll, getPoll, getPolls, getTripSavedPlaces, replaceBallot } from '../api';
+import { candidate, poll, savedPlace } from '../testing';
 import { PollScreen } from './poll-screen';
 
 const mockParams: { tripId: string; pollId?: string } = { tripId: 'trip-1' };
@@ -46,6 +46,8 @@ jest.mock('@/features/trip/hooks/use-region-names', () => ({
   }),
 }));
 
+jest.mock('@/hooks/use-me', () => ({ useMe: () => ({ data: { nickname: '영광' } }) }));
+
 jest.mock('@react-native-community/datetimepicker', () => ({
   __esModule: true,
   default: () => null,
@@ -80,6 +82,7 @@ jest.mock('@/components/ui', () => {
     ),
     Tag: ({ label }: { label: string }) => <Text>{label}</Text>,
     Header: ({ title }: { title?: string }) => <Text>{title}</Text>,
+    Avatar: () => null,
     AvatarGroup: () => null,
     ErrorState: ({ title }: { title?: string }) => <Text>{title ?? '불러오지 못했어요'}</Text>,
     EmptyState: ({
@@ -122,6 +125,7 @@ const mockGetPolls = jest.mocked(getPolls);
 const mockGetPoll = jest.mocked(getPoll);
 const mockCreatePoll = jest.mocked(createPoll);
 const mockSaved = jest.mocked(getTripSavedPlaces);
+const mockReplace = jest.mocked(replaceBallot);
 
 function renderScreen() {
   const client = new QueryClient({
@@ -200,5 +204,62 @@ describe('투표 열기', () => {
     mockGetPoll.mockRejectedValue(notFound);
     await renderScreen();
     expect(await screen.findByText('볼 수 없는 투표예요')).toBeTruthy();
+  });
+});
+
+const OPEN = poll({
+  candidates: [
+    candidate('c1', { regionId: 'busan', voteCount: 1 }),
+    candidate('c2', { regionId: 'gangneung', voteCount: 1 }),
+  ],
+  myCandidateIds: ['c1'],
+  votedMemberCount: 2,
+});
+
+function versionConflict() {
+  return Object.assign(new Error('409'), {
+    isAxiosError: true,
+    response: { status: 409, data: { error: { code: 'VERSION_CONFLICT', message: '' } } },
+  });
+}
+
+describe('진행 중 투표', () => {
+  beforeEach(() => {
+    mockParams.pollId = 'poll-1';
+    mockGetPoll.mockResolvedValue(OPEN);
+  });
+
+  it('후보를 누르면 표 수와 내 선택이 바로 바뀌고 요약이 바뀐다', async () => {
+    mockReplace.mockImplementation(() => new Promise(() => undefined));
+    await renderScreen();
+    expect(await screen.findByText('부산에 투표했어요')).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText('강릉시 1표'));
+    expect(await screen.findByLabelText('강릉시 2표')).toBeTruthy();
+    expect(screen.getByText('2곳 투표했어요')).toBeTruthy();
+    expect(mockReplace).toHaveBeenCalledWith('trip-1', 'poll-1', ['c1', 'c2'], 1);
+  });
+
+  it('후보가 추가돼 저장이 거절되면 부산 선택을 그대로 두고 안내와 다시 시도를 보인다', async () => {
+    mockReplace.mockRejectedValueOnce(versionConflict());
+    await renderScreen();
+    await screen.findByText('부산에 투표했어요');
+    mockGetPoll.mockResolvedValue({ ...OPEN, version: 2 });
+    await fireEvent.press(screen.getByLabelText('강릉시 1표'));
+    expect(await screen.findByText('강릉시로 바꾸지 못했어요.')).toBeTruthy();
+    expect(screen.getByText('부산 투표는 그대로예요')).toBeTruthy();
+    expect(screen.getByText('후보를 눌러 투표해요')).toBeTruthy();
+    expect(screen.getByText('부산에 투표했어요')).toBeTruthy();
+
+    mockReplace.mockResolvedValueOnce({ ...OPEN, version: 2, myCandidateIds: ['c1', 'c2'] });
+    await fireEvent.press(screen.getByText('다시 시도'));
+    expect(mockReplace).toHaveBeenLastCalledWith('trip-1', 'poll-1', ['c1', 'c2'], 2);
+  });
+
+  it('취소를 누르면 내 선택을 모두 비운다', async () => {
+    mockReplace.mockResolvedValue({ ...OPEN, myCandidateIds: [], votedMemberCount: 1 });
+    await renderScreen();
+    await fireEvent.press(await screen.findByText('취소'));
+    expect(mockReplace).toHaveBeenCalledWith('trip-1', 'poll-1', [], 1);
+    expect(await screen.findByText('후보를 눌러 투표해요')).toBeTruthy();
   });
 });
