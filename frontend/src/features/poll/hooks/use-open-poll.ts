@@ -7,7 +7,13 @@ import { pollTitle } from '../poll-rules';
 import type { CandidateInput, Poll, PollType } from '../types';
 import { pollKey, pollsKey } from './poll-keys';
 
-export type OpenPollInput = { type: PollType; candidates: CandidateInput[]; closesAt: Date };
+export type OpenPollInput = {
+  type: PollType;
+  candidates: CandidateInput[];
+  closesAt: Date;
+  /** 다시 열기는 같은 제목을 쓴다. 없으면 유형별 자동 제목 */
+  title?: string;
+};
 
 /**
  * N8 [투표 열기]와 0표 화면의 [다시 열기].
@@ -16,11 +22,11 @@ export type OpenPollInput = { type: PollType; candidates: CandidateInput[]; clos
 export function useOpenPoll(tripId: string) {
   const queryClient = useQueryClient();
   return useMutation<Poll, ApiError, OpenPollInput>({
-    mutationFn: async ({ type, candidates, closesAt }) => {
+    mutationFn: async ({ type, candidates, closesAt, title }) => {
       try {
         return await createPoll(tripId, {
           type,
-          title: pollTitle(type),
+          title: title ?? pollTitle(type),
           candidates,
           closesAt: closesAt.toISOString(),
         });

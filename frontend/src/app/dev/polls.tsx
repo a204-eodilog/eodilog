@@ -4,7 +4,14 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AvatarGroup, Button, Header } from '@/components/ui';
 import { AddCandidateSheet } from '@/features/poll/components/add-candidate-sheet';
 import { OpenPollSheet } from '@/features/poll/components/open-poll-sheet';
-import { PollEmptyView, PollOpenView } from '@/features/poll/components/poll-views';
+import { PollClosedHeaderCard, PollDecidedCard } from '@/features/poll/components/poll-header-card';
+import {
+  PollEmptyView,
+  PollNoVotesView,
+  PollOpenView,
+  PollResultView,
+  TieConfirmedLine,
+} from '@/features/poll/components/poll-views';
 import { candidate, poll } from '@/features/poll/testing';
 import type { CandidateOption, Poll } from '@/features/poll/types';
 import { colors, layout, spacing, typography } from '@/theme';
@@ -84,8 +91,43 @@ const ADD_OPTIONS: CandidateOption[] = [
   { key: 'r7', title: '전주', subtitle: '그룹 즐겨찾기 1곳', input: { regionId: 'r7' } },
 ];
 
+/** 마감 후 자동 확정(Figma 201-11073): 부산 2표(내 선택) 확정, 강릉 1표, 여수 0표 */
+const DECIDED: Poll = poll({
+  ...OPEN,
+  status: 'FINALIZED',
+  closedReason: 'DEADLINE',
+  closesAt: '2026-10-27T09:40:00Z',
+  votedMemberCount: 3,
+  candidates: [
+    candidate('c1', { voteCount: 2, addedAt: AT }),
+    candidate('c2', { voteCount: 1, addedAt: AT }),
+    candidate('c3', { voteCount: 0, addedAt: AT }),
+  ],
+  myCandidateIds: ['c1'],
+  selectedCandidateIds: ['c1'],
+});
+
+/** 동률(Figma 201-11213): 부산 1표(내 선택)·강릉 1표 모두 확정, 1명 투표 안 함 */
+const TIE: Poll = poll({
+  ...OPEN,
+  status: 'FINALIZED',
+  closedReason: 'DEADLINE',
+  closesAt: '2026-10-28T12:00:00Z',
+  votedMemberCount: 2,
+  selectedCandidateIds: ['c1', 'c2'],
+});
+
+const SOURCES = {
+  c1: { icon: 'bookmark' as const, text: '그룹 즐겨찾기 3곳' },
+  c2: { icon: 'bookmark' as const, text: '그룹 즐겨찾기 2곳' },
+};
+
 type Example =
   | { kind: 'empty' }
+  | { kind: 'decided' }
+  | { kind: 'decidedCard' }
+  | { kind: 'tie' }
+  | { kind: 'noVotes' }
   | { kind: 'open'; poll: Poll; fail?: [string, string]; addSheet?: boolean }
   | { kind: 'n8'; type: 'REGION' | 'PLACE'; options: CandidateOption[]; selected: string[] };
 
@@ -126,6 +168,10 @@ const EXAMPLES: { group: string; label: string; example: Example }[] = [
   },
   { group: 'S22', label: '후보 추가 시트', example: { kind: 'open', poll: OPEN, addSheet: true } },
   { group: 'S22', label: '진행 중 후보 추가됨', example: { kind: 'open', poll: ADDED } },
+  { group: 'S22', label: '마감 후 자동 확정', example: { kind: 'decided' } },
+  { group: 'S22', label: '동률 · 같은 표 모두 확정', example: { kind: 'tie' } },
+  { group: 'S22', label: '0표', example: { kind: 'noVotes' } },
+  { group: 'S22', label: '여행지 확정', example: { kind: 'decidedCard' } },
   {
     group: 'S22 그 밖',
     label: '아직 투표 안 함',
@@ -184,6 +230,79 @@ export default function PollStates() {
           busy={false}
           previewOptions={ADD_OPTIONS}
         />
+      </Frame>
+    );
+  }
+
+  if (example?.kind === 'decided') {
+    return (
+      <Frame title="지역 투표">
+        <PollResultView
+          poll={DECIDED}
+          names={NAMES}
+          sources={SOURCES}
+          heading="결과"
+          header={
+            <PollClosedHeaderCard
+              closedAt="10.27(화) 18:40"
+              title="투표가 마감됐어요"
+              sub="가장 많이 받은 부산으로 확정됐어요"
+            />
+          }
+          action={{ label: '확정된 여행지 보기', icon: 'map-pin', onPress: noop }}
+        />
+      </Frame>
+    );
+  }
+
+  if (example?.kind === 'decidedCard') {
+    return (
+      <Frame title="지역 투표">
+        <PollResultView
+          poll={DECIDED}
+          names={NAMES}
+          heading="투표 결과"
+          header={
+            <PollDecidedCard
+              closedDate="10.27(화)"
+              label="겨울 여행 여행지"
+              name="부산"
+              votes="3명 중 2표"
+              voters="모두 투표했어요"
+            />
+          }
+          action={{ label: '장소 모으고 코스 짜기', icon: 'route', onPress: noop }}
+        />
+      </Frame>
+    );
+  }
+
+  if (example?.kind === 'tie') {
+    return (
+      <Frame title="지역 투표">
+        <PollResultView
+          poll={TIE}
+          names={NAMES}
+          tie
+          heading="부산과 강릉이 함께 확정됐어요"
+          header={
+            <PollClosedHeaderCard
+              closedAt="10.28(수) 21:00"
+              title="부산과 강릉이 1표씩 같아요"
+              sub="1명이 투표하지 않고 마감됐어요"
+            />
+          }
+          between={<TieConfirmedLine text="부산과 강릉을 모두 확정했어요" />}
+          action={{ label: '코스에서 날짜별로 나누기', icon: 'check', onPress: noop }}
+        />
+      </Frame>
+    );
+  }
+
+  if (example?.kind === 'noVotes') {
+    return (
+      <Frame title="지역 투표">
+        <PollNoVotesView onReopen={noop} reopening={false} onDecide={noop} />
       </Frame>
     );
   }
