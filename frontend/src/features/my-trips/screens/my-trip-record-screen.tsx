@@ -66,7 +66,7 @@ export function MyTripRecordScreen() {
         // S31 사진 목록, S24 코스 화면은 아직 없다
         onPhotos={notReady}
         onCourse={notReady}
-        onReview={() => router.push({ pathname: '/trips/[tripId]/visits', params: { tripId } })}
+        onReview={() => router.push(`/trips/${tripId}/visits`)}
         onExpense={() => router.push(`/trips/${tripId}/expenses`)}
         // 지도 핀 고치기 화면은 아직 없다
         onMovePin={notReady}

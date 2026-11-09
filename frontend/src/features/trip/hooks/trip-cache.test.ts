@@ -1,14 +1,15 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { QueryClient } from '@tanstack/react-query';
 
-import { dropFromTripLists, forgetTrip, invalidateTripLists } from './trip-cache';
+import { dropFromTripLists, exitTrip, forgetTrip, invalidateTripLists } from './trip-cache';
 
 jest.mock('expo-router', () => ({
   router: { canDismiss: () => false, dismissAll: jest.fn(), navigate: jest.fn() },
 }));
-jest.mock('../invite-storage', () => ({ forgetInviteLink: jest.fn() }));
+jest.mock('../invite-storage', () => ({ forgetInviteLink: jest.fn(async () => undefined) }));
 // 서버 주소 설정 없이 돌도록 API 모듈은 비워 둔다
 jest.mock('../api', () => ({ getTrip: jest.fn() }));
+jest.mock('expo-crypto', () => ({ randomUUID: () => 'cid-1' }));
 
 let queryClient: QueryClient;
 
@@ -69,5 +70,33 @@ describe('dropFromTripLists', () => {
     await dropFromTripLists(queryClient, 't1');
     expect(queryClient.getQueryData(['trips', 'mine'])).toBeUndefined();
     expect(queryClient.getQueryData(['me', 'trips'])).toBeUndefined();
+  });
+});
+
+describe('exitTrip 채팅 정리', () => {
+  it('채팅 탭 목록에서 그 여행의 방을 빼고, 대화방·메시지 캐시도 지운다', async () => {
+    const room = (id: string, tripId: string) => ({
+      id,
+      type: 'TRIP',
+      tripId,
+      participants: [],
+      lastMessage: null,
+    });
+    queryClient.setQueryData(['chat', 'rooms'], {
+      pages: [
+        { data: [room('r1', 't1'), room('r2', 't2')], page: { nextCursor: null, hasNext: false } },
+      ],
+      pageParams: [null],
+    });
+    queryClient.setQueryData(['trips', 't1', 'chat-room'], room('r1', 't1'));
+    queryClient.setQueryData(['trips', 't1', 'chat-messages'], { roomId: 'r1', messages: [] });
+    await exitTrip(queryClient, 't1');
+    const rooms = queryClient.getQueryData<{ pages: { data: { tripId: string }[] }[] }>([
+      'chat',
+      'rooms',
+    ]);
+    expect(rooms!.pages[0].data.map((r) => r.tripId)).toEqual(['t2']);
+    expect(queryClient.getQueryData(['trips', 't1', 'chat-room'])).toBeUndefined();
+    expect(queryClient.getQueryData(['trips', 't1', 'chat-messages'])).toBeUndefined();
   });
 });
