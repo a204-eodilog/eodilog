@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AvatarGroup, Button, Header } from '@/components/ui';
+import { AddCandidateSheet } from '@/features/poll/components/add-candidate-sheet';
 import { OpenPollSheet } from '@/features/poll/components/open-poll-sheet';
 import { PollEmptyView, PollOpenView } from '@/features/poll/components/poll-views';
 import { candidate, poll } from '@/features/poll/testing';
@@ -63,9 +64,29 @@ const OPEN: Poll = poll({
   myCandidateIds: ['c1'],
 });
 
+/** 진행 중 후보 추가됨(Figma 385-2305): 경주가 투표 중에 들어왔고 내 선택은 부산·강릉 2곳 */
+const ADDED: Poll = poll({
+  ...OPEN,
+  version: 2,
+  votedMemberCount: 2,
+  candidates: [
+    candidate('c1', { voteCount: 1, addedAt: AT }),
+    candidate('c2', { voteCount: 2, addedAt: AT }),
+    candidate('c3', { voteCount: 0, addedAt: AT }),
+    candidate('c4', { voteCount: 0, addedAt: '2026-10-27T11:50:00Z' }),
+  ],
+  myCandidateIds: ['c1', 'c2'],
+});
+
+const ADD_OPTIONS: CandidateOption[] = [
+  { key: 'r5', title: '경주', subtitle: '그룹 즐겨찾기 2곳', input: { regionId: 'r5' } },
+  { key: 'r6', title: '제주', subtitle: '그룹 즐겨찾기 1곳', input: { regionId: 'r6' } },
+  { key: 'r7', title: '전주', subtitle: '그룹 즐겨찾기 1곳', input: { regionId: 'r7' } },
+];
+
 type Example =
   | { kind: 'empty' }
-  | { kind: 'open'; poll: Poll; fail?: [string, string] }
+  | { kind: 'open'; poll: Poll; fail?: [string, string]; addSheet?: boolean }
   | { kind: 'n8'; type: 'REGION' | 'PLACE'; options: CandidateOption[]; selected: string[] };
 
 const EXAMPLES: { group: string; label: string; example: Example }[] = [
@@ -103,6 +124,8 @@ const EXAMPLES: { group: string; label: string; example: Example }[] = [
       fail: ['강릉으로 바꾸지 못했어요.', '부산 투표는 그대로예요'],
     },
   },
+  { group: 'S22', label: '후보 추가 시트', example: { kind: 'open', poll: OPEN, addSheet: true } },
+  { group: 'S22', label: '진행 중 후보 추가됨', example: { kind: 'open', poll: ADDED } },
   {
     group: 'S22 그 밖',
     label: '아직 투표 안 함',
@@ -151,6 +174,15 @@ export default function PollStates() {
           onCancel={noop}
           onRetry={noop}
           onAddCandidate={noop}
+        />
+        <AddCandidateSheet
+          visible={!!example.addSheet}
+          onClose={back}
+          tripId="trip-1"
+          poll={example.poll}
+          onSubmit={async () => back()}
+          busy={false}
+          previewOptions={ADD_OPTIONS}
         />
       </Frame>
     );

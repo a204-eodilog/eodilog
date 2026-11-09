@@ -2,20 +2,22 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
-import { AvatarGroup, ErrorState, Header } from '@/components/ui';
+import { AvatarGroup, ErrorState, Header, toast } from '@/components/ui';
 import { useTrip } from '@/features/trip/hooks/use-trip';
 import { colors, spacing, typography } from '@/theme';
 
 import { useMe } from '@/hooks/use-me';
 
+import { AddCandidateSheet } from '../components/add-candidate-sheet';
 import { OpenPollSheet } from '../components/open-poll-sheet';
 import { PollEmptyView, PollOpenView } from '../components/poll-views';
+import { useAddCandidates } from '../hooks/use-add-candidates';
 import { useBallot } from '../hooks/use-ballot';
 import { useCandidateNames } from '../hooks/use-candidate-names';
 import { usePoll } from '../hooks/use-poll';
 import { usePolls } from '../hooks/use-polls';
 import { ballotFailLines, pollTypeLabel, pollViewState } from '../poll-rules';
-import type { Poll } from '../types';
+import type { CandidateInput, Poll } from '../types';
 
 /**
  * S22 지역·장소 투표. 주소에 투표 ID가 있으면 그 투표를, 없으면 대표 투표를 보인다(research R7).
@@ -101,6 +103,8 @@ export function PollScreen() {
 function OpenSection({ tripId, poll }: { tripId: string; poll: Poll }) {
   const { data: me } = useMe();
   const ballot = useBallot(tripId, poll);
+  const add = useAddCandidates(tripId, poll.id);
+  const [addOpen, setAddOpen] = useState(false);
   const view = ballot.view ?? poll;
   const { names } = useCandidateNames(view.candidates);
   const nameOf = (ids: string[]) => ids.map((id) => names[id]).filter(Boolean);
@@ -113,17 +117,38 @@ function OpenSection({ tripId, poll }: { tripId: string; poll: Poll }) {
         nameOf(poll.myCandidateIds),
       )
     : null;
+  const submitAdd = async (inputs: CandidateInput[]) => {
+    try {
+      const result = await add.mutateAsync(inputs);
+      setAddOpen(false);
+      if (result.closed) toast.show('투표가 마감됐어요');
+      else if (result.skipped > 0) toast.show(`${result.skipped}곳은 이미 후보라 넣지 않았어요`);
+    } catch {
+      toast.show('후보를 넣지 못했어요. 다시 눌러 주세요');
+    }
+  };
   return (
-    <PollOpenView
-      poll={view}
-      names={names}
-      myName={me?.nickname ?? '나'}
-      now={new Date()}
-      failLines={failLines}
-      onToggle={ballot.toggle}
-      onCancel={ballot.cancel}
-      onRetry={ballot.retry}
-    />
+    <>
+      <PollOpenView
+        poll={view}
+        names={names}
+        myName={me?.nickname ?? '나'}
+        now={new Date()}
+        failLines={failLines}
+        onToggle={ballot.toggle}
+        onCancel={ballot.cancel}
+        onRetry={ballot.retry}
+        onAddCandidate={() => setAddOpen(true)}
+      />
+      <AddCandidateSheet
+        visible={addOpen}
+        onClose={() => setAddOpen(false)}
+        tripId={tripId}
+        poll={poll}
+        onSubmit={submitAdd}
+        busy={add.isPending}
+      />
+    </>
   );
 }
 
