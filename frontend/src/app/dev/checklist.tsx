@@ -5,6 +5,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '@/components/ui';
 import { ChecklistView } from '@/features/checklist/screens/checklist-screen';
 import { checklistItem } from '@/features/checklist/testing';
+import type { SuggestFailure } from '@/features/checklist/hooks/use-suggest-checklist';
 import type { ChecklistItem } from '@/features/checklist/types';
 import { colors, layout, spacing, typography } from '@/theme';
 
@@ -53,13 +54,25 @@ function sampleItems(): ChecklistItem[] {
 }
 
 type State =
-  'default' | 'edit-sheet' | 'empty' | 'empty-adding' | 'loading' | 'load-error' | 'not-found';
+  | 'default'
+  | 'edit-sheet'
+  | 'empty'
+  | 'empty-adding'
+  | 'suggesting'
+  | 'suggest-fail'
+  | 'disabled'
+  | 'loading'
+  | 'load-error'
+  | 'not-found';
 
 const STATES: { state: State; label: string }[] = [
   { state: 'default', label: '기본 201-15314' },
   { state: 'edit-sheet', label: '고치기 시트' },
   { state: 'empty', label: '항목 없음 201-15518' },
   { state: 'empty-adding', label: '항목 없음 · 직접 추가' },
+  { state: 'suggesting', label: '제안 받는 중' },
+  { state: 'suggest-fail', label: '다시 제안 실패 201-30067' },
+  { state: 'disabled', label: '추천 꺼짐' },
   { state: 'loading', label: '불러오는 중' },
   { state: 'load-error', label: '불러오기 실패' },
   { state: 'not-found', label: '여행 없음' },
@@ -70,6 +83,9 @@ const STATUS: Record<State, 'ready' | 'loading' | 'error' | 'notFound'> = {
   'edit-sheet': 'ready',
   empty: 'ready',
   'empty-adding': 'ready',
+  suggesting: 'ready',
+  'suggest-fail': 'ready',
+  disabled: 'ready',
   loading: 'loading',
   'load-error': 'error',
   'not-found': 'notFound',
@@ -81,6 +97,27 @@ export default function DevChecklist() {
   const [state, setState] = useState<State | null>(initial);
   const [items, setItems] = useState(() => (initial?.startsWith('empty') ? [] : sampleItems()));
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [suggesting, setSuggesting] = useState(initial === 'suggesting');
+  const [failure, setFailure] = useState<SuggestFailure | null>(
+    initial === 'suggest-fail' ? 'general' : initial === 'disabled' ? 'disabled' : null,
+  );
+
+  /** 미리보기의 다시 제안 받기: 잠시 기다렸다가 목록에 없는 예시 두 개를 더한다 */
+  const suggest = () => {
+    setFailure(null);
+    setSuggesting(true);
+    setTimeout(() => {
+      setItems((list) => {
+        const names = new Set(list.map((i) => i.label));
+        const extra = [
+          checklistItem({ label: '선크림', source: 'AI', reason: '낮 최고 기온 24도' }),
+          checklistItem({ label: '물티슈', source: 'AI', reason: '바닷가 일정이 있어요' }),
+        ].filter((i) => !names.has(i.label));
+        return [...list, ...extra];
+      });
+      setSuggesting(false);
+    }, 2000);
+  };
 
   // 웹의 아래 시트는 화면이 그려진 뒤에 열어야 올라오는 모습이 보인다
   useEffect(() => {
@@ -129,10 +166,10 @@ export default function DevChecklist() {
           return true;
         }}
         onDelete={(item) => setItems((list) => list.filter((i) => i.id !== item.id))}
-        onSuggest={() => {}}
-        suggesting={false}
-        failure={null}
-        onFailAction={() => {}}
+        onSuggest={suggest}
+        suggesting={suggesting}
+        failure={failure}
+        onFailAction={failure === 'disabled' ? () => router.push('/settings') : suggest}
         initialAddOpen={state === 'empty-adding'}
       />
     );
@@ -150,6 +187,10 @@ export default function DevChecklist() {
             variant="secondary"
             onPress={() => {
               setItems(s.state.startsWith('empty') ? [] : sampleItems());
+              setSuggesting(s.state === 'suggesting');
+              setFailure(
+                s.state === 'suggest-fail' ? 'general' : s.state === 'disabled' ? 'disabled' : null,
+              );
               setState(s.state);
             }}
           />
