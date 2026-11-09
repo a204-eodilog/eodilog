@@ -18,7 +18,13 @@ const MENU: MenuItem[] = [
   { key: 'favorites', label: '즐겨찾기', icon: 'bookmark' },
   { key: 'recommend', label: '추천', icon: 'search' },
   { key: 'poll', label: '투표', icon: 'check' },
-  { key: 'course', label: '코스', icon: 'map-pin' },
+  {
+    key: 'course',
+    label: '코스',
+    icon: 'map-pin',
+    // S24 코스(course/index.tsx). 코스가 비어 있으면 그 화면이 S23 코스 짜기로 바꿔 연다
+    open: (tripId) => router.push(`/trips/${tripId}/course`),
+  },
   { key: 'today', label: '여행 중', icon: 'trip' },
   {
     key: 'photos',
