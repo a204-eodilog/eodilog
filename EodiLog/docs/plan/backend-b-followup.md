@@ -622,4 +622,4 @@ A가 만든 알림 기반(`events`·`notifications`, `GET /me/notifications`)에
 - A: api-spec §2 409 표에 `PROPOSAL_NOT_READY`·`UNDO_UNAVAILABLE`을 추가했고, §9 운영 실행기 문장에 ITINERARY_PROPOSAL을 넣었다.
 - AI(장수철, -150): 구현(ef31816)이 백엔드 계약과 맞는 것을 실제 호출로 확인했다. INITIAL의 `current` id 유지와 지역 모르는 장소 처리는 AS-16에 답이 있다. 알릴 것: 백엔드는 대상 장소를 200곳까지 보낸다. places에 `category`가 없어(places 열 없음) 식당·카페 시간 규칙은 적용되지 않는다. 카카오 키가 있을 때 구간이 많으면 45초 예산 안에 끝나는지는 아직 확인하지 않았다.
 - 프론트: 요청 → `GET /itinerary/proposals/{jobId}` 폴링 → 비교(현재 코스는 `GET /itinerary`) → apply(`expectedVersion`) → 필요하면 undo(`expectedVersion`=적용 후 version, `appliedJobId`). 409 VERSION_CONFLICT면 코스를 다시 조회하고 새 제안을 요청한다. 제안 구간은 새 항목 사이라 `day/fromOrder/toOrder`로 가리킨다.
-- 남은 위험: 실제 AI 미구현. 코스 AI 설정이 없어 동의 검사가 없다. AI 이동 시간을 저장한 구간도 이후 PUT으로 바꾸면 UNAVAILABLE로 다시 저장된다(경로 재계산 작업 때 정한다).
+- 남은 위험: 카카오 키가 있을 때 AVAILABLE 구간의 실제 저장과 45초 예산은 확인하지 못했다. 코스 AI 설정이 없어 동의 검사가 없다. AI 이동 시간을 저장한 구간도 이후 PUT으로 바꾸면 UNAVAILABLE로 다시 저장된다(경로 재계산 작업 때 정한다).
