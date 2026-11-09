@@ -15,7 +15,7 @@ import { buildVisitDays, manualVisitedAt, visitSummary, type VisitRow } from '..
 /**
  * S33 방문 장소 평가 목록. 여행 상세(S17)의 '평가'에서 연다.
  * 사진 방문 후보(visit-candidates) API가 아직 없어서 코스 장소를 '다녀옴'으로 직접 체크하고,
- * [평가하기]·내 점수로 S34에 간다. [사진 올리기]는 준비 중 안내를 띄운다
+ * [평가하기]·내 점수로 S34에 간다. [사진 올리기]는 S30 사진 선택·업로드로 간다
  */
 export function VisitListScreen() {
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
@@ -99,8 +99,7 @@ export function VisitListScreen() {
           params: { tripId, visitId: row.visit.id },
         });
       }}
-      // S30 사진 선택·업로드는 아직 없다
-      onUpload={() => toast.show('준비 중이에요')}
+      onUpload={() => router.push(`/trips/${tripId}/photos/upload`)}
     />
   );
 }

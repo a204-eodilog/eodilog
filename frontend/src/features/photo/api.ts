@@ -1,0 +1,101 @@
+import { apiClient } from '@/api/client';
+import { toApiError } from '@/api/errors';
+import type { DataResponse, Trip } from '@/api/types';
+import { env } from '@/config/env';
+
+import { isBusy } from './photo-rules';
+import type { PhotoBatch, PickedPhoto, TripPhoto, UploadIntent } from './types';
+
+/** 머리에 쓸 여행 이름. GET /trips/{tripId} */
+export async function getTripTitle(tripId: string): Promise<string> {
+  const { data } = await apiClient.get<DataResponse<Trip>>(`/trips/${encodeURIComponent(tripId)}`);
+  return data.data.title;
+}
+
+/** 업로드 배치. 같은 고르기의 재요청은 같은 Idempotency-Key로 보내 배치가 두 번 생기지 않는다 */
+export async function createPhotoBatch(
+  tripId: string,
+  fileCount: number,
+  idempotencyKey: string,
+): Promise<PhotoBatch> {
+  const { data } = await apiClient.post<DataResponse<PhotoBatch>>(
+    `/trips/${encodeURIComponent(tripId)}/photo-upload-batches`,
+    { fileCount },
+    { headers: { 'Idempotency-Key': idempotencyKey } },
+  );
+  return data.data;
+}
+
+/** 사진 바이트. 선택창이 크기를 주지 않아도 실제 크기를 알 수 있게 먼저 읽는다 */
+export async function readPhoto(uri: string): Promise<Blob> {
+  return (await fetch(uri)).blob();
+}
+
+/** 파일 자리 받기(TRIP_PHOTO는 tripId·batchId 필수) */
+export async function requestUploadIntent(input: {
+  tripId: string;
+  batchId: string;
+  contentType: string;
+  byteSize: number;
+}): Promise<UploadIntent> {
+  const { data } = await apiClient.post<DataResponse<UploadIntent>>('/assets/upload-intents', {
+    purpose: 'TRIP_PHOTO',
+    ...input,
+  });
+  return data.data;
+}
+
+/**
+ * 받은 서명 주소로 바이트를 보낸다. API 인증 헤더는 붙이지 않고 응답 headers를 그대로 쓰되,
+ * content-length는 런타임이 바디 크기로 정하게 뺀다(백엔드 사용 순서 3). 테스트 모드면 보내지 않는다
+ */
+export async function putPhoto(intent: UploadIntent, body: Blob, signal?: AbortSignal) {
+  if (env.devMock) return;
+  const headers = Object.fromEntries(
+    Object.entries(intent.headers).filter(([name]) => name.toLowerCase() !== 'content-length'),
+  );
+  const res = await fetch(intent.uploadUrl, { method: intent.method, headers, body, signal });
+  if (!res.ok) throw new Error(`upload failed: ${res.status}`);
+}
+
+const BUSY_RETRIES = 5;
+const BUSY_WAIT_MS = 800;
+
+/**
+ * 업로드 완료 확인. 서버는 완료 처리를 한 번에 한 건만 해서 다른 사진을 처리 중이면 503을 준다.
+ * 그때는 조금 기다렸다 다시 보낸다(최대 5번)
+ */
+export async function completeAsset(assetId: string, signal?: AbortSignal): Promise<void> {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      await apiClient.post(`/assets/${encodeURIComponent(assetId)}/complete`, undefined, {
+        signal,
+      });
+      return;
+    } catch (e) {
+      if (signal?.aborted || attempt >= BUSY_RETRIES || !isBusy(toApiError(e).status)) throw e;
+      await new Promise((resolve) => setTimeout(resolve, BUSY_WAIT_MS * (attempt + 1)));
+    }
+  }
+}
+
+/** 아직 완료하지 않은 파일 지우기(올리기 취소). 실패해도 서버가 기한 뒤 정리한다 */
+export async function cancelAsset(assetId: string): Promise<void> {
+  await apiClient.delete(`/assets/${encodeURIComponent(assetId)}`);
+}
+
+/** 완료된 파일을 여행 사진으로 등록. 같은 asset·같은 본문 재요청은 같은 결과를 준다 */
+export async function registerPhoto(
+  tripId: string,
+  input: { batchId: string; assetId: string; capturedAt: PickedPhoto['capturedAt'] },
+): Promise<TripPhoto> {
+  const { data } = await apiClient.post<DataResponse<TripPhoto>>(
+    `/trips/${encodeURIComponent(tripId)}/photos`,
+    {
+      batchId: input.batchId,
+      assetId: input.assetId,
+      ...(input.capturedAt ? { capturedAt: input.capturedAt } : {}),
+    },
+  );
+  return data.data;
+}

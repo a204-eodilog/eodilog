@@ -431,6 +431,114 @@ function page<T>(data: T[]) {
   return { data, page: { nextCursor: null, hasNext: false } };
 }
 
+// S30 사진 업로드(백엔드 assets·photos). 바이트는 보내지 않는다(putPhoto가 테스트 모드면 건너뜀).
+// 완료 확인 5번에 1번은 실패해서 일부 실패 화면과 [다시 시도]를 볼 수 있다
+const photoBatches = new Map<string, { id: string; tripId: string; fileCount: number }>();
+const photoBatchByKey = new Map<string, string>();
+const assets = new Map<
+  string,
+  { status: 'PENDING' | 'READY' | 'DELETED'; batchId: string | null }
+>();
+const tripPhotos: { id: string; assetId: string; tripId: string; batchId: string }[] = [];
+let photoSeq = 0;
+let completeCalls = 0;
+
+function handlePhotos(
+  config: InternalAxiosRequestConfig,
+  method: string,
+  url: string,
+): AxiosResponse | null {
+  const body = (
+    typeof config.data === 'string' ? JSON.parse(config.data || '{}') : (config.data ?? {})
+  ) as Record<string, unknown>;
+  const batchMatch = /^\/trips\/([^/]+)\/photo-upload-batches$/.exec(url);
+  if (method === 'post' && batchMatch) {
+    const fileCount = Number(body.fileCount);
+    if (!(fileCount >= 1)) throw fail(config, 400, 'VALIDATION_ERROR', '파일 수를 확인해 주세요.');
+    if (fileCount > 50) throw fail(config, 422, 'INPUT_LIMIT_EXCEEDED', '50장까지 올릴 수 있어요.');
+    const key = String(config.headers['Idempotency-Key'] ?? '');
+    const existing = key ? photoBatchByKey.get(key) : undefined;
+    const id = existing ?? `photo-batch-${(photoSeq += 1)}`;
+    if (!existing) {
+      photoBatches.set(id, { id, tripId: batchMatch[1], fileCount });
+      if (key) photoBatchByKey.set(key, id);
+    }
+    const batch = photoBatches.get(id)!;
+    const registeredCount = tripPhotos.filter((p) => p.batchId === id).length;
+    return ok(
+      config,
+      { data: { ...batch, registeredCount, createdAt: new Date().toISOString() } },
+      201,
+    );
+  }
+  if (method === 'post' && url === '/assets/upload-intents') {
+    const assetId = `asset-${(photoSeq += 1)}`;
+    assets.set(assetId, { status: 'PENDING', batchId: (body.batchId as string) ?? null });
+    return ok(
+      config,
+      {
+        data: {
+          assetId,
+          uploadUrl: `https://dev-mock.invalid/uploads/${assetId}`,
+          method: 'PUT',
+          headers: { 'content-type': String(body.contentType ?? 'image/jpeg') },
+          expiresAt: new Date(Date.now() + 10 * 60_000).toISOString(),
+        },
+      },
+      201,
+    );
+  }
+  const assetMatch = /^\/assets\/([^/]+)(\/complete)?$/.exec(url);
+  if (assetMatch && ((method === 'post' && assetMatch[2]) || method === 'delete')) {
+    const asset = assets.get(assetMatch[1]);
+    if (!asset) throw fail(config, 404, 'ASSET_NOT_FOUND', '파일을 찾을 수 없습니다.');
+    if (asset.status !== 'PENDING') {
+      throw fail(config, 409, 'ASSET_NOT_PENDING', '이미 업로드를 마쳤거나 취소한 파일입니다.');
+    }
+    if (method === 'delete') {
+      asset.status = 'DELETED';
+      return ok(config, null, 204);
+    }
+    completeCalls += 1;
+    if (completeCalls % 5 === 3) {
+      throw fail(config, 422, 'UPLOAD_MISMATCH', '올린 파일이 요청한 크기나 형식과 다릅니다.');
+    }
+    asset.status = 'READY';
+    return ok(config, { data: { id: assetMatch[1], status: 'READY' } });
+  }
+  const photosMatch = /^\/trips\/([^/]+)\/photos$/.exec(url);
+  if (method === 'post' && photosMatch) {
+    const assetId = String(body.assetId);
+    const batchId = String(body.batchId);
+    if (assets.get(assetId)?.status !== 'READY') {
+      throw fail(config, 409, 'ASSET_NOT_READY', '업로드를 마치지 않은 파일입니다.');
+    }
+    const found =
+      tripPhotos.find((p) => p.assetId === assetId) ??
+      (() => {
+        const photo = { id: `photo-${(photoSeq += 1)}`, assetId, tripId: photosMatch[1], batchId };
+        tripPhotos.push(photo);
+        return photo;
+      })();
+    return ok(
+      config,
+      {
+        data: {
+          ...found,
+          uploaderMemberId: 'm-me',
+          placeId: null,
+          capturedAt: (body.capturedAt as string) ?? null,
+          topics: [],
+          groupId: null,
+          version: 1,
+        },
+      },
+      201,
+    );
+  }
+  return null;
+}
+
 function handle(config: InternalAxiosRequestConfig): AxiosResponse {
   const method = (config.method ?? 'get').toLowerCase();
   const url = config.url ?? '';
@@ -438,6 +546,8 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
 
   const chat = chatMock.handle(config, method, url, params);
   if (chat) return chat;
+  const photo = handlePhotos(config, method, url);
+  if (photo) return photo;
 
   if (method === 'get' && url === '/me/following') {
     return followPage(
