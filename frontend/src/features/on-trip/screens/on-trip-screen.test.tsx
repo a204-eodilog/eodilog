@@ -122,7 +122,7 @@ describe('S25 여행 중', () => {
     expect(screen.getByText('지금 09:40')).toBeTruthy();
     expect(screen.getByText('12시부터 그쳐요 · 최고 14° 최저 9°')).toBeTruthy();
     expect(screen.getByText('09:40 조회')).toBeTruthy();
-    expect(screen.getByText('10:00 해운대 해변 일정에 비가 와요')).toBeTruthy();
+    expect(screen.getByText('10:00 해운대 해변에 비가 와요')).toBeTruthy();
     expect(screen.getByText('비 70%')).toBeTruthy();
     expect(await screen.findByText('3/6 챙김')).toBeTruthy();
     expect(screen.getByText('오늘 코스')).toBeTruthy();

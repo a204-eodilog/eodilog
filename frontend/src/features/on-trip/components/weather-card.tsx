@@ -122,7 +122,7 @@ export function WeatherCard(props: CardProps) {
         <View style={styles.affected}>
           <Icon name="alert" size={16} color={colors.text.default} />
           <Text style={[typography.caption, styles.affectedText]} numberOfLines={2}>
-            {`${props.affected.time} ${props.affected.name} 일정에 비가 와요`}
+            {`${props.affected.time} ${props.affected.name}에 비가 와요`}
           </Text>
           <Pressable
             style={styles.link}
