@@ -25,7 +25,7 @@
 - [X] T010 [US2] 읽음 + 여행 확인 + 이동 훅, 두 번 눌러도 한 번, 테스트 src/features/notification/hooks/use-open-notification.ts(+test)
 - [X] T011 [US2] 목록 화면에 열기 연결 src/features/notification/screens/notifications-screen.tsx
 - [X] T012 [US2] 볼 수 없음 화면, 주소, 테스트 src/features/notification/screens/notification-gone-screen.tsx(+test), src/app/(main)/notifications/gone.tsx
-- [ ] T013 [US2] 홈 종 아이콘을 목록으로 연결 src/features/home/screens/home-screen.tsx
+- [X] T013 [US2] 홈 종 아이콘을 목록으로 연결 src/features/home/screens/home-screen.tsx
 
 ## Phase 5: US3 팝업 (P1)
 
