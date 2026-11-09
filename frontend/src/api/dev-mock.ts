@@ -342,7 +342,14 @@ function bump(trip: Trip) {
 /** 채팅 가짜 서버. 여행 목록(trips)에 없는 여행의 방은 404다 */
 const chatMock = createChatMock({ getTrips: () => trips, me: ME, ok, fail });
 /** 코스 가짜 서버. 자동 추천·다시 계산·그룹 즐겨찾기 조회도 답한다 */
-const courseMock = createCourseMock({ getTrips: () => trips, meId: ME.id, ok, fail });
+const courseMock = createCourseMock({
+  getTrips: () => trips,
+  meId: ME.id,
+  ok,
+  fail,
+  // 날씨 변경안은 날씨 대안 가짜 서버가 아는 대안으로 만든다. 부를 때 찾아 정의 순서와 상관없다
+  alternativeOf: (id) => weatherMock.alternativeOf(id),
+});
 /** 여행 중 날씨와 날씨 대안 가짜 서버. 앱용 날씨 API가 없다(Q-10-1) */
 const weatherMock = createWeatherMock({
   getTrips: () => trips,
