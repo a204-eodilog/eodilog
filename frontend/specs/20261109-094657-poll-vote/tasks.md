@@ -124,3 +124,8 @@ MVP는 Phase 2 + US2 + US1(투표 열고 표 던지기). 이어서 US4 결과, U
 ## Phase 10: Review 1
 
 - [ ] T056 dev/polls 미리보기를 주소 ?state=상태이름으로 바로 열 수 있게 해 상태마다 같은 조건으로 화면을 찍어 Figma와 비교한다 in src/app/dev/polls.tsx
+- [ ] T057 후보 줄 이름 옆 '내 선택'·'새 후보'·'가장 많이' 태그를 이름과 세로 가운데로 맞춘다 in src/features/poll/components/candidate-row.tsx
+- [ ] T058 여행지 확정 카드 화면의 결과 목록에서 '내 선택' 태그를 숨겨 Figma 201-11569와 맞춘다 in src/features/poll/components/poll-views.tsx, screens/poll-screen.tsx
+- [ ] T059 0표 화면 [다시 열기] 버튼을 가운데로 맞춘다 in src/features/poll/components/poll-views.tsx
+- [ ] T060 투표 바꾸기 실패 안내 중에는 [+ 후보 추가]를 숨겨 Figma 201-29384와 맞춘다 in src/features/poll/components/poll-views.tsx
+- [ ] T061 미리보기에서 주소로 바로 연 N8·후보 추가 시트가 그린 뒤 열리게 한다 in src/app/dev/polls.tsx
