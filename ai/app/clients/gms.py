@@ -8,6 +8,7 @@ from typing import Any
 import httpx
 
 from app.clients.errors import ProviderUnavailable
+from app.core.metrics import record_llm_call, record_provider_failure
 
 log = logging.getLogger("ai")
 
@@ -36,6 +37,7 @@ class GmsClient:
         self, system: str, user: str, images_jpeg: list[bytes] | None = None
     ) -> dict[str, Any]:
         if not self._key:
+            record_provider_failure()
             raise LLMUnavailable("GMS 키가 설정되지 않았습니다.")
 
         # temperature는 보내지 않는다. gpt-5.6-luna는 값을 넘기면 400을 돌려준다
@@ -60,12 +62,15 @@ class GmsClient:
             usage = body.get("usage") or {}
         except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError, AttributeError) as e:
             # 예외 메시지에 입력 내용이 섞일 수 있어 종류만 남긴다
+            record_provider_failure()
             log.warning("llm_call_failed model=%s error=%s", self._model, type(e).__name__)
             raise LLMUnavailable("LLM 호출에 실패했습니다.") from e
 
         if not isinstance(parsed, dict):
+            record_provider_failure()
             log.warning("llm_call_failed model=%s error=NotJsonObject", self._model)
             raise LLMUnavailable("LLM 응답이 JSON 객체가 아닙니다.")
+        record_llm_call(usage.get("prompt_tokens"), usage.get("completion_tokens"))
         log.info(
             "llm_call model=%s prompt_tokens=%s completion_tokens=%s",
             self._model,

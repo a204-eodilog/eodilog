@@ -99,7 +99,7 @@ class PreferenceInferrer:
                 ],
             )
 
-        by_rule = [(place, _tags_by_rule(place)) for place in places]
+        by_rule = [(place, tags_by_rule(place.name, place.category)) for place in places]
         counts = Counter(tag for _, tags in by_rule for tag in tags)
         counts.update(await self._tags_by_llm([place for place, tags in by_rule if not tags]))
 
@@ -136,16 +136,16 @@ class PreferenceInferrer:
         return _count_llm_tags(items, len(targets))
 
 
-def _tags_by_rule(place: SavedPlace) -> set[str]:
-    if place.category:
-        segments = [segment.strip() for segment in place.category.split(">")]
+def tags_by_rule(name: str, category: str | None) -> set[str]:
+    if category:
+        segments = [segment.strip() for segment in category.split(">")]
         tags = _tags_by_category(segments)
         if tags:
             return tags
     return {
         tag
         for tag, keywords in NAME_KEYWORDS.items()
-        if any(keyword in place.name for keyword in keywords)
+        if any(keyword in name for keyword in keywords)
     }
 
 
