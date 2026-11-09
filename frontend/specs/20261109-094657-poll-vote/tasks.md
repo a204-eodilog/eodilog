@@ -92,9 +92,9 @@
 
 ## Phase 8: Polish
 
-- [ ] T048 긴 제목·긴 후보 이름 말줄임, 후보 30곳 스크롤 끝이 하단 요약에 가려지지 않음, 안전 영역, 터치 영역 44, 접근성 라벨 점검과 수정(`/dev/polls`에 긴 예시 추가)
-- [ ] T049 `specs/20261109-094657-poll-vote/quickstart.md`를 구현 결과에 맞게 고침(가짜 서버 조작 이름 등)
-- [ ] T050 전체 `npm test`, `npm run typecheck`, `npm run lint` 통과
+- [X] T048 긴 제목·긴 후보 이름 말줄임, 후보 30곳 스크롤 끝이 하단 요약에 가려지지 않음, 안전 영역, 터치 영역 44, 접근성 라벨 점검과 수정(`/dev/polls`에 긴 예시 추가)
+- [X] T049 `specs/20261109-094657-poll-vote/quickstart.md`를 구현 결과에 맞게 고침(가짜 서버 조작 이름 등)
+- [X] T050 전체 `npm test`, `npm run typecheck`, `npm run lint` 통과
 - [ ] T051 (사용자) 로컬 백엔드(`EodiLog/dev-up.cmd`) + 웹 실서버 모드(`expo-web-live`)로 quickstart 실서버 순서 확인
 - [ ] T052 (사용자) 안드로이드 기기 확인(마지막): 마감 시각 선택기, 두 계정 투표
 
