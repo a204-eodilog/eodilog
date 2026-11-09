@@ -254,7 +254,10 @@ export function OnTripScreen() {
       computedAt={queried ? clock(queried) : null}
       // 날씨 대안은 그 날과 첫 장소로 연다
       onWeather={() =>
-        router.push(`/trips/${tripId}/weather?date=${date ?? ''}&placeId=${placeId ?? ''}` as Href)
+        router.push({
+          pathname: '/trips/[tripId]/weather',
+          params: { tripId, date: date ?? '', placeId: placeId ?? '' },
+        })
       }
       // 준비물 화면은 준비물 작업 브랜치에 있어 합치면 열린다(Q-10-5)
       onChecklist={() => router.push(`/trips/${tripId}/checklist` as Href)}

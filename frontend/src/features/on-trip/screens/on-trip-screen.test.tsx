@@ -159,9 +159,10 @@ describe('S25 여행 중', () => {
   it('날씨 대안, 준비물, 편의시설로 간다', async () => {
     await renderScreen();
     await fireEvent.press(await screen.findByText('날씨 대안 보기'));
-    expect(mockRouter.push).toHaveBeenCalledWith(
-      '/trips/trip-1/weather?date=2026-11-14&placeId=p-haeundae',
-    );
+    expect(mockRouter.push).toHaveBeenCalledWith({
+      pathname: '/trips/[tripId]/weather',
+      params: { tripId: 'trip-1', date: '2026-11-14', placeId: 'p-haeundae' },
+    });
     await fireEvent.press(await screen.findByLabelText('준비물, 3/6 챙김'));
     expect(mockRouter.push).toHaveBeenCalledWith('/trips/trip-1/checklist');
     await fireEvent.press(screen.getByLabelText('주변 편의시설, 코스 근처'));
