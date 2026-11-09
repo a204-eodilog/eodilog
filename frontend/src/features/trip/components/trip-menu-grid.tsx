@@ -19,7 +19,13 @@ const MENU: MenuItem[] = [
   { key: 'recommend', label: '추천', icon: 'search' },
   { key: 'poll', label: '투표', icon: 'check' },
   { key: 'course', label: '코스', icon: 'map-pin' },
-  { key: 'today', label: '여행 중', icon: 'trip' },
+  {
+    key: 'today',
+    label: '여행 중',
+    icon: 'trip',
+    // S25 여행 중 화면이 생길 때까지 S27 준비물을 바로 연다(준비물 명세 가정 Q-5-5)
+    open: (tripId) => router.push({ pathname: '/trips/[tripId]/checklist', params: { tripId } }),
+  },
   {
     key: 'photos',
     label: '사진',
