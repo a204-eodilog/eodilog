@@ -328,6 +328,7 @@ export function CourseEditScreen() {
     if (result.kind === 'saved' || result.kind === 'unchanged') {
       setExiting(true);
     } else if (result.kind === 'conflict' && result.latest) {
+      toast.show('다른 동행이 먼저 코스를 고쳤어요. 최신 코스를 불러왔어요');
       setDraft(toDraft(result.latest, days));
       setOrigin('saved');
       setDirty(false);

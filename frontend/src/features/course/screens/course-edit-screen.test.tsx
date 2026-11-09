@@ -321,6 +321,20 @@ describe('코스 초안 고치고 저장하기', () => {
     expect(mockPut).toHaveBeenCalledTimes(1);
   });
 
+  it('먼저 저장한 동행이 있는데 최신 코스도 못 받으면 초안을 두고 알린다', async () => {
+    mockPut.mockRejectedValue(httpError(409, 'VERSION_CONFLICT'));
+    await renderScreen();
+    await fireEvent.press(await screen.findByLabelText('해운대 해변 고치기'));
+    await fireEvent.press(screen.getByText('코스에서 빼기'));
+    mockGet.mockRejectedValue(httpError(500, 'INTERNAL_ERROR'));
+    await fireEvent.press(screen.getByText('완료'));
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith('최신 코스를 받지 못했어요. 다시 시도해 주세요'),
+    );
+    expect(screen.queryByText('해운대 해변')).toBeNull();
+    expect(mockRouter.back).not.toHaveBeenCalled();
+  });
+
   it('다른 동행이 먼저 저장했으면 덮어쓰지 않고 최신 코스로 다시 채운다', async () => {
     mockPut.mockRejectedValue(httpError(409, 'VERSION_CONFLICT'));
     await renderScreen();
