@@ -37,7 +37,6 @@ export function FacilitiesScreen() {
     queryKey: ['places', placeId, 'facilities', type],
     queryFn: () => getFacilities(placeId, type),
     enabled: !!placeId,
-    retry: false,
   });
   return (
     <FacilitiesView
@@ -45,7 +44,10 @@ export function FacilitiesScreen() {
       members={head.data?.members ?? []}
       base={base.data ?? null}
       type={type}
-      state={list.isError ? 'error' : list.data ? 'ready' : 'loading'}
+      // 기준 장소 없이 열면 안내(계속 로딩되지 않게). 다시 읽기 실패해도 이미 받은 목록은 남긴다(!155 리뷰)
+      state={
+        !placeId ? 'noBase' : list.isError && !list.data ? 'error' : list.data ? 'ready' : 'loading'
+      }
       rows={list.data ? toFacilityRows(list.data) : []}
       onType={setType}
       onChangeBase={() => toast.show('준비 중이에요')}

@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
+import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Avatar, BottomSheet, Icon } from '@/components/ui';
@@ -111,25 +112,28 @@ export function PlaceInfoSheet({
   onSave: (place: { id: string; name: string }) => void;
   onVisitors?: (placeId: string) => void;
 }) {
-  const id = placeId ?? '';
+  // 닫히는 동안에도 내용이 남게 마지막 장소를 기억한다(placeId가 null이 되면 쿼리 키가 바뀌어 비던 것, !155 리뷰)
+  const [lastId, setLastId] = useState(placeId);
+  if (placeId && placeId !== lastId) setLastId(placeId);
+  const id = placeId ?? lastId ?? '';
   const place = useQuery({
     queryKey: ['places', id],
     queryFn: () => getPlace(id),
-    enabled: !!placeId,
+    enabled: !!id,
   });
   const social = useQuery({
     queryKey: ['places', id, 'social'],
     queryFn: () => getPlaceSocial(id),
-    enabled: !!placeId,
+    enabled: !!id,
     retry: false,
   });
   const reviews = useQuery({
     queryKey: ['places', id, 'public-reviews'],
     queryFn: () => getPlaceReviews(id),
-    enabled: !!placeId,
+    enabled: !!id,
     retry: false,
   });
-  const state = place.isError ? 'error' : place.data ? 'ready' : 'loading';
+  const state = place.isError && !place.data ? 'error' : place.data ? 'ready' : 'loading';
   return (
     <PlaceInfoSheetView
       visible={!!placeId}

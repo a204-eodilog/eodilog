@@ -20,7 +20,8 @@ export function TrendsScreen() {
   });
   return (
     <TrendsView
-      state={trends.isError ? 'error' : trends.data ? 'ready' : 'loading'}
+      // 다시 읽기에 실패해도 이미 받은 순위는 남긴다(!155 리뷰)
+      state={trends.isError && !trends.data ? 'error' : trends.data ? 'ready' : 'loading'}
       board={trends.data ? toTrendBoard(trends.data, range) : undefined}
       refreshing={trends.isRefetching}
       onRefresh={() => void trends.refetch()}
@@ -44,7 +45,7 @@ export function DestinationScreen() {
   return (
     <>
       <DestinationView
-        state={detail.isError ? 'error' : detail.data ? 'ready' : 'loading'}
+        state={detail.isError && !detail.data ? 'error' : detail.data ? 'ready' : 'loading'}
         info={detail.data ? toDestinationInfo(detail.data) : undefined}
         onPlace={setPlaceId}
         onSavePlace={placeSave.open}
