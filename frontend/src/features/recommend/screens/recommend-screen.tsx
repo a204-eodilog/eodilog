@@ -1,5 +1,5 @@
-import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useRef, useState, type ReactNode } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -14,6 +14,7 @@ import { Chip, Header, Icon, toast } from '@/components/ui';
 import { isMine } from '@/features/group-favorites/group-rules';
 import { useFavoriteMutations } from '@/features/group-favorites/hooks/use-favorite-mutations';
 import { useGroupFavorites } from '@/features/group-favorites/hooks/use-group-favorites';
+import { getPreferences } from '@/features/preferences/api';
 import { useRegions } from '@/features/trip/hooks/use-region-names';
 import { useTrip } from '@/features/trip/hooks/use-trip';
 import { shortRegionName } from '@/features/trip/trip-rules';
@@ -202,9 +203,46 @@ export function RecommendScreen() {
   const [savingId, setSavingId] = useState<string | null>(null);
 
   const start = rec.start;
-  useEffect(() => {
-    void start();
-  }, [start]);
+  /** 처음 시작(취향 확인 포함)을 마쳤는지 */
+  const started = useRef(false);
+  /** 취향 입력에 다녀오면 다시 추천한다 */
+  const restartOnFocus = useRef(false);
+  const toPreferences = () => {
+    restartOnFocus.current = true;
+    router.push({ pathname: '/preferences', params: { from: 'recommendation', tripId } });
+  };
+  // 내 취향이 비었으면 먼저 취향 입력(S03 추천 직전)으로 보내고, 돌아와 화면이 다시 보이면 시작한다(Q-9-6).
+  // 콜백은 바뀌지 않게 두어 화면이 다시 보일 때만 돈다
+  useFocusEffect(
+    useCallback(() => {
+      if (started.current && !restartOnFocus.current) return;
+      let cancelled = false;
+      void (async () => {
+        if (!started.current) {
+          // 취향을 받지 못하면 묻지 않고 시작한다
+          const prefs = await getPreferences().catch(() => undefined);
+          if (cancelled) return;
+          started.current = true;
+          const empty =
+            prefs === null ||
+            (prefs !== undefined &&
+              prefs.explicitItems.length === 0 &&
+              prefs.inferredItems.length === 0);
+          if (empty) {
+            toPreferences();
+            return;
+          }
+        }
+        restartOnFocus.current = false;
+        void start();
+      })();
+      return () => {
+        cancelled = true;
+      };
+      // toPreferences는 ref와 tripId만 써서 다시 만들 필요가 없다
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [start, tripId]),
+  );
 
   const members = (trip.data?.members ?? []).filter((m) => m.status === 'ACTIVE');
   const myMemberId = members.find((m) => m.user.id === me.data?.id)?.id ?? null;
@@ -257,9 +295,8 @@ export function RecommendScreen() {
             lines={insufficientLines(result.basis)}
             // 그룹 즐겨찾기에서 왔으면 그리로 돌아가고, 아니면 연다
             onMorePlaces={() => router.dismissTo(`/trips/${tripId}/favorites`)}
-            onPreferences={() =>
-              router.push({ pathname: '/preferences', params: { from: 'recommendation', tripId } })
-            }
+            // 취향을 넣고 돌아오면 다시 추천한다
+            onPreferences={toPreferences}
           />
         ) : state === 'failed' ? (
           <RecommendFailView onRetry={() => void start()} />

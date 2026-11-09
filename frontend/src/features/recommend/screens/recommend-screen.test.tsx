@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { toast } from '@/components/ui';
 import { getSavedPlaces, putMySave } from '@/features/group-favorites/api';
 import { page, place as groupPlace, sampleSaved, saved } from '@/features/group-favorites/testing';
+
+import { getPreferences } from '@/features/preferences/api';
 
 import { getRecommendation, requestRecommendation } from '../api';
 import { result } from '../testing';
@@ -19,13 +21,22 @@ jest.mock('@/config/env', () => ({
   env: { appEnv: 'local', apiBaseUrl: 'http://test', kakaoRedirectUri: null, devMock: false },
 }));
 
-jest.mock('expo-router', () => ({
-  useLocalSearchParams: () => mockParams,
-  // jest.mock은 위로 끌어올려져 mockRouter가 만들어지기 전에 불릴 수 있어 꺼낼 때 읽는다
-  get router() {
-    return mockRouter;
-  },
-}));
+// 화면이 다시 보일 때를 흉내 내려고 포커스 콜백을 꺼내 둔다
+let mockFocus: (() => void) | null = null;
+jest.mock('expo-router', () => {
+  const { useEffect } = jest.requireActual<typeof import('react')>('react');
+  return {
+    useLocalSearchParams: () => mockParams,
+    useFocusEffect: (cb: () => void | (() => void)) => {
+      mockFocus = cb;
+      useEffect(cb, [cb]);
+    },
+    // jest.mock은 위로 끌어올려져 mockRouter가 만들어지기 전에 불릴 수 있어 꺼낼 때 읽는다
+    get router() {
+      return mockRouter;
+    },
+  };
+});
 
 jest.mock('../api', () => ({ requestRecommendation: jest.fn(), getRecommendation: jest.fn() }));
 jest.mock('@/features/group-favorites/api', () => ({
@@ -61,6 +72,7 @@ jest.mock('@/features/trip/hooks/use-region-names', () => ({
   }),
 }));
 jest.mock('@/hooks/use-me', () => ({ useMe: () => ({ data: { id: 'u-me' } }) }));
+jest.mock('@/features/preferences/api', () => ({ getPreferences: jest.fn() }));
 
 jest.mock('@/components/ui', () => {
   const actual = jest.requireActual<typeof import('@/components/ui/icon')>('@/components/ui/icon');
@@ -93,6 +105,14 @@ const mockRequest = jest.mocked(requestRecommendation);
 const mockGet = jest.mocked(getRecommendation);
 const mockList = jest.mocked(getSavedPlaces);
 const mockPut = jest.mocked(putMySave);
+const mockPrefs = jest.mocked(getPreferences);
+const PREFS = {
+  explicitItems: [{ key: 'sea', label: '바다' }],
+  inferredItems: [],
+  allowInference: true,
+  sharingScope: 'TRIP_MEMBERS',
+  updatedAt: '2026-11-01T00:00:00Z',
+} as unknown as Awaited<ReturnType<typeof getPreferences>>;
 
 function renderScreen() {
   const client = new QueryClient({
@@ -119,6 +139,9 @@ beforeEach(() => {
   mockGet.mockResolvedValue(result());
   mockList.mockResolvedValue(page(sampleSaved()));
   mockPut.mockResolvedValue(saved(groupPlace('x', 'X'), ['m-me']));
+  mockPrefs.mockReset();
+  mockPrefs.mockResolvedValue(PREFS);
+  mockFocus = null;
 });
 
 describe('S21 추천 결과', () => {
@@ -212,6 +235,11 @@ describe('추천할 수 없을 때', () => {
       pathname: '/preferences',
       params: { from: 'recommendation', tripId: 'trip-1' },
     });
+    // 취향을 넣고 돌아오면 다시 추천한다
+    mockGet.mockResolvedValue(result());
+    await act(async () => mockFocus?.());
+    expect(await screen.findByText('여행지 2')).toBeTruthy();
+    expect(mockRequest).toHaveBeenCalledTimes(2);
   });
 
   it('실패하면 모은 장소는 그대로라고 알리고 다시 시도는 새 작업', async () => {
@@ -244,5 +272,35 @@ describe('추천할 수 없을 때', () => {
     expect(screen.getByText('그래서 한 사람의 취향을 따로 반영했어요')).toBeTruthy();
     expect(screen.queryByText('이번 추천에 쓴 것')).toBeNull();
     expect(screen.getByText('자갈치 회 골목')).toBeTruthy();
+  });
+});
+
+describe('취향 먼저', () => {
+  it('내 취향이 없으면 추천 전에 취향 입력으로 보내고 돌아오면 시작한다', async () => {
+    mockPrefs.mockResolvedValue(null);
+    await renderScreen();
+    await waitFor(() =>
+      expect(mockRouter.push).toHaveBeenCalledWith({
+        pathname: '/preferences',
+        params: { from: 'recommendation', tripId: 'trip-1' },
+      }),
+    );
+    expect(mockRequest).not.toHaveBeenCalled();
+    await act(async () => mockFocus?.());
+    expect(await screen.findByText('여행지 2')).toBeTruthy();
+    expect(mockRouter.push).toHaveBeenCalledTimes(1);
+  });
+
+  it('취향이 있으면 묻지 않고 바로 시작한다', async () => {
+    await renderScreen();
+    expect(await screen.findByText('여행지 2')).toBeTruthy();
+    expect(mockRouter.push).not.toHaveBeenCalled();
+  });
+
+  it('취향을 받지 못해도 묻지 않고 시작한다', async () => {
+    mockPrefs.mockRejectedValue(new Error('network'));
+    await renderScreen();
+    expect(await screen.findByText('여행지 2')).toBeTruthy();
+    expect(mockRouter.push).not.toHaveBeenCalled();
   });
 });
