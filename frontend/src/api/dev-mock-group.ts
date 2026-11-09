@@ -145,17 +145,24 @@ export function createGroupMock(h: Helpers) {
     const entry = store.get(placeId);
 
     if (method === 'put') {
+      // 가짜 개인 즐겨찾기는 같은 장소를 다른 ID로 갖고 있다. 이름이 같은 그룹 장소가 있으면 그 장소에 더한다
+      const bookmarked = entry ? null : h.findPlace(placeId);
+      const same = bookmarked
+        ? [...store.entries()].find(([, e]) => e.place.name === bookmarked.name)
+        : undefined;
+      const key = same?.[0] ?? placeId;
+      const found = same?.[1] ?? entry;
       const pl =
-        entry?.place ??
+        found?.place ??
         SEED.find((x) => x.id === placeId) ??
-        h.findPlace(placeId) ??
+        bookmarked ??
         p(placeId, '고른 장소', '부산', 35.15, 129.1);
-      const next: Entry = entry ?? { place: pl, saves: [] };
+      const next: Entry = found ?? { place: pl, saves: [] };
       next.saves = [
         ...next.saves.filter((s) => s.memberId !== me),
         { memberId: me, memo: body.memo ?? null, at: tick() },
       ];
-      store.set(placeId, next);
+      store.set(key, next);
       return h.ok(config, { data: view(trip, next) });
     }
     if (method === 'patch') {
