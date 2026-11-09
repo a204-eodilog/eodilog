@@ -46,8 +46,20 @@ export function EditItemSheet({ item, onClose, onSave, onDelete }: Props) {
       onClose={onClose}
       title="준비물 고치기"
       titleVariant="title3"
-      footer={
-        <View style={styles.footer}>
+    >
+      {/* 시트 footer는 오른쪽 끝 한 줄이라, 꽉 찬 저장과 지우기는 본문에 둔다 */}
+      <View style={styles.body}>
+        <TextField
+          variant="filled"
+          value={text}
+          onChangeText={setText}
+          accessibilityLabel="준비물 이름"
+          maxLength={LABEL_MAX}
+          hideCount
+          returnKeyType="done"
+          onSubmitEditing={() => void save()}
+        />
+        <View style={styles.actions}>
           <Button
             label="저장"
             size="xl"
@@ -69,24 +81,14 @@ export function EditItemSheet({ item, onClose, onSave, onDelete }: Props) {
             <Text style={[typography.bodyBold, styles.deleteText]}>지우기</Text>
           </Pressable>
         </View>
-      }
-    >
-      <TextField
-        variant="filled"
-        value={text}
-        onChangeText={setText}
-        accessibilityLabel="준비물 이름"
-        maxLength={LABEL_MAX}
-        hideCount
-        returnKeyType="done"
-        onSubmitEditing={() => void save()}
-      />
+      </View>
     </BottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  footer: { gap: spacing[4] },
+  body: { gap: spacing[20] },
+  actions: { gap: spacing[4] },
   delete: {
     minHeight: layout.minTouchTarget + spacing[4],
     alignItems: 'center',
