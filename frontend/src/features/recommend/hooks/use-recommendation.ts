@@ -15,8 +15,6 @@ export type RecommendationState = {
 
 const IDLE: RecommendationState = { phase: 'idle', result: null, startedAt: null };
 
-const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
-
 /**
  * 추천 작업을 만들고 끝날 때까지 1.5초마다 확인한다. 2분이 넘으면 실패.
  * 다시 시작하면 이전 작업은 더 확인하지 않고, 화면을 나가면 멈춘다.
@@ -25,12 +23,19 @@ export function useRecommendation(tripId: string) {
   const [state, setState] = useState<RecommendationState>(IDLE);
   /** 지금 기다리는 작업 번호. 바뀌면 이전 반복은 멈춘다 */
   const run = useRef(0);
+  /** 다음 확인까지 기다리는 타이머. 화면을 나가면 바로 지운다 */
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(
     () => () => {
       run.current += 1;
+      if (timer.current) clearTimeout(timer.current);
     },
     [],
   );
+  const wait = (ms: number) =>
+    new Promise<void>((resolve) => {
+      timer.current = setTimeout(resolve, ms);
+    });
 
   const start = useCallback(async () => {
     run.current += 1;
