@@ -19,7 +19,7 @@ import {
   KoreaMap,
   type KoreaMapPin,
 } from '@/components/ui';
-import { findMapRegion, mapFit } from '@/lib/korea-map';
+import { findMapRegion, MAINLAND_BOUNDS, mapFit } from '@/lib/korea-map';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 import {
@@ -198,6 +198,12 @@ export function focusOn(pins: readonly MyTripPin[]) {
  * 여행 핀 지도(S37 마이페이지·S40 친구에게 보이는 모습·S44 친구 프로필 공용).
  * 지도 상자 크기를 재서 가까운 핀의 알약이 겹치거나 다른 점을 가리면 알약을 옆·아래로 옮긴다(점은 제자리). 확대하지 않는 지도라 처음 배율로 한 번 계산한다
  */
+/** 전국 보기 가운데(KoreaMap 처음 위치와 같다) */
+const WHOLE_KOREA = [
+  (MAINLAND_BOUNDS.x0 + MAINLAND_BOUNDS.x1) / 2,
+  (MAINLAND_BOUNDS.y0 + MAINLAND_BOUNDS.y1) / 2,
+] as [number, number];
+
 export function useTripPinMap<P extends MyTripPin>(pins: readonly P[], onPress: (pin: P) => void) {
   const [box, setBox] = useState<{ width: number; height: number } | null>(null);
   const onLayout = (e: LayoutChangeEvent) => {
@@ -232,9 +238,10 @@ export function useTripPinMap<P extends MyTripPin>(pins: readonly P[], onPress: 
   }));
   // 핀이 바뀌면(친구 칩·늦게 온 지역) 지도를 새로 만들지 않고 범위만 부드럽게 옮긴다.
   // 지도를 key로 새로 만들면 선·면 700개를 처음부터 다시 그려 버벅인다(11/09 직접 확인)
+  // 핀이 없으면 전국 보기(본토 가운데, 배율 1)로 돌아간다(!165 리뷰: 이전 범위에 남던 것)
   const moveTo = focus
     ? { key: placed.map(({ pin }) => pin.regionCode).join('|'), ...focus }
-    : undefined;
+    : { key: 'none', point: WHOLE_KOREA, scale: 1 };
   return { onLayout, pins: mapPins, focus, moveTo };
 }
 

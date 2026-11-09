@@ -89,7 +89,12 @@ export function PlacePickScreen() {
 
   const search = useQuery({
     queryKey: ['places', 'search', query],
-    queryFn: ({ signal }) => searchPlaces(query ?? '', { signal }),
+    // 부른 화면이 지역을 줬으면 같이 보낸다(흔한 이름이 다른 지역 20곳으로 채워지지 않게, !165 리뷰)
+    queryFn: ({ signal }) =>
+      searchPlaces(query ?? '', {
+        signal,
+        ...(params.regionId ? { regionId: params.regionId } : {}),
+      }),
     enabled: query !== null,
   });
   const results = query && search.data ? rankNear(search.data, query, center) : [];
@@ -103,6 +108,10 @@ export function PlacePickScreen() {
     setTouched(false);
     setText(place.name);
     arriving.current = true;
+    // 지도가 이미 그 자리라 멈춤 알림이 안 오면 표시가 남아 다음 이동을 무시하므로, 이동 시간이 지나면 푼다(!165 리뷰)
+    setTimeout(() => {
+      arriving.current = false;
+    }, 700);
     map.current?.animateCameraTo({
       latitude: place.latitude,
       longitude: place.longitude,
@@ -278,6 +287,8 @@ export function PlacePickScreen() {
             onChangeText={(v) => {
               setName(v);
               setNameAuto(false);
+              // 고른 장소의 이름을 고쳐 쓰면 그 장소가 아니라 이 위치의 새 장소로 본다([이 위치로], !165 리뷰)
+              if (picked && v !== picked.name) setPicked(null);
             }}
             placeholder={picked ? '예: 민락 수변공원' : '이 위치의 이름을 적어 주세요'}
             maxLength={PLACE_NAME_MAX_LENGTH}
