@@ -138,4 +138,4 @@ MVP는 Phase 2 + US2 + US1(투표 열고 표 던지기). 이어서 US4 결과, U
 
 ## Phase 12: Review 3
 
-- [ ] T065 S22 머리 동행 얼굴에서 나를 연파랑으로 구분한다 in src/features/poll/screens/poll-screen.tsx
+- [X] T065 S22 머리 동행 얼굴에서 나를 연파랑으로 구분한다 in src/features/poll/screens/poll-screen.tsx
