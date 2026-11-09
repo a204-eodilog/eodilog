@@ -8,7 +8,7 @@
 
 ## Phase 2: Foundational
 
-- [ ] T002 [P] 알림 타입과 API를 만든다 src/features/notification/types.ts, src/features/notification/api.ts
+- [X] T002 [P] 알림 타입과 API를 만든다 src/features/notification/types.ts, src/features/notification/api.ts
 - [ ] T003 [P] 종류 표·제목·시각·오늘/이전 묶기·대상 주소·팝업 고르기·투표 팝업 문구 규칙과 jest 테스트 src/features/notification/notification-rules.ts, notification-rules.test.ts
 - [ ] T004 [P] 테스트·미리보기 예시와 쿼리 키 src/features/notification/testing.ts, src/features/notification/hooks/notification-keys.ts
 - [ ] T005 테스트 모드 가짜 알림 서버와 연결 src/api/dev-mock-notification.ts, src/api/dev-mock.ts
