@@ -209,7 +209,14 @@ function MapBody(props: HomeViewProps) {
             point: r.point,
             anchor: 'bottom',
             enterDelayMs: enterDelay(item.regionCode),
-            children: <RegionPill mark={item} onPress={press} pulse={item.regionCode === top} />,
+            children: (
+              <RegionPill
+                mark={item}
+                onPress={press}
+                pulse={item.regionCode === top}
+                pulseDelayMs={enterDelay(item.regionCode) + MAP_MOTION.pinRiseMs}
+              />
+            ),
           },
         ];
       }
@@ -227,6 +234,7 @@ function MapBody(props: HomeViewProps) {
             <GroupPill
               group={item}
               pulse={item.marks.some((m) => m.regionCode === top)}
+              pulseDelayMs={enterDelay(last.regionCode) + MAP_MOTION.pinRiseMs}
               onPress={() => openGroup(item)}
             />
           ),
