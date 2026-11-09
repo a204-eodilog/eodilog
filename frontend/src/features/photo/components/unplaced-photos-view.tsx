@@ -1,6 +1,5 @@
 import {
   ActivityIndicator,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -10,9 +9,10 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, ErrorState, Header, Icon } from '@/components/ui';
-import { colors, layout, radius, spacing, typography } from '@/theme';
+import { colors, layout, spacing, typography } from '@/theme';
 
-import type { CoursePlace, TripPhoto } from '../types';
+import type { TripPhoto } from '../types';
+import { type CourseDay, CoursePlaceList } from './course-place-list';
 import { TripPhotoTile } from './trip-photo-tile';
 
 const COLUMNS = 4;
@@ -25,7 +25,7 @@ export type UnplacedPhotosViewProps = {
   photos: TripPhoto[];
   /** 고른 사진 id. 내 사진만 고를 수 있다 */
   selected: ReadonlySet<string>;
-  days: { day: number; label: string; stops: CoursePlace[] }[];
+  days: CourseDay[];
   courseState: 'loading' | 'error' | 'ready';
   placeId: string | null;
   saving: boolean;
@@ -106,52 +106,12 @@ export function UnplacedPhotosView(props: UnplacedPhotosViewProps) {
             <Text style={[typography.title3, styles.text]}>어디서 찍었나요?</Text>
             <Text style={[typography.caption, styles.sub]}>코스 장소</Text>
           </View>
-          {props.courseState === 'loading' ? (
-            <ActivityIndicator color={colors.brand.primary} />
-          ) : props.days.length === 0 ? (
-            <Text style={[typography.body, styles.sub]}>
-              {props.courseState === 'error'
-                ? '코스를 불러오지 못했어요'
-                : '코스에 장소가 없어요. 코스에 장소를 넣은 뒤 연결해요'}
-            </Text>
-          ) : (
-            <View style={styles.list}>
-              {props.days.map((day) => (
-                <View key={day.day} style={styles.list}>
-                  <Text style={[typography.captionMedium, styles.sub, styles.dayHead]}>
-                    {day.label}
-                  </Text>
-                  {day.stops.map((stop, i) => {
-                    const on = stop.place.id === props.placeId;
-                    return (
-                      <Pressable
-                        key={stop.id}
-                        accessibilityRole="radio"
-                        accessibilityState={{ checked: on }}
-                        accessibilityLabel={stop.place.name}
-                        onPress={() => props.onPlace(stop.place.id)}
-                        style={({ pressed }) => [
-                          styles.row,
-                          on && styles.rowOn,
-                          pressed && styles.pressed,
-                        ]}
-                      >
-                        <View style={[styles.num, on && styles.numOn]}>
-                          <Text style={[typography.captionBold, styles.numText]}>{i + 1}</Text>
-                        </View>
-                        <Text style={[typography.body, styles.text, styles.flex]} numberOfLines={1}>
-                          {stop.place.name}
-                        </Text>
-                        <View style={[styles.radio, on && styles.radioOn]}>
-                          {on ? <Icon name="check" size={14} color={colors.text.inverse} /> : null}
-                        </View>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              ))}
-            </View>
-          )}
+          <CoursePlaceList
+            days={props.days}
+            state={props.courseState}
+            placeId={props.placeId}
+            onPlace={props.onPlace}
+          />
         </View>
       </ScrollView>
       <View style={[styles.bottom, { paddingBottom: Math.max(insets.bottom + spacing[12], 34) }]}>
@@ -184,37 +144,6 @@ const styles = StyleSheet.create({
   block: { gap: spacing[12] },
   head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: GAP },
-  list: { gap: spacing[2] },
-  dayHead: { marginTop: spacing[4], marginBottom: spacing[4] },
-  row: {
-    height: 48,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[14],
-    paddingHorizontal: spacing[12],
-    borderRadius: 14,
-  },
-  rowOn: { backgroundColor: colors.brand.primaryBg },
-  num: {
-    width: 28,
-    height: 28,
-    borderRadius: radius.full,
-    backgroundColor: colors.text.muted,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  numOn: { backgroundColor: colors.brand.primary },
-  numText: { color: colors.text.inverse },
-  radio: {
-    width: 24,
-    height: 24,
-    borderRadius: radius.full,
-    borderWidth: 2,
-    borderColor: colors.line.default,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  radioOn: { backgroundColor: colors.brand.primary, borderColor: colors.brand.primary },
   bottom: {
     flexDirection: 'row',
     justifyContent: 'flex-end',

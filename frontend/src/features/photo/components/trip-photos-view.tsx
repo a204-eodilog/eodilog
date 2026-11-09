@@ -38,6 +38,8 @@ export type TripPhotosViewProps = {
   onTopic: (topic: TopicFilter) => void;
   onUnplaced: () => void;
   onPhoto: (photo: TripPhoto) => void;
+  /** 장소 묶음 [수정] → S32. 내 사진이 있는 묶음에만 보인다 */
+  onEditSection: (placeId: string) => void;
   onPublish: () => void;
   onRetry: () => void;
 };
@@ -184,6 +186,17 @@ export function TripPhotosView(props: TripPhotosViewProps) {
                   </Text>
                 </View>
                 <Text style={[typography.caption, styles.sub]}>{sectionMeta(section)}</Text>
+                {section.photos.some((p) => p.uploaderMemberId === props.myMemberId) ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`${section.name ?? '장소'} 사진 수정`}
+                    hitSlop={8}
+                    onPress={() => props.onEditSection(section.placeId)}
+                    style={({ pressed }) => pressed && styles.pressed}
+                  >
+                    <Text style={[typography.captionMedium, styles.link]}>수정</Text>
+                  </Pressable>
+                ) : null}
               </View>
               <View style={styles.grid}>
                 {section.photos.map((photo, i) => (

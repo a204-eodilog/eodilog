@@ -46,6 +46,7 @@ export function TripPhotosScreen() {
         onTopic={setTopic}
         onUnplaced={() => router.push(`/trips/${tripId}/photos/unplaced`)}
         onPhoto={setViewing}
+        onEditSection={(placeId) => router.push(`/trips/${tripId}/photos/place/${placeId}`)}
         onPublish={() => router.push(`/trips/${tripId}/record`)}
         onRetry={data.retry}
       />
