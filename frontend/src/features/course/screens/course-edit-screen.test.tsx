@@ -35,8 +35,10 @@ jest.mock('@/config/env', () => ({
   env: { appEnv: 'local', apiBaseUrl: 'http://test', kakaoRedirectUri: null, devMock: false },
 }));
 
+const mockPreventRemove = jest.fn();
 jest.mock('expo-router', () => ({
   useLocalSearchParams: () => mockParams,
+  usePreventRemove: (...args: unknown[]) => mockPreventRemove(...args),
   // jest.mock은 위로 끌어올려져 mockRouter가 만들어지기 전에 불릴 수 있어 꺼낼 때 읽는다
   get router() {
     return mockRouter;
@@ -353,6 +355,27 @@ describe('코스 초안 고치고 저장하기', () => {
     await renderScreen();
     await fireEvent.press(await screen.findByText('완료'));
     expect(mockRouter.replace).toHaveBeenCalledWith('/trips/trip-1/course');
+  });
+});
+
+describe('다른 길로 나가기', () => {
+  it('고친 것이 있으면 뒤로 버튼이나 쓸어 나가기도 막고 버릴지 묻는다', async () => {
+    await renderScreen();
+    await fireEvent.press(await screen.findByLabelText('해운대 해변 고치기'));
+    await fireEvent.press(screen.getByText('코스에서 빼기'));
+    const [prevent, onPrevent] = mockPreventRemove.mock.calls.at(-1) as [boolean, () => void];
+    expect(prevent).toBe(true);
+    await act(async () => onPrevent());
+    expect(screen.getByText('고친 내용을 버릴까요?')).toBeTruthy();
+    await fireEvent.press(screen.getByText('버리고 나가기'));
+    await waitFor(() => expect(mockRouter.back).toHaveBeenCalled());
+    expect(mockPreventRemove.mock.calls.at(-1)?.[0]).toBe(false);
+  });
+
+  it('고친 것이 없으면 막지 않는다', async () => {
+    await renderScreen();
+    await screen.findByText('해운대 해변');
+    expect(mockPreventRemove.mock.calls.at(-1)?.[0]).toBe(false);
   });
 });
 

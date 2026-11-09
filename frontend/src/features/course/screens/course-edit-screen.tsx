@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useState, type ReactNode } from 'react';
+import { router, useLocalSearchParams, usePreventRemove } from 'expo-router';
+import { useEffect, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -304,6 +304,17 @@ export function CourseEditScreen() {
 
   // 폴더 첫 화면(course/index)은 pathname 객체를 타입 검사가 막아 실제 주소로 보낸다
   const toCourse = () => router.replace(`/trips/${tripId}/course`);
+  // 고친 것이나 아직 저장하지 않은 추천안·직접 만든 코스가 있으면 어떤 길로 나가도 버릴지 묻는다
+  const unsaved = dirty || (mode === 'draft' && origin !== 'saved');
+  /** 저장했거나 버리기로 해서 막지 않고 나가는 중 */
+  const [exiting, setExiting] = useState(false);
+  usePreventRemove(unsaved && !exiting, () => setLeaving(true));
+  useEffect(() => {
+    if (!exiting) return;
+    if (entry === 'empty' || !router.canGoBack()) router.replace(`/trips/${tripId}/course`);
+    else router.back();
+  }, [exiting, entry, tripId]);
+
   const leave = () => {
     // 빈 코스에서 바꿔 열렸으면 뒤가 S17이라 S24로 바꿔 간다
     if (entry === 'empty' || !router.canGoBack()) toCourse();
@@ -314,8 +325,7 @@ export function CourseEditScreen() {
     if (!draft) return;
     const result = await saver.save(draft, itinerary.data);
     if (result.kind === 'saved' || result.kind === 'unchanged') {
-      setDirty(false);
-      leave();
+      setExiting(true);
     } else if (result.kind === 'conflict' && result.latest) {
       setDraft(toDraft(result.latest, days));
       setOrigin('saved');
@@ -538,9 +548,7 @@ export function CourseEditScreen() {
         subtitle={trip.data?.title}
         subtitleIcon="trip"
         // 고친 것이나 아직 저장하지 않은 추천안·직접 만든 코스가 있으면 버릴지 묻는다
-        onBack={() =>
-          dirty || (mode === 'draft' && origin !== 'saved') ? setLeaving(true) : leave()
-        }
+        onBack={() => (unsaved ? setLeaving(true) : leave())}
         right={
           people.length > 0 ? (
             <AvatarGroup
@@ -556,8 +564,7 @@ export function CourseEditScreen() {
         onClose={() => setLeaving(false)}
         onConfirm={() => {
           setLeaving(false);
-          setDirty(false);
-          leave();
+          setExiting(true);
         }}
         title="고친 내용을 버릴까요?"
         description="저장하지 않으면 지금 코스는 그대로예요"
