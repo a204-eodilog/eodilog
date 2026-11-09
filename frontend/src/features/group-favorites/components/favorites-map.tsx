@@ -16,9 +16,13 @@ type Props = {
   onOpen(item: SavedPlace): void;
 };
 
+/** 위도·경도가 둘 다 숫자인 장소만 지도에 놓는다 */
+const hasCoord = (i: SavedPlace) =>
+  Number.isFinite(i.place.latitude) && Number.isFinite(i.place.longitude);
+
 /** 장소들을 감싸는 범위. 없으면 한국 전체 */
 function regionOf(items: SavedPlace[]) {
-  const pts = items.map((i) => i.place).filter((p) => Number.isFinite(p.latitude));
+  const pts = items.filter(hasCoord).map((i) => i.place);
   if (pts.length === 0) return undefined;
   const lats = pts.map((p) => p.latitude);
   const lngs = pts.map((p) => p.longitude);
@@ -43,7 +47,7 @@ export function FavoritesMap({ items, members, selectedId, onSelect, onOpen }: P
   return (
     <View style={styles.wrap}>
       <MapView style={styles.map} {...(region ? { initialRegion: region } : {})}>
-        {items.map((i) => (
+        {items.filter(hasCoord).map((i) => (
           <MapMarker
             key={i.place.id}
             latitude={i.place.latitude}

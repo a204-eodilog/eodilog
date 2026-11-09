@@ -409,3 +409,22 @@ describe('후보 고르기와 추천', () => {
     expect(toast.show).toHaveBeenCalledWith('준비 중이에요');
   });
 });
+
+describe('지도 핀', () => {
+  it('좌표가 없는 장소는 핀을 그리지 않는다', async () => {
+    const items = sampleSaved();
+    const broken = {
+      ...items[1],
+      place: { ...items[1].place, latitude: null as unknown as number },
+    };
+    mockList.mockResolvedValue(page([items[0], broken]));
+    await renderScreen();
+    await fireEvent.press(await screen.findByLabelText('지도로 보기'));
+    expect(
+      screen.getByLabelText(`${items[0].place.name}, ${items[0].savedCount}명이 담았어요`),
+    ).toBeTruthy();
+    expect(
+      screen.queryByLabelText(`${broken.place.name}, ${broken.savedCount}명이 담았어요`),
+    ).toBeNull();
+  });
+});
