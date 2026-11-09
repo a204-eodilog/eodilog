@@ -1,10 +1,11 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { toApiError } from '@/api/errors';
 import { AvatarGroup, ErrorState, Header, Icon, toast } from '@/components/ui';
+import { useUndo } from '@/features/proposal/hooks/use-undo';
 import { useTrip } from '@/features/trip/hooks/use-trip';
 import { useMe } from '@/hooks/use-me';
 import { colors, layout, radius, spacing, typography } from '@/theme';
@@ -23,6 +24,7 @@ import {
   latestQueriedAt,
   toDraft,
   type CourseDraft,
+  type DraftItem,
 } from '../course-rules';
 import { useItinerary } from '../hooks/use-itinerary';
 import { useReconnected } from '../hooks/use-reconnected';
@@ -43,7 +45,10 @@ export type CourseViewProps = {
   routeFail: { basis: string | null } | undefined;
   recalcBusy: boolean;
   onRecalculate(): void;
-  onRemove(index: number): void;
+  /** 장소 [빼기]. S29 AI 변경안으로 간다 */
+  onRemove(item: DraftItem): void;
+  /** 방금 AI 변경안을 적용해 왔다. 동행에게 알렸다는 줄을 보인다(Figma 201-16198) */
+  applied?: boolean;
   onEdit(): void;
   onRetry(): void;
   /** 미리보기용 처음 일차 */
@@ -112,8 +117,19 @@ export function CourseView(props: CourseViewProps) {
               legs={legs}
               mode="view"
               tone="saved"
-              onRemove={props.onRemove}
+              onRemove={(i) => {
+                const item = items[i];
+                if (item) props.onRemove(item);
+              }}
             />
+            {props.applied ? (
+              <View style={styles.edited}>
+                <Icon name="lock" size={16} color={colors.text.icon} />
+                <Text style={[typography.caption, styles.appliedText]}>
+                  바뀐 코스가 지금 코스예요. 동행에게 알렸어요
+                </Text>
+              </View>
+            ) : null}
           </View>
         </ScrollView>
         <View style={[styles.bottom, { paddingBottom: Math.max(insets.bottom, spacing[16]) }]}>
@@ -148,13 +164,23 @@ export function CourseView(props: CourseViewProps) {
 
 /** S24 코스. S17 '코스' 메뉴로 오고, 코스가 비어 있으면 S23 코스 짜기로 바꿔 연다(가정 Q-6-5) */
 export function CourseScreen() {
-  const { tripId } = useLocalSearchParams<{ tripId: string }>();
+  const { tripId, applied } = useLocalSearchParams<{ tripId: string; applied?: string }>();
   const trip = useTrip(tripId);
   const me = useMe();
   const itinerary = useItinerary(tripId);
   // 코스 실시간 이벤트가 없어(Q-8-1) 끊긴 동안 동행이 바꾼 코스는 다시 연결될 때 받는다
   useReconnected(() => void itinerary.refetch());
   const recalc = useRecalculate(tripId);
+  const undo = useUndo(tripId);
+  // AI 변경안을 적용하고 왔으면 한 번만 알리고 [되돌리기]를 단다. 되돌리기는 이 알림에서만(Q-11-4)
+  const notified = useRef(false);
+  useEffect(() => {
+    if (!applied || notified.current || !itinerary.data) return;
+    notified.current = true;
+    toast.success('새 코스를 적용했어요', {
+      action: { label: '되돌리기', onPress: () => void undo(applied) },
+    });
+  }, [applied, itinerary.data, undo]);
 
   const members = trip.data?.members ?? [];
   const people: Person[] = members
@@ -204,8 +230,14 @@ export function CourseScreen() {
       routeFail={failed ? { basis: queried ? basisLine(queried) : null } : undefined}
       recalcBusy={recalc.busy}
       onRecalculate={() => data && void recalc.start(data.version)}
-      // S29 AI 변경안(장소 빼기)은 11번 주제라 아직 없다
-      onRemove={() => toast.show('준비 중이에요')}
+      // 장소를 빼면 AI가 남은 일정을 다시 짠 변경안을 S29에서 비교한다(Q-11-2)
+      onRemove={(item) =>
+        router.push({
+          pathname: '/trips/[tripId]/proposal',
+          params: { tripId, removePlaceId: item.place.id },
+        })
+      }
+      applied={Boolean(applied)}
       onEdit={() => router.push({ pathname: '/trips/[tripId]/course/edit', params: { tripId } })}
       onRetry={() => void itinerary.refetch()}
     />
@@ -223,6 +255,7 @@ const styles = StyleSheet.create({
   },
   edited: { flexDirection: 'row', alignItems: 'center', gap: spacing[6] },
   editedText: { color: colors.status.success, flexShrink: 1 },
+  appliedText: { color: colors.text.icon, flexShrink: 1 },
   bottom: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
