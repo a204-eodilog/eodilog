@@ -23,6 +23,10 @@ export const API_ERROR = {
   RATE_LIMITED: 'RATE_LIMITED',
   /** 코스 구간이 같은 날 인접한 장소 쌍과 맞지 않는다(빠짐·겹침·인접하지 않음) */
   INVALID_ROUTE_LEGS: 'INVALID_ROUTE_LEGS',
+  /** 직전 적용 뒤에 다른 쓰기가 있어 되돌릴 수 없다 */
+  UNDO_UNAVAILABLE: 'UNDO_UNAVAILABLE',
+  /** 안내뿐인 날씨 대안이라 코스에 넣을 수 없다 */
+  UNSCHEDULABLE_ALTERNATIVE: 'UNSCHEDULABLE_ALTERNATIVE',
 } as const;
 
 /**
