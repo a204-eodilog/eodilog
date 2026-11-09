@@ -51,6 +51,7 @@ export function HomeScreen() {
             onClose={onClose}
           />
         )}
+        sheetHidden={placeId !== null || placeSave.visible}
         onRecommendation={(r) =>
           r.kind === 'trip' ? router.push(`/feeds/${r.targetId}`) : setPlaceId(r.targetId)
         }

@@ -42,6 +42,11 @@ export type HomeViewProps = {
    * 추천 시트 대신 이 시트를 연다. 닫으면 추천 시트로 돌아간다
    */
   renderRegionSheet?: (marks: readonly RegionMark[], onClose: () => void) => ReactNode;
+  /**
+   * 추천 시트를 내린다. 추천 장소를 눌러 N7(이어서 S08)을 열면 시트 위에 시트가 겹치지 않게
+   * S06처럼 추천 시트 대신 보이게 한다. 닫으면 다시 올라온다
+   */
+  sheetHidden?: boolean;
   onRetry: () => void;
   onTrend: () => void;
   onBell: () => void;
@@ -283,7 +288,7 @@ function MapBody(props: HomeViewProps) {
       ) : null}
       {selectedMarks && props.renderRegionSheet ? (
         props.renderRegionSheet(selectedMarks, () => setSelectedMarks(null))
-      ) : ready ? (
+      ) : props.sheetHidden ? null : ready ? (
         <RecommendSheet
           items={props.recommendations}
           status={props.recommendationsStatus ?? 'ready'}
