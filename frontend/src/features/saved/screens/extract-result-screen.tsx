@@ -10,7 +10,13 @@ import { colors, layout, radius, spacing, typography } from '@/theme';
 
 import { cancelExtraction } from '../api';
 import { PlaceSaveSheet } from '../components/place-save-sheet';
-import { candidateLetter, extractRegion, extractionView, progressStep } from '../extract-rules';
+import {
+  candidateLetter,
+  extractRegion,
+  extractionView,
+  failedNotice,
+  progressStep,
+} from '../extract-rules';
 import { forgetExtraction, sentExtraction } from '../extract-session';
 import { useExtraction, useRetryExtraction } from '../hooks/use-extraction';
 import { addressParts } from '../saved-rules';
@@ -36,7 +42,7 @@ const areaOf = (place: Place) => addressParts(place.address).join(' ') || null;
 export function ExtractResultScreen() {
   const { jobId } = useLocalSearchParams<{ jobId: string }>();
   const insets = useSafeAreaInsets();
-  const query = useExtraction(jobId);
+  const { query, timedOut } = useExtraction(jobId);
   const retry = useRetryExtraction();
   const sent = sentExtraction(jobId);
 
@@ -52,7 +58,9 @@ export function ExtractResultScreen() {
   const [cancelling, setCancelling] = useState(false);
 
   const data = query.data;
-  const view = picked ? 'success' : data ? extractionView(data) : null;
+  const view = picked ? 'success' : data ? extractionView(data, timedOut) : null;
+  // 시간이 지나 처리 실패로 본 작업(서버에서는 아직 진행 중)
+  const stuck = timedOut && (data?.job.status === 'QUEUED' || data?.job.status === 'RUNNING');
   const found = (data?.candidates ?? []).filter(
     (c): c is typeof c & { place: Place } => c.place !== null,
   );
@@ -100,6 +108,8 @@ export function ExtractResultScreen() {
       router.back();
       return;
     }
+    // 멈춘 작업은 새 작업을 보내기 전에 취소를 요청한다(실패해도 다시 시도는 막지 않는다)
+    if (stuck) void cancelExtraction(jobId).catch(() => {});
     retry.mutate(sent, {
       onSuccess: (next) => {
         forgetExtraction(jobId);
@@ -182,13 +192,14 @@ export function ExtractResultScreen() {
 
   if (view === 'notFound' || view === 'failed') {
     const failed = view === 'failed';
+    const notice = failedNotice(sent, stuck);
     return (
       <View style={styles.screen}>
         <Header title="장소 찾기" largeTitle />
         <CenterNotice
-          icon={failed ? 'link' : 'search'}
-          title={failed ? '링크를 열지 못했어요' : '장소를 알아내지 못했어요'}
-          description={failed ? '불러오지 못했어요' : '장소를 찾지 못했어요. 직접 골라 주세요'}
+          icon={failed ? notice.icon : 'search'}
+          title={failed ? notice.title : '장소를 알아내지 못했어요'}
+          description={failed ? notice.description : '장소를 찾지 못했어요. 직접 골라 주세요'}
           actionLabel={failed ? '다시 시도' : '장소 직접 검색하기'}
           actionIcon={failed ? 'refresh' : 'search'}
           actionLoading={retry.isPending}

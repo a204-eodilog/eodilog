@@ -246,7 +246,8 @@ let seq = 0;
 /** 테스트 모드 추출 작업. 결과는 링크 글자로 정한다 */
 type MockExtraction = {
   startedAt: number;
-  outcome: 'SUCCESS' | 'MULTIPLE_CANDIDATES' | 'NOT_FOUND' | 'FAILED';
+  /** STUCK은 끝나지 않고 진행 중에 머문다(S12 시간 초과 확인용) */
+  outcome: 'SUCCESS' | 'MULTIPLE_CANDIDATES' | 'NOT_FOUND' | 'FAILED' | 'STUCK';
 };
 const extractions = new Map<string, MockExtraction>();
 const EXTRACTION_MS = 4500;
@@ -269,7 +270,7 @@ function bookmarkPlace(index: number) {
 
 function extractionResult(id: string, job: MockExtraction) {
   const elapsed = Date.now() - job.startedAt;
-  const done = elapsed >= EXTRACTION_MS;
+  const done = job.outcome !== 'STUCK' && elapsed >= EXTRACTION_MS;
   const failed = done && job.outcome === 'FAILED';
   const candidates = !done
     ? []
@@ -739,9 +740,10 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
     });
   }
   // S12 장소 추출(백엔드 미구현, API 명세 §5). 4.5초 동안 진행률이 오르고 끝난다.
-  // 링크에 many·none·fail이 들어 있으면 복수 후보·식별 불가·처리 실패
+  // 링크나 메모에 many·none·fail·stuck이 들어 있으면 복수 후보·식별 불가·처리 실패·끝나지 않음
+  // (캡처만 보낼 때는 메모로 고른다)
   if (method === 'post' && url === '/extractions') {
-    const body = parseBody<{ url?: string; captureAssetIds?: string[] }>(config);
+    const body = parseBody<{ url?: string; captureAssetIds?: string[]; memo?: string }>(config);
     if (!body.url && !(body.captureAssetIds?.length ?? 0)) {
       throw fail(config, 400, 'VALIDATION_ERROR', '링크나 캡처를 하나 이상 넣어 주세요.');
     }
@@ -750,16 +752,18 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
     }
     seq += 1;
     const id = `extraction-${seq}`;
-    const link = body.url ?? '';
+    const hint = `${body.url ?? ''} ${body.memo ?? ''}`;
     extractions.set(id, {
       startedAt: Date.now(),
-      outcome: /fail/i.test(link)
-        ? 'FAILED'
-        : /none/i.test(link)
-          ? 'NOT_FOUND'
-          : /many/i.test(link)
-            ? 'MULTIPLE_CANDIDATES'
-            : 'SUCCESS',
+      outcome: /stuck/i.test(hint)
+        ? 'STUCK'
+        : /fail/i.test(hint)
+          ? 'FAILED'
+          : /none/i.test(hint)
+            ? 'NOT_FOUND'
+            : /many/i.test(hint)
+              ? 'MULTIPLE_CANDIDATES'
+              : 'SUCCESS',
     });
     return ok(
       config,

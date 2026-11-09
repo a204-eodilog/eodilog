@@ -6,6 +6,7 @@ import {
   candidateLetter,
   extractRegion,
   extractionView,
+  failedNotice,
   isLink,
   linkLabel,
   linkStatus,
@@ -151,6 +152,40 @@ describe('extractionView (S12)', () => {
         result('SUCCEEDED', 'MULTIPLE_CANDIDATES', [candidate('a'), candidate('b', false)]),
       ),
     ).toBe('success');
+  });
+
+  it('시간이 지났는데 아직 진행 중이면 처리 실패, 이미 끝났으면 결과 그대로', () => {
+    expect(extractionView(result('QUEUED', null), true)).toBe('failed');
+    expect(extractionView(result('RUNNING', null), true)).toBe('failed');
+    expect(extractionView(result('SUCCEEDED', 'NOT_FOUND'), true)).toBe('notFound');
+  });
+});
+
+describe('failedNotice (S12 처리 실패 글)', () => {
+  it('보낸 입력에 맞춰 무엇을 읽지 못했는지 말한다', () => {
+    expect(failedNotice({ link: 'instagram.com/p/1', captureCount: 0 })).toEqual({
+      icon: 'link',
+      title: '링크를 열지 못했어요',
+      description: '불러오지 못했어요',
+    });
+    expect(failedNotice({ link: null, captureCount: 3 })).toMatchObject({
+      icon: 'image',
+      title: '캡처를 읽지 못했어요',
+    });
+    expect(failedNotice({ link: 'instagram.com/p/1', captureCount: 2 })).toMatchObject({
+      icon: 'link',
+      title: '링크와 캡처를 읽지 못했어요',
+    });
+  });
+
+  it('보낸 입력을 모르면 일반 문구, 시간 초과면 설명이 바뀐다', () => {
+    expect(failedNotice(null)).toMatchObject({
+      icon: 'alert',
+      title: '장소 찾기를 마치지 못했어요',
+    });
+    expect(failedNotice({ link: null, captureCount: 1 }, true).description).toBe(
+      '시간이 너무 오래 걸려요. 다시 시도해 주세요',
+    );
   });
 });
 

@@ -1,7 +1,8 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
 
 import { type CaptureFile, getExtraction, startExtraction, uploadCapture } from '../api';
-import { linkLabel } from '../extract-rules';
+import { EXTRACTION_TIMEOUT_MS, linkLabel } from '../extract-rules';
 import { rememberExtraction } from '../extract-session';
 
 /** 진행 중 다시 읽는 간격. 값 문서 "보통 10초 안에 끝나요" */
@@ -9,17 +10,32 @@ const POLL_MS = 1500;
 
 export const extractionKeys = { one: (jobId: string) => ['extractions', jobId] as const };
 
-/** S12 추출 진행·결과. 작업이 끝날 때까지 1.5초마다 다시 읽는다 */
+/**
+ * S12 추출 진행·결과. 작업이 끝날 때까지 1.5초마다 다시 읽는다.
+ * 화면을 연 뒤 EXTRACTION_TIMEOUT_MS가 지나면 timedOut이 true가 되고 다시 읽기를 멈춘다
+ * (그때도 QUEUED·RUNNING이면 화면은 처리 실패로 본다)
+ */
 export function useExtraction(jobId: string) {
-  return useQuery({
+  // 시간이 지난 작업 id. 다시 시도로 jobId가 바뀌면 새로 잰다
+  const [expiredJobId, setExpiredJobId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!jobId) return;
+    const timer = setTimeout(() => setExpiredJobId(jobId), EXTRACTION_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [jobId]);
+  const timedOut = expiredJobId === jobId;
+
+  const query = useQuery({
     queryKey: extractionKeys.one(jobId),
     queryFn: () => getExtraction(jobId),
     enabled: Boolean(jobId),
-    refetchInterval: (query) => {
-      const status = query.state.data?.job.status;
+    refetchInterval: (q) => {
+      if (timedOut) return false;
+      const status = q.state.data?.job.status;
       return status === 'QUEUED' || status === 'RUNNING' ? POLL_MS : false;
     },
   });
+  return { query, timedOut };
 }
 
 /**

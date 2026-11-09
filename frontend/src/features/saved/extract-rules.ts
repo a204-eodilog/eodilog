@@ -81,9 +81,9 @@ export type ExtractionView = 'progress' | 'success' | 'multiple' | 'notFound' | 
  * 추출 응답 → S12 상태. 작업이 끝나지 않았으면 진행 중, 작업 실패·취소나 결과 FAILED면 처리 실패.
  * 성공이어도 지도에서 찾은 후보가 하나도 없으면 식별 불가로 본다
  */
-export function extractionView(result: ExtractionResult): ExtractionView {
+export function extractionView(result: ExtractionResult, timedOut = false): ExtractionView {
   const { job, resultStatus, candidates } = result;
-  if (job.status === 'QUEUED' || job.status === 'RUNNING') return 'progress';
+  if (job.status === 'QUEUED' || job.status === 'RUNNING') return timedOut ? 'failed' : 'progress';
   if (job.status !== 'SUCCEEDED' || resultStatus === 'FAILED' || resultStatus === null) {
     return 'failed';
   }
@@ -91,6 +91,38 @@ export function extractionView(result: ExtractionResult): ExtractionView {
   const found = candidates.filter((c) => c.place !== null);
   if (found.length === 0) return 'notFound';
   return resultStatus === 'MULTIPLE_CANDIDATES' && found.length > 1 ? 'multiple' : 'success';
+}
+
+/**
+ * 진행 중으로 기다리는 최대 시간. 값 문서는 "보통 10초 안에 끝나요"인데 서버 제한 시간이 아직 없어서(명세 Job),
+ * 그 여섯 배가 지나도 QUEUED·RUNNING이면 다시 읽기를 멈추고 처리 실패로 본다(FE 제안)
+ */
+export const EXTRACTION_TIMEOUT_MS = 60_000;
+
+/** 처리 실패 안내. 보낸 입력(링크·캡처)에 맞춰 무엇을 읽지 못했는지 말한다 */
+export type FailedNotice = {
+  icon: 'link' | 'image' | 'alert';
+  title: string;
+  description: string;
+};
+
+/**
+ * S12 처리 실패 안내 글. sent가 없으면(앱을 다시 켜서 보낸 입력을 잊음) 무엇을 보냈는지 몰라 일반 문구.
+ * 시간 초과면 설명을 "오래 걸려요"로 바꾼다
+ */
+export function failedNotice(
+  sent: { link: string | null; captureCount: number } | null,
+  timedOut = false,
+): FailedNotice {
+  const description = timedOut
+    ? '시간이 너무 오래 걸려요. 다시 시도해 주세요'
+    : '불러오지 못했어요';
+  if (!sent) return { icon: 'alert', title: '장소 찾기를 마치지 못했어요', description };
+  if (sent.link && sent.captureCount > 0) {
+    return { icon: 'link', title: '링크와 캡처를 읽지 못했어요', description };
+  }
+  if (sent.link) return { icon: 'link', title: '링크를 열지 못했어요', description };
+  return { icon: 'image', title: '캡처를 읽지 못했어요', description };
 }
 
 /** 진행 단계(값 문서: 링크와 캡처 읽기 / 장소 이름 찾기 / 지도에 표시하기). 지금 하고 있는 단계 0~2 */
