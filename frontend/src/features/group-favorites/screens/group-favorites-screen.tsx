@@ -15,6 +15,7 @@ import { colors, layout, radius, spacing, typography } from '@/theme';
 import { AddPlaceSheet } from '../components/add-place-sheet';
 import { BookmarkPickSheet } from '../components/bookmark-pick-sheet';
 import { BottomActions } from '../components/bottom-actions';
+import { FavoritesEmpty } from '../components/favorites-empty';
 import { FavoritesMap } from '../components/favorites-map';
 import { FilterBar } from '../components/filter-bar';
 import { InCourseConfirm } from '../components/in-course-confirm';
@@ -110,6 +111,13 @@ export function GroupFavoritesView(props: GroupFavoritesViewProps) {
     body = <ErrorState title="그룹 즐겨찾기를 불러오지 못했어요" onRetry={props.onRetry} />;
   } else if (items.length === 0 && props.empty) {
     body = props.empty;
+  } else if (items.length === 0) {
+    // 거른 결과만 없을 때(겹친 곳 0, 그 동행이 담은 곳 0)
+    body = (
+      <Text style={[typography.body, styles.none]}>
+        {props.filter === 'OVERLAP' ? '겹친 곳이 아직 없어요' : '이 동행이 담은 곳이 없어요'}
+      </Text>
+    );
   } else if (props.view === 'map') {
     body = (
       <FavoritesMap
@@ -149,6 +157,8 @@ export function GroupFavoritesView(props: GroupFavoritesViewProps) {
   }
 
   const ready = props.status === 'ready';
+  // 장소가 하나도 없으면 빈 화면이 버튼을 갖고 있어 아래 줄을 숨긴다(Figma 201-9686)
+  const showBottom = ready && !(items.length === 0 && props.empty);
   return (
     <View style={styles.screen}>
       <Header
@@ -169,7 +179,7 @@ export function GroupFavoritesView(props: GroupFavoritesViewProps) {
         />
       ) : null}
       <View style={styles.body}>{body}</View>
-      {ready ? (
+      {showBottom ? (
         props.selecting ? (
           <BottomActions
             mode="selecting"
@@ -277,6 +287,11 @@ export function GroupFavoritesScreen() {
       onCancelSelect={() => undefined}
       onConfirmSelect={() => undefined}
       onRetry={() => void list.refetch()}
+      empty={
+        list.totals?.allPlaceCount === 0 ? (
+          <FavoritesEmpty onAdd={() => setAdding(true)} onRecommend={notReady} />
+        ) : undefined
+      }
     >
       <MemberFilterSheet
         visible={memberSheet}
@@ -346,6 +361,7 @@ const styles = StyleSheet.create({
   list: { paddingHorizontal: layout.screenPaddingX, paddingBottom: spacing[24] },
   order: { color: colors.text.sub, paddingTop: spacing[8], paddingBottom: spacing[4] },
   more: { marginVertical: spacing[16] },
+  none: { color: colors.text.sub, textAlign: 'center', marginTop: spacing[32] },
   toggle: {
     flexDirection: 'row',
     padding: spacing[2],

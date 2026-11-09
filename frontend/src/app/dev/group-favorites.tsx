@@ -4,6 +4,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui';
 import { AddPlaceSheet } from '@/features/group-favorites/components/add-place-sheet';
+import { FavoritesEmpty } from '@/features/group-favorites/components/favorites-empty';
 import { InCourseConfirm } from '@/features/group-favorites/components/in-course-confirm';
 import { MemberFilterSheet } from '@/features/group-favorites/components/member-filter-sheet';
 import { PlaceSheet } from '@/features/group-favorites/components/place-sheet';
@@ -30,6 +31,7 @@ const EXAMPLES = [
   { state: 'list', label: '목록 201-9344' },
   { state: 'overlap', label: '겹친 곳만' },
   { state: 'map', label: '지도 보기 201-9521' },
+  { state: 'empty', label: '장소 없음 201-9686' },
   { state: 'add-sheet', label: '장소 추가 시트 201-9751' },
   { state: 'place-sheet', label: '장소 시트' },
   { state: 'in-course', label: '코스에 있는 장소 빼기 201-29151' },
@@ -82,7 +84,7 @@ function DevScreen({ state }: { state: string }) {
     }, 300);
     return () => clearTimeout(timer);
   }, [state]);
-  const all = sampleSaved();
+  const all = state === 'empty' ? [] : sampleSaved();
   const items = all
     .filter((i) => filter === 'ALL' || i.savedCount >= 2)
     .filter((i) => !member || i.savedBy.some((s) => s.memberId === member));
@@ -116,6 +118,11 @@ function DevScreen({ state }: { state: string }) {
       onCancelSelect={noop}
       onConfirmSelect={noop}
       onRetry={noop}
+      empty={
+        all.length === 0 ? (
+          <FavoritesEmpty onAdd={() => setAdding(true)} onRecommend={noop} />
+        ) : undefined
+      }
     >
       <MemberFilterSheet
         visible={memberSheet}

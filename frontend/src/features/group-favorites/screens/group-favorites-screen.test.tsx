@@ -355,3 +355,27 @@ function bookmark(p: ReturnType<typeof place>) {
     createdAt: '2026-11-01T00:00:00Z',
   };
 }
+
+describe('장소 없음', () => {
+  it('모은 장소가 없으면 빈 화면과 큰 추가 버튼, 아래 줄은 없다', async () => {
+    mockList.mockResolvedValue(page([]));
+    await renderScreen();
+    expect(await screen.findByText('아직 모은 장소가 없어요')).toBeTruthy();
+    expect(screen.getByText('전체 0')).toBeTruthy();
+    expect(screen.getAllByLabelText('장소 추가')).toHaveLength(1);
+    await fireEvent.press(screen.getByLabelText('장소 추가'));
+    expect(screen.getByText('장소 검색')).toBeTruthy();
+  });
+
+  it('겹친 곳만 비었으면 짧은 안내만 보인다', async () => {
+    mockList.mockResolvedValueOnce(page(sampleSaved())).mockResolvedValueOnce(
+      page([], {
+        totals: { allPlaceCount: 5, overlapPlaceCount: 0, filteredCount: 0 },
+      }),
+    );
+    await renderScreen();
+    await fireEvent.press(await screen.findByText('겹친 곳 3'));
+    expect(await screen.findByText('겹친 곳이 아직 없어요')).toBeTruthy();
+    expect(screen.queryByText('아직 모은 장소가 없어요')).toBeNull();
+  });
+});
