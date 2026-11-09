@@ -38,14 +38,27 @@ export function AutoLoadingView({ savedCount }: { savedCount: number }) {
 }
 
 /** S23 자동 추천 실패(Figma 201-12684) */
-export function AutoFailView({ onRetry, onManual }: { onRetry(): void; onManual(): void }) {
+export function AutoFailView({
+  onRetry,
+  onManual,
+  backToDraft = false,
+}: {
+  onRetry(): void;
+  onManual(): void;
+  /** 초안의 재추천이 실패했으면 직접 만들기 대신 고치던 코스로 돌아간다 */
+  backToDraft?: boolean;
+}) {
   return (
     <View style={styles.center}>
       <View style={styles.badge}>
         <Icon name="wifi-off" size={28} color={colors.text.icon} />
       </View>
       <Text style={[typography.title1, styles.title]}>코스를 만들지 못했어요</Text>
-      <Text style={[typography.body, styles.body]}>다시 시도하거나 직접 만들어 보세요</Text>
+      <Text style={[typography.body, styles.body]}>
+        {backToDraft
+          ? '다시 시도하거나 고치던 코스로 돌아가요'
+          : '다시 시도하거나 직접 만들어 보세요'}
+      </Text>
       <Button
         label="다시 시도"
         size="lg"
@@ -55,8 +68,10 @@ export function AutoFailView({ onRetry, onManual }: { onRetry(): void; onManual(
         style={styles.button}
       />
       <Pressable style={styles.manual} onPress={onManual} accessibilityRole="button">
-        <Icon name="pencil" size={18} color={colors.text.icon} />
-        <Text style={[typography.bodyMedium, styles.manualText]}>직접 만들기</Text>
+        <Icon name={backToDraft ? 'back' : 'pencil'} size={18} color={colors.text.icon} />
+        <Text style={[typography.bodyMedium, styles.manualText]}>
+          {backToDraft ? '고치던 코스로 돌아가기' : '직접 만들기'}
+        </Text>
       </Pressable>
     </View>
   );

@@ -231,6 +231,7 @@ export function CourseEditScreen() {
   const [savingDates, setSavingDates] = useState(false);
   const saved = useTripSavedPlaces(tripId, mode !== 'draft');
   const auto = useAutoCourse(tripId);
+  const [autoFromDraft, setAutoFromDraft] = useState(false);
   const recalc = useRecalculate(tripId);
   const [syncedFrom, setSyncedFrom] = useState<unknown>(null);
   const queryClient = useQueryClient();
@@ -360,6 +361,8 @@ export function CourseEditScreen() {
   const runAuto = async () => {
     const base = itinerary.data;
     if (!base) return;
+    // 초안에서 재추천했으면 실패했을 때 그 초안으로 돌아갈 수 있게 기억한다
+    setAutoFromDraft(mode === 'draft' && draft !== null);
     setMode('auto');
     const content = await auto.start(base.version);
     if (!content) return;
@@ -469,7 +472,11 @@ export function CourseEditScreen() {
   } else if (mode === 'auto') {
     body =
       auto.status === 'failed' ? (
-        <AutoFailView onRetry={() => void runAuto()} onManual={startManual} />
+        <AutoFailView
+          onRetry={() => void runAuto()}
+          onManual={autoFromDraft ? () => setMode('draft') : startManual}
+          backToDraft={autoFromDraft}
+        />
       ) : (
         <AutoLoadingView savedCount={saved.data?.length ?? 0} />
       );

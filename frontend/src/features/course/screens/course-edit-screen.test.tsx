@@ -559,6 +559,22 @@ describe('구성 방식과 준비 상태', () => {
     expect(screen.getByText('고친 내용을 버릴까요?')).toBeTruthy();
   });
 
+  it('초안의 재추천이 실패하면 고치던 코스로 돌아갈 수 있다', async () => {
+    mockGet.mockResolvedValue(sampleCourse(true));
+    mockGetAuto.mockResolvedValue(proposalOf('FAILED'));
+    await renderScreen();
+    await fireEvent.press(await screen.findByLabelText('해운대 해변 고치기'));
+    await fireEvent.press(screen.getByLabelText('아래로'));
+    await fireEvent.press(screen.getByText('재추천'));
+    expect(await screen.findByText('고치던 코스로 돌아가기')).toBeTruthy();
+    expect(screen.queryByText('직접 만들기')).toBeNull();
+    await fireEvent.press(screen.getByText('고치던 코스로 돌아가기'));
+    expect(await screen.findByText('고치는 중')).toBeTruthy();
+    await fireEvent.press(screen.getByText('완료'));
+    await waitFor(() => expect(mockPut).toHaveBeenCalled());
+    expect(day1(lastBody())).toEqual(['p-gwangalli', 'p-haeundae', 'p-seomyeon']);
+  });
+
   it('초안의 재추천은 새 추천안으로 바꾼다', async () => {
     mockGet.mockResolvedValue(sampleCourse(true));
     mockGetAuto.mockResolvedValue(proposalOf('SUCCEEDED'));
