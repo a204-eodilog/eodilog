@@ -85,18 +85,21 @@ export function ChecklistView(props: ChecklistViewProps) {
     body = <ErrorState title="준비물을 불러오지 못했어요" onRetry={props.onRetry} />;
   } else if (items.length === 0) {
     body = (
-      <ScrollView contentContainerStyle={styles.empty} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={styles.emptyScroll} keyboardShouldPersistTaps="handled">
+        {/* 실패 카드는 목록 상태처럼 위에 두고, 안내 묶음만 남은 공간 가운데에 둔다 */}
         {failCard ? <View style={styles.emptyCard}>{failCard}</View> : null}
-        <ChecklistEmpty
-          onSuggest={props.onSuggest}
-          suggesting={props.suggesting}
-          onAddDirect={() => setAddOpen(true)}
-        />
-        {addOpen ? (
-          <View style={styles.emptyAdd}>
-            <AddItemBar onAdd={props.onAdd} busy={props.adding} autoFocus />
-          </View>
-        ) : null}
+        <View style={styles.empty}>
+          <ChecklistEmpty
+            onSuggest={props.onSuggest}
+            suggesting={props.suggesting}
+            onAddDirect={() => setAddOpen(true)}
+          />
+          {addOpen ? (
+            <View style={styles.emptyAdd}>
+              <AddItemBar onAdd={props.onAdd} busy={props.adding} autoFocus />
+            </View>
+          ) : null}
+        </View>
       </ScrollView>
     );
   } else {
@@ -254,6 +257,7 @@ const styles = StyleSheet.create({
   },
   list: { gap: spacing[10] },
   // 디자인은 아래 110을 비워 안내를 화면 가운데보다 조금 위에 둔다
+  emptyScroll: { flexGrow: 1 },
   empty: {
     flexGrow: 1,
     justifyContent: 'center',
@@ -261,7 +265,7 @@ const styles = StyleSheet.create({
     paddingBottom: 110,
   },
   emptyAdd: { paddingHorizontal: layout.screenPaddingX, marginTop: spacing[24] },
-  emptyCard: { paddingHorizontal: layout.screenPaddingX, marginBottom: spacing[24] },
+  emptyCard: { paddingHorizontal: layout.screenPaddingX, paddingTop: spacing[16] },
   bottom: {
     flexDirection: 'row',
     alignItems: 'center',
