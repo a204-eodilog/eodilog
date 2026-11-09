@@ -75,13 +75,13 @@
 
 **Independent Test**: `closeNow('decided'|'tie'|'noVotes')` 뒤 S22가 맞는 결과를 보이고, 지역 확정이면 S17 여행지가 바뀐다.
 
-- [ ] T037 [P] [US4] `poll-rules.ts`에 결과 문구 `resultHeadline`(자동 확정·동률 "부산과 강릉이 1표씩 같아요"·0표), `notVotedLine`, `decidedLine` 추가하고 T007 테스트에 경우 추가
-- [ ] T038 [US4] `poll-header-card.tsx`에 마감 카드(Figma 201-11073, 201-11213): '마감' 태그, 마감 시각, 결과 제목, 보조 줄
-- [ ] T039 [US4] `poll-views.tsx`에 `PollDecidedView`(마감 후 자동 확정 201-11073, 결과 목록 + [확정된 여행지 보기]), `PollDecidedCardView`(여행지 확정 201-11569, 초록 확정 카드 + "투표 결과" + [장소 모으고 코스 짜기]), `PollTieView`(201-11213, "부산과 강릉을 모두 확정했어요" 줄 + 결과 + [코스에서 날짜별로 나누기]), `PollNoVotesView`(201-11494, [다시 열기]·[직접 정하기]·안내)
-- [ ] T040 [US4] `src/features/poll/poll-routes.ts`: 아직 없는 화면 버튼은 '준비 중이에요' 토스트, [직접 정하기]는 `settings-region`
-- [ ] T041 [US4] `use-poll.ts`에 지역 투표 FINALIZED 첫 확인 때 `tripKey`와 여행 목록 무효화, `use-open-poll.ts`에 [다시 열기](같은 유형·제목·후보, 24시간 뒤)
-- [ ] T042 [US4] `poll-screen.tsx`에 결과 상태 연결, 지역 투표 결과 화면에서 [확정된 여행지 보기]를 누르면 같은 화면이 여행지 확정 카드로 바뀜(장소 투표는 버튼 없음), `/dev/polls`에 마감 후 자동 확정·동률·0표·여행지 확정 추가
-- [ ] T043 [US4] `poll-screen.test.tsx` 결과 RNTL: 세 결과 문구, [다시 열기]가 createPoll을 같은 후보로 부름, 지역 확정 시 여행 캐시 무효화
+- [X] T037 [P] [US4] `poll-rules.ts`에 결과 문구 `resultHeadline`(자동 확정·동률 "부산과 강릉이 1표씩 같아요"·0표), `notVotedLine`, `decidedLine` 추가하고 T007 테스트에 경우 추가
+- [X] T038 [US4] `poll-header-card.tsx`에 마감 카드(Figma 201-11073, 201-11213): '마감' 태그, 마감 시각, 결과 제목, 보조 줄
+- [X] T039 [US4] `poll-views.tsx`에 `PollDecidedView`(마감 후 자동 확정 201-11073, 결과 목록 + [확정된 여행지 보기]), `PollDecidedCardView`(여행지 확정 201-11569, 초록 확정 카드 + "투표 결과" + [장소 모으고 코스 짜기]), `PollTieView`(201-11213, "부산과 강릉을 모두 확정했어요" 줄 + 결과 + [코스에서 날짜별로 나누기]), `PollNoVotesView`(201-11494, [다시 열기]·[직접 정하기]·안내)
+- [X] T040 [US4] `src/features/poll/poll-routes.ts`: 아직 없는 화면 버튼은 '준비 중이에요' 토스트, [직접 정하기]는 `settings-region`
+- [X] T041 [US4] `use-poll.ts`에 지역 투표 FINALIZED 첫 확인 때 `tripKey`와 여행 목록 무효화, `use-open-poll.ts`에 [다시 열기](같은 유형·제목·후보, 24시간 뒤)
+- [X] T042 [US4] `poll-screen.tsx`에 결과 상태 연결, 지역 투표 결과 화면에서 [확정된 여행지 보기]를 누르면 같은 화면이 여행지 확정 카드로 바뀜(장소 투표는 버튼 없음), `/dev/polls`에 마감 후 자동 확정·동률·0표·여행지 확정 추가
+- [X] T043 [US4] `poll-screen.test.tsx` 결과 RNTL: 세 결과 문구, [다시 열기]가 createPoll을 같은 후보로 부름, 지역 확정 시 여행 캐시 무효화
 
 ## Phase 7: User Story 5 - 진입 연결 (P2)
 
