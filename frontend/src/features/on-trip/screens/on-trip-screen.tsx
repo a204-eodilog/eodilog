@@ -13,20 +13,24 @@ import {
   type DraftItem,
 } from '@/features/course/course-rules';
 import { useItinerary } from '@/features/course/hooks/use-itinerary';
+import { useRegions } from '@/features/trip/hooks/use-region-names';
 import { useTrip } from '@/features/trip/hooks/use-trip';
+import { shortRegionName } from '@/features/trip/trip-rules';
 import { useMe } from '@/hooks/use-me';
 import { formatShortDate, parseDate } from '@/lib/format-date';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
+import { BeforeStart } from '../components/before-start';
 import { TodayCourse, NoCourse } from '../components/today-course';
 import { TripTools } from '../components/trip-tools';
 import { WeatherCard } from '../components/weather-card';
-import { useChecklistSummary, useWeather } from '../hooks/use-weather';
+import { useChecklistSummary, useForecasts, useWeather } from '../hooks/use-weather';
 import {
   affectedIndex,
   clock,
   nextIndex,
   rainChance,
+  tripDates,
   tripPhase,
   type TripPhase,
 } from '../on-trip-rules';
@@ -197,6 +201,16 @@ export function OnTripScreen() {
   const weather = useWeather(tripId, date, placeId);
   const affected = weather.data ? affectedIndex(items, weather.data) : null;
   const queried = itinerary.data ? latestQueriedAt(itinerary.data) : null;
+  // 시작 전에는 날짜마다 그 날 코스 첫 장소의 예보를 받는다(Q-10-4)
+  const forecastDays =
+    phase.kind === 'before' && draft
+      ? tripDates(start, end).flatMap((d, i) => {
+          const first = draft.days[i]?.[0];
+          return first ? [{ date: d, placeId: first.place.id }] : [];
+        })
+      : [];
+  const forecasts = useForecasts(tripId, forecastDays);
+  const { regions } = useRegions((trip.data?.destinationRegionIds ?? []).slice(0, 1));
 
   const people = (trip.data?.members ?? [])
     .filter((m) => m.status === 'ACTIVE')
@@ -246,6 +260,15 @@ export function OnTripScreen() {
       onChecklist={() => router.push(`/trips/${tripId}/checklist` as Href)}
       onAmenities={() => toast.show('준비 중이에요')}
       onCourse={() => router.push(`/trips/${tripId}/course`)}
+      before={
+        <BeforeStart
+          startDate={start}
+          regionName={regions[0] ? shortRegionName(regions[0].name) : null}
+          forecasts={forecasts.flatMap((q) => (q.data ? [q.data] : []))}
+          checklist={checklist.data ?? null}
+          onChecklist={() => router.push(`/trips/${tripId}/checklist` as Href)}
+        />
+      }
     />
   );
 }

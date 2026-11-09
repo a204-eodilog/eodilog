@@ -36,6 +36,7 @@ const mockTrip = {
   title: '겨울 여행',
   startDate: '2026-11-14' as string | null,
   endDate: '2026-11-15' as string | null,
+  destinationRegionIds: ['region-busan'],
   members: [{ id: 'm-me', status: 'ACTIVE', user: { id: 'u-me', nickname: '영광' } }],
 };
 jest.mock('@/features/trip/hooks/use-trip', () => ({
@@ -43,6 +44,12 @@ jest.mock('@/features/trip/hooks/use-trip', () => ({
   useTrip: () => ({ data: mockTrip, error: null, isError: false, refetch: jest.fn() }),
 }));
 jest.mock('@/hooks/use-me', () => ({ useMe: () => ({ data: { id: 'u-me' } }) }));
+jest.mock('@/features/trip/hooks/use-region-names', () => ({
+  useRegions: (ids: string[]) => ({
+    regions: ids.map((id) => ({ id, name: '부산광역시' })),
+    ready: true,
+  }),
+}));
 
 jest.mock('@/components/ui', () => {
   const actual = jest.requireActual<typeof import('@/components/ui/icon')>('@/components/ui/icon');
@@ -165,5 +172,45 @@ describe('S25 여행 중', () => {
     mockChecklist.mockRejectedValue(new Error('404'));
     await renderScreen();
     await waitFor(() => expect(screen.getByText('목록 보기')).toBeTruthy());
+  });
+});
+
+describe('여행 시작 전', () => {
+  it('남은 날, 바뀌는 날, 날짜별 예보와 준비물 진행', async () => {
+    jest.setSystemTime(new Date('2026-11-12T21:00:00'));
+    mockWeather.mockImplementation(async (_trip, date, placeId) => ({
+      ...weather(),
+      date,
+      placeId,
+      queriedAt: '2026-11-12T21:00:00',
+    }));
+    await renderScreen();
+    expect(await screen.findByText('계획 중')).toBeTruthy();
+    expect(screen.getByText('여행까지 2일 남았어요')).toBeTruthy();
+    expect(screen.getByText('11.14(토)부터 여행 중으로 바뀌어요')).toBeTruthy();
+    expect(await screen.findByText('부산 날씨 예보')).toBeTruthy();
+    expect(screen.getByText('11.12(목) 21:00 조회')).toBeTruthy();
+    expect(screen.getAllByText('비 70%')).toHaveLength(2);
+    expect(screen.getByText('11.15(일)')).toBeTruthy();
+    expect(screen.getByText('전날 다시 알려요')).toBeTruthy();
+    expect(await screen.findByText('6개 중 3개 챙겼어요')).toBeTruthy();
+    expect(mockWeather).toHaveBeenCalledWith(
+      'trip-1',
+      '2026-11-15',
+      'p-gamcheon',
+      expect.anything(),
+    );
+    expect(screen.queryByText('오늘 코스')).toBeNull();
+    await fireEvent.press(screen.getByLabelText('준비물'));
+    expect(mockRouter.push).toHaveBeenCalledWith('/trips/trip-1/checklist');
+  });
+
+  it('날짜가 없으면 날짜를 정하라는 안내와 준비물만', async () => {
+    mockTrip.startDate = null;
+    mockTrip.endDate = null;
+    await renderScreen();
+    expect(await screen.findByText('여행 날짜를 정하면 여행 중으로 바뀌어요')).toBeTruthy();
+    expect(screen.queryByText('부산 날씨 예보')).toBeNull();
+    expect(mockWeather).not.toHaveBeenCalled();
   });
 });

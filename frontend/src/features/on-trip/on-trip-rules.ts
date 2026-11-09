@@ -86,6 +86,15 @@ export function weatherHeadline(w: Weather): string {
   return `${morning ? '오전' : '오후'} ${word} ${pct(max)}%`;
 }
 
+/** 날짜별 예보 한 줄. 비 확률 30% 이상이면 "비 60%", 아니면 상태 이름 */
+export function forecastLabel(w: Weather): string {
+  const chance = rainChance(w);
+  if (chance !== null && chance >= RAIN_P * 100) {
+    return `${w.condition === 'SNOW' ? '눈' : '비'} ${chance}%`;
+  }
+  return conditionLabel(w.condition);
+}
+
 /** 비가 온 뒤 처음 그치는 시각. "12시부터 그쳐요". 그치지 않거나 비가 없으면 null */
 export function clearsAt(w: Weather): string | null {
   const hours = sortedHours(w);

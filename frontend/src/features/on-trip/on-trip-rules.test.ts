@@ -5,6 +5,7 @@ import {
   alternativeView,
   clearsAt,
   conditionLabel,
+  forecastLabel,
   hourKind,
   nextIndex,
   rainChance,
@@ -67,6 +68,16 @@ describe('날씨 문구', () => {
     const clear = weather({ condition: 'CLEAR', hourly: [hourly(9, 0.1, 'CLEAR')] });
     expect(weatherHeadline(clear)).toBe('맑음');
     expect(conditionLabel('UNKNOWN')).toBe('UNKNOWN');
+  });
+
+  it('날짜별 예보는 비 확률이나 상태 이름', () => {
+    expect(forecastLabel(weather())).toBe('비 70%');
+    const clear = weather({
+      condition: 'CLEAR',
+      precipitationProbability: 0.1,
+      hourly: [hourly(9, 0.1, 'CLEAR')],
+    });
+    expect(forecastLabel(clear)).toBe('맑음');
   });
 
   it('비가 그치는 시각과 기온 줄', () => {
