@@ -113,6 +113,7 @@ export function GroupFavoritesView(props: GroupFavoritesViewProps) {
   } else {
     body = (
       <FlatList
+        testID="favorites-list"
         data={items}
         keyExtractor={(i) => i.place.id}
         contentContainerStyle={styles.list}
