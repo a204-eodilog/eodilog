@@ -5,7 +5,12 @@ import { getAutoCourse, requestAutoCourse } from '../api';
 import { place } from '../testing';
 import type { ItineraryProposal, JobStatus } from '../types';
 
-import { AUTO_POLL_MS, AUTO_TIMEOUT_MS, useAutoCourse } from './use-auto-course';
+import {
+  AUTO_MIN_REQUEST_MS,
+  AUTO_POLL_MS,
+  AUTO_TIMEOUT_MS,
+  useAutoCourse,
+} from './use-auto-course';
 
 jest.mock('@/config/env', () => ({
   env: { appEnv: 'local', apiBaseUrl: 'http://test', kakaoRedirectUri: null, devMock: false },
@@ -63,10 +68,12 @@ describe('자동 추천', () => {
     mockGet.mockResolvedValueOnce(proposal('RUNNING')).mockResolvedValueOnce(proposal('SUCCEEDED'));
     const { result } = await renderHook(() => useAutoCourse('trip-1'));
     let content: unknown = 'pending';
+    const accepted = jest.fn();
     await act(async () => {
-      void result.current.start(3).then((c) => (content = c));
+      void result.current.start(3, accepted).then((c) => (content = c));
     });
     expect(result.current.status).toBe('running');
+    expect(accepted).toHaveBeenCalledTimes(1);
     await flush(AUTO_POLL_MS);
     expect(mockRequest).toHaveBeenCalledWith('trip-1', 3);
     expect(content).toEqual(CONTENT);
@@ -93,13 +100,18 @@ describe('자동 추천', () => {
     expect(result.current.status).toBe('failed');
   });
 
-  it('요청이 실패하면 실패, 실서버에 아직 없는 API', async () => {
+  it('요청이 바로 실패하면 작업 시작을 알리지 않고, 잠깐 요청 중으로 둔 뒤 실패', async () => {
     mockRequest.mockRejectedValue(new Error('404'));
     const { result } = await renderHook(() => useAutoCourse('trip-1'));
+    const accepted = jest.fn();
     await act(async () => {
-      await result.current.start(1);
+      void result.current.start(1, accepted);
     });
+    // 생성 중 화면으로 넘어가지 않고 누른 버튼만 돈다
+    expect(result.current.status).toBe('requesting');
+    await flush(AUTO_MIN_REQUEST_MS);
     expect(result.current.status).toBe('failed');
+    expect(accepted).not.toHaveBeenCalled();
   });
 
   it('1분이 넘으면 실패', async () => {
