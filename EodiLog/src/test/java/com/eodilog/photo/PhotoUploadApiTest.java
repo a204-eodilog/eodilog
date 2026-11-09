@@ -48,6 +48,8 @@ class PhotoUploadApiTest {
     @Autowired JobWorker worker;
     @Autowired AssetProperties assetProperties;
     @Autowired com.eodilog.trip.service.TripDeleteJobHandler tripDeleteHandler;
+    @Autowired PhotoDeleteJobHandler photoDeleteHandler;
+    @Autowired PhotoDeleteJobAccessPolicy photoDeletePolicy;
     UUID owner, friend, outsider, trip, member;
     byte[] png;
 
@@ -61,6 +63,12 @@ class PhotoUploadApiTest {
         volatile String blockedReadKey;
         volatile CountDownLatch readEntered;
         volatile CountDownLatch readReleased;
+        volatile String blockedOpenKey;
+        volatile CountDownLatch openEntered;
+        volatile CountDownLatch openReleased;
+        volatile String blockedDeleteKey;
+        volatile CountDownLatch deleteEntered;
+        volatile CountDownLatch deleteReleased;
         final Map<String,Integer> deletes=new ConcurrentHashMap<>();
         final java.util.concurrent.atomic.AtomicInteger streamsOpened=new java.util.concurrent.atomic.AtomicInteger();
         final java.util.concurrent.atomic.AtomicInteger streamsClosed=new java.util.concurrent.atomic.AtomicInteger();
@@ -71,6 +79,7 @@ class PhotoUploadApiTest {
             return Optional.ofNullable(objects.get(key)).map(bytes -> new StoredObject(bytes.length,"image/png"));
         }
         public java.io.InputStream open(String key) {
+            if (key.equals(blockedOpenKey)) awaitStorageLatch(openEntered,openReleased);
             streamsOpened.incrementAndGet();
             return new java.io.ByteArrayInputStream(objects.get(key)) {
                 @Override public void close() throws java.io.IOException {streamsClosed.incrementAndGet();super.close();}
@@ -90,10 +99,17 @@ class PhotoUploadApiTest {
         }
         public void write(String key, byte[] bytes, String type) { objects.put(key, bytes.clone()); }
         public void delete(String key) {
+            if (key.equals(blockedDeleteKey)) awaitStorageLatch(deleteEntered,deleteReleased);
             deletes.merge(key,1,Integer::sum);
             if (failDelete || failedDeleteKeys.contains(key)) throw new com.eodilog.global.common.error.BusinessException(
                     AssetErrorCode.STORAGE_UNAVAILABLE, "storage-secret https://provider.example/?credential=storage-secret");
             objects.remove(key);
+        }
+        private void awaitStorageLatch(CountDownLatch entered,CountDownLatch released) {
+            entered.countDown();
+            try {
+                if (!released.await(15,TimeUnit.SECONDS)) throw new IllegalStateException("test storage latch timed out");
+            } catch(InterruptedException ex) {Thread.currentThread().interrupt();throw new IllegalStateException(ex);}
         }
     }
 
@@ -107,6 +123,7 @@ class PhotoUploadApiTest {
         var output = new ByteArrayOutputStream(); ImageIO.write(new BufferedImage(3, 2, BufferedImage.TYPE_INT_RGB), "png", output); png = output.toByteArray();
         storage.failDelete = false;
         storage.failedDeleteKeys.clear(); storage.blockedReadKey = null;
+        storage.blockedOpenKey=null;storage.blockedDeleteKey=null;
         storage.deletes.clear(); storage.streamsOpened.set(0);storage.streamsClosed.set(0);
     }
 
@@ -349,7 +366,7 @@ class PhotoUploadApiTest {
                 new com.eodilog.job.CleanupScope(List.of(),List.of(),Instant.now()));
         var context=new com.eodilog.job.JobContext(UUID.randomUUID(),UUID.randomUUID(),1,submission);
         storage.failedDeleteKeys.add("display/"+second);
-        assertThatThrownBy(()->tripDeleteHandler.execute(context)).isInstanceOf(com.eodilog.global.common.error.BusinessException.class);
+        assertThat(tripDeleteHandler.execute(context).failure()).isEqualTo(com.eodilog.job.JobFailure.TEMPORARY_FAILURE);
         assertThat(state(first)).isEqualTo("DELETING");assertThat(state(second)).isEqualTo("READY");
         assertThat(storage.deletes.get("uploads/"+first)).isEqualTo(1);assertThat(storage.deletes.get("display/"+first)).isEqualTo(1);
         storage.failedDeleteKeys.clear();tripDeleteHandler.execute(context);
@@ -455,6 +472,16 @@ class PhotoUploadApiTest {
                 .andExpect(jsonPath("$.paths['/api/v1/trips/{tripId}/photos'].post.responses['409']").exists())
                 .andExpect(jsonPath("$.components.schemas.UploadIntentRequest.properties.byteSize.description").exists())
                 .andExpect(jsonPath("$.components.schemas.PhotoResponse.properties.topics").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/trips/{tripId}/photos/{photoId}'].patch.responses['409']").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/trips/{tripId}/photos/{photoId}'].delete.responses['202']").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/trips/{tripId}/photo-summary'].get.tags[0]").value("사진"))
+                .andExpect(jsonPath("$.components.schemas.UpdatePhotoRequest.properties.expectedVersion.description").exists())
+                .andExpect(jsonPath("$.components.schemas.UpdatePhotoRequest.properties.expectedVersion.minimum").value(1))
+                .andExpect(jsonPath("$.components.schemas.UpdatePhotoRequest.required").value(org.hamcrest.Matchers.hasItem("expectedVersion")))
+                .andExpect(jsonPath("$.components.schemas.UpdatePhotoRequest.properties.topics.maxItems").value(4))
+                .andExpect(jsonPath("$.components.schemas.UpdatePhotoRequest.properties.topics.uniqueItems").value(true))
+                .andExpect(jsonPath("$.components.schemas.UpdatePhotoRequest.properties.topics.items.enum").value(org.hamcrest.Matchers.containsInAnyOrder("LANDSCAPE","FOOD","PEOPLE","OTHER")))
+                .andExpect(jsonPath("$.paths['/api/v1/trips/{tripId}/photos/{photoId}'].patch.responses['400'].description").value(org.hamcrest.Matchers.containsString("VALIDATION_ERROR")))
                 .andExpect(jsonPath("$.security").isNotEmpty());
     }
 
@@ -512,6 +539,276 @@ class PhotoUploadApiTest {
         mvc.perform(get("/api/v1/assets/{id}/download",legacy).with(authUser(friend))).andExpect(status().isNotFound());
     }
 
+    @Test void manuallyEditsTopicsFiltersAndSummarizesWithoutLosingOmittedFields() throws Exception {
+        UUID batch=batch(owner,2,UUID.randomUUID().toString()), asset=intent(owner,batch,true);
+        complete(owner,asset).andExpect(status().isOk());
+        UUID photo=UUID.fromString(data(register(owner,batch,asset).andExpect(status().isCreated())).path("id").asString());
+        UUID place=UUID.randomUUID();
+        jdbc.update("insert into places(id,name,latitude,longitude,source,created_at,updated_at) values(?,'보정 장소',37.5,126.25,'MANUAL',now(),now())",place);
+        edit(owner,photo,"{\"expectedVersion\":1,\"placeId\":\"%s\",\"topics\":[\"FOOD\",\"OTHER\"]}".formatted(place))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.version").value(2));
+        edit(owner,photo,"{\"expectedVersion\":2,\"topics\":[]}")
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.placeId").value(place.toString()))
+                .andExpect(jsonPath("$.data.topics").isEmpty());
+        mvc.perform(get("/api/v1/trips/{trip}/photos",trip).param("topic","FOOD").with(authUser(friend)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data").isEmpty());
+        assertThat(jdbc.queryForObject("select topics_manually_edited and place_manually_edited from photos where id=?",Boolean.class,photo)).isTrue();
+        edit(owner,photo,"{\"expectedVersion\":3,\"placeId\":null,\"topics\":[\"FOOD\"]}")
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.placeId").isEmpty());
+        mvc.perform(get("/api/v1/trips/{trip}/photos",trip).param("topic","FOOD").with(authUser(friend)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.length()").value(1)).andExpect(jsonPath("$.data[0].topics[0]").value("FOOD"));
+        mvc.perform(get("/api/v1/trips/{trip}/photos",trip).param("topic","PEOPLE").with(authUser(friend)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data").isEmpty());
+        mvc.perform(get("/api/v1/trips/{trip}/photo-summary",trip).with(authUser(friend)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.totalCount").value(1))
+                .andExpect(jsonPath("$.data.unplacedCount").value(1)).andExpect(jsonPath("$.data.topics[0].count").value(1))
+                .andExpect(jsonPath("$.data.groups").isEmpty());
+    }
+
+    @Test void rejectsInvalidPhotoEditsAndEnforcesOwnerMembershipAndVersion() throws Exception {
+        UUID batch=batch(owner,1,UUID.randomUUID().toString()), asset=intent(owner,batch,true);
+        complete(owner,asset).andExpect(status().isOk());
+        UUID photo=UUID.fromString(data(register(owner,batch,asset).andExpect(status().isCreated())).path("id").asString());
+        for(String body:List.of("{}","{\"topics\":[]}","{\"expectedVersion\":1}",
+                "{\"expectedVersion\":1.9,\"topics\":[]}","{\"expectedVersion\":\"1\",\"topics\":[]}",
+                "{\"expectedVersion\":0,\"topics\":[]}","{\"expectedVersion\":-1,\"topics\":[]}",
+                "{\"expectedVersion\":9223372036854775808,\"topics\":[]}",
+                "{\"expectedVersion\":1,\"topics\":null}","{\"expectedVersion\":1,\"topics\":[null]}",
+                "{\"expectedVersion\":1,\"topics\":[\"FOOD\",\"FOOD\"]}","{\"expectedVersion\":1,\"topics\":[\"BAD\"]}",
+                "{\"expectedVersion\":1,\"groupId\":null}","{\"expectedVersion\":1,\"placeId\":\"%s\"}".formatted(UUID.randomUUID())))
+            edit(owner,photo,body).andExpect(status().isBadRequest());
+        edit(friend,photo,"{\"expectedVersion\":1,\"topics\":[]}").andExpect(status().isNotFound()).andExpect(jsonPath("$.error.code").value("PHOTO_NOT_FOUND"));
+        edit(owner,photo,"{\"expectedVersion\":2,\"topics\":[]}").andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("VERSION_CONFLICT"));
+        mvc.perform(get("/api/v1/trips/{trip}/photos",trip).param("topic","bad").with(authUser(owner))).andExpect(status().isBadRequest());
+        jdbc.update("update trip_members set status='LEFT',left_at=now() where id=?",member);
+        edit(owner,photo,"{\"expectedVersion\":1,\"topics\":[]}").andExpect(status().isNotFound());
+    }
+
+    @Test void photoDeletionHidesImmediatelyRetriesFixedKeysAndReturnsReceiptAfterCompletion() throws Exception {
+        UUID batch=batch(owner,2,UUID.randomUUID().toString()), asset=intent(owner,batch,true), other=intent(owner,batch,true);
+        complete(owner,asset).andExpect(status().isOk()); complete(owner,other).andExpect(status().isOk());
+        UUID photo=UUID.fromString(data(register(owner,batch,asset).andExpect(status().isCreated())).path("id").asString());
+        register(owner,batch,other).andExpect(status().isCreated());
+        remove(friend,photo).andExpect(status().isNotFound());
+        UUID job=UUID.fromString(data(remove(owner,photo).andExpect(status().isAccepted())).path("jobId").asString());
+        remove(owner,photo).andExpect(status().isAccepted()).andExpect(jsonPath("$.data.jobId").value(job.toString()));
+        mvc.perform(get("/api/v1/assets/{id}/download",asset).with(authUser(friend))).andExpect(status().isNotFound());
+        complete(owner,asset).andExpect(status().isConflict());register(owner,batch,asset).andExpect(status().isConflict());
+        mvc.perform(get("/api/v1/trips/{trip}/photo-summary",trip).with(authUser(friend))).andExpect(jsonPath("$.data.totalCount").value(1));
+        var submission=photoSubmission(job);
+        assertThat(submission.cleanupScope().photoIds()).containsExactly(photo);
+        assertThat(submission.cleanupScope().messageIds()).isEmpty();
+        var context=new com.eodilog.job.JobContext(job,UUID.randomUUID(),1,submission);
+        storage.failedDeleteKeys.add("display/"+asset);
+        assertThat(photoDeleteHandler.execute(context).failure()).isEqualTo(com.eodilog.job.JobFailure.TEMPORARY_FAILURE);
+        assertThat(storage.objects).containsKey("display/"+asset).containsKey("display/"+other);
+        storage.failedDeleteKeys.clear();
+        var outcome=photoDeleteHandler.execute(context);assertThat(outcome.failure()).isNull();
+        transactions.executeWithoutResult(tx -> photoDeleteHandler.complete(context,outcome.result()));
+        transactions.executeWithoutResult(tx -> photoDeleteHandler.complete(context,outcome.result()));
+        remove(owner,photo).andExpect(status().isAccepted()).andExpect(jsonPath("$.data.jobId").value(job.toString()));
+        assertThat(count("select count(*) from photos where id=?",photo)).isZero();
+        assertThat(storage.objects).containsKey("display/"+other).doesNotContainKey("display/"+asset);
+        storage.objects.put("uploads/"+asset,png);expire(asset);cleanup().clean();
+        assertThat(count("select count(*) from assets where id=?",asset)).isZero();
+        remove(owner,UUID.randomUUID()).andExpect(status().isNotFound());
+    }
+
+    @Test void photoCleanupSurvivesLeavingAndOverlappingTripDeletion() throws Exception {
+        UUID batch=batch(owner,1,UUID.randomUUID().toString()), asset=intent(owner,batch,true);
+        complete(owner,asset).andExpect(status().isOk());
+        UUID photo=UUID.fromString(data(register(owner,batch,asset).andExpect(status().isCreated())).path("id").asString());
+        edit(owner,photo,"{\"expectedVersion\":1,\"topics\":[\"FOOD\"]}").andExpect(status().isOk());
+        UUID job=UUID.fromString(data(remove(owner,photo).andExpect(status().isAccepted())).path("jobId").asString());
+        var context=new com.eodilog.job.JobContext(job,UUID.randomUUID(),1,photoSubmission(job));
+        jdbc.update("update trip_members set status='LEFT',left_at=now() where id=?",member);
+        assertThat(photoDeletePolicy.canExecute(context)).isTrue();assertThat(photoDeletePolicy.canComplete(context)).isTrue();
+        jdbc.update("update trips set deleted_at=now() where id=?",trip);
+        var tripInput=json.createObjectNode().put("tripId",trip.toString()).put("reason","OWNER_DELETE");
+        var tripContext=new com.eodilog.job.JobContext(UUID.randomUUID(),UUID.randomUUID(),1,
+                new com.eodilog.job.JobSubmission(owner,com.eodilog.job.JobKind.TRIP_DELETE,trip,tripInput,null,
+                        new com.eodilog.job.CleanupScope(List.of(),List.of(),Instant.now())));
+        assertThat(tripDeleteHandler.execute(tripContext).failure()).isNull();
+        transactions.executeWithoutResult(tx -> tripDeleteHandler.complete(tripContext,json.createObjectNode()));
+        var outcome=photoDeleteHandler.execute(context);assertThat(outcome.failure()).isNull();
+        transactions.executeWithoutResult(tx -> photoDeleteHandler.complete(context,outcome.result()));
+        assertThat(count("select count(*) from photo_topics where photo_id=?",photo)).isZero();
+        assertThat(storage.objects).doesNotContainKey("display/"+asset);
+        mvc.perform(get("/api/v1/jobs/{id}",job).with(authUser(owner))).andExpect(status().isOk());
+    }
+
+    @Test void workerRetriesPhotoDeleteAndOnlyRequesterReadsMinimalResult() throws Exception {
+        UUID batch=batch(owner,1,UUID.randomUUID().toString()), asset=intent(owner,batch,true);
+        complete(owner,asset).andExpect(status().isOk());
+        UUID photo=UUID.fromString(data(register(owner,batch,asset).andExpect(status().isCreated())).path("id").asString());
+        UUID job=UUID.fromString(data(remove(owner,photo).andExpect(status().isAccepted())).path("jobId").asString());
+        storage.failedDeleteKeys.add("display/"+asset);
+        long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(15);
+        while(count("select count(*) from jobs where id=? and status='QUEUED' and attempt=1",job)==0 && System.nanoTime()<deadline) {
+            worker.pollOnce();Thread.sleep(20);
+        }
+        assertThat(count("select count(*) from jobs where id=? and status='QUEUED' and attempt=1 and error_code='TEMPORARY_FAILURE'",job)).isEqualTo(1);
+        assertThat(count("select count(*) from photos where id=? and deleted_at is not null",photo)).isEqualTo(1);
+        mvc.perform(get("/api/v1/jobs/{id}",job).with(authUser(friend))).andExpect(status().isNotFound());
+        storage.failedDeleteKeys.clear();
+        jdbc.update("update jobs set next_attempt_at=now()-interval '1 second' where id=?",job);
+        deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(15);
+        while(count("select count(*) from jobs where id=? and status='SUCCEEDED'",job)==0 && System.nanoTime()<deadline) {
+            worker.pollOnce();Thread.sleep(20);
+        }
+        assertThat(count("select attempt from jobs where id=?",job)).isEqualTo(2);
+        var result=data(mvc.perform(get("/api/v1/jobs/{id}",job).with(authUser(owner)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.status").value("SUCCEEDED"))
+                .andExpect(jsonPath("$.data.result.scope").value("PHOTO_DELETE"))
+                .andExpect(jsonPath("$.data.result.completedCount").value(1)).andExpect(jsonPath("$.data.result.failedCount").value(0)));
+        assertThat(result.path("result").size()).isEqualTo(3);
+        assertThat(result.toString()).doesNotContain(asset.toString(),photo.toString(),"objectKey","displayKey");
+        remove(owner,photo).andExpect(status().isAccepted()).andExpect(jsonPath("$.data.status").value("SUCCEEDED"));
+    }
+
+    @Test void concurrentPhotoEditsHaveOneVersionWinnerAndAccuratePlaceCounts() throws Exception {
+        UUID batch=batch(owner,2,UUID.randomUUID().toString()), asset=intent(owner,batch,true), second=intent(owner,batch,true);
+        complete(owner,asset).andExpect(status().isOk());complete(owner,second).andExpect(status().isOk());
+        UUID photo=UUID.fromString(data(register(owner,batch,asset).andExpect(status().isCreated())).path("id").asString());
+        UUID another=UUID.fromString(data(register(owner,batch,second).andExpect(status().isCreated())).path("id").asString());
+        UUID place=UUID.randomUUID();
+        jdbc.update("insert into places(id,name,latitude,longitude,source,created_at,updated_at) values(?,'경합 장소',37.5,126.25,'MANUAL',now(),now())",place);
+        String body="{\"expectedVersion\":1,\"placeId\":\"%s\",\"topics\":[\"PEOPLE\"]}".formatted(place);
+        try(var executor=Executors.newFixedThreadPool(2)) {
+            var start=new CountDownLatch(1);
+            var first=executor.submit(()->{start.await();return edit(owner,photo,body).andReturn().getResponse().getStatus();});
+            var next=executor.submit(()->{start.await();return edit(owner,photo,body).andReturn().getResponse().getStatus();});
+            start.countDown();assertThat(List.of(first.get(15,TimeUnit.SECONDS),next.get(15,TimeUnit.SECONDS))).containsExactlyInAnyOrder(200,409);
+        }
+        edit(owner,another,body).andExpect(status().isOk());
+        mvc.perform(get("/api/v1/trips/{trip}/photo-summary",trip).with(authUser(friend)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.totalCount").value(2)).andExpect(jsonPath("$.data.unplacedCount").value(0))
+                .andExpect(jsonPath("$.data.places[0].placeId").value(place.toString())).andExpect(jsonPath("$.data.places[0].count").value(2))
+                .andExpect(jsonPath("$.data.topics[0].count").value(2));
+    }
+
+    @Test void scheduledCleanupRecoversExhaustedPhotoDeletionWithoutRemovingReferencedAssets() throws Exception {
+        UUID batch=batch(owner,2,UUID.randomUUID().toString()), asset=intent(owner,batch,true), live=intent(owner,batch,true);
+        complete(owner,asset).andExpect(status().isOk());complete(owner,live).andExpect(status().isOk());
+        UUID photo=UUID.fromString(data(register(owner,batch,asset).andExpect(status().isCreated())).path("id").asString());
+        register(owner,batch,live).andExpect(status().isCreated());
+        UUID job=UUID.fromString(data(remove(owner,photo).andExpect(status().isAccepted())).path("jobId").asString());
+        jdbc.update("update jobs set status='FAILED',attempt=3,error_code='TEMPORARY_FAILURE',finished_at=now() where id=?",job);
+        storage.failedDeleteKeys.add("display/"+asset);
+        cleanup().clean(); // Before signed PUT expiry: fallback must wait.
+        assertThat(storage.objects).containsKey("uploads/"+asset);
+        expire(asset);expire(live);
+        jdbc.update("update assets set status='DELETING' where id=?",live); // Defensive check: a live photo still wins.
+        cleanup().clean();
+        assertThat(storage.objects).containsKey("display/"+asset).containsKey("display/"+live).containsKey("uploads/"+live);
+        assertThat(count("select count(*) from assets where id=?",asset)).isEqualTo(1);
+        storage.failedDeleteKeys.clear();cleanup().clean();
+        assertThat(storage.objects).doesNotContainKey("display/"+asset).doesNotContainKey("uploads/"+asset)
+                .containsKey("display/"+live).containsKey("uploads/"+live);
+        assertThat(count("select count(*) from assets where id=?",asset)).isEqualTo(1);
+        assertThat(count("select count(*) from photos where id=? and deleted_at is not null",photo)).isEqualTo(1);
+        storage.objects.put("uploads/"+asset,png);cleanup().clean();
+        assertThat(storage.objects).doesNotContainKey("uploads/"+asset);
+        remove(owner,photo).andExpect(status().isAccepted()).andExpect(jsonPath("$.data.jobId").value(job.toString()))
+                .andExpect(jsonPath("$.data.status").value("FAILED"));
+    }
+
+    @Test void tripDeletionWaitsForAdmittedStreamToOpenAndRejectsLaterDownloads() throws Exception {
+        UUID batch=batch(owner,1,UUID.randomUUID().toString()), asset=intent(owner,batch,true);
+        complete(owner,asset).andExpect(status().isOk());register(owner,batch,asset).andExpect(status().isCreated());
+        storage.blockedOpenKey="display/"+asset;storage.openEntered=new CountDownLatch(1);storage.openReleased=new CountDownLatch(1);
+        try(var executor=Executors.newFixedThreadPool(2)) {
+            var download=executor.submit(()->mvc.perform(get("/api/v1/assets/{id}/download",asset).with(authUser(friend))).andReturn().getResponse().getStatus());
+            try {
+                assertThat(storage.openEntered.await(10,TimeUnit.SECONDS)).isTrue();
+                var deletionStarted=new CountDownLatch(1);
+                var deletion=executor.submit(()->{deletionStarted.countDown();return mvc.perform(delete("/api/v1/trips/{trip}",trip).param("expectedVersion","1").with(authUser(owner))).andReturn().getResponse().getStatus();});
+                assertThat(deletionStarted.await(10,TimeUnit.SECONDS)).isTrue();
+                assertThatThrownBy(()->deletion.get(250,TimeUnit.MILLISECONDS)).isInstanceOf(TimeoutException.class);
+                assertThat(count("select count(*) from trips where id=? and deleted_at is null",trip)).isEqualTo(1);
+                storage.openReleased.countDown();
+                assertThat(download.get(10,TimeUnit.SECONDS)).isEqualTo(200);
+                assertThat(deletion.get(10,TimeUnit.SECONDS)).isEqualTo(202);
+                mvc.perform(get("/api/v1/assets/{id}/download",asset).with(authUser(friend))).andExpect(status().isNotFound());
+            } finally {storage.openReleased.countDown();}
+        }
+    }
+
+    @Test void simultaneousPhotoDeletesCreateExactlyOneReceiptAndJob() throws Exception {
+        UUID batch=batch(owner,1,UUID.randomUUID().toString()), asset=intent(owner,batch,true);
+        complete(owner,asset).andExpect(status().isOk());
+        UUID photo=UUID.fromString(data(register(owner,batch,asset).andExpect(status().isCreated())).path("id").asString());
+        try(var executor=Executors.newFixedThreadPool(2)) {
+            var start=new CountDownLatch(1);
+            Callable<String> request=()->{start.await();return data(remove(owner,photo).andExpect(status().isAccepted())).path("jobId").asString();};
+            var first=executor.submit(request);var second=executor.submit(request);start.countDown();
+            assertThat(first.get(15,TimeUnit.SECONDS)).isEqualTo(second.get(15,TimeUnit.SECONDS));
+        }
+        assertThat(count("select count(*) from photo_delete_requests where photo_id=?",photo)).isEqualTo(1);
+        assertThat(count("select count(*) from jobs where kind='PHOTO_DELETE' and input_json->>'photoId'=?",photo.toString())).isEqualTo(1);
+    }
+
+    @Test void photoAndTripDeletionOverlapExternalDeletesAndCompleteWithoutForeignKeyRaces() throws Exception {
+        UUID batch=batch(owner,1,UUID.randomUUID().toString()), asset=intent(owner,batch,true);
+        complete(owner,asset).andExpect(status().isOk());
+        UUID photo=UUID.fromString(data(register(owner,batch,asset).andExpect(status().isCreated())).path("id").asString());
+        edit(owner,photo,"{\"expectedVersion\":1,\"topics\":[\"FOOD\"]}").andExpect(status().isOk());
+        UUID job=UUID.fromString(data(remove(owner,photo).andExpect(status().isAccepted())).path("jobId").asString());
+        var photoContext=new com.eodilog.job.JobContext(job,UUID.randomUUID(),1,photoSubmission(job));
+        mvc.perform(delete("/api/v1/trips/{trip}",trip).param("expectedVersion","1").with(authUser(owner))).andExpect(status().isAccepted());
+        var tripContext=new com.eodilog.job.JobContext(UUID.randomUUID(),UUID.randomUUID(),1,
+                new com.eodilog.job.JobSubmission(owner,com.eodilog.job.JobKind.TRIP_DELETE,trip,
+                        json.createObjectNode().put("tripId",trip.toString()).put("reason","OWNER_DELETE"),null,
+                        new com.eodilog.job.CleanupScope(List.of(),List.of(),Instant.now())));
+        storage.blockedDeleteKey="uploads/"+asset;storage.deleteEntered=new CountDownLatch(2);storage.deleteReleased=new CountDownLatch(1);
+        try(var executor=Executors.newFixedThreadPool(2)) {
+            var photoExecution=executor.submit(()->photoDeleteHandler.execute(photoContext));
+            var tripExecution=executor.submit(()->tripDeleteHandler.execute(tripContext));
+            try {
+                assertThat(storage.deleteEntered.await(10,TimeUnit.SECONDS)).isTrue();storage.deleteReleased.countDown();
+                var photoOutcome=photoExecution.get(10,TimeUnit.SECONDS);var tripOutcome=tripExecution.get(10,TimeUnit.SECONDS);
+                assertThat(photoOutcome.failure()).isNull();assertThat(tripOutcome.failure()).isNull();
+                var start=new CountDownLatch(1);
+                var photoCompletion=executor.submit(()->{start.await();transactions.executeWithoutResult(tx->photoDeleteHandler.complete(photoContext,photoOutcome.result()));return true;});
+                var tripCompletion=executor.submit(()->{start.await();transactions.executeWithoutResult(tx->tripDeleteHandler.complete(tripContext,tripOutcome.result()));return true;});
+                start.countDown();assertThat(photoCompletion.get(10,TimeUnit.SECONDS)).isTrue();assertThat(tripCompletion.get(10,TimeUnit.SECONDS)).isTrue();
+            } finally {storage.deleteReleased.countDown();}
+        }
+        assertThat(count("select count(*) from photos where trip_id=?",trip)).isZero();
+        assertThat(count("select count(*) from photo_topics where photo_id=?",photo)).isZero();
+        assertThat(count("select count(*) from trip_members where trip_id=?",trip)).isZero();
+        assertThat(count("select count(*) from photo_delete_requests where photo_id=?",photo)).isEqualTo(1);
+        assertThat(storage.objects).doesNotContainKey("uploads/"+asset).doesNotContainKey("display/"+asset);
+    }
+
+    @Test void topicCursorPaginatesTiedTimestampsWithoutDuplicatesOrMissingPhotos() throws Exception {
+        UUID batch=batch(owner,4,UUID.randomUUID().toString());List<String> expected=new ArrayList<>();
+        for(int i=0;i<4;i++) {
+            UUID asset=intent(owner,batch,true);complete(owner,asset).andExpect(status().isOk());
+            String photo=data(register(owner,batch,asset).andExpect(status().isCreated())).path("id").asString();
+            edit(owner,UUID.fromString(photo),i==3?"{\"expectedVersion\":1,\"topics\":[\"PEOPLE\"]}":"{\"expectedVersion\":1,\"topics\":[\"FOOD\",\"OTHER\"]}")
+                    .andExpect(status().isOk());if(i<3)expected.add(photo);
+        }
+        jdbc.update("update photos set created_at='2026-11-09T00:00:00Z' where trip_id=?",trip);
+        expected.sort(Comparator.reverseOrder());List<String> actual=new ArrayList<>();String cursor=null;
+        for(int page=0;page<3;page++) {
+            var request=get("/api/v1/trips/{trip}/photos",trip).param("topic","FOOD").param("limit","1").with(authUser(friend));
+            if(cursor!=null)request.param("cursor",cursor);
+            var response=json.readTree(mvc.perform(request).andExpect(status().isOk()).andExpect(jsonPath("$.data.length()").value(1))
+                    .andExpect(jsonPath("$.page.hasNext").value(page<2)).andReturn().getResponse().getContentAsString());
+            actual.add(response.path("data").get(0).path("id").asString());
+            cursor=response.path("page").path("nextCursor").isNull()?null:response.path("page").path("nextCursor").asString();
+        }
+        assertThat(actual).containsExactlyElementsOf(expected).doesNotHaveDuplicates();assertThat(cursor).isNull();
+    }
+
+    com.eodilog.job.JobSubmission photoSubmission(UUID job) {
+        return jdbc.queryForObject("select * from jobs where id=?",(rs,row)->new com.eodilog.job.JobSubmission(
+                owner,com.eodilog.job.JobKind.PHOTO_DELETE,trip,json.readTree(rs.getString("input_json")),null,
+                json.readValue(rs.getString("cleanup_scope_json"),com.eodilog.job.CleanupScope.class)),job);
+    }
+    ResultActions edit(UUID user,UUID photo,String body) throws Exception {return mvc.perform(patch("/api/v1/trips/{trip}/photos/{photo}",trip,photo).with(authUser(user)).contentType(MediaType.APPLICATION_JSON).content(body));}
+    ResultActions remove(UUID user,UUID photo) throws Exception {return mvc.perform(delete("/api/v1/trips/{trip}/photos/{photo}",trip,photo).with(authUser(user)));}
     UUID user() { UUID id=UUID.randomUUID(); jdbc.update("insert into users(id,nickname,profile_completed,created_at,updated_at) values(?,'사진 사용자',true,now(),now())",id); return id; }
     UUID batch(UUID user,int count,String key) throws Exception {
         return UUID.fromString(data(mvc.perform(post("/api/v1/trips/{trip}/photo-upload-batches",trip).with(authUser(user))

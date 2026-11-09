@@ -14,6 +14,6 @@ public record PhotoResponse(
         @Schema(description = "업로더 멤버 ID", example = "019a0000-0000-7000-8000-000000000006") UUID uploaderMemberId,
         @Schema(description = "연결한 장소 ID", example = "019a0000-0000-7000-8000-000000000004") UUID placeId,
         @Schema(description = "사용자가 지정한 촬영 시각(UTC), 미지정 null", example = "2026-11-06T12:00:00Z") Instant capturedAt,
-        @Schema(description = "사진 주제(현재 분류 미지원, 빈 배열)", example = "[]") List<String> topics,
+        @Schema(description = "사진 주제 LANDSCAPE/FOOD/PEOPLE/OTHER, 이름 순 정렬", example = "[\"FOOD\"]") List<String> topics,
         @Schema(description = "사진 그룹(현재 미지원, null)", example = "null") UUID groupId,
         @Schema(description = "사진 버전", example = "1") long version) { }

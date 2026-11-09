@@ -46,15 +46,19 @@ public class TripDeleteJobHandler implements JobHandler {
 
 	@Override
 	public JobOutcome execute(JobContext context) {
-		// The trip is already logically deleted. Failed external deletes throw, so the durable job retries
+		// The trip is already logically deleted. Failed external deletes return a retryable outcome
 		// before complete removes child data. Deletion keys remain available to grace-period cleanup.
-		var pending = jdbcTemplate.query("select id, object_key, display_key from assets where trip_id = ? and status <> 'DELETING' order by id",
+		var pending = jdbcTemplate.query("select id, object_key, display_key from assets where trip_id = ? and objects_deleted=false order by id",
 				(rs, row) -> new Object[] {rs.getObject("id", UUID.class), rs.getString("object_key"), rs.getString("display_key")}, context.submission().tripId());
+		try {
 		for (var asset : pending) {
 			objectStorage.delete((String)asset[1]);
 			objectStorage.delete((String)asset[2]);
 			// execute runs outside the completion transaction: persist each finished pair for retries.
-			jdbcTemplate.update("update assets set status='DELETING' where id=?", asset[0]);
+			jdbcTemplate.update("update assets set status='DELETING',objects_deleted=true where id=?", asset[0]);
+		}
+		} catch (RuntimeException failure) {
+			return JobOutcome.failed(com.eodilog.job.JobFailure.TEMPORARY_FAILURE);
 		}
 		// 명세 §9의 최소 정리 result이며 completedCount는 삭제한 여행 수다.
 		return JobOutcome.succeeded(jsonMapper.createObjectNode()
@@ -73,6 +77,7 @@ public class TripDeleteJobHandler implements JobHandler {
 			throw new IllegalStateException("Trip is not marked deleted");
 		}
 		// FK 순서: 자식 → 부모. 멤버십은 마지막, 여행 행은 남긴다
+		jdbcTemplate.update("delete from photo_topics where photo_id in (select id from photos where trip_id=?)", tripId);
 		jdbcTemplate.update("delete from photos where trip_id = ?", tripId);
 		// A presigned PUT cannot be revoked. Keep deletion tombstones/keys throughout the grace period
 		// so cleanup can remove late uploads after this job completes and members disappear.
