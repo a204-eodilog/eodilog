@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-09
 
-**Status**: Draft
+**Status**: Implemented — 실서버·기기 확인 대기(tasks T019·T020)
 
 **Input**: User description: "인앱 알림 S48·S49. S48 알림 팝업: 미확인 알림 모아 보기 201-25425, 투표 시작 201-11808. S49 알림 목록: 기본 201-25921, 알림 없음 201-26140, 볼 수 없음 201-26179, 불러오기 실패 201-32709. API: GET /me/notifications?unreadOnly&cursor&limit, PATCH /me/notifications/{id} {read:true}, DELETE /me/notifications/{id}, POST /me/notifications/read-all {through}, GET /me/notification-summary. 푸시 없음. 팝업은 앱 실행·복귀 때 행동이 필요한 알림만. 홈 종 아이콘에서 목록."
 
