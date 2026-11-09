@@ -23,7 +23,7 @@ import type { Itinerary, ItineraryProposal, ItineraryWrite } from '../types';
 
 import { CourseEditScreen } from './course-edit-screen';
 
-const mockParams: { tripId: string; entry?: string } = { tripId: 'trip-1' };
+const mockParams: { tripId: string; entry?: string; split?: string } = { tripId: 'trip-1' };
 const mockRouter = {
   replace: jest.fn(),
   back: jest.fn(),
@@ -228,6 +228,7 @@ const day1 = (b: ItineraryWrite) => b.items.filter((i) => i.day === 1).map((i) =
 beforeEach(() => {
   jest.clearAllMocks();
   mockParams.entry = undefined;
+  mockParams.split = undefined;
   mockTrip.startDate = '2026-11-14';
   mockTrip.endDate = '2026-11-15';
   mockTrip.destinationRegionIds = ['region-busan'];
@@ -584,5 +585,40 @@ describe('이동 시간 계산 불가', () => {
     await fireEvent.press(screen.getAllByText('다시 계산')[0]);
     expect(mockRecalc).not.toHaveBeenCalled();
     expect(toast.show).toHaveBeenCalledWith('완료로 저장한 뒤 다시 계산할 수 있어요');
+  });
+});
+
+describe('여러 지역 날짜별로 나누기', () => {
+  beforeEach(() => {
+    mockTrip.destinationRegionIds = ['region-busan', 'region-gangneung'];
+  });
+
+  it('여행지가 두 곳이면 날짜별 지역 줄을 보이고 고른 지역이 일차 탭에 붙는다', async () => {
+    await renderScreen();
+    expect(await screen.findByText('1일차 지역')).toBeTruthy();
+    expect(screen.getByText('부산·강릉시 모두 정해졌어요. 날짜별로 지역을 골라요')).toBeTruthy();
+    expect(screen.getByText('11.14(토) · 부산')).toBeTruthy();
+    await fireEvent.press(screen.getByText('강릉시'));
+    expect(screen.getByText('11.14(토) · 강릉시')).toBeTruthy();
+  });
+
+  it('여행지가 한 곳이면 지역 줄이 없다', async () => {
+    mockTrip.destinationRegionIds = ['region-busan'];
+    await renderScreen();
+    await screen.findByText('해운대 해변');
+    expect(screen.queryByText('1일차 지역')).toBeNull();
+  });
+
+  it('투표 동률에서 split으로 오면 빈 코스도 바로 날짜별 지역을 고르며 직접 만든다', async () => {
+    mockParams.split = '1';
+    mockGet.mockResolvedValue(itinerary({ version: 1, items: [], legs: [] }));
+    mockSaved.mockResolvedValue([
+      savedPlace(place('p-g', '안목 커피거리', { regionId: 'region-gangneung' })),
+      savedPlace(place('p-b', '해운대 해변', { regionId: 'region-busan' })),
+    ]);
+    await renderScreen();
+    expect(await screen.findByText('날짜를 고르고 그룹 즐겨찾기 장소를 눌러 놓아요')).toBeTruthy();
+    expect(screen.getByText('1일차 지역')).toBeTruthy();
+    expect(screen.queryByText('이 내용으로 짜요')).toBeNull();
   });
 });

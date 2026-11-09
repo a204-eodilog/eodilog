@@ -16,6 +16,7 @@ import {
 import { AutoFailView, AutoLoadingView } from '@/features/course/components/auto-views';
 import { ManualBuilder } from '@/features/course/components/manual-builder';
 import { ChooseView, NoDatesView, NoRegionView } from '@/features/course/components/setup-views';
+import { RegionSplit } from '@/features/course/components/region-split';
 import { DraftView, newKey, type DraftOrigin } from '@/features/course/screens/course-edit-screen';
 import { CourseView, type Person } from '@/features/course/screens/course-screen';
 import { place, sampleCourse, savedPlace } from '@/features/course/testing';
@@ -48,6 +49,7 @@ const EXAMPLES: Example[] = [
   { state: 'auto-fail', label: '자동 추천 실패 201-12684', group: 'S23' },
   { state: 'draft', label: '코스 초안 201-12879', group: 'S23' },
   { state: 'no-route', label: '이동 시간 계산 불가 201-13272', group: 'S23' },
+  { state: 'split', label: '여러 지역 날짜별로 나누기 385-2817', group: 'S23' },
   { state: 'item-sheet', label: '장소 교체·순서·삭제 201-13071', group: 'S23' },
   { state: 'manual', label: '직접 만들기 201-12753', group: 'S23' },
   { state: 'manual-placed', label: '직접 만들기 · 장소 놓은 뒤 523-349', group: 'S23' },
@@ -80,6 +82,19 @@ export default function DevCourse() {
         onEdit={back}
         onRetry={() => setState('view')}
       />
+    );
+  }
+
+  if (state === 'split') {
+    return (
+      <EditFrame>
+        <DevDraft
+          initial={toDraft(sampleCourse(true), 2)}
+          origin="proposal"
+          openSheet={null}
+          split
+        />
+      </EditFrame>
     );
   }
 
@@ -204,7 +219,18 @@ function EditFrame({ children }: { children: React.ReactNode }) {
 }
 
 /** 미리보기 안에서도 순서·빼기·수단을 바꿔 볼 수 있는 초안 */
-function DevDraft(props: { initial: CourseDraft; origin: DraftOrigin; openSheet: number | null }) {
+const SPLIT_REGIONS = [
+  { id: 'region-busan', name: '부산' },
+  { id: 'region-gangneung', name: '강릉' },
+];
+
+function DevDraft(props: {
+  initial: CourseDraft;
+  origin: DraftOrigin;
+  openSheet: number | null;
+  split?: boolean;
+}) {
+  const [dayRegion, setDayRegion] = useState(['region-busan', 'region-gangneung']);
   const [draft, setDraft] = useState(props.initial);
   const [dirty, setDirty] = useState(false);
   const [day, setDay] = useState(0);
@@ -226,6 +252,21 @@ function DevDraft(props: { initial: CourseDraft; origin: DraftOrigin; openSheet:
       origin={props.origin}
       dirty={dirty}
       startDate={START}
+      dayRegionNames={
+        props.split
+          ? dayRegion.map((id) => SPLIT_REGIONS.find((r) => r.id === id)?.name ?? '')
+          : undefined
+      }
+      extra={
+        props.split ? (
+          <RegionSplit
+            day={day}
+            regions={SPLIT_REGIONS}
+            value={dayRegion[day]}
+            onChange={(id) => setDayRegion(dayRegion.map((r, i) => (i === day ? id : r)))}
+          />
+        ) : undefined
+      }
       day={day}
       onSelectDay={setDay}
       selectedLeg={leg}
