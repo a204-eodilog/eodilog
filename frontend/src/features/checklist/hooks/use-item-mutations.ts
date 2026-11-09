@@ -75,13 +75,17 @@ export function useItemMutations(tripId: string) {
     return true;
   }
 
-  /** 지우기. 목록에서 먼저 빼고, 실패하면 목록을 다시 받는다. 이미 지워졌으면 그대로 둔다 */
+  /** 지우기. 목록에서 먼저 빼고, 실패하면 목록을 다시 받는다. 이미 지워졌으면 그렇게 알린다 */
   async function remove(item: ChecklistItem): Promise<void> {
     removeCachedItem(queryClient, tripId, item.id);
     try {
       await deleteChecklistItem(tripId, item.id);
     } catch (e) {
-      if (toApiError(e).code === API_ERROR.CHECKLIST_ITEM_NOT_FOUND) return;
+      // 다른 동행이 먼저 지웠다. 목록에서는 이미 뺐으니 알리기만 한다
+      if (toApiError(e).code === API_ERROR.CHECKLIST_ITEM_NOT_FOUND) {
+        toast.show(CHECKLIST_TEXT.gone);
+        return;
+      }
       toast.error(CHECKLIST_TEXT.saveFailed);
       refetch();
     }

@@ -393,6 +393,18 @@ describe('직접 추가, 고치기, 지우기', () => {
   });
 });
 
+describe('지우기 충돌', () => {
+  it('다른 동행이 먼저 지운 항목을 지우면 목록에서 빼고 안내한다', async () => {
+    mockDelete.mockRejectedValue(httpError(404, 'CHECKLIST_ITEM_NOT_FOUND'));
+    await renderScreen();
+    await fireEvent.press(await screen.findByLabelText('손난로 고치기'));
+    await fireEvent.press(screen.getByText('지우기'));
+    await waitFor(() => expect(toast.show).toHaveBeenCalledWith('이미 지워진 준비물이에요'));
+    expect(screen.queryByLabelText('손난로')).toBeNull();
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+});
+
 describe('항목 없음', () => {
   it('목록이 비면 안내와 제안 받기, 직접 추가가 보인다', async () => {
     mockGet.mockResolvedValue([]);
