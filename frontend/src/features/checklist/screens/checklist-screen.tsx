@@ -1,4 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import { useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 
 import { toApiError } from '@/api/errors';
@@ -7,9 +8,12 @@ import { useTrip } from '@/features/trip/hooks/use-trip';
 import { useMe } from '@/hooks/use-me';
 import { colors, layout, spacing } from '@/theme';
 
+import { AddItemBar } from '../components/add-item-bar';
 import { ChecklistProgress } from '../components/checklist-progress';
 import { ChecklistRow } from '../components/checklist-row';
+import { EditItemSheet } from '../components/edit-item-sheet';
 import { useChecklist } from '../hooks/use-checklist';
+import { useItemMutations } from '../hooks/use-item-mutations';
 import { useToggleCheck } from '../hooks/use-toggle-check';
 import type { ChecklistItem } from '../types';
 
@@ -24,6 +28,13 @@ export type ChecklistViewProps = {
   onRetry(): void;
   onToggle(item: ChecklistItem): void;
   onMore(item: ChecklistItem): void;
+  onAdd(label: string): Promise<boolean>;
+  adding: boolean;
+  /** 고치기 시트로 연 항목. null이면 닫힘 */
+  editing: ChecklistItem | null;
+  onCloseEdit(): void;
+  onSave(item: ChecklistItem, label: string): Promise<boolean>;
+  onDelete(item: ChecklistItem): void;
 };
 
 /** S27 준비물 체크리스트 모습. 데이터는 ChecklistScreen이나 미리보기가 넘긴다 */
@@ -60,6 +71,7 @@ export function ChecklistView(props: ChecklistViewProps) {
             />
           ))}
         </View>
+        <AddItemBar onAdd={props.onAdd} busy={props.adding} />
       </ScrollView>
     );
   }
@@ -80,6 +92,12 @@ export function ChecklistView(props: ChecklistViewProps) {
         }
       />
       {body}
+      <EditItemSheet
+        item={props.editing}
+        onClose={props.onCloseEdit}
+        onSave={props.onSave}
+        onDelete={props.onDelete}
+      />
     </View>
   );
 }
@@ -101,6 +119,10 @@ export function ChecklistScreen() {
     }));
   const myMemberId = people.find((p) => p.me)?.id ?? null;
   const toggle = useToggleCheck(tripId, myMemberId);
+  const mutations = useItemMutations(tripId);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  // 시트를 연 사이 다른 동행이 지워 목록에서 빠지면 시트도 닫힌다
+  const editing = checklist.data?.find((i) => i.id === editingId) ?? null;
 
   const notFound =
     toApiError(checklist.error).status === 404 || toApiError(trip.error).status === 404;
@@ -120,7 +142,13 @@ export function ChecklistScreen() {
       items={checklist.data ?? []}
       onRetry={() => void checklist.refetch()}
       onToggle={toggle}
-      onMore={() => {}}
+      onMore={(item) => setEditingId(item.id)}
+      onAdd={mutations.add}
+      adding={mutations.isAdding}
+      editing={editing}
+      onCloseEdit={() => setEditingId(null)}
+      onSave={mutations.rename}
+      onDelete={(item) => void mutations.remove(item)}
     />
   );
 }

@@ -96,6 +96,12 @@ export default function DevChecklist() {
           )
         }
         onMore={() => {}}
+        onAdd={async () => true}
+        adding={false}
+        editing={null}
+        onCloseEdit={() => {}}
+        onSave={async () => true}
+        onDelete={() => {}}
       />
     );
   }
