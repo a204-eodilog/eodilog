@@ -142,6 +142,8 @@ function MapCard(props: MyPageViewProps & { summary: MyPageSummary }) {
         pointerEvents={empty ? 'none' : 'box-none'}
       >
         <KoreaMap
+          // 핀이 바뀌면 처음 맞춤을 다시 한다(처음 맞춤은 한 번만 반영된다)
+          key={map.pins.map((p) => p.key).join('|')}
           pins={map.pins}
           interactive={false}
           initialFocus={map.focus}

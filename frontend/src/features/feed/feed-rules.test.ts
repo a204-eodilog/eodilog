@@ -20,7 +20,7 @@ describe('날짜 글자', () => {
   });
   it('박수와 일차 날짜', () => {
     expect(nightsLabel('2026-01-17', '2026-01-18')).toBe('1박 2일');
-    expect(nightsLabel('2026-01-17', '2026-01-17')).toBe('당일');
+    expect(nightsLabel('2026-01-17', '2026-01-17')).toBe('당일치기');
     expect(dayLabel('2026-01-17', 1)).toBe('01.17(토)');
     expect(dayLabel('2026-01-17', 2)).toBe('01.18(일)');
     expect(dayLabel(null, 1)).toBeNull();
