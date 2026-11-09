@@ -73,7 +73,7 @@ function DevScreen({ state }: { state: string }) {
       cells={basisCells({ sharedPlaceCount: 5, usedMemberCount: 3 }, 3, '부산', '11.14 – 11.15')}
       regionLocation="부산"
       savedIds={saved}
-      savingId={null}
+      savingIds={new Set()}
       onSave={(id) => setSaved(new Set([...saved, id]))}
       onVote={() => toast.show('준비 중이에요')}
       onRedo={() => {}}

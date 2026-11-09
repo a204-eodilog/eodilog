@@ -57,7 +57,8 @@ export type RecommendViewProps = {
   regionLocation: string | null;
   /** 내가 이미 담은 장소 */
   savedIds: ReadonlySet<string>;
-  savingId: string | null;
+  /** 지금 담는 중인 장소들 */
+  savingIds: ReadonlySet<string>;
   onSave(placeId: string): void;
   onVote(pick: RegionPick): void;
   onRedo(): void;
@@ -163,7 +164,7 @@ export function RecommendView(props: RecommendViewProps) {
                   action={{
                     kind: 'save',
                     saved: props.savedIds.has(p.place.id),
-                    busy: props.savingId === p.place.id,
+                    busy: props.savingIds.has(p.place.id),
                     onPress: () => props.onSave(p.place.id),
                   }}
                 />
@@ -202,7 +203,7 @@ export function RecommendScreen() {
   const regionIds = trip.data?.destinationRegionIds ?? [];
   const { regions } = useRegions(regionIds.slice(0, 1));
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
-  const [savingId, setSavingId] = useState<string | null>(null);
+  const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
 
   const start = rec.start;
   /** 처음 시작(취향 확인 포함)을 마쳤는지 */
@@ -258,11 +259,12 @@ export function RecommendScreen() {
   ]);
   const regionName = regions[0] ? shortRegionName(regions[0].name) : null;
 
+  // 여러 곳을 잇달아 담아도 서로의 결과를 덮지 않게 늘 최신 집합에서 더하고 뺀다
   const save = async (placeId: string) => {
-    setSavingId(placeId);
+    setSavingIds((s) => new Set([...s, placeId]));
     const done = await mutations.add([placeId]);
-    setSavingId(null);
-    if (done > 0) setAddedIds(new Set([...addedIds, placeId]));
+    setSavingIds((s) => new Set([...s].filter((id) => id !== placeId)));
+    if (done > 0) setAddedIds((s) => new Set([...s, placeId]));
   };
 
   return (
@@ -286,7 +288,7 @@ export function RecommendScreen() {
       }
       regionLocation={regionName}
       savedIds={savedIds}
-      savingId={savingId}
+      savingIds={savingIds}
       onSave={(id) => void save(id)}
       // 투표 열기 시트는 투표 쪽 작업과 합칠 때 그 여행지로 연다(Q-9-2)
       onVote={() => toast.show('준비 중이에요')}

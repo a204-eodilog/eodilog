@@ -201,6 +201,23 @@ describe('결과로 다음 행동', () => {
     expect(mockPut).toHaveBeenCalledWith('trip-1', 'p-jagalchi');
   });
 
+  it('두 곳을 잇달아 담아도 둘 다 담김이 남는다', async () => {
+    const answers: (() => void)[] = [];
+    mockPut.mockImplementation(
+      (_trip, id) =>
+        new Promise((r) => {
+          answers.push(() => r(saved(groupPlace(id, id), ['m-me'])));
+        }),
+    );
+    await renderScreen();
+    await fireEvent.press(await screen.findByLabelText('자갈치 회 골목 그룹 즐겨찾기에 담기'));
+    await fireEvent.press(screen.getByLabelText('청사포 바다뷰 카페 그룹 즐겨찾기에 담기'));
+    await act(async () => answers[1]());
+    await act(async () => answers[0]());
+    expect(await screen.findByLabelText('자갈치 회 골목 담김')).toBeTruthy();
+    expect(await screen.findByLabelText('청사포 바다뷰 카페 담김')).toBeTruthy();
+  });
+
   it('내가 이미 담은 곳은 처음부터 담김이다', async () => {
     mockList.mockResolvedValue(
       page([...sampleSaved(), saved(groupPlace('p-igidae', '이기대 산책로'), ['m-me'])]),
