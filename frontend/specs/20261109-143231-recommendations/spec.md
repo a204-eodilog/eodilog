@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-09
 
-**Status**: Draft
+**Status**: Implemented — 추천 백엔드·기기 확인 대기(tasks T015·T016)
 
 **Input**: User description: "추천. 화면은 S21 추천 결과이고 user-flow 5.3을 따른다. 상태: 생성 중 201-10044 / 성공 201-10081 / 겹침 없음 201-10340 / 자료 부족 201-10470 / 생성 실패 201-10530. API: POST /trips/{tripId}/recommendations {regionId?} → JobRef, GET /trips/{tripId}/recommendations/{jobId}(RecommendationResult). 백엔드가 아직 없어 api-spec 형식대로 가짜 서버를 만들고 모호한 점에 기록한다. [그룹에 담기](7번 PUT saved-places), [지역 투표 후보로]·[장소 투표 후보로](N8), [재추천]을 챙긴다."
 
