@@ -72,7 +72,13 @@ export function CandidateRow({
                 <Text style={styles.newTagText}>새 후보</Text>
               </View>
             ) : null}
-            {topTag ? <Tag label="가장 많이" tone="success" icon="check" small /> : null}
+            {topTag ? (
+              // 공통 Tag success의 면(successBg2)이 확정 줄 배경과 같아 보이지 않는다. 한 단계 진한 면으로 그린다(Figma 201-11073)
+              <View style={[styles.newTag, styles.topTag]}>
+                <Icon name="check" size={14} color={colors.status.success} />
+                <Text style={styles.topTagText}>가장 많이</Text>
+              </View>
+            ) : null}
           </View>
           {sub ? (
             <View style={styles.sub}>
@@ -149,6 +155,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.status.warningBg2,
   },
   newTagText: { ...typography.captionMedium, color: colors.status.warning },
+  topTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+    backgroundColor: colors.status.successBg,
+  },
+  topTagText: { ...typography.captionMedium, color: colors.status.success },
   sub: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
   subText: { ...typography.caption, color: colors.text.sub, flexShrink: 1 },
   votes: { ...typography.bodyBold, color: colors.text.default, fontVariant: ['tabular-nums'] },
