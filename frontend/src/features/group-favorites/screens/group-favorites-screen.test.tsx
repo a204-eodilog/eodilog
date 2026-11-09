@@ -362,6 +362,7 @@ describe('장소 없음', () => {
     await renderScreen();
     expect(await screen.findByText('아직 모은 장소가 없어요')).toBeTruthy();
     expect(screen.getByText('전체 0')).toBeTruthy();
+    expect(screen.queryByText('겹친 곳 0')).toBeNull();
     expect(screen.getAllByLabelText('장소 추가')).toHaveLength(1);
     await fireEvent.press(screen.getByLabelText('장소 추가'));
     expect(screen.getByText('장소 검색')).toBeTruthy();

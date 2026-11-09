@@ -23,11 +23,7 @@ export function FavoritesEmpty({ onAdd, onRecommend }: Props) {
         <Icon name="plus" size={28} color={colors.text.inverse} />
       </Pressable>
       {/* 장소가 없으면 후보도 없어 투표는 열 수 없다 */}
-      <View
-        style={[styles.poll]}
-        accessibilityRole="button"
-        accessibilityState={{ disabled: true }}
-      >
+      <View style={styles.poll} accessibilityRole="button" accessibilityState={{ disabled: true }}>
         <Text style={[typography.bodyBold, styles.pollText]}>투표 열기</Text>
       </View>
       <Pressable style={styles.recommend} onPress={onRecommend} accessibilityRole="button">
@@ -58,6 +54,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.brand.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    boxShadow: `0 4px 12px ${colors.shadow}`,
   },
   poll: {
     marginTop: spacing[16],
@@ -66,9 +63,8 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
     backgroundColor: colors.brand.primaryBg,
     justifyContent: 'center',
-    opacity: 0.8,
   },
-  pollText: { color: colors.brand.primarySoft },
+  pollText: { color: colors.brand.primary },
   recommend: {
     flexDirection: 'row',
     alignItems: 'center',

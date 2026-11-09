@@ -27,12 +27,15 @@ export function FilterBar(props: Props) {
           selected={props.filter === 'ALL'}
           onPress={() => props.onFilter('ALL')}
         />
-        <Chip
-          label={`겹친 곳 ${props.overlapCount}`}
-          size="sm"
-          selected={props.filter === 'OVERLAP'}
-          onPress={() => props.onFilter('OVERLAP')}
-        />
+        {/* 모은 장소가 없으면 겹칠 곳도 없어 전체 칩만 둔다(Figma 201-9686) */}
+        {props.allCount > 0 ? (
+          <Chip
+            label={`겹친 곳 ${props.overlapCount}`}
+            size="sm"
+            selected={props.filter === 'OVERLAP'}
+            onPress={() => props.onFilter('OVERLAP')}
+          />
+        ) : null}
       </View>
       <View style={styles.people}>
         {props.people.length > 0 ? <AvatarGroup people={props.people} max={3} /> : null}

@@ -55,7 +55,9 @@ export function BottomActions(props: Props) {
             onPress={props.onCancel}
             accessibilityRole="button"
           >
-            <Text style={[typography.bodyMedium, styles.cancelText]}>취소</Text>
+            <Text style={[typography.bodyMedium, styles.cancelText]} numberOfLines={1}>
+              취소
+            </Text>
           </Pressable>
           <Pressable
             style={[styles.pill, styles.primary, props.count === 0 && styles.off]}
@@ -106,7 +108,14 @@ const styles = StyleSheet.create({
   secondaryText: { color: colors.brand.primary },
   primary: { backgroundColor: colors.brand.primary },
   primaryText: { color: colors.text.inverse },
-  cancel: { flex: 0, paddingHorizontal: spacing[20], backgroundColor: colors.surface.default },
+  // 옆 버튼이 길어져도 줄어들지 않게 둔다. 웹에서 flex 0만으로는 두 줄로 접혔다
+  cancel: {
+    flex: 0,
+    flexShrink: 0,
+    minWidth: 88,
+    paddingHorizontal: spacing[20],
+    backgroundColor: colors.surface.default,
+  },
   cancelText: { color: colors.text.default },
   off: { opacity: 0.4 },
 });
