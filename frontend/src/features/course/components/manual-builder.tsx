@@ -59,22 +59,22 @@ export function ManualBuilder(props: Props) {
           const date = dayDate(props.startDate, d + 1);
           const regionName = props.dayRegionNames?.[d];
           return (
-            <Pressable
-              key={d}
-              onPress={() => props.onSelectDay(d)}
-              style={styles.daySection}
-              accessibilityRole="button"
-              accessibilityLabel={`${d + 1}일차에 놓기`}
-              accessibilityState={{ selected: on }}
-            >
-              <View style={styles.dayHead}>
+            // 줄 안 더보기와 버튼이 겹치지 않게 날짜 머리와 놓는 칸만 눌러 고르게 한다
+            <View key={d} style={styles.daySection}>
+              <Pressable
+                style={styles.dayHead}
+                onPress={() => props.onSelectDay(d)}
+                accessibilityRole="button"
+                accessibilityLabel={`${d + 1}일차에 놓기`}
+                accessibilityState={{ selected: on }}
+              >
                 <Text style={[typography.bodyBold, styles.dayTitle]}>{d + 1}일차</Text>
                 {[date, regionName].filter(Boolean).length > 0 ? (
                   <Text style={[typography.caption, styles.dayDate]}>
                     {[date, regionName].filter(Boolean).join(' · ')}
                   </Text>
                 ) : null}
-              </View>
+              </Pressable>
               {list.map((it, i) => (
                 <View key={it.key} style={styles.placed}>
                   <View style={styles.number}>
@@ -99,12 +99,17 @@ export function ManualBuilder(props: Props) {
                   <Text style={[typography.captionMedium, styles.dropOnText]}>여기에 놓아요</Text>
                 </View>
               ) : list.length === 0 ? (
-                <View style={styles.drop}>
+                <Pressable
+                  style={styles.drop}
+                  onPress={() => props.onSelectDay(d)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${d + 1}일차 빈 칸 고르기`}
+                >
                   <Icon name="list" size={16} color={colors.text.muted} />
                   <Text style={[typography.caption, styles.dropText]}>눌러서 이 날을 골라요</Text>
-                </View>
+                </Pressable>
               ) : null}
-            </Pressable>
+            </View>
           );
         })}
       </ScrollView>
@@ -136,7 +141,7 @@ export function ManualBuilder(props: Props) {
                 style={styles.chip}
                 onPress={() => props.onPlace(s.place)}
                 accessibilityRole="button"
-                accessibilityLabel={`${s.place.name}을 ${day + 1}일차에 놓기`}
+                accessibilityLabel={`${s.place.name}, ${day + 1}일차에 놓기`}
               >
                 <View style={styles.chipDot}>
                   <Icon name="map-pin" size={14} color={colors.brand.primary} />
@@ -190,7 +195,7 @@ const styles = StyleSheet.create({
   },
   guide: { color: colors.text.sub },
   daySection: { gap: spacing[8] },
-  dayHead: { flexDirection: 'row', alignItems: 'baseline', gap: spacing[6] },
+  dayHead: { flexDirection: 'row', alignItems: 'baseline', gap: spacing[6], minHeight: 32 },
   dayTitle: { color: colors.text.default },
   dayDate: { color: colors.text.sub },
   placed: {
