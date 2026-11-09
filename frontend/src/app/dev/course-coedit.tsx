@@ -5,6 +5,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AvatarGroup, Button, Header, toast } from '@/components/ui';
 import { rebaseDraft } from '@/features/course/coedit-rules';
 import { CoeditConflict } from '@/features/course/components/coedit-conflict';
+import { CoeditorStrip } from '@/features/course/components/coeditor-strip';
 import { moveItem, toDraft, type CourseDraft } from '@/features/course/course-rules';
 import { DraftView } from '@/features/course/screens/course-edit-screen';
 import { sampleCourse } from '@/features/course/testing';
@@ -25,6 +26,8 @@ const START = '2026-11-14';
 const EXAMPLES = [
   { state: 'conflict', label: '같은 날 충돌 201-13453' },
   { state: 'merged', label: '다른 날 합친 뒤' },
+  { state: 'editors', label: '편집 중 동행 한 명' },
+  { state: 'editors-many', label: '편집 중 동행 여럿' },
 ];
 
 /** 처음 코스, 내가 1일차 순서를 바꾼 초안, 세은이 2일차 시각을 바꾼 최신 코스 */
@@ -104,6 +107,20 @@ function DevScreen({ state }: { state: string }) {
         onRedo={noop}
         onDone={noop}
         saving={false}
+        extra={
+          state.startsWith('editors') ? (
+            <CoeditorStrip
+              editors={
+                state === 'editors-many'
+                  ? [
+                      { name: '세은', imageUrl: null },
+                      { name: '승기', imageUrl: null },
+                    ]
+                  : [{ name: '세은', imageUrl: null }]
+              }
+            />
+          ) : undefined
+        }
       />
       <CoeditConflict
         editor={editor}
