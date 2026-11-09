@@ -45,7 +45,11 @@ describe('buildCandidateOptions', () => {
       '광안리 카페',
       '지역 없는 곳',
     ]);
-    expect(options[0]).toMatchObject({ subtitle: '부산 해운대구', input: { placeId: 'p1' } });
+    expect(options[0]).toMatchObject({
+      subtitle: '부산 해운대구',
+      input: { placeId: 'p1' },
+      savedCount: 1,
+    });
   });
 
   it('이미 후보인 곳은 뺀다', () => {

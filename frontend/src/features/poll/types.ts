@@ -81,4 +81,6 @@ export type CandidateOption = {
   /** 지역: "그룹 즐겨찾기 N곳", 장소: 주소 */
   subtitle: string | null;
   input: CandidateInput;
+  /** 장소 후보를 담은 동행 수. 2명 이상이면 '겹침 N명'을 보인다 */
+  savedCount?: number;
 };

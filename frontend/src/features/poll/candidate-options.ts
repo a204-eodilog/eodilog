@@ -35,6 +35,7 @@ export function buildCandidateOptions(
         title: s.place.name,
         subtitle: s.place.address,
         input: { placeId: s.place.id },
+        savedCount: s.savedCount,
       }));
   }
   const taken = new Set(existing.map((c) => c.regionId).filter(Boolean));
