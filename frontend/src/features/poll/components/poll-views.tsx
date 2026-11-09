@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, type ReactNode } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -8,7 +8,7 @@ import {
   type ScrollViewInstance,
 } from 'react-native';
 
-import { EmptyState, Icon } from '@/components/ui';
+import { Button, EmptyState, Icon, type IconName } from '@/components/ui';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 import { UNKNOWN_NAME } from '../candidate-options';
@@ -188,4 +188,201 @@ const styles = StyleSheet.create({
   failTexts: { flex: 1 },
   failText: { ...typography.sub, color: colors.text.inverse },
   retry: { ...typography.subBold, color: colors.brand.primarySoft },
+  // 아래 오른쪽에 뜨는 파랑 버튼(Figma 201-11073 [확정된 여행지 보기])
+  actionWrap: {
+    position: 'absolute',
+    right: layout.screenPaddingX,
+    bottom: spacing[24],
+  },
+  // 피그마 201-11213: 회색 면, 둥글기 16, 안쪽 좌우 16 위아래 14
+  tieLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[10],
+    paddingHorizontal: spacing[16],
+    paddingVertical: spacing[14],
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface.default,
+  },
+  tieLineText: { ...typography.body, color: colors.text.default, flex: 1 },
+  // 피그마 201-11494: 가운데 정렬, 아이콘 원 64
+  zero: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: layout.screenPaddingX,
+    paddingBottom: spacing[32],
+  },
+  zeroIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: radius.full,
+    backgroundColor: colors.surface.default,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  zeroTitle: {
+    ...typography.title1,
+    color: colors.text.default,
+    textAlign: 'center',
+    marginTop: spacing[20],
+  },
+  zeroBody: {
+    ...typography.body,
+    color: colors.text.icon,
+    textAlign: 'center',
+    marginTop: spacing[8],
+  },
+  zeroButton: { marginTop: spacing[24] },
+  decide: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[8],
+    minHeight: layout.minTouchTarget,
+    marginTop: spacing[12],
+    paddingHorizontal: spacing[16],
+  },
+  decideText: { ...typography.bodyMedium, color: colors.text.icon },
+  zeroNote: { ...typography.caption, color: colors.text.sub, marginTop: spacing[16] },
 });
+
+/** 결과 화면 후보 보조 줄(그룹 즐겨찾기 N곳). 없으면 줄을 숨긴다 */
+export type CandidateSources = Record<string, { icon: IconName; text: string }>;
+
+type ResultProps = {
+  poll: Poll;
+  names: Record<string, string>;
+  sources?: CandidateSources;
+  /** 결과 목록 위 제목. "결과", "투표 결과", "부산과 강릉이 함께 확정됐어요" */
+  heading: string;
+  /** 위쪽 카드 */
+  header: ReactNode;
+  /** 카드와 목록 사이 줄(동률의 "부산과 강릉을 모두 확정했어요") */
+  between?: ReactNode;
+  /** 동률: 확정된 후보에 체크 원을 보인다 */
+  tie?: boolean;
+  /** 아래 오른쪽 파랑 버튼 */
+  action?: { label: string; icon: IconName; onPress: () => void };
+};
+
+/**
+ * S22 결과 화면 공통 몸체(Figma 201-11073 마감 후 자동 확정, 201-11213 동률, 201-11569 여행지 확정).
+ * 확정 후보는 초록(동률은 내 선택 연파랑), 나머지는 회색 막대, 0표 후보는 흐리게
+ */
+export function PollResultView({
+  poll,
+  names,
+  sources = {},
+  heading,
+  header,
+  between,
+  tie = false,
+  action,
+}: ResultProps) {
+  const selected = new Set(poll.selectedCandidateIds);
+  const mine = new Set(poll.myCandidateIds);
+  return (
+    <View style={styles.fill}>
+      <ScrollView contentContainerStyle={styles.scroll}>
+        {header}
+        {between}
+        <View style={styles.section}>
+          <Text style={styles.heading}>{heading}</Text>
+          {poll.candidates.map((c) => {
+            const won = selected.has(c.id);
+            const tone = tie
+              ? won
+                ? mine.has(c.id)
+                  ? 'mine'
+                  : 'plain'
+                : 'muted'
+              : won
+                ? 'winner'
+                : c.voteCount === 0 && tie
+                  ? 'muted'
+                  : 'plain';
+            return (
+              <CandidateRow
+                key={c.id}
+                name={names[c.id] ?? UNKNOWN_NAME}
+                votes={c.voteCount}
+                ratio={voteRatio(c.voteCount, poll.eligibleMemberCount)}
+                tone={tone}
+                showCheck={tie && won}
+                checked={tie && won && mine.has(c.id)}
+                mineTag={mine.has(c.id)}
+                topTag={!tie && won}
+                sub={sources[c.id] ?? null}
+                barColor={tone === 'winner' ? undefined : tie ? colors.text.sub : colors.text.muted}
+              />
+            );
+          })}
+        </View>
+      </ScrollView>
+      {action ? (
+        <View style={styles.actionWrap} pointerEvents="box-none">
+          <Button
+            label={action.label}
+            size="lg"
+            weight="medium"
+            leading={<Icon name={action.icon} size={20} color={colors.text.inverse} />}
+            onPress={action.onPress}
+          />
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+/** 동률 화면 카드 아래 줄(Figma 201-11213). 회색 면에 사람 아이콘 + "부산과 강릉을 모두 확정했어요" */
+export function TieConfirmedLine({ text }: { text: string }) {
+  return (
+    <View style={styles.tieLine}>
+      <Icon name="people" size={20} color={colors.text.icon} />
+      <Text style={styles.tieLineText}>{text}</Text>
+    </View>
+  );
+}
+
+/**
+ * S22 0표(Figma 201-11494). 가운데 체크 아이콘 원, "아무도 투표하지 않았어요", [다시 열기], [직접 정하기], 24시간 안내
+ */
+export function PollNoVotesView({
+  onReopen,
+  reopening,
+  onDecide,
+}: {
+  onReopen: () => void;
+  reopening: boolean;
+  onDecide: () => void;
+}) {
+  return (
+    <View style={styles.zero}>
+      <View style={styles.zeroIcon}>
+        <Icon name="check" size={28} color={colors.text.icon} />
+      </View>
+      <Text style={styles.zeroTitle} accessibilityRole="header">
+        아무도 투표하지 않았어요
+      </Text>
+      <Text style={styles.zeroBody}>확정 없이 마감됐어요. 다시 열 수 있어요</Text>
+      <Button
+        label="다시 열기"
+        weight="medium"
+        loading={reopening}
+        disabled={reopening}
+        leading={<Icon name="clock" size={20} color={colors.text.inverse} />}
+        onPress={onReopen}
+        style={styles.zeroButton}
+      />
+      <Pressable
+        accessibilityRole="button"
+        onPress={onDecide}
+        style={({ pressed }) => [styles.decide, pressed && styles.pressed]}
+      >
+        <Icon name="map-pin" size={20} color={colors.text.icon} />
+        <Text style={styles.decideText}>직접 정하기</Text>
+      </Pressable>
+      <Text style={styles.zeroNote}>다시 열면 마감은 24시간 뒤예요</Text>
+    </View>
+  );
+}

@@ -20,6 +20,8 @@ type Props = {
   topTag?: boolean;
   /** 이름 아래 보조 줄 */
   sub?: { icon: IconName; text: string } | null;
+  /** 막대 색을 바꾼다. 결과 화면에서 확정되지 않은 곳은 회색(Figma 201-11073·201-11213) */
+  barColor?: string;
   onPress?: () => void;
   disabled?: boolean;
 };
@@ -39,15 +41,17 @@ export function CandidateRow({
   newTag = false,
   topTag = false,
   sub = null,
+  barColor,
   onPress,
   disabled = false,
 }: Props) {
   const fill =
-    tone === 'winner'
+    barColor ??
+    (tone === 'winner'
       ? colors.status.success
       : tone === 'muted'
         ? colors.text.muted
-        : colors.brand.primary;
+        : colors.brand.primary);
   const content = (
     <>
       <View style={styles.top}>
