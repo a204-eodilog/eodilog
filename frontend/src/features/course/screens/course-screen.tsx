@@ -166,7 +166,12 @@ export function CourseScreen() {
   const data = itinerary.data;
   const empty = data !== undefined && data.items.length === 0;
   useEffect(() => {
-    if (empty) router.replace({ pathname: '/trips/[tripId]/course/edit', params: { tripId } });
+    // 빈 코스면 코스 짜기로 바꿔 연다. 저장하면 S17이 아니라 S24로 돌아오도록 entry를 붙인다
+    if (empty)
+      router.replace({
+        pathname: '/trips/[tripId]/course/edit',
+        params: { tripId, entry: 'empty' },
+      });
   }, [empty, tripId]);
 
   const days = dayCount(trip.data?.startDate ?? null, trip.data?.endDate ?? null);

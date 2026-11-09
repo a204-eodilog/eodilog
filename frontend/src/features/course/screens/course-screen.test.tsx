@@ -192,7 +192,7 @@ describe('S24 코스', () => {
     await waitFor(() =>
       expect(mockRouter.replace).toHaveBeenCalledWith({
         pathname: '/trips/[tripId]/course/edit',
-        params: { tripId: 'trip-1' },
+        params: { tripId: 'trip-1', entry: 'empty' },
       }),
     );
   });
