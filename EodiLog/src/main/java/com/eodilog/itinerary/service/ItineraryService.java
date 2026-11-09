@@ -6,20 +6,23 @@ import com.eodilog.global.common.error.ErrorResponse.ErrorField;
 import com.eodilog.itinerary.domain.Itinerary;
 import com.eodilog.itinerary.domain.ItineraryItem;
 import com.eodilog.itinerary.domain.RouteLeg;
+import com.eodilog.itinerary.domain.RouteLegStatus;
 import com.eodilog.itinerary.domain.TransportMode;
 import com.eodilog.itinerary.dto.ItineraryItemInput;
 import com.eodilog.itinerary.dto.ItineraryResponse;
+import com.eodilog.itinerary.dto.ItineraryUndoRequest;
 import com.eodilog.itinerary.dto.ItineraryWriteRequest;
 import com.eodilog.itinerary.dto.RouteLegInput;
 import com.eodilog.itinerary.exception.ItineraryErrorCode;
 import com.eodilog.itinerary.repository.ItineraryItemRepository;
 import com.eodilog.itinerary.repository.ItineraryRepository;
 import com.eodilog.itinerary.repository.RouteLegRepository;
+import com.eodilog.itinerary.service.CourseWriter.CourseItem;
+import com.eodilog.itinerary.service.CourseWriter.CourseLeg;
 import com.eodilog.place.service.PlaceReader;
 import com.eodilog.trip.domain.Trip;
 import com.eodilog.trip.service.TripAccess;
 import com.eodilog.trip.service.TripAccessChecker;
-import jakarta.persistence.EntityManager;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -29,7 +32,6 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
@@ -59,7 +61,8 @@ public class ItineraryService {
 	private final TripAccessChecker tripAccessChecker;
 	private final ItineraryNotifier itineraryNotifier;
 	private final PlaceReader placeReader;
-	private final EntityManager entityManager;
+	private final CourseWriter courseWriter;
+	private final ItineraryUndoStore itineraryUndoStore;
 	private final Clock clock;
 
 	@Transactional(readOnly = true)
@@ -90,35 +93,46 @@ public class ItineraryService {
 			return itineraryResponseAssembler.assemble(itinerary);
 		}
 
-		// 구간은 항목을 가리키므로 먼저 지운다. 남는 항목끼리 순서를 맞바꿀 수 있어 (day, sequence) 유일 제약은 커밋 때 검사한다
-		routeLegRepository.deleteAllByItineraryId(itinerary.getId());
-		Set<UUID> keptIds = draft.items().stream().map(DraftItem::id).filter(Objects::nonNull)
-				.collect(Collectors.toSet());
-		itineraryItemRepository.deleteAll(existing.stream().filter(item -> !keptIds.contains(item.getId())).toList());
-		entityManager.flush();
-
-		Map<DayOrder, ItineraryItem> placed = new HashMap<>();
-		for (DraftItem draftItem : draft.items()) {
-			ItineraryItem item;
-			if (draftItem.id() != null) {
-				item = existingById.get(draftItem.id());
-				item.replace(draftItem.placeId(), draftItem.day(), draftItem.order(), draftItem.startTime(),
-						draftItem.stayMinutes());
-			} else {
-				item = itineraryItemRepository.save(ItineraryItem.of(itinerary.getId(), draftItem.placeId(),
-						draftItem.day(), draftItem.order(), draftItem.startTime(), draftItem.stayMinutes()));
-			}
-			placed.put(new DayOrder(draftItem.day(), draftItem.order()), item);
-		}
-		entityManager.flush();
-
 		Instant now = now();
-		for (DraftLeg leg : draft.legs()) {
-			routeLegRepository.save(RouteLeg.unavailable(itinerary.getId(),
-					placed.get(new DayOrder(leg.day(), leg.fromOrder())).getId(),
-					placed.get(new DayOrder(leg.day(), leg.toOrder())).getId(), leg.transportMode(), now));
-		}
+		courseWriter.replace(itinerary, existing,
+				draft.items().stream().map(item -> new CourseItem(item.id(), item.placeId(), item.day(), item.order(),
+						item.startTime(), item.stayMinutes())).toList(),
+				draft.legs().stream().map(leg -> new CourseLeg(leg.day(), leg.fromOrder(), leg.toOrder(),
+						leg.transportMode(), null, null, RouteLegStatus.UNAVAILABLE, now)).toList());
+		// 다른 쓰기가 생겼으니 직전 AI 적용은 더 이상 되돌릴 수 없다(정책 I-27). version 비교로도 막히지만 옛 스냅샷을 남기지 않는다
+		itineraryUndoStore.delete(itinerary.getId());
 		itinerary.markReplaced(access.member().getId(), now);
+		itineraryNotifier.courseChanged(itinerary, userId);
+		return itineraryResponseAssembler.assemble(itinerary);
+	}
+
+	// 직전 AI 적용 1회 되돌리기(명세 §6, 정책 I-21~I-24). ACTIVE 멤버 누구나, 시간 제한 없이(Q-15 미정) 다른 쓰기 전까지만
+	// 판정 순서: 입력 400 → 여행 404 → 코스 version 409 VERSION_CONFLICT → 되돌릴 적용이 아님 409 UNDO_UNAVAILABLE → 복원
+	@Transactional
+	public ItineraryResponse undo(UUID userId, UUID tripId, ItineraryUndoRequest request) {
+		List<ErrorField> errors = new ArrayList<>();
+		if (request.expectedVersion() == null) {
+			errors.add(new ErrorField("expectedVersion", "조회한 코스의 version을 보내 주세요."));
+		}
+		if (request.appliedJobId() == null) {
+			errors.add(new ErrorField("appliedJobId", "되돌릴 AI 제안의 작업 ID를 보내 주세요."));
+		}
+		throwIfInvalid(errors);
+		TripAccess access = tripAccessChecker.requireActiveMemberForUpdate(tripId, userId);
+		Itinerary itinerary = itineraryRepository.findByTripIdForUpdate(tripId)
+				.orElseThrow(() -> new IllegalStateException("코스가 없는 여행입니다: " + tripId));
+		if (itinerary.getVersion() != request.expectedVersion()) {
+			throw new BusinessException(ItineraryErrorCode.VERSION_CONFLICT);
+		}
+		ItineraryUndoStore.UndoState state = itineraryUndoStore.find(itinerary.getId())
+				.filter(found -> found.appliedJobId().equals(request.appliedJobId())
+						&& found.appliedVersion() == itinerary.getVersion())
+				.orElseThrow(() -> new BusinessException(ItineraryErrorCode.UNDO_UNAVAILABLE));
+
+		itinerary.markReplaced(access.member().getId(), now());
+		itineraryUndoStore.delete(itinerary.getId());
+		// restore가 영속성 컨텍스트를 비우므로 version 증가를 먼저 반영해 둔다
+		courseWriter.restore(itinerary.getId(), state.before());
 		itineraryNotifier.courseChanged(itinerary, userId);
 		return itineraryResponseAssembler.assemble(itinerary);
 	}

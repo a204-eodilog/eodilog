@@ -8,6 +8,7 @@ import re
 import httpx
 
 from app.clients.errors import ProviderUnavailable
+from app.core.metrics import record_provider_failure
 from app.core.schemas import CamelModel
 from app.core.text import normalize
 
@@ -58,6 +59,7 @@ class NaverLocalClient:
     async def search(self, query: str, size: int = 3) -> list[ProviderPlace]:
         """결과 없음은 빈 목록, 장애는 PlaceSearchUnavailable로 구분한다."""
         if not (self._client_id and self._client_secret):
+            record_provider_failure()
             raise PlaceSearchUnavailable("네이버 키가 설정되지 않았습니다.")
         try:
             response = await self._http.get(
@@ -72,6 +74,7 @@ class NaverLocalClient:
             response.raise_for_status()
             places = [_to_place(item) for item in response.json()["items"]]
         except (httpx.HTTPError, KeyError, TypeError, ValueError, AttributeError) as e:
+            record_provider_failure()
             log.warning("place_search_failed error=%s", type(e).__name__)
             raise PlaceSearchUnavailable("장소 검색에 실패했습니다.") from e
         found = (place for place in places if place)

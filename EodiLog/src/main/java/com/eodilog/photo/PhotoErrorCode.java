@@ -4,6 +4,8 @@ import com.eodilog.global.common.error.ErrorCode;
 import org.springframework.http.HttpStatus;
 
 public enum PhotoErrorCode implements ErrorCode {
+    PHOTO_NOT_FOUND(HttpStatus.NOT_FOUND, "사진을 찾을 수 없습니다."),
+    VERSION_CONFLICT(HttpStatus.CONFLICT, "사진이 변경되었습니다. 다시 조회해 주세요."),
     PHOTO_BATCH_NOT_FOUND(HttpStatus.NOT_FOUND, "사진 배치를 찾을 수 없습니다."),
     PHOTO_BATCH_EXPIRED(HttpStatus.GONE, "사진 배치의 등록 기한이 지났습니다."),
     PHOTO_BATCH_FULL(HttpStatus.CONFLICT, "사진 배치의 등록 한도에 도달했습니다."),

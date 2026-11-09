@@ -1,0 +1,125 @@
+import type { PickedPhoto, UploadItem } from './types';
+
+/** 한 번에 올릴 수 있는 사진 수(결정 Q-7, 백엔드 배치 fileCount 1~50) */
+export const MAX_PHOTOS = 50;
+
+/** 사진 한 장 최대 크기(백엔드 STORAGE_MAX_BYTES 기본 15MiB) */
+export const MAX_PHOTO_BYTES = 15 * 1024 * 1024;
+
+/** 여행 사진으로 받는 형식(명세 §7: JPG/PNG/HEIC) */
+const ACCEPTED: Record<string, string> = {
+  'image/jpeg': 'image/jpeg',
+  'image/jpg': 'image/jpeg',
+  'image/png': 'image/png',
+  'image/heic': 'image/heic',
+  'image/heif': 'image/heic',
+};
+
+const BY_EXTENSION: Record<string, string> = {
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  heic: 'image/heic',
+  heif: 'image/heic',
+};
+
+/** 선택창이 준 형식(없으면 파일 이름 끝)을 서버가 받는 형식으로. 받지 않는 형식이면 null */
+export function photoContentType(
+  mimeType: string | null | undefined,
+  fileName: string | null | undefined,
+): string | null {
+  const mime = mimeType?.toLowerCase().trim();
+  if (mime) return ACCEPTED[mime] ?? null;
+  const ext = fileName?.split('.').pop()?.toLowerCase();
+  return ext ? (BY_EXTENSION[ext] ?? null) : null;
+}
+
+/**
+ * EXIF 촬영 시각("2026:11:14 10:05:00", 기기 시간대) → UTC ISO.
+ * OffsetTimeOriginal("+09:00")이 있으면 그 시간대로, 없으면 기기 시간대로 읽는다. 읽을 수 없으면 null
+ */
+export function exifCapturedAt(exif: Record<string, unknown> | null | undefined): string | null {
+  const raw = exif?.DateTimeOriginal ?? exif?.DateTime;
+  if (typeof raw !== 'string') return null;
+  const m = /^(\d{4}):(\d{2}):(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/.exec(raw.trim());
+  if (!m) return null;
+  const [, y, mo, d, h, mi, s] = m;
+  const offset = exif?.OffsetTimeOriginal ?? exif?.OffsetTime;
+  const date =
+    typeof offset === 'string' && /^[+-]\d{2}:\d{2}$/.test(offset)
+      ? new Date(`${y}-${mo}-${d}T${h}:${mi}:${s}${offset}`)
+      : new Date(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), Number(s));
+  return Number.isNaN(date.getTime()) || Number(y) < 1990 ? null : date.toISOString();
+}
+
+/** 선택창이 돌려준 사진 한 장(expo-image-picker의 asset에서 쓰는 값만) */
+export type PickerAsset = {
+  assetId?: string | null;
+  uri: string;
+  mimeType?: string | null;
+  fileName?: string | null;
+  fileSize?: number | null;
+  exif?: Record<string, unknown> | null;
+};
+
+/** 빠진 사진 수(이유별). 화면이 토스트로 알린다 */
+export type SkippedPhotos = { type: number; size: number; over: number };
+
+/**
+ * 선택창에서 고른 사진을 지금 고른 목록에 더한다. 이미 고른 사진은 다시 넣지 않고,
+ * 받지 않는 형식·15MB 초과·50장을 넘는 사진은 빼고 그 수를 돌려준다
+ */
+export function addPickedPhotos(
+  current: readonly PickedPhoto[],
+  assets: readonly PickerAsset[],
+): { photos: PickedPhoto[]; skipped: SkippedPhotos } {
+  const photos = [...current];
+  const keys = new Set(current.map((p) => p.key));
+  const skipped: SkippedPhotos = { type: 0, size: 0, over: 0 };
+  for (const a of assets) {
+    const key = a.assetId || a.uri;
+    if (keys.has(key)) continue;
+    const contentType = photoContentType(a.mimeType, a.fileName);
+    if (!contentType) {
+      skipped.type += 1;
+      continue;
+    }
+    // 크기를 모르면 서버가 확인한다(1바이트 이상이어야 해서 0은 보내지 않는다)
+    const byteSize = a.fileSize ?? 0;
+    if (byteSize > MAX_PHOTO_BYTES) {
+      skipped.size += 1;
+      continue;
+    }
+    if (photos.length >= MAX_PHOTOS) {
+      skipped.over += 1;
+      continue;
+    }
+    keys.add(key);
+    photos.push({ key, uri: a.uri, contentType, byteSize, capturedAt: exifCapturedAt(a.exif) });
+  }
+  return { photos, skipped };
+}
+
+/** 빠진 사진 안내 글. 빠진 것이 없으면 null */
+export function skippedMessage(skipped: SkippedPhotos): string | null {
+  if (skipped.over > 0) return `한 번에 ${MAX_PHOTOS}장까지 올릴 수 있어요`;
+  if (skipped.type > 0) return `JPG·PNG·HEIC 사진만 올릴 수 있어요 (${skipped.type}장 뺐어요)`;
+  if (skipped.size > 0) return `15MB가 넘는 사진은 올릴 수 없어요 (${skipped.size}장 뺐어요)`;
+  return null;
+}
+
+/** 업로드 진행 숫자 */
+export function uploadCounts(items: readonly UploadItem[]) {
+  let done = 0;
+  let failed = 0;
+  for (const item of items) {
+    if (item.status === 'done') done += 1;
+    else if (item.status === 'failed') failed += 1;
+  }
+  return { total: items.length, done, failed };
+}
+
+/** 같은 응답을 다시 받아도 되는(잠깐 막힌) 오류인지. 완료 처리는 서버 한 대에 한 건씩이라 503이 올 수 있다 */
+export function isBusy(status: number | null | undefined): boolean {
+  return status === 503 || status === 429;
+}

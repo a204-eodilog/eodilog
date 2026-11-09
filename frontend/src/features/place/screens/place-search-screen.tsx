@@ -247,7 +247,8 @@ function Notice({
   );
 }
 
-const SEARCH_HEIGHT = 40;
+// 다른 입력 칸(TextField 48)과 맞춘다. 40은 11/09 직접 확인에서 너무 낮다고 했다
+const SEARCH_HEIGHT = 48;
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.surface.white },
@@ -277,8 +278,13 @@ const styles = StyleSheet.create({
   // 피그마: 입력 중이면 연파랑 4px 테두리 빛(spread 4). 토큰 테두리 색으로 비슷하게 맞춘다
   searchFocused: { borderColor: colors.brand.primaryLight },
   searchIcon: { position: 'absolute', left: spacing[12] },
+  // 안드로이드에서 한글이 칸 가운데 오게 TextField와 같이 맞춘다: lineHeight를 주지 않고(주면 위로 붙거나 잘림)
+  // 글꼴 위아래 여유를 빼고 세로 가운데 정렬
   searchInput: {
-    ...typography.body,
+    fontFamily: typography.body.fontFamily,
+    fontSize: typography.body.fontSize,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
     color: colors.text.default,
     paddingLeft: 40,
     paddingRight: 40,

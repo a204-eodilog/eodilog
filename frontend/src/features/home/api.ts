@@ -16,7 +16,7 @@ export async function getHomeMap(bbox: string): Promise<MapResult> {
 export async function getRegionFeeds(regionId: string): Promise<FeedCard[]> {
   const { data } = await apiClient.get<PageResponse<FeedCard>>(
     `/home/regions/${encodeURIComponent(regionId)}/feeds`,
-    { params: { size: 30 } },
+    { params: { limit: 30 } },
   );
   return data.data;
 }

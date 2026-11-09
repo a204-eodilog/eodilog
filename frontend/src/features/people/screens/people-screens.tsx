@@ -42,7 +42,14 @@ function useFollowToggle() {
       void queryClient.invalidateQueries({ queryKey: SUGGESTIONS_KEY });
       void queryClient.invalidateQueries({ queryKey: ['users'] });
     },
-    onError: () => toast.show('팔로우하지 못했어요. 다시 시도해 주세요'),
+    onError: (_e, user) =>
+      toast.show(
+        user.followingStatus === 'NONE'
+          ? '팔로우하지 못했어요. 다시 시도해 주세요'
+          : user.followingStatus === 'REQUESTED'
+            ? '요청을 취소하지 못했어요. 다시 시도해 주세요'
+            : '팔로우를 끊지 못했어요. 다시 시도해 주세요',
+      ),
   });
 }
 
@@ -98,6 +105,8 @@ export function UserProfileScreen() {
       state={stateOf(user)}
       profile={user.data}
       feeds={feeds.data ?? []}
+      feedsState={feeds.isError ? 'error' : feeds.data ? 'ready' : 'loading'}
+      onRetryFeeds={() => void feeds.refetch()}
       following={follow.isPending}
       onFollow={() => user.data && follow.mutate(user.data)}
       onFeed={(id) => router.push(`/feeds/${id}`)}

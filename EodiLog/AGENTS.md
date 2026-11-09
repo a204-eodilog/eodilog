@@ -52,7 +52,7 @@ cd EodiLog
 - 루트 패키지: `com.eodilog`
 - 공통 설정: `global.config` (`SwaggerConfig`, `SecurityConfig`, `TimeConfig`의 `Clock` 빈)
 - 공통 코드: `global.common`(응답·예외·traceId), `global.idempotency`(요청 중복 방지), `global.security`(`AuthUser`), `global.websocket`(STOMP `/ws` 연결·CONNECT 인증·ERROR 형식), `global.ai`(내부 AI 서버 호출 `AiServerClient`, 설정 `app.ai`), `global.storage`(S3 파일 저장소 `ObjectStorage`, 설정 `app.storage`. 테스트는 `InMemoryStorageConfiguration`으로 메모리 저장소를 끼운다)
-- 도메인: `domain.auth`(카카오 로그인·서비스 토큰·`BearerFilter`), `user`(회원·`/me`·`UserCardReader`), `trip`, `chat`(그룹 채팅방·메시지, `chat.realtime` 커밋 뒤 실시간 전달), `itinerary`, `checklist`(공동 준비물, `checklist.suggestion` AI 준비물 제안 작업·채택), `expense`(경비·정산), `invitation`(초대 링크), `poll`(지역·장소 투표), `region`, `visit`(실제 방문 기록·방문 평가), `asset`(파일 업로드 요청·확인·취소·다운로드). 새 도메인은 루트 아래에 둔다
+- 도메인: `domain.auth`(카카오 로그인·서비스 토큰·`BearerFilter`), `user`(회원·`/me`·`UserCardReader`), `trip`, `chat`(그룹 채팅방·메시지, `chat.realtime` 커밋 뒤 실시간 전달), `itinerary`(코스, `itinerary.proposal` AI 코스 제안 ITINERARY_PROPOSAL·적용·되돌리기), `checklist`(공동 준비물, `checklist.suggestion` AI 준비물 제안 작업·채택), `expense`(경비·정산), `invitation`(초대 링크), `poll`(지역·장소 투표), `region`, `visit`(실제 방문 기록·방문 평가), `asset`(파일 업로드 요청·확인·취소·다운로드), `extraction`(링크·캡처 AI 장소 추출 PLACE_EXTRACTION 작업·조회·삭제). 새 도메인은 루트 아래에 둔다
 - 공통 목록 커서: `global.common.response.CreatedAtCursor`(기본 정렬 `createdAt DESC, id DESC`)
 
 ## 백엔드 문서

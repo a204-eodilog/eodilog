@@ -76,7 +76,9 @@ export function ReviewView({
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {writing && saveFailed ? (
           <View style={styles.failBox} accessibilityLiveRegion="polite">
-            <Icon name="alert" size={20} color={colors.status.danger} />
+            <View style={styles.boxIcon}>
+              <Icon name="alert" size={22} color={colors.status.danger} />
+            </View>
             <View style={styles.flex}>
               <Text style={[typography.bodyBold, styles.text]}>평가를 저장하지 못했어요</Text>
               <Text style={[typography.caption, styles.sub]}>
@@ -181,14 +183,23 @@ const styles = StyleSheet.create({
     gap: spacing[24],
   },
   flex: { flex: 1 },
+  // README 안내 상자(회색)·S35 지출 저장 실패와 같은 모양: 둥글기 20, 안쪽 20, 간격 14
   failBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing[16],
-    paddingVertical: spacing[16],
-    paddingHorizontal: spacing[18],
-    borderRadius: radius.md,
+    gap: spacing[14],
+    padding: spacing[20],
+    borderRadius: radius.xl,
     backgroundColor: colors.surface.subtle,
+  },
+  // README 안내 상자(회색): 흰 동그라미 44 안에 아이콘 22
+  boxIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.full,
+    backgroundColor: colors.surface.white,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   place: { flexDirection: 'row', alignItems: 'center', gap: spacing[14] },
   // 피그마 둥글기 14는 토큰에 없어 radius.md(12)
