@@ -11,10 +11,13 @@ export async function requestRemoval(
   tripId: string,
   expectedVersion: number,
   placeId: string,
+  /** 서버 필수. 같은 키와 같은 본문이면 처음 받은 작업을 그대로 돌려준다 */
+  idempotencyKey: string,
 ): Promise<JobRef> {
   const { data } = await apiClient.post<DataResponse<JobRef>>(
     `/trips/${tripId}/itinerary/proposals`,
     { reason: 'PLACE_REMOVED', expectedVersion, excludedPlaceIds: [placeId] },
+    { headers: { 'Idempotency-Key': idempotencyKey } },
   );
   return data.data;
 }
