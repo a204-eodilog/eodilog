@@ -1,11 +1,16 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 
 import { API_ERROR, toApiError } from '@/api/errors';
+import { invalidateTripLists } from '@/features/trip/hooks/trip-cache';
+import { tripKey } from '@/features/trip/hooks/use-trip';
 
 import { getPoll } from '../api';
 import { pollViewState } from '../poll-rules';
 import { pollKey } from './poll-keys';
+
+/** 여행 캐시를 이미 새로 한 확정 지역 투표. 같은 투표로 여러 번 무효화하지 않는다(research R6) */
+const refreshedTrips = new Set<string>();
 
 /** 마감 시각이 지났는데 서버가 아직 OPEN으로 줄 때 다시 받는 간격 */
 const CLOSING_RETRY_MS = 3_000;
@@ -38,6 +43,17 @@ export function usePoll(tripId: string, pollId: string | null) {
     const timer = setTimeout(() => void refetch(), wait + 500);
     return () => clearTimeout(timer);
   }, [closesAt, refetch]);
+
+  // 지역 투표가 확정되면 서버가 여행지 끝에 확정 지역을 더한다. 여행 상세·목록을 새로 받게 한다(FR-020)
+  const queryClient = useQueryClient();
+  const finalizedRegionPoll =
+    query.data?.status === 'FINALIZED' && query.data.type === 'REGION' ? query.data.id : null;
+  useEffect(() => {
+    if (!finalizedRegionPoll || refreshedTrips.has(finalizedRegionPoll)) return;
+    refreshedTrips.add(finalizedRegionPoll);
+    void queryClient.invalidateQueries({ queryKey: tripKey(tripId), exact: true });
+    void invalidateTripLists(queryClient);
+  }, [finalizedRegionPoll, queryClient, tripId]);
 
   const error = query.error ? toApiError(query.error) : null;
   const notFound =

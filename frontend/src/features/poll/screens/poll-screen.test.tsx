@@ -22,6 +22,10 @@ const mockRegionNames: Record<string, string> = {
 const mockParams: { tripId: string; pollId?: string } = { tripId: 'trip-1' };
 const mockRouter = { replace: jest.fn(), back: jest.fn(), push: jest.fn() };
 
+jest.mock('@/config/env', () => ({
+  env: { appEnv: 'local', apiBaseUrl: 'http://test', kakaoRedirectUri: null, devMock: false },
+}));
+
 jest.mock('expo-router', () => ({
   useLocalSearchParams: () => mockParams,
   // jest.mock은 위로 끌어올려져 mockRouter가 만들어지기 전에 불릴 수 있어 꺼낼 때 읽는다
