@@ -363,69 +363,93 @@ function MapCanvas({
     transform: [{ translateX: tx.value }, { translateY: ty.value }, { scale: scale.value }],
   }));
 
+  // 그림을 세 장으로 나눠 겹친다(아래 땅·시군구 / 가운데 물드는 지역 / 위 시도 경계).
+  // 한 장이면 물드는 동안 매 순간 550개 넘는 선·면 전체를 다시 그려 안드로이드에서 버벅인다(11/09 폰 확인).
+  // 나누면 물드는 동안 가운데 장(지역 몇 개)만 다시 그린다
   const paths = useMemo(
     () => (
-      <Svg width={baseW} height={baseH} viewBox={`0 0 ${KOREA_MAP.width} ${KOREA_MAP.height}`}>
-        {/* 땅 아래 옅은 그림자와 흰 빛 (Figma S05) */}
-        <G transform={`translate(0 ${px(2)})`}>
-          {KOREA_MAP.sido.map((r) => (
-            <Path key={r.code} d={r.d} fill={colors.shadow} />
-          ))}
-        </G>
-        {KOREA_MAP.sido.map((r) => (
-          <Path
-            key={r.code}
-            d={r.d}
-            fill={LAND}
-            stroke={LAND}
-            strokeWidth={px(5)}
-            strokeLinejoin="round"
-            strokeOpacity={0.8}
-          />
-        ))}
-        {KOREA_MAP.sigungu.map((r) => (
-          <Path key={r.code} d={r.d} fill={fills[r.code] ?? fills[r.parent] ?? LAND} />
-        ))}
-        {/* 시군구 선은 칠한 면과 따로 그려, 단계가 바뀌어도 면은 다시 그리지 않는다 */}
-        {/* 2~3단계는 옅게, 4단계부터 제대로 보인다 */}
-        {detail ? (
-          <G
-            fill="none"
-            stroke={colors.line.default}
-            strokeWidth={px(0.6)}
-            strokeOpacity={stage >= 3 ? 1 : 0.45}
-          >
-            {KOREA_MAP.sigungu.map((r) => (
-              <Path key={r.code} d={r.d} />
+      <>
+        <Svg
+          style={styles.layer}
+          width={baseW}
+          height={baseH}
+          viewBox={`0 0 ${KOREA_MAP.width} ${KOREA_MAP.height}`}
+        >
+          {/* 땅 아래 옅은 그림자와 흰 빛 (Figma S05) */}
+          <G transform={`translate(0 ${px(2)})`}>
+            {KOREA_MAP.sido.map((r) => (
+              <Path key={r.code} d={r.d} fill={colors.shadow} />
             ))}
           </G>
-        ) : null}
-        {fillSteps.map((step, i) => {
-          const shape = SHAPE.get(step.code);
-          if (!shape) return null;
-          return step.colors.map((color, layer) => (
-            <FillLayer
-              key={`${step.code}-${layer}`}
-              d={shape}
-              color={color}
-              delayMs={
-                MAP_MOTION.fillStartMs +
-                i * MAP_MOTION.fillStaggerMs +
-                layer * MAP_MOTION.layerGapMs
-              }
+          {KOREA_MAP.sido.map((r) => (
+            <Path
+              key={r.code}
+              d={r.d}
+              fill={LAND}
+              stroke={LAND}
+              strokeWidth={px(5)}
+              strokeLinejoin="round"
+              strokeOpacity={0.8}
             />
-          ));
-        })}
-        {KOREA_MAP.sido.map((r) => (
-          <Path
-            key={r.code}
-            d={r.d}
-            fill="none"
-            stroke={colors.line.default}
-            strokeWidth={px(detail ? 1 : 0.8)}
-          />
-        ))}
-      </Svg>
+          ))}
+          {KOREA_MAP.sigungu.map((r) => (
+            <Path key={r.code} d={r.d} fill={fills[r.code] ?? fills[r.parent] ?? LAND} />
+          ))}
+          {/* 시군구 선은 칠한 면과 따로 그려, 단계가 바뀌어도 면은 다시 그리지 않는다 */}
+          {/* 2~3단계는 옅게, 4단계부터 제대로 보인다 */}
+          {detail ? (
+            <G
+              fill="none"
+              stroke={colors.line.default}
+              strokeWidth={px(0.6)}
+              strokeOpacity={stage >= 3 ? 1 : 0.45}
+            >
+              {KOREA_MAP.sigungu.map((r) => (
+                <Path key={r.code} d={r.d} />
+              ))}
+            </G>
+          ) : null}
+        </Svg>
+        <Svg
+          style={styles.layer}
+          width={baseW}
+          height={baseH}
+          viewBox={`0 0 ${KOREA_MAP.width} ${KOREA_MAP.height}`}
+        >
+          {fillSteps.map((step, i) => {
+            const shape = SHAPE.get(step.code);
+            if (!shape) return null;
+            return step.colors.map((color, layer) => (
+              <FillLayer
+                key={`${step.code}-${layer}`}
+                d={shape}
+                color={color}
+                delayMs={
+                  MAP_MOTION.fillStartMs +
+                  i * MAP_MOTION.fillStaggerMs +
+                  layer * MAP_MOTION.layerGapMs
+                }
+              />
+            ));
+          })}
+        </Svg>
+        <Svg
+          style={styles.layer}
+          width={baseW}
+          height={baseH}
+          viewBox={`0 0 ${KOREA_MAP.width} ${KOREA_MAP.height}`}
+        >
+          {KOREA_MAP.sido.map((r) => (
+            <Path
+              key={r.code}
+              d={r.d}
+              fill="none"
+              stroke={colors.line.default}
+              strokeWidth={px(detail ? 1 : 0.8)}
+            />
+          ))}
+        </Svg>
+      </>
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [baseW, baseH, fills, fillSteps, stage],
@@ -526,6 +550,7 @@ const INNER = {
 const styles = StyleSheet.create({
   box: { flex: 1, overflow: 'hidden', backgroundColor: colors.map.seaEdge },
   map: { position: 'absolute', left: 0, top: 0, transformOrigin: 'left top' },
+  layer: { position: 'absolute', left: 0, top: 0 },
   pin: { position: 'absolute', left: 0, top: 0, width: 0, height: 0, alignItems: 'center' },
   center: { justifyContent: 'center' },
   bottom: { justifyContent: 'flex-end' },
