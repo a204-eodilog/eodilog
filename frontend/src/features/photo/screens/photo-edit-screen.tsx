@@ -51,14 +51,22 @@ export function PhotoEditScreen() {
     pickedPlaceIds.length > 1 ? '여러 장소' : nameOf(pickedPlaceIds[0] ?? null);
 
   usePreventRemove(changes.length > 0 && !leaving, () => setConfirmLeave(true));
+
+  // S31로는 한 번만 나간다. 사진을 모두 다른 장소로 옮기고 [완료]를 누르면 저장이 끝나는 같은 렌더에서
+  // [완료]의 나가기와 "묶음이 비면 나가기"가 함께 돌아 S31까지 닫힐 수 있다(!168 리뷰)
+  const left = useRef(false);
   useEffect(() => {
-    if (leaving) router.back();
+    if (!leaving || left.current) return;
+    left.current = true;
+    router.back();
   }, [leaving]);
 
   // 사진이 모두 지워지거나 다른 장소로 옮겨져 이 묶음이 비면 S31로
   const empty = data.state === 'ready' && base.length === 0;
   useEffect(() => {
-    if (empty && !remove.isPending && !save.isPending) router.back();
+    if (!empty || remove.isPending || save.isPending || left.current) return;
+    left.current = true;
+    router.back();
   }, [empty, remove.isPending, save.isPending]);
 
   const toggle = (id: string) =>
