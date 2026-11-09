@@ -191,7 +191,7 @@ export function PhotoEditScreen() {
         onConfirm={runDelete}
         title={`사진 ${picked.length}장을 지울까요?`}
         description="지우면 동행도 이 사진을 볼 수 없고, 되돌릴 수 없어요"
-        confirmLabel="삭제"
+        confirmLabel="지우기"
         confirmIcon="trash"
         loading={remove.isPending}
       />
