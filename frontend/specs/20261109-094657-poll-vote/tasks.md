@@ -64,10 +64,10 @@
 
 **Independent Test**: [+ 후보 추가] → 한 곳 고르고 [후보에 넣기] → 맨 아래 '새 후보'.
 
-- [ ] T033 [US3] `src/features/poll/hooks/use-add-candidates.ts`: 고른 후보를 차례로 `addCandidate`, VERSION_CONFLICT면 다시 받아 한 번 재시도, 이미 있음·30개 400은 건너뜀, POLL_CLOSED면 중단하고 결과, 요청 중 비활성
-- [ ] T034 [US3] `src/features/poll/components/add-candidate-sheet.tsx`(Figma 418-188): "후보 추가", "지역 투표 · 여러 곳을 골라 넣을 수 있어요", 후보 줄과 체크, "넣으면 투표 중인 동행에게 알려요", [후보에 넣기], 고를 곳 없음 안내
-- [ ] T035 [US3] `PollOpenView`에 [+ 후보 추가] 점선 버튼(30곳이면 숨김)과 시트 연결, '새 후보' 표시(Figma 385-2305), `/dev/polls`에 후보 추가 시트·진행 중 후보 추가됨 추가
-- [ ] T036 [US3] `src/features/poll/hooks/use-add-candidates.test.tsx`와 `poll-screen.test.tsx` 후보 추가 경우: 넣기 성공 뒤 '새 후보', 충돌 한 번 재시도, 이미 있는 후보 건너뜀
+- [X] T033 [US3] `src/features/poll/hooks/use-add-candidates.ts`: 고른 후보를 차례로 `addCandidate`, VERSION_CONFLICT면 다시 받아 한 번 재시도, 이미 있음·30개 400은 건너뜀, POLL_CLOSED면 중단하고 결과, 요청 중 비활성
+- [X] T034 [US3] `src/features/poll/components/add-candidate-sheet.tsx`(Figma 418-188): "후보 추가", "지역 투표 · 여러 곳을 골라 넣을 수 있어요", 후보 줄과 체크, "넣으면 투표 중인 동행에게 알려요", [후보에 넣기], 고를 곳 없음 안내
+- [X] T035 [US3] `PollOpenView`에 [+ 후보 추가] 점선 버튼(30곳이면 숨김)과 시트 연결, '새 후보' 표시(Figma 385-2305), `/dev/polls`에 후보 추가 시트·진행 중 후보 추가됨 추가
+- [X] T036 [US3] `src/features/poll/hooks/use-add-candidates.test.tsx`와 `poll-screen.test.tsx` 후보 추가 경우: 넣기 성공 뒤 '새 후보', 충돌 한 번 재시도, 이미 있는 후보 건너뜀
 
 ## Phase 6: User Story 4 - 마감 결과 (P1)
 
