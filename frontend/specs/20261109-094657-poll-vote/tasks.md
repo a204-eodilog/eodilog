@@ -85,10 +85,10 @@
 
 ## Phase 7: User Story 5 - 진입 연결 (P2)
 
-- [ ] T044 [P] [US5] `src/features/trip/components/trip-menu-grid.tsx`의 'poll' 메뉴에 `/trips/[tripId]/polls`로 가는 `open` 추가
-- [ ] T045 [P] [US5] `src/features/chat/system-card-routes.ts`에 `poll` 이동: 대상 투표 ID가 있으면 `/trips/[tripId]/polls/[pollId]`, 없으면 목록 주소
-- [ ] T046 [US5] `poll-views.tsx`에 `PollNotFoundView`("볼 수 없는 투표예요" + 뒤로), `poll-screen.tsx`에서 404에 연결, `/dev/polls`에 추가
-- [ ] T047 [US5] 진입 테스트: `trip-menu-grid` 투표 메뉴 이동, 시스템 카드 이동, 404 안내
+- [X] T044 [P] [US5] `src/features/trip/components/trip-menu-grid.tsx`의 'poll' 메뉴에 `/trips/[tripId]/polls`로 가는 `open` 추가
+- [X] T045 [P] [US5] `src/features/chat/system-card-routes.ts`에 `poll` 이동: 대상 투표 ID가 있으면 `/trips/[tripId]/polls/[pollId]`, 없으면 목록 주소
+- [X] T046 [US5] `poll-views.tsx`에 `PollNotFoundView`("볼 수 없는 투표예요" + 뒤로), `poll-screen.tsx`에서 404에 연결, `/dev/polls`에 추가
+- [X] T047 [US5] 진입 테스트: `trip-menu-grid` 투표 메뉴 이동, 시스템 카드 이동, 404 안내
 
 ## Phase 8: Polish
 
