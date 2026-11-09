@@ -11,6 +11,8 @@ import type { Trip } from '@/features/trip/types';
 
 type Helpers = {
   getTrips(): Trip[];
+  /** 그 장소의 코스 항목. 대안이 바꿀 일정을 가리킨다 */
+  itemOf(tripId: string, placeId: string): { id: string; name: string } | null;
   ok<T>(config: InternalAxiosRequestConfig, data: T, status?: number): AxiosResponse<T>;
   fail(config: InternalAxiosRequestConfig, status: number, code: string, message: string): Error;
 };
@@ -23,6 +25,8 @@ type MockJob = {
   placeId: string;
   baseVersion: number;
   empty: boolean;
+  /** 대안이 바꿀 코스 항목. 코스에 없으면 장소 ID와 '그 일정' */
+  item: { id: string; name: string };
 };
 
 const RUN_MS = 3000;
@@ -90,9 +94,9 @@ export function createWeatherMock(h: Helpers) {
                     alternativeId: `${job.id}-shift`,
                     type: 'TIME_SHIFT',
                     place: null,
-                    itemId: 'it-1',
+                    itemId: job.item.id,
                     targetStartTime: '14:00',
-                    activity: '해운대 해변을 오후로 옮기기',
+                    activity: `${job.item.name} 일정을 오후로 옮기기`,
                     reason: '비가 그친 뒤에 가요',
                   },
                   {
@@ -103,7 +107,7 @@ export function createWeatherMock(h: Helpers) {
                       '해운대 실내 수족관',
                       '부산 해운대구 해운대해변로',
                     ),
-                    itemId: 'it-1',
+                    itemId: job.item.id,
                     targetStartTime: null,
                     activity: '실내 수족관 둘러보기',
                     reason: '도보 8분 · 실내라 비를 피해요',
@@ -112,7 +116,7 @@ export function createWeatherMock(h: Helpers) {
                     alternativeId: `${job.id}-bookcafe`,
                     type: 'PLACE_SWAP',
                     place: place('place-bookcafe', '마린시티 북카페', '부산 해운대구 마린시티'),
-                    itemId: 'it-1',
+                    itemId: job.item.id,
                     targetStartTime: null,
                     activity: '북카페에서 쉬기',
                     reason: '도보 15분 · 실내',
@@ -175,6 +179,7 @@ export function createWeatherMock(h: Helpers) {
         placeId: body.placeId ?? '',
         baseVersion: Number(body.expectedVersion ?? 1),
         empty: emptyNext,
+        item: h.itemOf(trip.id, body.placeId ?? '') ?? { id: body.placeId ?? '', name: '그 일정' },
       };
       emptyNext = false;
       jobs.set(job.id, job);

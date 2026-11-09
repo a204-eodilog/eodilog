@@ -472,5 +472,13 @@ export function createCourseMock(h: Helpers) {
     },
   };
 
-  return { handle, controls };
+  /** 그 여행 코스에서 그 장소의 항목. 날씨 대안 가짜 서버가 대안 대상을 찾을 때 쓴다 */
+  function itemOf(tripId: string, placeId: string) {
+    const trip = tripOf(tripId);
+    if (!trip) return null;
+    const found = courseOf(trip).items.find((i) => i.place.id === placeId);
+    return found ? { id: found.id, name: found.place.name } : null;
+  }
+
+  return { handle, controls, itemOf };
 }

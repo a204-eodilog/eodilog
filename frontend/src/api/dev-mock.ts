@@ -344,7 +344,12 @@ const chatMock = createChatMock({ getTrips: () => trips, me: ME, ok, fail });
 /** 코스 가짜 서버. 자동 추천·다시 계산·그룹 즐겨찾기 조회도 답한다 */
 const courseMock = createCourseMock({ getTrips: () => trips, meId: ME.id, ok, fail });
 /** 여행 중 날씨와 날씨 대안 가짜 서버. 앱용 날씨 API가 없다(Q-10-1) */
-const weatherMock = createWeatherMock({ getTrips: () => trips, ok, fail });
+const weatherMock = createWeatherMock({
+  getTrips: () => trips,
+  itemOf: (tripId, placeId) => courseMock.itemOf(tripId, placeId),
+  ok,
+  fail,
+});
 
 /**
  * 웹 테스트 모드 콘솔에서 다른 동행의 변경을 흉내 낸다(동행 명세 research R15).
