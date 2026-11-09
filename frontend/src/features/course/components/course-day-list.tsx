@@ -12,6 +12,10 @@ export const MODE_ICON: Record<TransportMode, IconName> = {
   WALK: 'walk',
 };
 
+/** 높이 32 알약과 28 구간 칩의 누르는 영역을 44 이상으로 */
+const HIT = { top: 6, bottom: 6 };
+const HIT_LEG = { top: 8, bottom: 8 };
+
 type Props = {
   items: DraftItem[];
   legs: DayLeg[];
@@ -50,6 +54,7 @@ export function CourseDayList(props: Props) {
             {mode === 'view' ? (
               <Pressable
                 style={styles.remove}
+                hitSlop={HIT}
                 onPress={() => props.onRemove?.(i)}
                 accessibilityRole="button"
                 accessibilityLabel={`${item.place.name} 빼기`}
@@ -84,6 +89,7 @@ function LegRow({ leg, mode, selectedLeg, onSelectLeg, onRecalculate }: Props & 
       <View style={styles.leg}>
         <Pressable
           onPress={() => onSelectLeg?.(leg.key)}
+          hitSlop={HIT_LEG}
           style={[styles.legPill, styles.legFail, selected && styles.legSelected]}
           accessibilityRole="button"
           accessibilityLabel={`${MODE_LABEL[leg.mode]} 구간, 이동 시간을 못 구했어요`}
@@ -106,6 +112,7 @@ function LegRow({ leg, mode, selectedLeg, onSelectLeg, onRecalculate }: Props & 
       <Pressable
         disabled={mode !== 'edit'}
         onPress={() => onSelectLeg?.(leg.key)}
+        hitSlop={HIT_LEG}
         style={[styles.legPill, styles.legNormal, selected && styles.legSelected]}
         accessibilityRole={mode === 'edit' ? 'button' : undefined}
         accessibilityState={mode === 'edit' ? { selected } : undefined}
