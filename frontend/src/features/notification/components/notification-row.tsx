@@ -8,7 +8,7 @@ import type { NotificationLine } from '../notification-rules';
 type Props = {
   line: NotificationLine;
   onPress: () => void;
-  /** S48 팝업 줄처럼 작은 모양 */
+  /** S48 팝업 줄. 제목 한 줄, 종류와 시각을 한 줄에 */
   compact?: boolean;
 };
 
@@ -25,25 +25,22 @@ export function NotificationRow({ line, onPress, compact = false }: Props) {
       accessibilityLabel={`${state}${line.title}, ${line.label}, ${line.time}${line.leftTrip ? ', 나간 여행' : ''}`}
       style={({ pressed }) => [styles.row, compact && styles.compact, pressed && styles.pressed]}
     >
-      <View style={[styles.icon, compact && styles.iconCompact, line.unread && styles.iconUnread]}>
+      <View style={[styles.icon, line.unread && styles.iconUnread]}>
         <Icon
           name={line.icon}
-          size={compact ? 16 : 18}
+          size={18}
           color={line.unread ? colors.brand.primary : colors.text.icon}
         />
       </View>
       <View style={styles.body}>
         <Text
-          style={[
-            compact ? typography.captionBold : line.unread ? typography.bodyBold : typography.body,
-            styles.title,
-          ]}
+          style={[line.unread ? typography.bodyBold : typography.body, styles.title]}
           numberOfLines={compact ? 1 : 2}
         >
           {line.title}
         </Text>
         <View style={styles.meta}>
-          <Text style={[compact ? typography.micro : typography.caption, styles.metaText]}>
+          <Text style={[typography.caption, styles.metaText]}>
             {compact ? `${line.label} · ${line.time}` : line.label}
           </Text>
           {compact ? null : <Text style={[typography.caption, styles.metaText]}>{line.time}</Text>}
@@ -62,7 +59,8 @@ export function NotificationRow({ line, onPress, compact = false }: Props) {
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing[14], minHeight: 60 },
-  compact: { gap: spacing[12], minHeight: 44 },
+  // Figma S48 팝업 줄은 높이 52, 종류와 시각을 한 줄에
+  compact: { minHeight: 52 },
   pressed: { opacity: 0.6 },
   icon: {
     width: 36,
@@ -72,7 +70,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  iconCompact: { width: 28, height: 28, borderRadius: 14 },
   iconUnread: { backgroundColor: colors.brand.primaryBg },
   body: { flex: 1, gap: spacing[2] },
   title: { color: colors.text.default },
