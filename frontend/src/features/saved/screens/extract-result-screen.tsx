@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { apiErrorCode } from '@/api/errors';
 import { MapMarker, MapView } from '@/components/map';
 import { Button, CenterNotice, Header, Icon, toast } from '@/components/ui';
 import { pickPlace } from '@/features/place';
@@ -19,6 +20,7 @@ import {
   extractRegion,
   extractionView,
   failedNotice,
+  FEATURE_OFF_MESSAGE,
   type GroupPick,
   groupCandidates,
   nextToChoose,
@@ -126,7 +128,15 @@ export function ExtractResultScreen() {
         forgetExtraction(jobId);
         router.replace({ pathname: '/saved/extract/[jobId]', params: { jobId: next } });
       },
-      onError: () => toast.error('다시 보내지 못했어요. 잠시 뒤 다시 시도해 주세요'),
+      onError: (error) => {
+        if (apiErrorCode(error) === 'AI_FEATURE_DISABLED') {
+          toast.error(FEATURE_OFF_MESSAGE, {
+            action: { label: '설정', onPress: () => router.push('/settings') },
+          });
+          return;
+        }
+        toast.error('다시 보내지 못했어요. 잠시 뒤 다시 시도해 주세요');
+      },
     });
   };
 

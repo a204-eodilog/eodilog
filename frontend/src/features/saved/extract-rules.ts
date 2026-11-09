@@ -24,17 +24,26 @@ export function isLink(text: string | null | undefined): boolean {
   }
 }
 
+/** 서버가 받는 링크 최대 길이(백엔드 안내 2026-11-09) */
+export const MAX_LINK_LENGTH = 2048;
+
 /**
  * 링크 칸 상태. 비었으면 empty, 웹 페이지 링크면 ok, 링크가 아니거나 파일 링크면 unsupported
- * (값 문서 "지원하지 않는 형식")
+ * (값 문서 "지원하지 않는 형식").
+ * 서버가 400으로 거부하는 링크(계정 정보 user@ 포함, 80·443 외 포트, 2048자 초과)도 unsupported로 미리 막는다
  */
 export function linkStatus(text: string): 'empty' | 'ok' | 'unsupported' {
   const value = text.trim();
   if (!value) return 'empty';
-  if (!isLink(value)) return 'unsupported';
-  const path = new URL(value).pathname;
-  return FILE_LINK.test(path) ? 'unsupported' : 'ok';
+  if (value.length > MAX_LINK_LENGTH || !isLink(value)) return 'unsupported';
+  const url = new URL(value);
+  if (url.username || url.password) return 'unsupported';
+  if (url.port && url.port !== '80' && url.port !== '443') return 'unsupported';
+  return FILE_LINK.test(url.pathname) ? 'unsupported' : 'ok';
 }
+
+/** 설정에서 장소 찾기를 끈 채 보냈을 때(409 AI_FEATURE_DISABLED) 안내. 다시 시도해도 안 되므로 설정으로 보낸다 */
+export const FEATURE_OFF_MESSAGE = '설정에서 "링크와 캡처에서 장소 찾기"가 꺼져 있어요';
 
 /** [장소 찾기]를 누를 수 있는지. 링크가 맞거나 캡처가 있고, 링크 칸에 맞지 않는 글이 없어야 한다 */
 export function canFind(link: string, captureCount: number): boolean {

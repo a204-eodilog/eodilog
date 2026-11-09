@@ -784,6 +784,9 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
     if ((body.captureAssetIds?.length ?? 0) > 10) {
       throw fail(config, 422, 'INPUT_LIMIT_EXCEEDED', '캡처는 10장까지 넣을 수 있어요.');
     }
+    if (settings.ai.placeExtraction === 'OFF') {
+      throw fail(config, 409, 'AI_FEATURE_DISABLED', '장소 찾기 설정이 꺼져 있어요.');
+    }
     seq += 1;
     const id = `extraction-${seq}`;
     const hint = `${body.url ?? ''} ${body.memo ?? ''}`;

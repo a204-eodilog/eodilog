@@ -84,6 +84,18 @@ describe('isLink / linkStatus (S11)', () => {
     expect(linkStatus('https://example.com/video.MP4')).toBe('unsupported');
     expect(linkStatus('그냥 글')).toBe('unsupported');
   });
+
+  it('서버가 거부하는 링크(계정 정보, 80·443 외 포트, 2048자 초과)도 지원하지 않는 형식', () => {
+    expect(linkStatus('https://user@example.com/p/1')).toBe('unsupported');
+    expect(linkStatus('https://user:pw@example.com/p/1')).toBe('unsupported');
+    expect(linkStatus('https://example.com:8080/p/1')).toBe('unsupported');
+    expect(linkStatus('https://example.com:443/p/1')).toBe('ok');
+    expect(linkStatus('http://example.com:80/p/1')).toBe('ok');
+    expect(linkStatus('https://example.com/p/1?ref=a@b')).toBe('ok');
+    const long = `https://example.com/${'a'.repeat(2048)}`;
+    expect(linkStatus(long)).toBe('unsupported');
+    expect(linkStatus(long.slice(0, 2048))).toBe('ok');
+  });
 });
 
 describe('canFind (S11)', () => {

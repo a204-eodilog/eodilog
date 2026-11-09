@@ -15,11 +15,19 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { apiErrorCode } from '@/api/errors';
 import { Button, Header, Icon, type IconName, toast } from '@/components/ui';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 import type { CaptureFile } from '../api';
-import { addCaptures, canFind, isLink, linkStatus, MAX_CAPTURES } from '../extract-rules';
+import {
+  addCaptures,
+  canFind,
+  FEATURE_OFF_MESSAGE,
+  isLink,
+  linkStatus,
+  MAX_CAPTURES,
+} from '../extract-rules';
 import { useStartExtraction } from '../hooks/use-extraction';
 
 /** 메모 최대 길이. 즐겨찾기 메모와 같은 서버 제한(2,000자) */
@@ -122,8 +130,14 @@ export function LinkCaptureScreen() {
           sending.current = false;
           router.push({ pathname: '/saved/extract/[jobId]', params: { jobId } });
         },
-        onError: () => {
+        onError: (error) => {
           sending.current = false;
+          if (apiErrorCode(error) === 'AI_FEATURE_DISABLED') {
+            toast.error(FEATURE_OFF_MESSAGE, {
+              action: { label: '설정', onPress: () => router.push('/settings') },
+            });
+            return;
+          }
           toast.error('장소 찾기를 시작하지 못했어요. 다시 시도해 주세요');
         },
       },
