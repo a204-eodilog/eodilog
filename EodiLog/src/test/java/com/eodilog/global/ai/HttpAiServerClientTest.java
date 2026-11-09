@@ -78,6 +78,74 @@ class HttpAiServerClientTest {
 		expectFailure(respondingWith(builder -> withSuccess("not json", MediaType.APPLICATION_JSON)), false);
 	}
 
+	@Test
+	void sendsMultipartFieldsAndFilesInUtf8() {
+		RestClient.Builder builder = RestClient.builder();
+		MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+		byte[] png = {(byte) 0x89, 'P', 'N', 'G', 1, 2, 3};
+		server.expect(requestTo(BASE_URL + "/ai/v1/place-extractions"))
+				.andExpect(method(HttpMethod.POST))
+				.andExpect(header("X-Internal-Token", "secret-token"))
+				.andExpect(header("X-Trace-Id", JOB_ID.toString()))
+				.andExpect(content().contentTypeCompatibleWith(MediaType.MULTIPART_FORM_DATA))
+				.andExpect(request -> {
+					byte[] sent = ((org.springframework.mock.http.client.MockClientHttpRequest) request).getBodyAsBytes();
+					String text = new String(sent, java.nio.charset.StandardCharsets.UTF_8);
+					// 한글 메모가 UTF-8 바이트 그대로 나가고, 값이 null인 필드는 빠진다
+					assertThat(text).contains("name=\"memo\"").contains("부산 해운대 카페")
+							.contains("name=\"url\"").contains("https://example.com/p/1")
+							.doesNotContain("name=\"regionHint\"")
+							.contains("name=\"captures\"; filename=\"capture-1.png\"")
+							.contains("name=\"captures\"; filename=\"capture-2.jpg\"")
+							.contains("Content-Type: image/png").contains("Content-Type: image/jpeg");
+					assertThat(indexOf(sent, png)).isNotNegative();
+				})
+				.andRespond(withSuccess("{\"data\":{\"resultStatus\":\"NOT_FOUND\",\"candidates\":[]}}",
+						MediaType.APPLICATION_JSON));
+
+		java.util.Map<String, String> fields = new java.util.LinkedHashMap<>();
+		fields.put("url", "https://example.com/p/1");
+		fields.put("memo", "부산 해운대 카페");
+		fields.put("regionHint", null);
+		JsonNode data = client(builder, "secret-token").postMultipart("/ai/v1/place-extractions", JOB_ID, fields,
+				java.util.List.of(new AiServerClient.FilePart("captures", "capture-1.png", "image/png", png),
+						new AiServerClient.FilePart("captures", "capture-2.jpg", "image/jpeg", new byte[] {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF})));
+
+		assertThat(data.get("resultStatus").asString()).isEqualTo("NOT_FOUND");
+		server.verify();
+	}
+
+	@Test
+	void classifiesMultipartFailuresLikeJson() {
+		for (var expectation : java.util.List.of(
+				java.util.Map.entry(withStatus(HttpStatus.SERVICE_UNAVAILABLE), true),
+				java.util.Map.entry(withException(new SocketTimeoutException("read timed out")), true),
+				java.util.Map.entry(withStatus(HttpStatus.UNPROCESSABLE_CONTENT), false),
+				java.util.Map.entry(withSuccess("{\"data\":[]}", MediaType.APPLICATION_JSON), false))) {
+			RestClient.Builder builder = RestClient.builder();
+			MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+			server.expect(requestTo(BASE_URL + "/ai/v1/place-extractions")).andRespond(expectation.getKey());
+			AiServerClient client = client(builder, "secret-token");
+			assertThatThrownBy(() -> client.postMultipart("/ai/v1/place-extractions", JOB_ID,
+					java.util.Map.of("url", "https://example.com"), java.util.List.of()))
+					.isInstanceOfSatisfying(AiServerException.class,
+							ex -> assertThat(ex.retryable()).isEqualTo(expectation.getValue()));
+		}
+	}
+
+	private static int indexOf(byte[] source, byte[] target) {
+		outer:
+		for (int i = 0; i <= source.length - target.length; i++) {
+			for (int j = 0; j < target.length; j++) {
+				if (source[i + j] != target[j]) {
+					continue outer;
+				}
+			}
+			return i;
+		}
+		return -1;
+	}
+
 	private AiServerClient respondingWith(
 			java.util.function.Function<RestClient.Builder, org.springframework.test.web.client.ResponseCreator> response) {
 		RestClient.Builder builder = RestClient.builder();

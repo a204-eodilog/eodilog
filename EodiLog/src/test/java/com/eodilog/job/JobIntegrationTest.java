@@ -61,7 +61,7 @@ class JobIntegrationTest {
         return new JobSubmission(user, kind, null, json.readTree("{\"allowed\":true}"), 1L,
             kind.cleanup() ? new CleanupScope(List.of(UUID.randomUUID()), List.of(), clock.instant()) : null);
     }
-    UUID submit() { return submit(JobKind.PLACE_EXTRACTION); }
+    UUID submit() { return submit(JobKind.ROUTE_RECALCULATION); }
     UUID submit(JobKind kind) { return tx.execute(s -> service.submit(submission(kind))).jobId(); }
     JobContext claim() { return tx.execute(s -> store.claim(clock.instant(), properties, registry.kinds()).orElseThrow().context()); }
     String state(UUID id) { return jdbc.queryForObject("SELECT status FROM jobs WHERE id=?", String.class, id); }
@@ -72,16 +72,16 @@ class JobIntegrationTest {
     }
 
     @Test void submissionRequiresWriteTransactionAndRegisteredKind() {
-        assertThatThrownBy(() -> service.submit(submission(JobKind.PLACE_EXTRACTION))).isInstanceOf(IllegalTransactionStateException.class);
+        assertThatThrownBy(() -> service.submit(submission(JobKind.ROUTE_RECALCULATION))).isInstanceOf(IllegalTransactionStateException.class);
         assertThatThrownBy(() -> tx.execute(s -> service.submit(submission(JobKind.TRIP_RECOMMENDATION)))).isInstanceOf(IllegalStateException.class);
         tx.setReadOnly(true);
-        assertThatThrownBy(() -> tx.execute(s -> service.submit(submission(JobKind.PLACE_EXTRACTION)))).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> tx.execute(s -> service.submit(submission(JobKind.ROUTE_RECALCULATION)))).isInstanceOf(IllegalStateException.class);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM jobs", Integer.class)).isZero();
     }
     @Test void domainRollbackAndUncommittedIsolation() throws Exception {
         try (var executor = Executors.newSingleThreadExecutor()) {
             tx.executeWithoutResult(s -> {
-                var ref = service.submit(submission(JobKind.PLACE_EXTRACTION));
+                var ref = service.submit(submission(JobKind.ROUTE_RECALCULATION));
                 assertThat(ref.jobId().version()).isEqualTo(7);
                 assertThat(ref.statusUrl()).isEqualTo("/api/v1/jobs/" + ref.jobId());
                 try { assertThat(executor.submit(() -> worker.pollOnce()).get(3, TimeUnit.SECONDS)).isFalse(); }
@@ -370,8 +370,8 @@ class JobIntegrationTest {
                 }
             };
         }
-        @Bean JobHandler extractionHandler(JdbcTemplate jdbc) { return handler(JobKind.PLACE_EXTRACTION, jdbc); }
-        @Bean JobAccessPolicy extractionPolicy() { return policy(JobKind.PLACE_EXTRACTION); }
+        @Bean JobHandler routeHandler(JdbcTemplate jdbc) { return handler(JobKind.ROUTE_RECALCULATION, jdbc); }
+        @Bean JobAccessPolicy routePolicy() { return policy(JobKind.ROUTE_RECALCULATION); }
         @Bean JobHandler cleanupHandler(JdbcTemplate jdbc) { return handler(JobKind.PHOTO_DELETE, jdbc); }
         @Bean JobAccessPolicy cleanupPolicy() { return policy(JobKind.PHOTO_DELETE); }
     }
