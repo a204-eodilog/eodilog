@@ -117,7 +117,8 @@ export function PollOpenView({
               />
             );
           })}
-          {onAddCandidate && poll.candidates.length < MAX_CANDIDATES ? (
+          {/* 투표 바꾸기 실패 안내 중에는 후보 추가를 숨긴다(Figma 201-29384) */}
+          {onAddCandidate && !failLines && poll.candidates.length < MAX_CANDIDATES ? (
             <Pressable
               accessibilityRole="button"
               onPress={onAddCandidate}
