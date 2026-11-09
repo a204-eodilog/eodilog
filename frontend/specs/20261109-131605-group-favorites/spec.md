@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-09
 
-**Status**: Draft
+**Status**: Implemented — 실서버·기기 확인 대기(tasks T024·T025)
 
 **Input**: User description: "그룹 즐겨찾기. 화면은 S20이고 user-flow 5.3을 따른다. 상태: 목록 201-9344 / 겹친 곳만(파랑) / 지도 보기 201-9521 / 장소 없음 201-9686 / 장소 추가 시트 201-9751 / 코스에 있는 장소 빼기 201-29151. API는 GET /trips/{tripId}/saved-places?filter=ALL|OVERLAP&memberId&bbox&cursor&limit(감싸지 않은 SavedPlacePage), PUT·PATCH·DELETE /trips/{tripId}/saved-places/{placeId}/me. 저장한 사람과 겹침 표시. [후보 골라 투표 열기]는 N8에 고른 후보를 넘긴다. [추천 받기]는 S21(9번 주제)이라 그 전까지는 안내로 둔다. 개인 즐겨찾기 화면(B)의 장소 저장과 쿼리 키·캐시 갱신을 맞춘다."
 
