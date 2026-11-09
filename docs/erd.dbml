@@ -236,6 +236,7 @@ Table assets {
   upload_expires_at timestamp [not null, note: '기본 PUT URL 10분']
   expires_at timestamp [not null, note: '기본 미완료/미등록 정리 24시간']
   original_cleaned_at timestamp [note: 'PUT 만료 후 원본 삭제 완료 시각']
+  objects_deleted boolean [not null, default: false, note: '원본/표시 객체 쌍 삭제 성공 표시. DELETING은 접근 차단만 뜻하므로 여행 정리가 이 값을 별도로 검사. 예약 정리는 PUT 만료 후 이 표시와 무관하게 반복. 사진 참조가 모두 soft-delete여도 객체 정리, 참조 중인 asset 행/FK는 유지하고 FAILED job 상태는 변경하지 않음']
   Note: '2026-11-06 구현: PROFILE/CAPTURE/TRIP_PHOTO 지원. TRIP_PHOTO는 JPG/PNG/HEIC. 기존 배치 없는 파일도 보존하며 사진 등록에는 같은 배치 필수. CAPTURE는 JPG/PNG. 실제 전체 디코딩·메타데이터 제거 후 READY. 인증 다운로드는 표시 이미지 바이트만 반환. 여행 삭제 뒤 취소할 수 없는 PUT의 늦은 업로드 정리를 위해 DELETING 키 tombstone을 미완료 기한까지 남기며 배치 FK는 비운다. 같은 여행/본인/배치는 여행 행 잠금 뒤 서비스에서 검사한다.'
 }
 
@@ -451,6 +452,8 @@ Table photos {
   version bigint [not null, default: 1]
   created_at timestamp [not null]
   deleted_at timestamp
+  place_manually_edited boolean [not null, default: false, note: '장소 변경과 null 해제 모두 true. 후속 AI 덮어쓰기 차단']
+  topics_manually_edited boolean [not null, default: false, note: '주제 변경과 [] 해제 모두 true. 후속 AI 덮어쓰기 차단']
   indexes { (trip_id, created_at) }
   Note: '업로더·그룹·asset의 trip 동일성 검사. 등록 전 READY·TRIP_PHOTO·업로더 소유 확인. 이탈 시 삭제 선택과 파일 정리 job은 별개 처리.'
 }
@@ -460,7 +463,15 @@ Table photo_topics {
   topic varchar(64) [not null]
   source varchar(16) [not null, note: 'AI/MANUAL']
   indexes { (photo_id, topic) [pk] }
-  Note: '복수 주제 제안, 주제 목록 Q-7. 수동 보정한 분류는 재분류로 강제 덮어쓰지 않음.'
+  Note: 'LANDSCAPE/FOOD/PEOPLE/OTHER 중 중복 없는 0~4개. source AI/MANUAL CHECK. 수동 해제 이력은 photos.topics_manually_edited로 유지. 물리 삭제는 photo_topics → photos 순서.'
+}
+
+Table photo_delete_requests {
+  photo_id uuid [pk, note: 'photos FK 없음. 사진 정리 후에도 중복 DELETE를 같은 작업으로 연결']
+  trip_id uuid [not null, ref: > trips.id]
+  requested_by_user_id uuid [not null, ref: > users.id]
+  job_id uuid [not null, unique, ref: > jobs.id]
+  Note: '승인 트랜잭션의 영구 삭제 접수증. PHOTO_DELETE cleanup_scope는 단일 photoId, messageIds=[]; private input에 최초 assetId와 원본/표시 키를 고정. 멤버/asset FK 없음. 전체 여행 삭제 후에도 작업 기록과 함께 보존.'
 }
 
 Table reviews {
