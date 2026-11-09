@@ -1,14 +1,19 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { MapMarker, MapView } from '@/components/map';
-import { Tag } from '@/components/ui';
-import { colors, spacing } from '@/theme';
+import { Icon, type IconName } from '@/components/ui';
+import { colors, radius, spacing, typography } from '@/theme';
 
 import type { DraftItem, DayLeg } from '../course-rules';
 
 import { RoutePath } from './route-path';
 
-export type MapBadge = { label: string; tone: 'saved' | 'draft' | 'editing' | 'warning' };
+export type MapBadge = {
+  label: string;
+  tone: 'saved' | 'draft' | 'editing' | 'warning';
+  /** 종류 기본 아이콘 대신 쓸 아이콘(고치는 중 둘째 줄의 자물쇠) */
+  icon?: IconName;
+};
 
 type Props = {
   items: DraftItem[];
@@ -38,12 +43,13 @@ function regionOf(items: DraftItem[]) {
   };
 }
 
-const TAG_TONE = {
-  saved: 'success',
-  draft: 'outline',
-  editing: 'neutral',
-  warning: 'outline',
-} as const;
+/** 지도 위 표시 모양(Figma 201-12879·201-13272·201-13969·201-13071 지도 왼쪽 위) */
+const BADGE: Record<MapBadge['tone'], { bg: string; fg: string; icon: IconName }> = {
+  saved: { bg: colors.status.successBg, fg: colors.status.success, icon: 'check' },
+  draft: { bg: colors.surface.white, fg: colors.brand.primary, icon: 'bulb' },
+  editing: { bg: colors.surface.white, fg: colors.text.icon, icon: 'pencil' },
+  warning: { bg: colors.surface.white, fg: colors.status.danger, icon: 'alert' },
+};
 
 /** 코스 지도(Figma 201-12879·201-13969 위). 공통 지도에 번호 핀과 경로선을 얹는다 */
 export function CourseMap({ items, legs, badges, tone }: Props) {
@@ -74,24 +80,15 @@ export function CourseMap({ items, legs, badges, tone }: Props) {
         ))}
       </MapView>
       <View style={styles.badges} pointerEvents="none">
-        {badges.map((b) => (
-          <View key={b.label}>
-            <Tag
-              label={b.label}
-              tone={TAG_TONE[b.tone]}
-              icon={
-                b.tone === 'saved'
-                  ? 'check'
-                  : b.tone === 'warning'
-                    ? 'alert'
-                    : b.tone === 'editing'
-                      ? 'pencil'
-                      : 'map-pin'
-              }
-              small
-            />
-          </View>
-        ))}
+        {badges.map((b) => {
+          const look = BADGE[b.tone];
+          return (
+            <View key={b.label} style={[styles.badge, { backgroundColor: look.bg }]}>
+              <Icon name={b.icon ?? look.icon} size={14} color={look.fg} />
+              <Text style={[typography.captionMedium, { color: look.fg }]}>{b.label}</Text>
+            </View>
+          );
+        })}
       </View>
     </View>
   );
@@ -100,5 +97,24 @@ export function CourseMap({ items, legs, badges, tone }: Props) {
 const styles = StyleSheet.create({
   wrap: { height: MAP_HEIGHT, backgroundColor: colors.map.sea },
   map: { flex: 1 },
-  badges: { position: 'absolute', top: spacing[12], left: spacing[12], gap: spacing[6] },
+  badges: {
+    position: 'absolute',
+    top: spacing[12],
+    left: spacing[12],
+    gap: spacing[6],
+    alignItems: 'flex-start',
+  },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[6],
+    height: 28,
+    paddingHorizontal: spacing[10],
+    borderRadius: radius.full,
+    shadowColor: colors.text.default,
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
 });

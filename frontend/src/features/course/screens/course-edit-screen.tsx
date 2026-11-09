@@ -103,7 +103,7 @@ export function DraftView(props: DraftViewProps) {
   const badges: MapBadge[] = editing
     ? [
         { label: '고치는 중', tone: 'editing' },
-        { label: '저장하기 전까지 지금 코스는 그대로예요', tone: 'editing' },
+        { label: '저장하기 전까지 지금 코스는 그대로예요', tone: 'editing', icon: 'lock' },
       ]
     : props.origin === 'proposal'
       ? [{ label: '추천안', tone: 'draft' }]
