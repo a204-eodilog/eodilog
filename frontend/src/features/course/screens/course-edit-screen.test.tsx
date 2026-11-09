@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { toast } from '@/components/ui';
+import { useConnectionStore } from '@/realtime/connection-store';
 import { pickPlace } from '@/features/place/place-picker';
 
 import { updateTrip } from '@/features/trip/api';
@@ -752,5 +753,62 @@ describe('함께 편집', () => {
     expect(day1(body)).toEqual(['p-gwangalli', 'p-seomyeon']);
     expect(body.items.find((i) => i.placeId === 'p-seomyeon')?.id).toBeUndefined();
     await waitFor(() => expect(mockRouter.back).toHaveBeenCalled());
+  });
+});
+
+describe('연결이 끊겼다 돌아옴', () => {
+  const send = (...types: ('start' | 'connected' | 'dropped')[]) =>
+    act(() => {
+      for (const type of types) {
+        useConnectionStore
+          .getState()
+          .dispatch(type === 'dropped' ? { type, at: Date.now() } : { type });
+      }
+    });
+
+  beforeEach(() => {
+    useConnectionStore.getState().dispatch({ type: 'signOut' });
+  });
+
+  /** 세은이 1일차에서 서면을 뺀 최신 코스 */
+  function withoutSeomyeon() {
+    const c = sampleCourse(true);
+    c.version = 4;
+    c.updatedByMemberId = 'm-seeun';
+    c.items = c.items.filter((i) => i.id !== 'i3');
+    c.legs = c.legs.filter((l) => l.toItemId !== 'i3');
+    return c;
+  }
+
+  it('고치던 중 다시 연결됐는데 동행이 같은 날을 바꿨으면 완료 전에 확인 상자를 띄운다', async () => {
+    await renderScreen();
+    await send('start', 'connected');
+    await fireEvent.press(await screen.findByLabelText('해운대 해변 고치기'));
+    await fireEvent.press(screen.getByText('코스에서 빼기'));
+    await send('dropped');
+    mockGet.mockResolvedValue(withoutSeomyeon());
+    await send('connected');
+    expect(await screen.findByText('세은님이 먼저 코스를 바꿨어요')).toBeTruthy();
+    expect(mockPut).not.toHaveBeenCalled();
+  });
+
+  it('고친 것이 없으면 다시 연결 뒤 안내 없이 최신 코스로 바뀐다', async () => {
+    await renderScreen();
+    await send('start', 'connected');
+    expect(await screen.findByText('서면 돼지국밥집')).toBeTruthy();
+    await send('dropped');
+    mockGet.mockResolvedValue(withoutSeomyeon());
+    await send('connected');
+    await waitFor(() => expect(screen.queryByText('서면 돼지국밥집')).toBeNull());
+    expect(screen.queryByText('세은님이 먼저 코스를 바꿨어요')).toBeNull();
+    expect(toast.show).not.toHaveBeenCalled();
+  });
+
+  it('처음 연결될 때는 다시 받지 않는다', async () => {
+    await renderScreen();
+    await screen.findByText('서면 돼지국밥집');
+    const calls = mockGet.mock.calls.length;
+    await send('start', 'connected');
+    expect(mockGet.mock.calls.length).toBe(calls);
   });
 });

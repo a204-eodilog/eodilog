@@ -45,8 +45,11 @@ import {
   type CourseDraft,
 } from '../course-rules';
 import { rebaseDraft } from '../coedit-rules';
+import { getItinerary } from '../api';
+import { itineraryKey } from '../hooks/course-keys';
 import { useAutoCourse } from '../hooks/use-auto-course';
 import { useItinerary } from '../hooks/use-itinerary';
+import { useReconnected } from '../hooks/use-reconnected';
 import { useRecalculate } from '../hooks/use-recalculate';
 import { useSaveItinerary } from '../hooks/use-save-itinerary';
 import { useTripSavedPlaces } from '../hooks/use-saved-places';
@@ -376,6 +379,22 @@ export function CourseEditScreen() {
       reconcile(result.latest);
     }
   };
+
+  // 연결이 끊긴 동안 동행이 바꾼 코스를 놓치지 않게 다시 연결되면 최신 코스를 받는다(Q-8-1).
+  // 고친 것이 없으면 받은 코스로 조용히 맞춰지고(위 맞추기), 고친 것이 있으면 같은 규칙으로 비교한다
+  useReconnected(() => {
+    if (!draft || conflict) return;
+    void queryClient
+      .fetchQuery({
+        queryKey: itineraryKey(tripId),
+        queryFn: () => getItinerary(tripId),
+        staleTime: 0,
+      })
+      .then((latest) => {
+        if (dirty || origin !== 'saved') reconcile(latest);
+      })
+      .catch(() => undefined);
+  });
 
   /** 확인 상자 [내 것으로 덮기]: 내가 고친 날만 내 것으로 덮고 바로 저장한다(Q-8-4) */
   const overwrite = async () => {
