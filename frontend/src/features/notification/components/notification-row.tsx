@@ -29,7 +29,7 @@ export function NotificationRow({ line, onPress, compact = false }: Props) {
         <Icon
           name={line.icon}
           size={18}
-          color={line.unread ? colors.brand.primary : colors.text.icon}
+          color={line.unread ? colors.text.default : colors.text.icon}
         />
       </View>
       <View style={styles.body}>

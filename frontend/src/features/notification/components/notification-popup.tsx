@@ -107,7 +107,7 @@ export function PollPopup({ visible, title, message, deadline, onLater, onGo }: 
   return (
     <Dialog visible={visible} onDismiss={onLater}>
       <View style={styles.pollIcon}>
-        <Icon name="check" size={26} color={colors.brand.primary} />
+        <Icon name="check" size={26} color={colors.text.default} />
       </View>
       <Text style={[typography.title1, styles.center]} accessibilityRole="header">
         {title}

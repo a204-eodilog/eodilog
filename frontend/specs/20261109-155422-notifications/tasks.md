@@ -55,3 +55,7 @@ T002·T003·T004 → T005 → US1 → US2 → US3 → Polish. US3 팝업은 US2�
 ## Phase 9: Review 2
 
 - [X] T023 팝업이 새 알림을 띄우면 홈 종 숫자도 다시 받게 한다 src/features/notification/screens/popup-host.tsx(+test)
+
+## Phase 10: Review 3
+
+- [X] T024 안 읽은 줄과 투표 시작 팝업 아이콘 색을 Figma대로 진한 글자색으로 맞춘다 src/features/notification/components/notification-row.tsx, notification-popup.tsx
