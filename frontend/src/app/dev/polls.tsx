@@ -299,6 +299,7 @@ export default function PollStates() {
           poll={DECIDED}
           names={NAMES}
           heading="투표 결과"
+          showMine={false}
           header={
             <PollDecidedCard
               closedDate="10.27(화)"

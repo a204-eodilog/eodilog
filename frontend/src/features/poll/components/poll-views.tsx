@@ -263,6 +263,8 @@ type ResultProps = {
   between?: ReactNode;
   /** 동률: 확정된 후보에 체크 원을 보인다 */
   tie?: boolean;
+  /** '내 선택' 태그를 보인다. 여행지 확정 카드 화면(Figma 201-11569)은 숨긴다 */
+  showMine?: boolean;
   /** 아래 오른쪽 파랑 버튼 */
   action?: { label: string; icon: IconName; onPress: () => void };
 };
@@ -279,6 +281,7 @@ export function PollResultView({
   header,
   between,
   tie = false,
+  showMine = true,
   action,
 }: ResultProps) {
   const selected = new Set(poll.selectedCandidateIds);
@@ -313,7 +316,7 @@ export function PollResultView({
                 tone={tone}
                 showCheck={tie && won}
                 checked={tie && won && mine.has(c.id)}
-                mineTag={mine.has(c.id)}
+                mineTag={showMine && mine.has(c.id)}
                 topTag={!tie && won}
                 sub={sources[c.id] ?? null}
                 barColor={tone === 'winner' ? undefined : tie ? colors.text.sub : colors.text.muted}

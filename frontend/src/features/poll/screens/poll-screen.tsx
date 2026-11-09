@@ -242,6 +242,7 @@ function ResultSection({
         poll={poll}
         names={names}
         heading="투표 결과"
+        showMine={false}
         header={
           <PollDecidedCard
             closedDate={seoulDate(poll.closesAt)}
