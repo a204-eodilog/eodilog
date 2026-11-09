@@ -14,12 +14,15 @@ import { CourseDayList } from '../components/course-day-list';
 import { CourseMap, type MapBadge } from '../components/course-map';
 import { DayTabs } from '../components/day-tabs';
 import { ItemSheet } from '../components/item-sheet';
+import { ManualBuilder } from '../components/manual-builder';
 import { TransportChips } from '../components/transport-chips';
 import {
+  addPlace,
   basisLine,
   dayCount,
   dayDate,
   dayLegs,
+  emptyDraft,
   latestQueriedAt,
   moveItem,
   removeItem,
@@ -30,6 +33,7 @@ import {
 } from '../course-rules';
 import { useItinerary } from '../hooks/use-itinerary';
 import { useSaveItinerary } from '../hooks/use-save-itinerary';
+import { useTripSavedPlaces } from '../hooks/use-saved-places';
 import type { Place, TransportMode } from '../types';
 
 import type { Person } from './course-screen';
@@ -190,11 +194,19 @@ export function CourseEditScreen() {
   const [selectedLeg, setSelectedLeg] = useState<string | null>(null);
   const [sheetIndex, setSheetIndex] = useState<number | null>(null);
   const [leaving, setLeaving] = useState(false);
+  /** draft: 코스 초안 / manual: 직접 만들기 */
+  const [mode, setMode] = useState<'draft' | 'manual'>('draft');
+  const saved = useTripSavedPlaces(tripId, mode === 'manual');
 
   const days = dayCount(trip.data?.startDate ?? null, trip.data?.endDate ?? null);
-  // 저장된 코스가 오면 처음 한 번 초안을 채운다(렌더 중 초기화)
-  if (!draft && itinerary.data && trip.data && itinerary.data.items.length > 0) {
-    setDraft(toDraft(itinerary.data, days));
+  // 코스가 오면 처음 한 번 초안을 채운다(렌더 중 초기화). 비어 있으면 직접 만들기로 시작한다
+  if (!draft && itinerary.data && trip.data) {
+    if (itinerary.data.items.length > 0) {
+      setDraft(toDraft(itinerary.data, days));
+    } else {
+      setDraft(emptyDraft(itinerary.data.version, days ?? 1));
+      setMode('manual');
+    }
   }
 
   const people: Person[] = (trip.data?.members ?? [])
@@ -247,6 +259,29 @@ export function CourseEditScreen() {
     if (picked) change(replacePlace(draft, day, index, picked, newKey()));
   };
 
+  const findPlace = async () => {
+    if (!draft) return;
+    const target = day;
+    const picked = await pickPlace({ regionId: trip.data?.destinationRegionIds[0] });
+    if (picked) change(addPlace(draft, target, picked, newKey()));
+  };
+
+  const sheetHandlers = (current: number, d: CourseDraft) => ({
+    sheetIndex,
+    onCloseSheet: () => setSheetIndex(null),
+    onReplace: () => void replace(),
+    onMove: (delta: -1 | 1) => {
+      if (sheetIndex === null) return;
+      change(moveItem(d, current, sheetIndex, delta));
+      setSheetIndex(sheetIndex + delta);
+    },
+    onRemove: () => {
+      if (sheetIndex === null) return;
+      change(removeItem(d, current, sheetIndex));
+      setSheetIndex(null);
+    },
+  });
+
   const notFound =
     toApiError(itinerary.error).status === 404 || toApiError(trip.error).status === 404;
 
@@ -264,6 +299,30 @@ export function CourseEditScreen() {
     body = <ErrorState title="코스를 불러오지 못했어요" onRetry={() => void itinerary.refetch()} />;
   } else if (!itinerary.data || !trip.data) {
     body = <ActivityIndicator style={styles.loading} color={colors.brand.primary} />;
+  } else if (draft && mode === 'manual') {
+    const current = Math.min(day, draft.days.length - 1);
+    body = (
+      <ManualBuilder
+        draft={draft}
+        startDate={trip.data.startDate}
+        day={current}
+        onSelectDay={setDay}
+        saved={saved.data ?? []}
+        onPlace={(place) => change(addPlace(draft, current, place, newKey()))}
+        onFind={() => void findPlace()}
+        onBuild={() => {
+          setMode('draft');
+          setOrigin('manual');
+          setDay(0);
+          setSelectedLeg(null);
+        }}
+        onMore={(d, i) => {
+          setDay(d);
+          setSheetIndex(i);
+        }}
+        {...sheetHandlers(current, draft)}
+      />
+    );
   } else if (draft) {
     const queried = latestQueriedAt(itinerary.data);
     const current = Math.min(day, draft.days.length - 1);
@@ -287,19 +346,7 @@ export function CourseEditScreen() {
         }}
         basis={queried ? basisLine(queried) : null}
         onMore={setSheetIndex}
-        sheetIndex={sheetIndex}
-        onCloseSheet={() => setSheetIndex(null)}
-        onReplace={() => void replace()}
-        onMove={(delta) => {
-          if (sheetIndex === null) return;
-          change(moveItem(draft, current, sheetIndex, delta));
-          setSheetIndex(sheetIndex + delta);
-        }}
-        onRemove={() => {
-          if (sheetIndex === null) return;
-          change(removeItem(draft, current, sheetIndex));
-          setSheetIndex(null);
-        }}
+        {...sheetHandlers(current, draft)}
         onRecalculate={() => undefined}
         onRedo={() => undefined}
         onDone={() => void done()}
