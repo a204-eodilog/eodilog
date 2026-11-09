@@ -129,3 +129,9 @@ MVP는 Phase 2 + US2 + US1(투표 열고 표 던지기). 이어서 US4 결과, U
 - [X] T059 0표 화면 [다시 열기] 버튼을 가운데로 맞춘다 in src/features/poll/components/poll-views.tsx
 - [X] T060 투표 바꾸기 실패 안내 중에는 [+ 후보 추가]를 숨겨 Figma 201-29384와 맞춘다 in src/features/poll/components/poll-views.tsx
 - [X] T061 미리보기에서 주소로 바로 연 N8·후보 추가 시트가 그린 뒤 열리게 한다 in src/app/dev/polls.tsx
+
+## Phase 11: Review 2
+
+- [ ] T062 투표 카드 제목과 결과 제목이 좁은 화면에서 낱말 가운데서 끊기지 않게 한글 낱말 단위 줄바꿈을 준다 in src/features/poll/components/poll-header-card.tsx, poll-views.tsx
+- [ ] T063 결과 목록 후보 줄 tone 계산을 resultTone 함수로 빼고 죽은 갈래를 지운다 in src/features/poll/components/poll-views.tsx
+- [ ] T064 투표 바꾸기 실패 안내의 [다시 시도] 누르는 자리를 44 이상으로 한다 in src/features/poll/components/poll-views.tsx
