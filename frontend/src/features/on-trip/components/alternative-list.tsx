@@ -17,7 +17,8 @@ export function AffectedRow(props: { index: number; time: string | null; name: s
         {props.time ? (
           <Text style={[typography.captionMedium, styles.time]}>{props.time}</Text>
         ) : null}
-        <Text style={[typography.bodyBold, styles.title]} numberOfLines={1}>
+        {/* 빨간 표시 옆이라 좁아 두 줄까지 쓴다 */}
+        <Text style={[typography.bodyBold, styles.title]} numberOfLines={2}>
           {props.name}
         </Text>
       </View>
