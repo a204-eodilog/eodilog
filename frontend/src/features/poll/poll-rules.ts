@@ -161,3 +161,23 @@ export function pickPoll(polls: Poll[], now: Date): Poll | null {
   const open = polls.find((p) => pollViewState(p, now) === 'open');
   return open ?? polls[0] ?? null;
 }
+
+/**
+ * 화면에 보일 투표. 서버 집계에서 서버에 저장된 내 표를 빼고 화면의 내 선택을 더한다(낙관적 표시, SC-006).
+ * 선택이 서버와 같으면 그대로 돌려준다
+ */
+export function applyMyBallot(poll: Poll, selected: readonly string[]): Poll {
+  const saved = new Set(poll.myCandidateIds);
+  const mine = new Set(selected);
+  if (saved.size === mine.size && [...mine].every((id) => saved.has(id))) return poll;
+  const voted = poll.votedMemberCount - (saved.size > 0 ? 1 : 0) + (mine.size > 0 ? 1 : 0);
+  return {
+    ...poll,
+    myCandidateIds: poll.candidates.filter((c) => mine.has(c.id)).map((c) => c.id),
+    votedMemberCount: Math.max(0, voted),
+    candidates: poll.candidates.map((c) => ({
+      ...c,
+      voteCount: Math.max(0, c.voteCount - (saved.has(c.id) ? 1 : 0) + (mine.has(c.id) ? 1 : 0)),
+    })),
+  };
+}
