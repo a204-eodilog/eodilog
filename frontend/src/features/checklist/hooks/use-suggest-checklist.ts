@@ -38,7 +38,7 @@ function wait(ms: number, signal: AbortSignal) {
 
 /**
  * 준비물 다시 제안 받기. 제안 작업을 하나 요청하고 끝날 때까지 기다린 뒤 지금 목록에 없는 이름만 채택한다.
- * 한 번 누른 시도 안에서는 같은 Idempotency-Key를 써서 다시 보내도 작업이 하나만 생긴다.
+ * 작업 ID를 받기 전까지는 같은 Idempotency-Key를 써서, 응답을 놓쳐 다시 눌러도 작업이 하나만 생긴다.
  * 화면을 나가면 기다림을 멈추고 결과를 더하지 않는다.
  */
 export function useSuggestChecklist(tripId: string) {
@@ -47,6 +47,8 @@ export function useSuggestChecklist(tripId: string) {
   const [failure, setFailure] = useState<SuggestFailure | null>(null);
   const running = useRef(false);
   const controller = useRef<AbortController | null>(null);
+  /** 작업 ID를 받기 전에 끊긴 요청의 키. 다시 누르면 이 키로 보내 서버가 같은 작업을 돌려준다 */
+  const pendingKey = useRef<string | null>(null);
 
   useEffect(
     () => () => {
@@ -66,8 +68,17 @@ export function useSuggestChecklist(tripId: string) {
   }
 
   async function run(signal: AbortSignal): Promise<SuggestFailure | null> {
-    const key = randomUUID();
-    const ref = await request(key, signal);
+    const key = pendingKey.current ?? randomUUID();
+    pendingKey.current = key;
+    let ref: JobRef;
+    try {
+      ref = await request(key, signal);
+    } catch (e) {
+      // 서버가 답했으면(409 꺼짐 등) 그 키는 끝났다. 답을 못 받았으면 다음 시도에 같은 키를 쓴다
+      if (toApiError(e).kind === 'http') pendingKey.current = null;
+      throw e;
+    }
+    pendingKey.current = null;
     const deadline = Date.now() + SUGGEST_TIMEOUT_MS;
     let job = await getSuggestionJob(ref.jobId, signal);
     while (job.status === 'QUEUED' || job.status === 'RUNNING') {

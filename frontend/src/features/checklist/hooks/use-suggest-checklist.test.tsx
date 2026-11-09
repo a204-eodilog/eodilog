@@ -6,7 +6,7 @@ import type { ReactNode } from 'react';
 import { toast } from '@/components/ui';
 
 import { adoptSuggestion, getSuggestionJob, requestSuggestions } from '../api';
-import { checklistItem, httpError, suggestion, suggestionJob } from '../testing';
+import { checklistItem, httpError, networkError, suggestion, suggestionJob } from '../testing';
 import type { ChecklistItem, JobRef } from '../types';
 
 import { checklistKey } from './checklist-keys';
@@ -16,7 +16,13 @@ jest.mock('@/config/env', () => ({
   env: { appEnv: 'local', apiBaseUrl: 'http://test', kakaoRedirectUri: null, devMock: false },
 }));
 
-jest.mock('expo-crypto', () => ({ randomUUID: () => 'key-1' }));
+let mockKeySeq = 0;
+jest.mock('expo-crypto', () => ({
+  randomUUID: () => {
+    mockKeySeq += 1;
+    return `key-${mockKeySeq}`;
+  },
+}));
 
 jest.mock('../api', () => ({
   getChecklist: jest.fn(),
@@ -54,6 +60,7 @@ async function flush(ms: number) {
 beforeEach(() => {
   jest.useFakeTimers();
   jest.clearAllMocks();
+  mockKeySeq = 0;
   client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } });
   client.setQueryData<ChecklistItem[]>(checklistKey('trip-1'), [
     checklistItem({ id: 'umbrella', label: '우산' }),
@@ -168,6 +175,36 @@ describe('다시 제안 받기', () => {
       void result.current.start();
     });
     expect(mockRequest).toHaveBeenCalledTimes(1);
+  });
+
+  it('응답을 놓쳐 다시 누르면 같은 키로 보내고, 작업을 받은 뒤에는 새 키를 쓴다', async () => {
+    mockRequest.mockRejectedValueOnce(networkError()).mockResolvedValue(REF);
+    mockJob.mockResolvedValue(suggestionJob({ status: 'SUCCEEDED', result: { items: [] } }));
+    const { result } = await renderSuggest();
+    await act(async () => {
+      await result.current.start();
+    });
+    expect(result.current.failure).toBe('general');
+    await act(async () => {
+      await result.current.start();
+    });
+    await act(async () => {
+      await result.current.start();
+    });
+    expect(mockRequest.mock.calls.map(([, key]) => key)).toEqual(['key-1', 'key-1', 'key-2']);
+  });
+
+  it('서버가 답한 실패 뒤에는 새 키를 쓴다', async () => {
+    mockRequest.mockRejectedValueOnce(httpError(409, 'AI_FEATURE_DISABLED')).mockResolvedValue(REF);
+    mockJob.mockResolvedValue(suggestionJob({ status: 'SUCCEEDED', result: { items: [] } }));
+    const { result } = await renderSuggest();
+    await act(async () => {
+      await result.current.start();
+    });
+    await act(async () => {
+      await result.current.start();
+    });
+    expect(mockRequest.mock.calls.map(([, key]) => key)).toEqual(['key-1', 'key-2']);
   });
 
   it('화면을 나가면 기다림을 멈추고 결과를 더하지 않는다', async () => {
