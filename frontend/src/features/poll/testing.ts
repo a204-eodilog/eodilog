@@ -21,7 +21,8 @@ export function poll(over: Partial<Poll> = {}): Poll {
     title: '어디로 갈까요?',
     status: 'OPEN',
     version: 1,
-    closesAt: '2026-10-29T12:00:00Z',
+    // 실제 시계로 지난 마감이면 화면이 마감 확인을 되풀이하므로 먼 미래로 둔다
+    closesAt: '2099-01-01T00:00:00Z',
     closedReason: null,
     eligibleMemberCount: 3,
     votedMemberCount: 0,
