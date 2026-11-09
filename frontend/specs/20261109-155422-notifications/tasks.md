@@ -47,3 +47,7 @@ T002·T003·T004 → T005 → US1 → US2 → US3 → Polish. US3 팝업은 US2�
 ## Phase 7: Convergence
 
 - [X] T021 [US1] 끝까지 내리면 다음 쪽을 이어 받는 것을 화면 테스트로 증명한다 src/features/notification/screens/notifications-screen.test.tsx per US1/AC4 (partial)
+
+## Phase 8: Review 1
+
+- [X] T022 볼 수 없음의 알림 목록으로와 지운 뒤 이동을 목록까지 되돌아가거나 목록으로 바꾸는 이동으로 고친다. 팝업에서 왔을 때 홈으로 돌아가던 문제 src/features/notification/screens/notification-gone-screen.tsx(+test)

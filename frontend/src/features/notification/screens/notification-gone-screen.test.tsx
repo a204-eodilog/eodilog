@@ -12,7 +12,7 @@ import { NotificationGoneScreen } from './notification-gone-screen';
 jest.mock('@/config/env', () => ({
   env: { appEnv: 'local', apiBaseUrl: 'http://test', kakaoRedirectUri: null, devMock: false },
 }));
-const mockRouter = { back: jest.fn(), replace: jest.fn(), canGoBack: jest.fn(() => true) };
+const mockRouter = { back: jest.fn(), dismissTo: jest.fn() };
 jest.mock('expo-router', () => ({
   useLocalSearchParams: () => ({ id: 'n-9' }),
   get router() {
@@ -57,30 +57,23 @@ function renderScreen() {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  mockRouter.canGoBack.mockReturnValue(true);
   mockDismiss.mockResolvedValue(undefined);
 });
 
 describe('S49 볼 수 없음', () => {
-  it('안내와 알림 목록으로', async () => {
+  it('안내와 알림 목록으로. 팝업에서 왔어도 목록으로 간다', async () => {
     await renderScreen();
     expect(screen.getByText('볼 수 없는 알림이에요')).toBeTruthy();
     expect(screen.getByText('나간 여행이거나 지워진 기록이라 열 수 없어요')).toBeTruthy();
     await fireEvent.press(screen.getByText('알림 목록으로'));
-    expect(mockRouter.back).toHaveBeenCalled();
-  });
-
-  it('팝업에서 바로 왔으면 목록으로 바꿔 간다', async () => {
-    mockRouter.canGoBack.mockReturnValue(false);
-    await renderScreen();
-    await fireEvent.press(screen.getByText('알림 목록으로'));
-    expect(mockRouter.replace).toHaveBeenCalledWith('/notifications');
+    expect(mockRouter.dismissTo).toHaveBeenCalledWith('/notifications');
+    expect(mockRouter.back).not.toHaveBeenCalled();
   });
 
   it('이 알림 지우기는 지우고 목록으로 돌아간다', async () => {
     await renderScreen();
     await fireEvent.press(screen.getByText('이 알림 지우기'));
-    await waitFor(() => expect(mockRouter.back).toHaveBeenCalled());
+    await waitFor(() => expect(mockRouter.dismissTo).toHaveBeenCalledWith('/notifications'));
     expect(mockDismiss).toHaveBeenCalledWith('n-9');
     expect(toast.show).toHaveBeenCalledWith('알림을 지웠어요');
   });
@@ -92,6 +85,6 @@ describe('S49 볼 수 없음', () => {
     await waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith('알림을 지우지 못했어요. 다시 시도해 주세요'),
     );
-    expect(mockRouter.back).not.toHaveBeenCalled();
+    expect(mockRouter.dismissTo).not.toHaveBeenCalled();
   });
 });
