@@ -533,6 +533,8 @@ describe('구성 방식과 준비 상태', () => {
     await fireEvent.press(await screen.findByText('자동 추천'));
     expect(await screen.findByText('추천안')).toBeTruthy();
     expect(screen.getByText('추천 장소 A')).toBeTruthy();
+    // 추천안 구간은 아직 구한 적이 없어 저장된 코스의 기준 시각을 붙이지 않는다
+    expect(screen.getByText('구간을 누르면 이동 수단을 바꿔요')).toBeTruthy();
     await fireEvent.press(screen.getByText('완료'));
     await waitFor(() => expect(mockPut).toHaveBeenCalled());
     expect(lastBody().items.every((i) => !('id' in i))).toBe(true);

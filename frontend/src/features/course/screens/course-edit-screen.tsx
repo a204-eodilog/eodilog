@@ -523,7 +523,8 @@ export function CourseEditScreen() {
           const target = legs.find((l) => l.key === selectedLeg) ?? legs[0];
           if (target && target.mode !== mode) change(setLegMode(draft, target.key, mode));
         }}
-        basis={queried ? basisLine(queried) : null}
+        // 기준 시각은 저장된 코스의 구간 결과라 추천안·직접 만든 초안에는 붙이지 않는다
+        basis={queried && origin === 'saved' ? basisLine(queried) : null}
         onMore={setSheetIndex}
         {...sheetHandlers(current, draft)}
         onRecalculate={() => {
