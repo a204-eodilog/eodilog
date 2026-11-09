@@ -51,3 +51,7 @@ T002·T003·T004 → T005 → US1 → US2 → US3 → Polish. US3 팝업은 US2�
 ## Phase 8: Review 1
 
 - [X] T022 볼 수 없음의 알림 목록으로와 지운 뒤 이동을 목록까지 되돌아가거나 목록으로 바꾸는 이동으로 고친다. 팝업에서 왔을 때 홈으로 돌아가던 문제 src/features/notification/screens/notification-gone-screen.tsx(+test)
+
+## Phase 9: Review 2
+
+- [X] T023 팝업이 새 알림을 띄우면 홈 종 숫자도 다시 받게 한다 src/features/notification/screens/popup-host.tsx(+test)

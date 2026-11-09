@@ -54,6 +54,8 @@ export function NotificationPopupHost() {
       }
       const items = picked.kind === 'poll' ? [picked.item] : picked.items;
       items.forEach((n) => shown.add(n.id));
+      // 새 알림이 왔으니 홈 종 숫자도 다시 받는다
+      void queryClient.invalidateQueries({ queryKey: notificationKeys.summary });
       setNow(new Date());
       setBrief(null);
       setChoice(picked);

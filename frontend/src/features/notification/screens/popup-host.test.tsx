@@ -10,6 +10,7 @@ import { notification, SAMPLE_NOW, sampleNotifications, samplePopupItems } from 
 import type { NotificationView } from '../types';
 
 import { NotificationPopupHost, resetPopupMemory } from './popup-host';
+import { notificationKeys } from '../hooks/notification-keys';
 
 jest.mock('@/config/env', () => ({
   env: { appEnv: 'local', apiBaseUrl: 'http://test', kakaoRedirectUri: null, devMock: false },
@@ -43,15 +44,17 @@ const page = (data: NotificationView[]) => ({
   page: { nextCursor: null, hasNext: false },
 });
 
-function renderHost() {
+async function renderHost() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: Infinity } },
   });
-  return render(
+  client.setQueryData(notificationKeys.summary, 0);
+  await render(
     <QueryClientProvider client={client}>
       <NotificationPopupHost />
     </QueryClientProvider>,
   );
+  return client;
 }
 
 /** 앱이 뒤로 갔다가 다시 앞으로 온 것처럼 */
@@ -80,12 +83,13 @@ afterEach(() => {
 });
 
 describe('S48 알림 팝업', () => {
-  it('안 읽은 행동 알림이 여럿이면 모아 보기, 닫은 뒤 돌아와도 다시 뜨지 않는다', async () => {
-    await renderHost();
+  it('안 읽은 행동 알림이 여럿이면 모아 보기와 홈 종 숫자 다시 받기, 닫은 뒤 돌아와도 다시 뜨지 않는다', async () => {
+    const client = await renderHost();
     expect(await screen.findByText('새 알림 3개')).toBeTruthy();
     expect(screen.getByText('겨울 여행 투표 마감 1시간 전이에요')).toBeTruthy();
     expect(screen.getByText('팔로우 요청 · 오늘 20:05')).toBeTruthy();
     expect(mockList).toHaveBeenCalledWith({ unreadOnly: true });
+    expect(client.getQueryState(notificationKeys.summary)?.isInvalidated).toBe(true);
     await fireEvent.press(screen.getByText('닫기'));
     expect(screen.queryByText('새 알림 3개')).toBeNull();
     await resume();
