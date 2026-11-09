@@ -145,7 +145,7 @@ export function PollOpenView({
             <Text style={styles.failText}>{failLines[0]}</Text>
             <Text style={styles.failText}>{failLines[1]}</Text>
           </View>
-          <Pressable accessibilityRole="button" onPress={onRetry} hitSlop={spacing[8]}>
+          <Pressable accessibilityRole="button" onPress={onRetry} style={styles.retryButton}>
             <Text style={styles.retry}>다시 시도</Text>
           </Pressable>
         </View>
@@ -194,6 +194,13 @@ const styles = StyleSheet.create({
   failTexts: { flex: 1 },
   failText: { ...typography.sub, color: colors.text.inverse },
   retry: { ...typography.subBold, color: colors.brand.primarySoft },
+  // 누르는 자리 44 이상
+  retryButton: {
+    minWidth: layout.minTouchTarget,
+    minHeight: layout.minTouchTarget,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   // 아래 오른쪽에 뜨는 파랑 버튼(Figma 201-11073 [확정된 여행지 보기])
   actionWrap: {
     position: 'absolute',
