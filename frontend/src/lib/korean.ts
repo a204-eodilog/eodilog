@@ -25,3 +25,13 @@ export function withWa(word: string): string {
   if (jong === null) return `${word}와(과)`;
   return `${word}${jong === 0 ? '와' : '과'}`;
 }
+
+/**
+ * 단어 뒤에 '이/가'를 붙인다. 받침이 있으면 '이', 없으면 '가'.
+ * 한글로 끝나지 않으면 '이(가)'. "세은" → "세은이", "민수" → "민수가", "Amy" → "Amy이(가)"
+ */
+export function withIGa(word: string): string {
+  const jong = finalConsonant(word);
+  if (jong === null) return `${word}이(가)`;
+  return `${word}${jong === 0 ? '가' : '이'}`;
+}
