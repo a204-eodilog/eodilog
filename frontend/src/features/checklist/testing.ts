@@ -1,4 +1,23 @@
-import type { ChecklistItem, ChecklistSuggestion, Job, ChecklistSuggestionResult } from './types';
+import { AxiosError, AxiosHeaders, type InternalAxiosRequestConfig } from 'axios';
+
+import type { ChecklistItem, ChecklistSuggestion, ChecklistSuggestionResult, Job } from './types';
+
+/** 서버가 오류 코드로 답한 것과 같은 오류. toApiError가 status와 code를 읽는다 */
+export function httpError(status: number, code: string): AxiosError {
+  const config = { headers: new AxiosHeaders() } as InternalAxiosRequestConfig;
+  return new AxiosError(code, 'ERR_BAD_REQUEST', config, null, {
+    status,
+    statusText: code,
+    headers: {},
+    config,
+    data: { error: { code, message: code, fields: [], traceId: null } },
+  });
+}
+
+/** 서버에 닿지 못한 오류 */
+export function networkError(): AxiosError {
+  return new AxiosError('Network Error', 'ERR_NETWORK');
+}
 
 let seq = 0;
 
