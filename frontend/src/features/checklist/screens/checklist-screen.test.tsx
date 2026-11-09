@@ -6,9 +6,17 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { toast } from '@/components/ui';
 
-import { addChecklistItem, deleteChecklistItem, getChecklist, updateChecklistItem } from '../api';
-import { checklistItem, httpError, networkError } from '../testing';
-import type { ChecklistItem } from '../types';
+import {
+  addChecklistItem,
+  adoptSuggestion,
+  deleteChecklistItem,
+  getChecklist,
+  getSuggestionJob,
+  requestSuggestions,
+  updateChecklistItem,
+} from '../api';
+import { checklistItem, httpError, networkError, suggestion, suggestionJob } from '../testing';
+import type { ChecklistItem, JobRef } from '../types';
 
 import { ChecklistScreen } from './checklist-screen';
 
@@ -133,6 +141,10 @@ const mockGet = jest.mocked(getChecklist);
 const mockUpdate = jest.mocked(updateChecklistItem);
 const mockAdd = jest.mocked(addChecklistItem);
 const mockDelete = jest.mocked(deleteChecklistItem);
+const mockRequest = jest.mocked(requestSuggestions);
+const mockJob = jest.mocked(getSuggestionJob);
+const mockAdopt = jest.mocked(adoptSuggestion);
+const REF: JobRef = { jobId: 'job-1', status: 'QUEUED', statusUrl: '/api/v1/jobs/job-1' };
 
 function renderScreen() {
   const client = new QueryClient({
@@ -412,5 +424,83 @@ describe('항목 없음', () => {
     await fireEvent.press(await screen.findByLabelText('손난로 고치기'));
     await fireEvent.press(screen.getByText('지우기'));
     expect(await screen.findByText('준비물이 없어요')).toBeTruthy();
+  });
+});
+
+describe('다시 제안 받기', () => {
+  it('받는 동안 버튼이 바뀌어 다시 눌리지 않는다', async () => {
+    mockRequest.mockReturnValue(new Promise<JobRef>(() => {}));
+    await renderScreen();
+    await fireEvent.press(await screen.findByText('다시 제안 받기'));
+    expect(await screen.findByText('제안 받는 중…')).toBeTruthy();
+    await fireEvent.press(screen.getByText('제안 받는 중…'));
+    expect(mockRequest).toHaveBeenCalledTimes(1);
+  });
+
+  it('끝나면 새 제안을 이유와 함께 목록 끝에 더한다', async () => {
+    mockRequest.mockResolvedValue(REF);
+    mockJob.mockResolvedValue(
+      suggestionJob({
+        status: 'SUCCEEDED',
+        result: { items: [suggestion('우비'), suggestion('선크림', '자외선 강함')] },
+      }),
+    );
+    mockAdopt.mockResolvedValue(
+      checklistItem({ id: 'sun', label: '선크림', source: 'AI', reason: '자외선 강함' }),
+    );
+    await renderScreen();
+    await fireEvent.press(await screen.findByText('다시 제안 받기'));
+
+    expect(await screen.findByText('4개 중 1개 챙겼어요')).toBeTruthy();
+    expect(screen.getByText('자외선 강함')).toBeTruthy();
+    expect(mockAdopt).toHaveBeenCalledWith('trip-1', {
+      label: '선크림',
+      sourceJobId: 'job-1',
+      suggestionIndex: 1,
+    });
+    expect(toast.success).toHaveBeenCalledWith('준비물 1개를 더했어요');
+  });
+
+  it('실패하면 목록은 그대로 두고 카드와 다시 시도를 보인다', async () => {
+    mockRequest.mockResolvedValue(REF);
+    mockJob.mockResolvedValueOnce(suggestionJob({ status: 'FAILED' }));
+    await renderScreen();
+    await fireEvent.press(await screen.findByText('다시 제안 받기'));
+
+    expect(await screen.findByText('준비물을 다시 제안하지 못했어요')).toBeTruthy();
+    expect(screen.getByText('지금 목록은 그대로예요')).toBeTruthy();
+    expect(screen.getByText('직접 고친 항목은 그대로 둬요')).toBeTruthy();
+    expect(screen.getByText('3개 중 1개 챙겼어요')).toBeTruthy();
+
+    mockJob.mockResolvedValue(suggestionJob({ status: 'SUCCEEDED', result: { items: [] } }));
+    await fireEvent.press(screen.getByText('다시 시도'));
+    await waitFor(() => expect(screen.queryByText('준비물을 다시 제안하지 못했어요')).toBeNull());
+    expect(mockRequest).toHaveBeenCalledTimes(2);
+  });
+
+  it('추천이 꺼져 있으면 설정 열기로 안내한다', async () => {
+    mockRequest.mockRejectedValue(httpError(409, 'AI_FEATURE_DISABLED'));
+    await renderScreen();
+    await fireEvent.press(await screen.findByText('다시 제안 받기'));
+    expect(await screen.findByText('준비물 추천이 꺼져 있어요')).toBeTruthy();
+    await fireEvent.press(screen.getByText('설정 열기'));
+    expect(mockRouter.push).toHaveBeenCalledWith('/settings');
+  });
+
+  it('빈 상태의 제안 받기도 같은 제안을 시작한다', async () => {
+    mockGet.mockResolvedValue([]);
+    mockRequest.mockResolvedValue(REF);
+    mockJob.mockResolvedValue(
+      suggestionJob({
+        status: 'SUCCEEDED',
+        result: { items: [suggestion('우산', '오전 비 70%')] },
+      }),
+    );
+    mockAdopt.mockResolvedValue(
+      checklistItem({ id: 'u', label: '우산', source: 'AI', reason: '오전 비 70%' }),
+    );
+    await renderScreen();
+    await fireEvent.press(await screen.findByText('제안 받기'));
+    expect(await screen.findByText('1개 중 0개 챙겼어요')).toBeTruthy();
   });
 });
