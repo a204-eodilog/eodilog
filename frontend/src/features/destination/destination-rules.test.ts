@@ -60,7 +60,9 @@ describe('S09 트렌드', () => {
       [1, '강릉', '강원'],
       [2, '경주', '경북'],
     ]);
-    expect(board.basisLine).toBe('09.24 – 10.23 · 게시된 여행 수 · 매일 06:00 갱신');
+    expect(board.basisLeft).toBe('최근 30일 · 게시 여행 순');
+    expect(board.basisRight).toBe('06:00 갱신');
+    expect(board.period).toBe('09.24 – 10.23');
     expect(board.insufficient).toBe(false);
   });
   it('비었거나 모두 자료 부족이면 순위를 보이지 않는다', () => {

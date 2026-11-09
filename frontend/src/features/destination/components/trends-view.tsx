@@ -76,9 +76,18 @@ export function TrendsView(props: TrendsViewProps) {
   );
 }
 
-/** 순위 기준 한 줄(기간 · 무엇을 셌는지 · 갱신). 아이콘 없이 작은 회색 글씨 */
+/** 순위 기준 한 줄. 왼쪽 기간·무엇을 셌는지, 오른쪽 끝 갱신 시각. 아래 옅은 선으로 순위와 나눈다 */
 function Basis({ board }: { board: TrendBoard }) {
-  return <Text style={styles.basisText}>{board.basisLine}</Text>;
+  return (
+    <View
+      style={styles.basis}
+      accessible
+      accessibilityLabel={`${board.period ?? board.basisLeft}, 게시된 여행 수 순위${board.basisRight ? `, ${board.basisRight}` : ''}`}
+    >
+      <Text style={styles.basisText}>{board.basisLeft}</Text>
+      {board.basisRight ? <Text style={styles.basisText}>{board.basisRight}</Text> : null}
+    </View>
+  );
 }
 
 function Row({ row, onPress }: { row: TrendRow; onPress: () => void }) {
@@ -142,12 +151,17 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   pressed: { opacity: 0.7 },
   content: { paddingHorizontal: layout.screenPaddingX, paddingBottom: spacing[32], flexGrow: 1 },
-  basisText: {
-    ...typography.caption,
-    color: colors.text.sub,
+  basis: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingTop: spacing[4],
-    paddingBottom: spacing[16],
+    paddingBottom: spacing[12],
+    marginBottom: spacing[8],
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.line.default,
   },
+  basisText: { ...typography.caption, color: colors.text.sub },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
