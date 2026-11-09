@@ -49,14 +49,14 @@
 **Independent Test**: 가짜 투표에서 후보 두 곳을 눌러 표 수가 바로 바뀌고, `addCandidateByOther()` 뒤 누르면 실패 안내와 [다시 시도]가 보인다.
 
 - [X] T024 [P] [US1] `src/features/poll/hooks/use-poll.ts`: 투표 하나 받기, 앱 복귀 시 다시 받기, `closing`이면 다시 받기, 404면 `notFound`
-- [ ] T025 [US1] `src/features/poll/hooks/use-ballot.ts`: 낙관적 선택(표 수·내 선택을 화면용으로 계산), `ballot-queue`로 저장, 409 VERSION_CONFLICT는 다시 받고 선택 유지 + 실패 상태, 409 POLL_CLOSED는 다시 받고 마감 안내, 끊김은 저장된 선택으로 되돌림 + 실패 상태, [다시 시도]
-- [ ] T026 [P] [US1] `src/features/poll/hooks/use-ballot.test.tsx`: 연달아 누름 요청 수, VERSION_CONFLICT 뒤 선택 유지와 다시 시도 version, POLL_CLOSED 뒤 결과, 끊김 되돌림
-- [ ] T027 [P] [US1] `src/features/poll/components/poll-header-card.tsx` 진행 중 카드(Figma 201-10912): '투표 중' 태그, 남은 시간, 제목, "N명 투표했어요", "N명 아직이에요"
-- [ ] T028 [P] [US1] `src/features/poll/components/candidate-row.tsx`: 체크 원, 이름, '내 선택'·'새 후보'·'가장 많이' 태그, 보조 줄(새 후보 설명·그룹 즐겨찾기 N곳), 표 수, 막대, 눌림·비활성, 접근성 라벨
-- [ ] T029 [P] [US1] `src/features/poll/components/my-vote-bar.tsx`: "부산에 투표했어요"·"2곳 투표했어요" 요약, [취소], [바꾸기](목록 맨 위로), 고른 것 없으면 "후보를 눌러 투표해요"
-- [ ] T030 [US1] `src/features/poll/components/poll-views.tsx`에 `PollOpenView`: 카드, "후보 N곳 여러 곳 골라도 돼요", 후보 목록, [+ 후보 추가] 자리, 하단 요약, 실패 토스트(Figma 201-29384 "○○으로 바꾸지 못했어요. ○○ 투표는 그대로예요" + [다시 시도])
-- [ ] T031 [US1] `poll-screen.tsx`에 진행 중 상태 연결과 `/dev/polls`에 진행 중·투표 바꾸기 실패 추가
-- [ ] T032 [US1] `poll-screen.test.tsx`에 진행 중 RNTL: 후보 누르면 표 수와 '내 선택' 바뀜, 충돌 뒤 실패 안내와 선택 유지, [취소]
+- [X] T025 [US1] `src/features/poll/hooks/use-ballot.ts`: 낙관적 선택(표 수·내 선택을 화면용으로 계산), `ballot-queue`로 저장, 409 VERSION_CONFLICT는 다시 받고 선택 유지 + 실패 상태, 409 POLL_CLOSED는 다시 받고 마감 안내, 끊김은 저장된 선택으로 되돌림 + 실패 상태, [다시 시도]
+- [X] T026 [P] [US1] `src/features/poll/hooks/use-ballot.test.tsx`: 연달아 누름 요청 수, VERSION_CONFLICT 뒤 선택 유지와 다시 시도 version, POLL_CLOSED 뒤 결과, 끊김 되돌림
+- [X] T027 [P] [US1] `src/features/poll/components/poll-header-card.tsx` 진행 중 카드(Figma 201-10912): '투표 중' 태그, 남은 시간, 제목, "N명 투표했어요", "N명 아직이에요"
+- [X] T028 [P] [US1] `src/features/poll/components/candidate-row.tsx`: 체크 원, 이름, '내 선택'·'새 후보'·'가장 많이' 태그, 보조 줄(새 후보 설명·그룹 즐겨찾기 N곳), 표 수, 막대, 눌림·비활성, 접근성 라벨
+- [X] T029 [P] [US1] `src/features/poll/components/my-vote-bar.tsx`: "부산에 투표했어요"·"2곳 투표했어요" 요약, [취소], [바꾸기](목록 맨 위로), 고른 것 없으면 "후보를 눌러 투표해요"
+- [X] T030 [US1] `src/features/poll/components/poll-views.tsx`에 `PollOpenView`: 카드, "후보 N곳 여러 곳 골라도 돼요", 후보 목록, [+ 후보 추가] 자리, 하단 요약, 실패 토스트(Figma 201-29384 "○○으로 바꾸지 못했어요. ○○ 투표는 그대로예요" + [다시 시도])
+- [X] T031 [US1] `poll-screen.tsx`에 진행 중 상태 연결과 `/dev/polls`에 진행 중·투표 바꾸기 실패 추가
+- [X] T032 [US1] `poll-screen.test.tsx`에 진행 중 RNTL: 후보 누르면 표 수와 '내 선택' 바뀜, 충돌 뒤 실패 안내와 선택 유지, [취소]
 
 ## Phase 5: User Story 3 - 진행 중 후보 추가 (P2)
 
