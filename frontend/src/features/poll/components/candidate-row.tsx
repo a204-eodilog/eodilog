@@ -65,7 +65,12 @@ export function CandidateRow({
             <Text style={[styles.name, tone === 'muted' && styles.nameMuted]} numberOfLines={1}>
               {name}
             </Text>
-            {mineTag ? <Tag label="내 선택" tone="brand" small /> : null}
+            {mineTag ? (
+              // 공통 Tag는 alignSelf flex-start라 줄 위에 붙는다. 감싸서 이름과 세로 가운데로 맞춘다
+              <View>
+                <Tag label="내 선택" tone="brand" small />
+              </View>
+            ) : null}
             {newTag ? (
               // 공통 Tag에 주황 톤이 없어 여기서 같은 모양(높이 20·좌우 6)으로 그린다(Figma 385-2305)
               <View style={styles.newTag}>
