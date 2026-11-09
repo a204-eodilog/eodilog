@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Button, ErrorState, Header, Icon, type IconName } from '@/components/ui';
+import { Button, ErrorState, Header, Icon } from '@/components/ui';
 import { assetSource } from '@/lib/asset-image';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
