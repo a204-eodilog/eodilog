@@ -8,23 +8,23 @@
 
 ## Phase 1: Setup
 
-- [ ] T001 투표 기능 폴더 `src/features/poll/`와 `hooks/`·`components/`·`screens/`를 만들고 `src/features/poll/index.ts`에 공개할 것(화면, 라우트용 함수)만 내보낸다
+- [X] T001 투표 기능 폴더 `src/features/poll/`와 `hooks/`·`components/`·`screens/`를 만들고 `src/features/poll/index.ts`에 공개할 것(화면, 라우트용 함수)만 내보낸다
 
 ## Phase 2: Foundational
 
-- [ ] T002 [P] `src/features/poll/types.ts`에 data-model의 `Poll`, `PollCandidate`, `PollType`, `PollStatus`, `CandidateInput`, `SavedPlace`, `SavedPlacePage`, `Place`, `CandidateOption` 타입 정의
-- [ ] T003 [P] `src/api/errors.ts`의 `API_ERROR`에 `POLL_CLOSED`, `POLL_NOT_FOUND` 추가(설명 주석 포함)
-- [ ] T004 `src/features/poll/api.ts`에 contracts/poll-api.md의 7개 함수 구현: `getPolls`, `getPoll`, `createPoll`, `replaceBallot`, `addCandidate`, `getPlace`, `getTripSavedPlaces`(감싸지 않은 응답, cursor로 끝까지)
-- [ ] T005 [P] `src/features/poll/hooks/poll-keys.ts`에 `pollsKey(tripId)`, `pollKey(tripId, pollId)`, `placeKey(placeId)`, `pollSourceKey(tripId)` 정의, 모두 plan 쿼리 키 표대로
-- [ ] T006 `src/features/poll/poll-rules.ts`에 화면 상태 판정 `pollViewState(poll, now)`(none·open·closing·decided·tie·noVotes), 남은 시간 문구 `remainingLabel`(분·시간·일), 마감 기본값 `defaultClosesAt(now)`, 범위 검사 `validateClosesAt(value, now)`(past·tooFar), 마감 문구 `closesAtLabel`("10.28(수) 21:00 마감 · 24시간 뒤"), 자동 제목 `pollTitle(type)`, 새 후보 판정 `isNewCandidate`, 득표 비율 `voteRatio`, 최다 후보 `topCandidateIds`
-- [ ] T007 [P] `src/features/poll/poll-rules.test.ts`에 T006 규칙 테스트: 상태 6가지, 남은 시간 경계 59분·1시간·23시간·1일, 마감 기본 24시간, 지금 이전·정확히 30일·30일 1분, 새 후보 1분 경계, 동률 최다
-- [ ] T008 `src/features/poll/ballot-queue.ts`에 표 저장 합치기: 보내는 중 하나 + 다음 선택 하나, 끝나면 서버 선택과 다를 때만 보냄, 실패 콜백
-- [ ] T009 [P] `src/features/poll/ballot-queue.test.ts`: 요청 중 10번 눌러도 요청 최대 2번, 마지막 선택이 저장됨, 서버 선택과 같아지면 보내지 않음, 실패 뒤 다음 선택 처리
-- [ ] T010 `src/features/poll/candidate-options.ts`에 그룹 즐겨찾기 → 후보 줄 만들기: 장소 투표는 장소 이름·주소, 지역 투표는 `regionId`로 묶고 "그룹 즐겨찾기 N곳", 이미 후보인 곳 제외
-- [ ] T011 [P] `src/features/poll/candidate-options.test.ts`: 지역 묶기와 장소 수, regionId 없는 장소 제외, 이미 후보 제외, 순서는 장소 수 많은 순
-- [ ] T012 `src/api/dev-mock-poll.ts`에 테스트 모드 가짜 투표 서버: 목록·상세·열기·내 선택(version 검사, 마감 검사)·후보 추가, `GET /places/{id}`, `GET /trips/{id}/saved-places`, 조작 `addCandidateByOther()`, `closeNow(kind)`, `reset()`. `src/api/dev-mock.ts`의 `handle`에 한 줄로 연결하고 `__devMock.poll`에 조작 노출
-- [ ] T013 [P] `src/features/poll/hooks/use-candidate-names.ts`: 지역은 기존 `useRegions`, 장소는 `useQueries`로 `getPlace`(staleTime Infinity), 후보 ID → 이름 맵, 못 받으면 "알 수 없는 곳"
-- [ ] T014 [P] `src/features/poll/hooks/use-saved-places.ts`: `pollSourceKey`로 그룹 즐겨찾기 전체를 받는 훅
+- [X] T002 [P] `src/features/poll/types.ts`에 data-model의 `Poll`, `PollCandidate`, `PollType`, `PollStatus`, `CandidateInput`, `SavedPlace`, `SavedPlacePage`, `Place`, `CandidateOption` 타입 정의
+- [X] T003 [P] `src/api/errors.ts`의 `API_ERROR`에 `POLL_CLOSED`, `POLL_NOT_FOUND` 추가(설명 주석 포함)
+- [X] T004 `src/features/poll/api.ts`에 contracts/poll-api.md의 7개 함수 구현: `getPolls`, `getPoll`, `createPoll`, `replaceBallot`, `addCandidate`, `getPlace`, `getTripSavedPlaces`(감싸지 않은 응답, cursor로 끝까지)
+- [X] T005 [P] `src/features/poll/hooks/poll-keys.ts`에 `pollsKey(tripId)`, `pollKey(tripId, pollId)`, `placeKey(placeId)`, `pollSourceKey(tripId)` 정의, 모두 plan 쿼리 키 표대로
+- [X] T006 `src/features/poll/poll-rules.ts`에 화면 상태 판정 `pollViewState(poll, now)`(none·open·closing·decided·tie·noVotes), 남은 시간 문구 `remainingLabel`(분·시간·일), 마감 기본값 `defaultClosesAt(now)`, 범위 검사 `validateClosesAt(value, now)`(past·tooFar), 마감 문구 `closesAtLabel`("10.28(수) 21:00 마감 · 24시간 뒤"), 자동 제목 `pollTitle(type)`, 새 후보 판정 `isNewCandidate`, 득표 비율 `voteRatio`, 최다 후보 `topCandidateIds`
+- [X] T007 [P] `src/features/poll/poll-rules.test.ts`에 T006 규칙 테스트: 상태 6가지, 남은 시간 경계 59분·1시간·23시간·1일, 마감 기본 24시간, 지금 이전·정확히 30일·30일 1분, 새 후보 1분 경계, 동률 최다
+- [X] T008 `src/features/poll/ballot-queue.ts`에 표 저장 합치기: 보내는 중 하나 + 다음 선택 하나, 끝나면 서버 선택과 다를 때만 보냄, 실패 콜백
+- [X] T009 [P] `src/features/poll/ballot-queue.test.ts`: 요청 중 10번 눌러도 요청 최대 2번, 마지막 선택이 저장됨, 서버 선택과 같아지면 보내지 않음, 실패 뒤 다음 선택 처리
+- [X] T010 `src/features/poll/candidate-options.ts`에 그룹 즐겨찾기 → 후보 줄 만들기: 장소 투표는 장소 이름·주소, 지역 투표는 `regionId`로 묶고 "그룹 즐겨찾기 N곳", 이미 후보인 곳 제외
+- [X] T011 [P] `src/features/poll/candidate-options.test.ts`: 지역 묶기와 장소 수, regionId 없는 장소 제외, 이미 후보 제외, 순서는 장소 수 많은 순
+- [X] T012 `src/api/dev-mock-poll.ts`에 테스트 모드 가짜 투표 서버: 목록·상세·열기·내 선택(version 검사, 마감 검사)·후보 추가, `GET /places/{id}`, `GET /trips/{id}/saved-places`, 조작 `addCandidateByOther()`, `closeNow(kind)`, `reset()`. `src/api/dev-mock.ts`의 `handle`에 한 줄로 연결하고 `__devMock.poll`에 조작 노출
+- [X] T013 [P] `src/features/poll/hooks/use-candidate-names.ts`: 지역은 기존 `useRegions`, 장소는 `useQueries`로 `getPlace`(staleTime Infinity), 후보 ID → 이름 맵, 못 받으면 "알 수 없는 곳"
+- [X] T014 [P] `src/features/poll/hooks/use-saved-places.ts`: `pollSourceKey`로 그룹 즐겨찾기 전체를 받는 훅
 
 ## Phase 3: User Story 2 - 투표 열기 (P1)
 
@@ -32,15 +32,15 @@
 
 **Independent Test**: 투표가 없는 가짜 여행에서 S22 빈 상태 → N8 → 지역 두 곳 → [투표 열기] → 진행 중 화면.
 
-- [ ] T015 [P] [US2] `src/features/poll/hooks/use-polls.ts`: 목록 받기와 대표 투표 고르기 `pickPoll`(진행 중 최근 → 최근 → 없음), `poll-rules.ts`에 `pickPoll` 추가하고 T007 테스트에 경우 3개 더함
-- [ ] T016 [US2] `src/features/poll/hooks/use-open-poll.ts`: `createPoll` 뮤테이션, 성공하면 목록 무효화와 새 투표 캐시 넣기, 400 필드 오류를 돌려줌, 요청 중 `isPending`
-- [ ] T017 [P] [US2] `src/features/poll/components/closes-at-picker.tsx`: datetimepicker로 날짜 → 시각, `validateClosesAt`로 막고, 웹은 "기기에서 바꿀 수 있어요" 안내
-- [ ] T018 [US2] `src/features/poll/components/open-poll-sheet.tsx` N8(Figma 385-560): 지역·장소 칩, 시트 제목, "후보 N곳 · 여러 곳을 고를 수 있어요", 후보 줄과 체크, 30곳 제한 안내, 마감 카드(마감 문구·자동 확정 안내·[눌러서 마감 시각 바꾸기]), [투표 열기] 비활성 규칙, 빈 즐겨찾기 안내, 서버 거절 문구
-- [ ] T019 [US2] `src/features/poll/components/poll-views.tsx`에 `PollEmptyView`(Figma 201-10579): 체크 아이콘 원, "진행 중인 투표가 없어요", 설명 두 줄, [후보 고르러 가기]
-- [ ] T020 [US2] `src/features/poll/screens/poll-screen.tsx` 뼈대: 헤더("지역 투표"·"장소 투표"·"투표" + 여행 이름), 로딩·오류·빈 상태·N8 열기, 열기 성공 시 그 투표 주소로 바꾸기
-- [ ] T021 [US2] 라우트 `src/app/(main)/trips/[tripId]/polls/index.tsx`, `src/app/(main)/trips/[tripId]/polls/[pollId].tsx` 추가(화면만 감싸는 얇은 파일)
-- [ ] T022 [US2] `src/app/dev/polls.tsx` 미리보기 시작: N8, 진행 중인 투표 없음
-- [ ] T023 [US2] `src/features/poll/screens/poll-screen.test.tsx` RNTL: 빈 상태 → [후보 고르러 가기] → N8에서 두 곳 고르고 [투표 열기] → 진행 중 제목이 보임, 0곳이면 버튼 비활성, 두 번 눌러도 createPoll 1번
+- [X] T015 [P] [US2] `src/features/poll/hooks/use-polls.ts`: 목록 받기와 대표 투표 고르기 `pickPoll`(진행 중 최근 → 최근 → 없음), `poll-rules.ts`에 `pickPoll` 추가하고 T007 테스트에 경우 3개 더함
+- [X] T016 [US2] `src/features/poll/hooks/use-open-poll.ts`: `createPoll` 뮤테이션, 성공하면 목록 무효화와 새 투표 캐시 넣기, 400 필드 오류를 돌려줌, 요청 중 `isPending`
+- [X] T017 [P] [US2] `src/features/poll/components/closes-at-picker.tsx`: datetimepicker로 날짜 → 시각, `validateClosesAt`로 막고, 웹은 "기기에서 바꿀 수 있어요" 안내
+- [X] T018 [US2] `src/features/poll/components/open-poll-sheet.tsx` N8(Figma 385-560): 지역·장소 칩, 시트 제목, "후보 N곳 · 여러 곳을 고를 수 있어요", 후보 줄과 체크, 30곳 제한 안내, 마감 카드(마감 문구·자동 확정 안내·[눌러서 마감 시각 바꾸기]), [투표 열기] 비활성 규칙, 빈 즐겨찾기 안내, 서버 거절 문구
+- [X] T019 [US2] `src/features/poll/components/poll-views.tsx`에 `PollEmptyView`(Figma 201-10579): 체크 아이콘 원, "진행 중인 투표가 없어요", 설명 두 줄, [후보 고르러 가기]
+- [X] T020 [US2] `src/features/poll/screens/poll-screen.tsx` 뼈대: 헤더("지역 투표"·"장소 투표"·"투표" + 여행 이름), 로딩·오류·빈 상태·N8 열기, 열기 성공 시 그 투표 주소로 바꾸기
+- [X] T021 [US2] 라우트 `src/app/(main)/trips/[tripId]/polls/index.tsx`, `src/app/(main)/trips/[tripId]/polls/[pollId].tsx` 추가(화면만 감싸는 얇은 파일)
+- [X] T022 [US2] `src/app/dev/polls.tsx` 미리보기 시작: N8, 진행 중인 투표 없음
+- [X] T023 [US2] `src/features/poll/screens/poll-screen.test.tsx` RNTL: 빈 상태 → [후보 고르러 가기] → N8에서 두 곳 고르고 [투표 열기] → 진행 중 제목이 보임, 0곳이면 버튼 비활성, 두 번 눌러도 createPoll 1번
 
 ## Phase 4: User Story 1 - 표 던지기 (P1)
 
@@ -48,7 +48,7 @@
 
 **Independent Test**: 가짜 투표에서 후보 두 곳을 눌러 표 수가 바로 바뀌고, `addCandidateByOther()` 뒤 누르면 실패 안내와 [다시 시도]가 보인다.
 
-- [ ] T024 [P] [US1] `src/features/poll/hooks/use-poll.ts`: 투표 하나 받기, 앱 복귀 시 다시 받기, `closing`이면 다시 받기, 404면 `notFound`
+- [X] T024 [P] [US1] `src/features/poll/hooks/use-poll.ts`: 투표 하나 받기, 앱 복귀 시 다시 받기, `closing`이면 다시 받기, 404면 `notFound`
 - [ ] T025 [US1] `src/features/poll/hooks/use-ballot.ts`: 낙관적 선택(표 수·내 선택을 화면용으로 계산), `ballot-queue`로 저장, 409 VERSION_CONFLICT는 다시 받고 선택 유지 + 실패 상태, 409 POLL_CLOSED는 다시 받고 마감 안내, 끊김은 저장된 선택으로 되돌림 + 실패 상태, [다시 시도]
 - [ ] T026 [P] [US1] `src/features/poll/hooks/use-ballot.test.tsx`: 연달아 누름 요청 수, VERSION_CONFLICT 뒤 선택 유지와 다시 시도 version, POLL_CLOSED 뒤 결과, 끊김 되돌림
 - [ ] T027 [P] [US1] `src/features/poll/components/poll-header-card.tsx` 진행 중 카드(Figma 201-10912): '투표 중' 태그, 남은 시간, 제목, "N명 투표했어요", "N명 아직이에요"
