@@ -95,11 +95,11 @@ const LAND = colors.surface.white;
  */
 export const MAP_MOTION = {
   fillStartMs: 200,
-  fillStaggerMs: 180,
+  fillStaggerMs: 130,
   fillFadeMs: 500,
   layerGapMs: 350,
-  pinGapAfterFillMs: 260,
-  pinStaggerMs: 150,
+  pinGapAfterFillMs: 180,
+  pinStaggerMs: 120,
   pinRiseMs: 350,
   pinFadeMs: 300,
   pinRisePx: 10,
