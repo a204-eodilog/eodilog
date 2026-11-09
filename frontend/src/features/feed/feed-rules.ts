@@ -5,7 +5,6 @@ import type { Feed, FeedDay, FeedDetail, FeedStop, TransportKind } from './types
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'] as const;
 const pad = (n: number) => String(n).padStart(2, '0');
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** "01.17" */
 function monthDay(date: Date): string {

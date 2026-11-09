@@ -1,9 +1,10 @@
 import { describe, expect, it, jest } from '@jest/globals';
 import type { InternalAxiosRequestConfig } from 'axios';
 
-jest.mock('@/config/env', () => ({ env: { apiBaseUrl: 'http://test', devMockNewUser: false } }));
-
 import { devMockAdapter } from './dev-mock';
+
+// jest.mock은 불러오기보다 먼저 실행되도록 맨 위로 끌어올려진다
+jest.mock('@/config/env', () => ({ env: { apiBaseUrl: 'http://test', devMockNewUser: false } }));
 
 const get = async (url: string) => {
   const res = await devMockAdapter({

@@ -19,7 +19,8 @@ export type FacilitiesViewProps = {
   members: readonly string[];
   base: { name: string; latitude: number; longitude: number } | null;
   type: FacilityType;
-  state: 'loading' | 'error' | 'ready';
+  /** noBase: 기준 장소 없이 열렸다(여행 일정의 장소에서 열어야 한다) */
+  state: 'loading' | 'error' | 'ready' | 'noBase';
   rows: readonly FacilityRow[];
   onType: (type: FacilityType) => void;
   onChangeBase: () => void;
@@ -126,7 +127,13 @@ export function FacilitiesView(props: FacilitiesViewProps) {
           ) : null}
         </View>
 
-        {props.state === 'loading' ? (
+        {props.state === 'noBase' ? (
+          <View style={styles.note}>
+            <Icon name="map-pin" size={22} color={colors.text.icon} />
+            <Text style={styles.noteTitle}>기준 장소를 골라 주세요</Text>
+            <Text style={styles.noteDesc}>여행 일정의 장소에서 주변 편의시설을 열 수 있어요</Text>
+          </View>
+        ) : props.state === 'loading' ? (
           <ActivityIndicator color={colors.brand.primary} style={styles.loading} />
         ) : props.state === 'error' ? (
           <View style={styles.note}>

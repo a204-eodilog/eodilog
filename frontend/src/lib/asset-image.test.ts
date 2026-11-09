@@ -1,12 +1,13 @@
 import { describe, expect, it, jest } from '@jest/globals';
 
+import { assetSource } from './asset-image';
+
+// jest.mock은 불러오기보다 먼저 실행되도록 맨 위로 끌어올려진다
 jest.mock('@/config/env', () => ({ env: { apiBaseUrl: 'http://test', devMock: false } }));
 jest.mock('@/stores/session-store', () => ({
   useSessionStore: { getState: () => ({ accessToken: 'token' }) },
 }));
 jest.mock('@/api/session', () => ({ API_BASE_PATH: '/api/v1' }));
-
-import { assetSource } from './asset-image';
 
 describe('assetSource', () => {
   it('명세 경로(/assets/...) 앞에 /api/v1을 붙이고 로그인 토큰을 보낸다', () => {
