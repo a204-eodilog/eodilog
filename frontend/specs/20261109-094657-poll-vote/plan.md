@@ -48,7 +48,7 @@ S22 투표 화면과 N8 투표 열기 시트를 만든다. S17의 '투표' 메�
 
 ## Constitution Check
 
-`.specify/memory/constitution.md`의 원칙을 따른다(이전 명세와 같은 확인).
+`.specify/memory/constitution.md`는 아직 채우지 않은 틀이라 대신 `frontend/AGENTS.md`·`CONVENTION.md` 규칙으로 확인한다.
 
 - 화면은 `src/theme` 토큰과 `components/ui`만 쓴다. 색·글자 크기를 숫자로 직접 쓰지 않는다. → 지킴
 - 라우트 파일은 `src/app/`에 얇게 두고 화면은 `src/features/poll/screens`에 둔다. → 지킴
