@@ -183,7 +183,9 @@ export function createCourseMock(h: Helpers) {
     };
   }
 
-  const view = (tripId: string, c: MockCourse) => ({ tripId, ...c });
+  // 실서버 응답처럼 매번 새 사본을 준다. 안쪽 항목을 그대로 넘기면 동행 저장 흉내가 앱이 기억한 코스까지 바꾼다
+  const view = (tripId: string, c: MockCourse) =>
+    JSON.parse(JSON.stringify({ tripId, ...c })) as MockCourse & { tripId: string };
 
   function replace(config: InternalAxiosRequestConfig, trip: Trip, body: Record<string, unknown>) {
     const course = courseOf(trip);
