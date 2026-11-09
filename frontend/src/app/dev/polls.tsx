@@ -1,3 +1,4 @@
+import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -228,7 +229,11 @@ function Frame({ title, children }: { title: string; children: React.ReactNode }
 }
 
 export default function PollStates() {
-  const [example, setExample] = useState<Example | null>(null);
+  // 검토용: /dev/polls?state=진행%20중 처럼 상태 이름으로 바로 연다
+  const { state } = useLocalSearchParams<{ state?: string }>();
+  const [example, setExample] = useState<Example | null>(
+    () => EXAMPLES.find((e) => e.label === state)?.example ?? null,
+  );
   const back = () => setExample(null);
 
   if (example?.kind === 'empty') {

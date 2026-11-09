@@ -120,3 +120,7 @@ MVP는 Phase 2 + US2 + US1(투표 열고 표 던지기). 이어서 US4 결과, U
 - [X] T053 N8과 후보 추가 시트 제목 오른쪽에 닫기 버튼 44를 두어 Figma 385-560·418-188처럼 시트를 닫을 수 있게 한다 in src/features/poll/components/open-poll-sheet.tsx, add-candidate-sheet.tsx per FR-009 (partial)
 - [X] T054 결과 화면 초록 확정 줄의 '가장 많이' 태그가 줄 배경과 같은 색이라 보이지 않는 문제를 고쳐 Figma 201-11073처럼 연한 초록 면에 진한 초록 글자로 보이게 한다 in src/features/poll/components/candidate-row.tsx per US4/AC1 (partial)
 - [X] T055 N8 장소 후보 줄에 담은 동행 얼굴과 이름("세은, 승기")을 savedBy.memberId와 여행 동행 목록으로 찾아 보인다 in src/features/poll/components/option-row.tsx, open-poll-sheet.tsx per US2/AC4 (partial)
+
+## Phase 10: Review 1
+
+- [ ] T056 dev/polls 미리보기를 주소 ?state=상태이름으로 바로 열 수 있게 해 상태마다 같은 조건으로 화면을 찍어 Figma와 비교한다 in src/app/dev/polls.tsx
