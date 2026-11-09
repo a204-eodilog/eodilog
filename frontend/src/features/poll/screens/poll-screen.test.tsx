@@ -3,10 +3,22 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
 
-import { createPoll, getPoll, getPolls, getTripSavedPlaces, replaceBallot } from '../api';
+import {
+  addCandidate,
+  createPoll,
+  getPoll,
+  getPolls,
+  getTripSavedPlaces,
+  replaceBallot,
+} from '../api';
 import { candidate, poll, savedPlace } from '../testing';
 import { PollScreen } from './poll-screen';
 
+const mockRegionNames: Record<string, string> = {
+  busan: '부산광역시',
+  gangneung: '강원특별자치도 강릉시',
+  yeosu: '전라남도 여수시',
+};
 const mockParams: { tripId: string; pollId?: string } = { tripId: 'trip-1' };
 const mockRouter = { replace: jest.fn(), back: jest.fn(), push: jest.fn() };
 
@@ -40,7 +52,7 @@ jest.mock('@/features/trip/hooks/use-region-names', () => ({
   useRegions: (ids: string[]) => ({
     regions: ids.map((id) => ({
       id,
-      name: id === 'busan' ? '부산광역시' : '강원특별자치도 강릉시',
+      name: mockRegionNames[id] ?? id,
     })),
     ready: true,
   }),
@@ -126,6 +138,7 @@ const mockGetPoll = jest.mocked(getPoll);
 const mockCreatePoll = jest.mocked(createPoll);
 const mockSaved = jest.mocked(getTripSavedPlaces);
 const mockReplace = jest.mocked(replaceBallot);
+const mockAddCandidate = jest.mocked(addCandidate);
 
 function renderScreen() {
   const client = new QueryClient({
@@ -261,5 +274,34 @@ describe('진행 중 투표', () => {
     await fireEvent.press(await screen.findByText('취소'));
     expect(mockReplace).toHaveBeenCalledWith('trip-1', 'poll-1', [], 1);
     expect(await screen.findByText('후보를 눌러 투표해요')).toBeTruthy();
+  });
+});
+
+describe('후보 추가', () => {
+  it('+ 후보 추가로 아직 후보가 아닌 지역을 넣으면 새 후보 표시가 붙는다', async () => {
+    mockParams.pollId = 'poll-1';
+    mockGetPoll.mockResolvedValue(OPEN);
+    mockSaved.mockResolvedValue([
+      savedPlace('p1', 'busan'),
+      savedPlace('p2', 'gangneung'),
+      savedPlace('p3', 'yeosu'),
+    ]);
+    mockAddCandidate.mockResolvedValue({
+      ...OPEN,
+      version: 2,
+      candidates: [
+        ...OPEN.candidates,
+        candidate('c3', { regionId: 'yeosu', addedAt: '2026-10-26T13:00:00Z' }),
+      ],
+    });
+    await renderScreen();
+    await fireEvent.press(await screen.findByText('+ 후보 추가'));
+    expect(await screen.findByText('후보 추가')).toBeTruthy();
+    expect(screen.queryByLabelText('부산')).toBeNull();
+    await fireEvent.press(await screen.findByLabelText('여수시'));
+    await fireEvent.press(screen.getByText('후보에 넣기'));
+    expect(mockAddCandidate).toHaveBeenCalledWith('trip-1', 'poll-1', { regionId: 'yeosu' }, 1);
+    expect(await screen.findByText('새 후보')).toBeTruthy();
+    expect(screen.getByText('투표 중에 추가됐어요')).toBeTruthy();
   });
 });
