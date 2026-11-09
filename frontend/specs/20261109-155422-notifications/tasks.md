@@ -18,7 +18,7 @@
 - [X] T006 [US1] 목록 무한 받기·모두 읽음·지우기 훅 src/features/notification/hooks/use-notifications.ts
 - [X] T007 [P] [US1] 알림 줄 부품 src/features/notification/components/notification-row.tsx
 - [X] T008 [P] [US1] 없음·실패·볼 수 없음 부품 src/features/notification/components/notification-states.tsx
-- [ ] T009 [US1] S49 목록 화면, 주소, RNTL 테스트 src/features/notification/screens/notifications-screen.tsx(+test), src/app/(main)/notifications/index.tsx
+- [X] T009 [US1] S49 목록 화면, 주소, RNTL 테스트 src/features/notification/screens/notifications-screen.tsx(+test), src/app/(main)/notifications/index.tsx
 
 ## Phase 4: US2 열기와 읽음 (P1)
 
