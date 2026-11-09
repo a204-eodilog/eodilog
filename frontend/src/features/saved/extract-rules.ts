@@ -1,4 +1,4 @@
-import type { ExtractionResult } from './types';
+import type { ExtractionCandidate, ExtractionResult, Place } from './types';
 
 /** 캡처는 한 번에 최대 10장(결정 Q-5a, API 명세 POST /extractions) */
 export const MAX_CAPTURES = 10;
@@ -77,9 +77,43 @@ export function linkLabel(url: string, max = 28): string {
 /** S12 화면 상태 */
 export type ExtractionView = 'progress' | 'success' | 'multiple' | 'notFound' | 'failed';
 
+/** 묶음 안의 지도 장소 하나 */
+export type GroupOption = { candidateId: string; place: Place; evidence: string };
+
+/**
+ * 게시물 속 언급 하나(같은 name)의 후보 묶음. AI 서버는 언급마다 지도 검색을 해 후보를 이어 붙여 준다
+ * (ai/app/features/place_extraction/service.py). options가 0이면 지도에서 못 찾음(place: null),
+ * 1이면 그 장소, 2 이상이면 같은 이름의 여러 지점이라 사용자가 고른다
+ */
+export type CandidateGroup = {
+  /** 묶음 첫 후보 id */
+  key: string;
+  name: string;
+  evidence: string;
+  options: GroupOption[];
+};
+
+/** 후보를 언급(name)별로 묶는다. 처음 나온 순서를 지킨다 */
+export function groupCandidates(candidates: ExtractionCandidate[]): CandidateGroup[] {
+  const groups = new Map<string, CandidateGroup>();
+  for (const c of candidates) {
+    let group = groups.get(c.name);
+    if (!group) {
+      group = { key: c.candidateId, name: c.name, evidence: c.evidence, options: [] };
+      groups.set(c.name, group);
+    }
+    if (c.place) {
+      group.options.push({ candidateId: c.candidateId, place: c.place, evidence: c.evidence });
+    }
+  }
+  return [...groups.values()];
+}
+
 /**
  * 추출 응답 → S12 상태. 작업이 끝나지 않았으면 진행 중, 작업 실패·취소나 결과 FAILED면 처리 실패.
- * 성공이어도 지도에서 찾은 후보가 하나도 없으면 식별 불가로 본다
+ * 언급이 없으면 식별 불가. 지점을 골라야 하는 언급이 하나라도 있으면 복수 후보, 아니면 성공
+ * (지도에서 못 찾은 언급은 성공 목록에 "직접 찾기" 줄로 보인다).
+ * MULTIPLE_CANDIDATES는 지점이 여럿이거나 지도에서 못 찾은 언급이 있다는 뜻이라 resultStatus 대신 묶음으로 판단한다
  */
 export function extractionView(result: ExtractionResult, timedOut = false): ExtractionView {
   const { job, resultStatus, candidates } = result;
@@ -87,10 +121,51 @@ export function extractionView(result: ExtractionResult, timedOut = false): Extr
   if (job.status !== 'SUCCEEDED' || resultStatus === 'FAILED' || resultStatus === null) {
     return 'failed';
   }
-  if (resultStatus === 'NOT_FOUND') return 'notFound';
-  const found = candidates.filter((c) => c.place !== null);
-  if (found.length === 0) return 'notFound';
-  return resultStatus === 'MULTIPLE_CANDIDATES' && found.length > 1 ? 'multiple' : 'success';
+  const groups = groupCandidates(candidates);
+  if (resultStatus === 'NOT_FOUND' || groups.length === 0) return 'notFound';
+  return groups.some((g) => g.options.length > 1) ? 'multiple' : 'success';
+}
+
+/** 사용자가 정한 장소. 지점을 고르거나 S13에서 직접 고른 것 */
+export type GroupPick = { place: Place; evidence: string };
+
+/** 아직 지점을 고르지 않은 첫 묶음. 없으면 null(성공 목록을 보인다) */
+export function nextToChoose(
+  groups: CandidateGroup[],
+  picks: Record<string, GroupPick>,
+  removed: string[],
+): CandidateGroup | null {
+  return (
+    groups.find((g) => g.options.length > 1 && !picks[g.key] && !removed.includes(g.key)) ?? null
+  );
+}
+
+/** 성공 목록 한 줄. place가 null이면 지도에서 못 찾아 직접 골라야 하는 줄 */
+export type ExtractItem = { key: string; name: string; place: Place | null; evidence: string };
+
+/**
+ * 성공 목록. 뺀 묶음은 빼고, 정한 장소가 있으면 그것, 지점이 하나면 그 장소, 못 찾았으면 이름만.
+ * 아직 고르지 않은 여러 지점 묶음은 넣지 않는다(nextToChoose로 먼저 고른다)
+ */
+export function extractItems(
+  groups: CandidateGroup[],
+  picks: Record<string, GroupPick>,
+  removed: string[],
+): ExtractItem[] {
+  const items: ExtractItem[] = [];
+  for (const g of groups) {
+    if (removed.includes(g.key)) continue;
+    const pick = picks[g.key];
+    if (pick) {
+      items.push({ key: g.key, name: pick.place.name, place: pick.place, evidence: pick.evidence });
+    } else if (g.options.length === 1) {
+      const [only] = g.options;
+      items.push({ key: g.key, name: only.place.name, place: only.place, evidence: only.evidence });
+    } else if (g.options.length === 0) {
+      items.push({ key: g.key, name: g.name, place: null, evidence: g.evidence });
+    }
+  }
+  return items;
 }
 
 /**

@@ -14,9 +14,14 @@ import { PlaceSaveSheet } from '../components/place-save-sheet';
 import {
   candidateLetter,
   EXTRACTION_STEPS,
+  type ExtractItem,
+  extractItems,
   extractRegion,
   extractionView,
   failedNotice,
+  type GroupPick,
+  groupCandidates,
+  nextToChoose,
   progressStep,
   stepDetail,
 } from '../extract-rules';
@@ -25,8 +30,8 @@ import { useExtraction, useRetryExtraction } from '../hooks/use-extraction';
 import { addressParts } from '../saved-rules';
 import type { Place } from '../types';
 
-/** 성공 목록 한 줄. 후보 그대로이거나 S13에서 바꾼 장소 */
-type FoundItem = { key: string; name: string; place: Place; evidence: string };
+/** 식별 불가에서 직접 고른 장소의 줄 key */
+const PICKED_KEY = 'picked';
 
 /** S13에서 직접 고른 장소의 근거 줄 */
 const PICKED = '직접 고른 장소예요';
@@ -36,8 +41,11 @@ const areaOf = (place: Place) => addressParts(place.address).join(' ') || null;
 /**
  * S12 추출 결과 확인(/saved/extract/{jobId}). S11 [장소 찾기]에서 온다.
  * GET /extractions/{jobId}를 끝날 때까지 다시 읽어 진행 중 → 성공·복수 후보·식별 불가·처리 실패로 바뀐다.
+ * 후보는 게시물 속 언급(같은 name)별로 묶는다(groupCandidates).
+ * 복수 후보: 지점이 여럿인 언급마다 하나 고르고 [이곳으로], [여기에 없어요] → S13. 다 고르면 성공 목록.
  * 성공: 지도 핀 + 장소 줄([연필] → S13으로 바꾸기, [X] 빼기) → [N곳] → S08 가져온 장소.
- * 복수 후보: 하나 고르고 [이곳으로] → 성공, [여기에 없어요] → S13. 식별 불가: [장소 직접 검색하기] → S13.
+ * 지도에서 못 찾은 언급은 성공 목록에 [돋보기] → S13 직접 찾기 줄로 둔다(저장 수에는 빠진다).
+ * 식별 불가(언급 없음): [장소 직접 검색하기] → S13.
  * 그룹 즐겨찾기에서 시작(S20)은 S20 화면이 생기면 붙인다
  */
 export function ExtractResultScreen() {
@@ -47,13 +55,15 @@ export function ExtractResultScreen() {
   const retry = useRetryExtraction();
   const sent = sentExtraction(jobId);
 
+  // 뺀 언급 묶음과 사용자가 정한 장소(지점 고르기·S13 바꾸기·직접 찾기). key는 묶음 key
   const [removed, setRemoved] = useState<string[]>([]);
-  const [replaced, setReplaced] = useState<Record<string, Place>>({});
-  // 복수 후보·식별 불가에서 고른 장소. 고르면 그 한 곳으로 성공 상태가 된다
-  const [picked, setPicked] = useState<{ place: Place; evidence: string } | null>(null);
+  const [picks, setPicks] = useState<Record<string, GroupPick>>({});
+  // 식별 불가에서 직접 고른 장소. 고르면 그 한 곳으로 성공 상태가 된다
+  const [picked, setPicked] = useState<GroupPick | null>(null);
   // 지도 칸 크기. 범위를 지도 비율에 맞춰야 핀이 가운데 온다(extractRegion)
   const [mapSize, setMapSize] = useState<{ width: number; height: number } | null>(null);
-  const [choice, setChoice] = useState(0);
+  // 지점 고르기에서 라디오로 고른 것. 묶음이 바뀌면 첫 지점부터
+  const [choice, setChoice] = useState<{ group: string; index: number } | null>(null);
   const [focused, setFocused] = useState<string | null>(null);
   const [saveOpen, setSaveOpen] = useState(false);
   const [cancelling, setCancelling] = useState(false);
@@ -62,27 +72,26 @@ export function ExtractResultScreen() {
   const view = picked ? 'success' : data ? extractionView(data, timedOut) : null;
   // 시간이 지나 처리 실패로 본 작업(서버에서는 아직 진행 중)
   const stuck = timedOut && (data?.job.status === 'QUEUED' || data?.job.status === 'RUNNING');
-  const found = (data?.candidates ?? []).filter(
-    (c): c is typeof c & { place: Place } => c.place !== null,
-  );
+  const groups = groupCandidates(data?.candidates ?? []);
+  // 지금 지점을 골라야 하는 언급. 없으면 성공 목록
+  const asking = view === 'multiple' ? nextToChoose(groups, picks, removed) : null;
+  const ambiguous = groups.filter((g) => g.options.length > 1 && !removed.includes(g.key));
+  const choiceIndex = asking && choice?.group === asking.key ? choice.index : 0;
 
-  const items: FoundItem[] = picked
-    ? [
-        {
-          key: 'picked',
-          name: picked.place.name,
-          place: picked.place,
-          evidence: picked.evidence,
-        },
-      ]
-    : found
-        .filter((c) => !removed.includes(c.candidateId))
-        .map((c) => {
-          const swap = replaced[c.candidateId];
-          return swap
-            ? { key: c.candidateId, name: swap.name, place: swap, evidence: PICKED }
-            : { key: c.candidateId, name: c.name, place: c.place, evidence: c.evidence };
-        });
+  const items: ExtractItem[] = picked
+    ? [{ key: PICKED_KEY, name: picked.place.name, place: picked.place, evidence: picked.evidence }]
+    : extractItems(groups, picks, removed);
+  // 지도에 올릴 수 있는(저장할) 줄. 번호는 이 순서다
+  const placed = items.filter((i): i is ExtractItem & { place: Place } => i.place !== null);
+
+  const pickFor = (key: string, pick: GroupPick) => {
+    if (key === PICKED_KEY) setPicked(pick);
+    else setPicks((p) => ({ ...p, [key]: pick }));
+  };
+  const removeItem = (key: string) => {
+    if (key === PICKED_KEY) setPicked(null);
+    else setRemoved((r) => [...r, key]);
+  };
 
   const choose = async (onPicked: (place: Place) => void, around?: Place) => {
     const place = await pickPlace(
@@ -190,10 +199,11 @@ export function ExtractResultScreen() {
     );
   }
 
-  const multiple = view === 'multiple';
+  const multiple = asking !== null;
+  const options = asking?.options ?? [];
   const region = mapSize
     ? extractRegion(
-        multiple ? found.map((c) => c.place) : items.map((i) => i.place),
+        multiple ? options.map((o) => o.place) : placed.map((i) => i.place),
         mapSize.width / mapSize.height,
       )
     : null;
@@ -215,20 +225,20 @@ export function ExtractResultScreen() {
             }
             {...(region ? { initialRegion: region } : {})}
           >
-            {multiple
-              ? found.map((c, i) => (
+            {asking
+              ? options.map((o, i) => (
                   <MapMarker
-                    key={c.candidateId}
-                    latitude={c.place.latitude}
-                    longitude={c.place.longitude}
-                    label={`${candidateLetter(i)} ${c.name}`}
+                    key={o.candidateId}
+                    latitude={o.place.latitude}
+                    longitude={o.place.longitude}
+                    label={`${candidateLetter(i)} ${o.place.name}`}
                     dot="brand"
-                    highlighted={i === choice}
-                    zIndex={i === choice ? 1 : 0}
-                    onPress={() => setChoice(i)}
+                    highlighted={i === choiceIndex}
+                    zIndex={i === choiceIndex ? 1 : 0}
+                    onPress={() => setChoice({ group: asking.key, index: i })}
                   />
                 ))
-              : items.map((item, i) => (
+              : placed.map((item, i) => (
                   <MapMarker
                     key={item.key}
                     latitude={item.place.latitude}
@@ -249,13 +259,16 @@ export function ExtractResultScreen() {
 
       <View style={[styles.panel, { paddingBottom: Math.max(insets.bottom + 12, 34) }]}>
         <View style={styles.handle} />
-        {multiple ? (
+        {asking ? (
           <>
             <Text style={[typography.title1, styles.text]}>어느 곳인가요?</Text>
             <View style={styles.inline}>
               <Icon name="map-pin" size={16} color={colors.text.icon} />
-              <Text style={[typography.caption, styles.sub]}>
-                같은 이름이 {found.length}곳 있어요
+              <Text style={[typography.caption, styles.sub]} numberOfLines={1}>
+                {`"${asking.name}" 같은 이름이 ${options.length}곳 있어요`}
+                {ambiguous.length > 1
+                  ? ` · ${ambiguous.findIndex((g) => g.key === asking.key) + 1}/${ambiguous.length}`
+                  : ''}
               </Text>
             </View>
             <ScrollView
@@ -263,17 +276,17 @@ export function ExtractResultScreen() {
               contentContainerStyle={styles.candidates}
               accessibilityRole="radiogroup"
             >
-              {found.map((c, i) => {
-                const selected = i === choice;
+              {options.map((o, i) => {
+                const selected = i === choiceIndex;
                 return (
                   <Pressable
-                    key={c.candidateId}
+                    key={o.candidateId}
                     accessibilityRole="radio"
-                    accessibilityLabel={[candidateLetter(i), c.name, areaOf(c.place)]
+                    accessibilityLabel={[candidateLetter(i), o.place.name, areaOf(o.place)]
                       .filter(Boolean)
                       .join(', ')}
                     accessibilityState={{ checked: selected }}
-                    onPress={() => setChoice(i)}
+                    onPress={() => setChoice({ group: asking.key, index: i })}
                     style={[styles.candidate, selected && styles.candidateOn]}
                   >
                     <View style={[styles.letter, selected && styles.letterOn]}>
@@ -283,13 +296,13 @@ export function ExtractResultScreen() {
                     </View>
                     <View style={styles.flex}>
                       <Text style={[typography.bodyBold, styles.text]} numberOfLines={1}>
-                        {c.name}
+                        {o.place.name}
                       </Text>
-                      {areaOf(c.place) ? (
+                      {areaOf(o.place) ? (
                         <View style={styles.inline}>
                           <Icon name="map-pin" size={16} color={colors.text.icon} />
                           <Text style={[typography.caption, styles.sub]} numberOfLines={1}>
-                            {areaOf(c.place)}
+                            {areaOf(o.place)}
                           </Text>
                         </View>
                       ) : null}
@@ -307,8 +320,8 @@ export function ExtractResultScreen() {
                 variant="text"
                 onPress={() =>
                   void choose(
-                    (place) => setPicked({ place, evidence: PICKED }),
-                    found[choice]?.place,
+                    (place) => pickFor(asking.key, { place, evidence: PICKED }),
+                    options[choiceIndex]?.place,
                   )
                 }
                 leading={<Icon name="search" size={20} color={colors.text.icon} />}
@@ -318,8 +331,8 @@ export function ExtractResultScreen() {
                 label="이곳으로"
                 weight="medium"
                 onPress={() => {
-                  const c = found[choice];
-                  if (c) setPicked({ place: { ...c.place, name: c.name }, evidence: c.evidence });
+                  const o = options[choiceIndex];
+                  if (o) pickFor(asking.key, { place: o.place, evidence: o.evidence });
                 }}
                 leading={<Icon name="check" size={20} color={colors.text.inverse} />}
                 style={styles.primary}
@@ -329,70 +342,90 @@ export function ExtractResultScreen() {
         ) : (
           <>
             <Text style={[typography.title1, styles.text]}>
-              {items.length > 0 ? `장소 ${items.length}곳을 찾았어요` : '저장할 장소가 없어요'}
+              {placed.length > 0
+                ? `장소 ${placed.length}곳을 찾았어요`
+                : items.length > 0
+                  ? '지도에서 찾지 못했어요'
+                  : '저장할 장소가 없어요'}
             </Text>
             <Text style={[typography.caption, styles.sub]}>
-              {items.length > 0 ? '확인하고 저장해 주세요' : '다시 찾으려면 뒤로 가 주세요'}
+              {placed.length > 0
+                ? '확인하고 저장해 주세요'
+                : items.length > 0
+                  ? '직접 골라 주세요'
+                  : '다시 찾으려면 뒤로 가 주세요'}
             </Text>
             <ScrollView style={styles.list} contentContainerStyle={styles.rows}>
-              {items.map((item, i) => (
-                <Pressable
-                  key={item.key}
-                  onPress={() => setFocused(item.key)}
-                  style={[styles.row, item.key === focused && styles.rowFocused]}
-                >
-                  <View style={styles.number}>
-                    <Text style={[typography.label, styles.inverse]}>{i + 1}</Text>
-                  </View>
-                  <View style={styles.rowTexts}>
-                    <Text style={[typography.bodyBold, styles.text]} numberOfLines={1}>
-                      {item.name}
-                    </Text>
-                    {areaOf(item.place) ? (
-                      <View style={styles.inline}>
-                        <Icon name="map-pin" size={16} color={colors.text.icon} />
-                        <Text style={[typography.caption, styles.sub]} numberOfLines={1}>
-                          {areaOf(item.place)}
-                        </Text>
-                      </View>
-                    ) : null}
-                    {item.evidence ? (
-                      <View style={styles.inline}>
-                        <Icon name="bulb" size={16} color={colors.brand.primaryDark} />
-                        <Text style={[typography.caption, styles.dark]} numberOfLines={2}>
-                          {item.evidence}
-                        </Text>
-                      </View>
-                    ) : null}
-                  </View>
-                  <View style={styles.rowButtons}>
-                    <RoundButton
-                      icon="pencil"
-                      label={`${item.name} 바꾸기`}
-                      onPress={() =>
-                        void choose((place) => {
-                          if (picked) setPicked({ place, evidence: PICKED });
-                          else setReplaced((r) => ({ ...r, [item.key]: place }));
-                        }, item.place)
-                      }
-                    />
-                    <RoundButton
-                      icon="close"
-                      label={`${item.name} 빼기`}
-                      onPress={() => {
-                        if (picked) setPicked(null);
-                        else setRemoved((r) => [...r, item.key]);
-                      }}
-                    />
-                  </View>
-                </Pressable>
-              ))}
+              {items.map((item) => {
+                const itemPlace = item.place;
+                return (
+                  <Pressable
+                    key={item.key}
+                    disabled={!itemPlace}
+                    onPress={() => setFocused(item.key)}
+                    style={[styles.row, item.key === focused && styles.rowFocused]}
+                  >
+                    <View style={[styles.number, !itemPlace && styles.numberMissing]}>
+                      <Text style={[typography.label, styles.inverse]}>
+                        {itemPlace ? placed.findIndex((p) => p.key === item.key) + 1 : '?'}
+                      </Text>
+                    </View>
+                    <View style={styles.rowTexts}>
+                      <Text style={[typography.bodyBold, styles.text]} numberOfLines={1}>
+                        {item.name}
+                      </Text>
+                      {itemPlace ? (
+                        areaOf(itemPlace) ? (
+                          <View style={styles.inline}>
+                            <Icon name="map-pin" size={16} color={colors.text.icon} />
+                            <Text style={[typography.caption, styles.sub]} numberOfLines={1}>
+                              {areaOf(itemPlace)}
+                            </Text>
+                          </View>
+                        ) : null
+                      ) : (
+                        <View style={styles.inline}>
+                          <Icon name="search" size={16} color={colors.text.icon} />
+                          <Text style={[typography.caption, styles.sub]} numberOfLines={1}>
+                            지도에서 찾지 못했어요
+                          </Text>
+                        </View>
+                      )}
+                      {item.evidence ? (
+                        <View style={styles.inline}>
+                          <Icon name="bulb" size={16} color={colors.brand.primaryDark} />
+                          <Text style={[typography.caption, styles.dark]} numberOfLines={2}>
+                            {item.evidence}
+                          </Text>
+                        </View>
+                      ) : null}
+                    </View>
+                    <View style={styles.rowButtons}>
+                      <RoundButton
+                        icon={itemPlace ? 'pencil' : 'search'}
+                        label={`${item.name} ${itemPlace ? '바꾸기' : '직접 찾기'}`}
+                        onPress={() =>
+                          void choose(
+                            (place) => pickFor(item.key, { place, evidence: PICKED }),
+                            itemPlace ?? undefined,
+                          )
+                        }
+                      />
+                      <RoundButton
+                        icon="close"
+                        label={`${item.name} 빼기`}
+                        onPress={() => removeItem(item.key)}
+                      />
+                    </View>
+                  </Pressable>
+                );
+              })}
             </ScrollView>
             <View style={styles.buttons}>
               <Button
-                label={`${items.length}곳`}
+                label={`${placed.length}곳`}
                 weight="medium"
-                disabled={items.length === 0}
+                disabled={placed.length === 0}
                 onPress={() => setSaveOpen(true)}
                 leading={<Icon name="bookmark" size={20} color={colors.text.inverse} />}
                 style={styles.primary}
@@ -404,7 +437,7 @@ export function ExtractResultScreen() {
 
       <PlaceSaveSheet
         visible={saveOpen}
-        places={items.map((i) => ({ id: i.place.id, name: i.name }))}
+        places={placed.map((i) => ({ id: i.place.id, name: i.name }))}
         initialChoice="personal"
         memo={sent?.input.memo}
         onClose={() => setSaveOpen(false)}
@@ -460,7 +493,7 @@ function RoundButton({
   label,
   onPress,
 }: {
-  icon: 'pencil' | 'close';
+  icon: 'pencil' | 'close' | 'search';
   label: string;
   onPress: () => void;
 }) {
@@ -564,6 +597,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.brand.primary,
   },
+  // 지도에서 못 찾아 아직 장소가 없는 줄
+  numberMissing: { backgroundColor: colors.text.sub2 },
   rowTexts: { flex: 1, gap: spacing[8] },
   rowButtons: { flexDirection: 'row', gap: spacing[10] },
   round: {

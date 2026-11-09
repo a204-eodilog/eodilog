@@ -288,13 +288,28 @@ function extractionResult(id: string, job: MockExtraction) {
           confidence: 0.9,
         }))
       : job.outcome === 'MULTIPLE_CANDIDATES'
-        ? ['남천점', '광안점', '민락점'].map((branch, i) => ({
-            candidateId: `${id}-c${i + 1}`,
-            name: `바다 앞 카페 ${branch}`,
-            place: bookmarkPlace([0, 2, 3][i]),
-            evidence: '게시물 글에서 찾았어요',
-            confidence: 0.5,
-          }))
+        ? // AI 서버처럼 언급(name)마다 후보를 이어 붙인다: 한 곳으로 정해진 가게 + 지점이 둘인 카페
+          // (지점 이름은 place.name) + 지도에서 못 찾은 빵집(place: null)
+          [
+            {
+              name: BOOKMARKS[3][0],
+              place: bookmarkPlace(3),
+              evidence: '캡처 속 간판에서 찾았어요',
+              confidence: 1,
+            },
+            ...(['광안점', '전포점'] as const).map((branch, i) => ({
+              name: '바다 앞 카페',
+              place: { ...bookmarkPlace([0, 2][i]), name: `바다 앞 카페 ${branch}` },
+              evidence: '게시물 글에서 찾았어요',
+              confidence: 0.8,
+            })),
+            {
+              name: '골목 빵집',
+              place: null,
+              evidence: '게시물 글에서 찾았어요',
+              confidence: null,
+            },
+          ].map((c, i) => ({ candidateId: `${id}-c${i + 1}`, ...c }))
         : [];
   return {
     job: {

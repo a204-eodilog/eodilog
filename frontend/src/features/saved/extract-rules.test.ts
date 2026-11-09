@@ -5,9 +5,12 @@ import {
   canFind,
   candidateLetter,
   extractRegion,
+  extractItems,
   extractionView,
   failedNotice,
+  groupCandidates,
   isLink,
+  nextToChoose,
   linkLabel,
   linkStatus,
   progressStep,
@@ -48,6 +51,11 @@ function candidate(id: string, withPlace = true): ExtractionCandidate {
     evidence: '게시물 글에서 찾았어요',
     confidence: null,
   };
+}
+
+/** 한 언급(name)의 지점 하나. 지점 이름은 place.name에 있다 */
+function branch(id: string, name: string, placeName = name): ExtractionCandidate {
+  return { ...candidate(id), name, place: { ...place, id, name: placeName } };
 }
 
 function result(
@@ -133,25 +141,30 @@ describe('extractionView (S12)', () => {
     expect(extractionView(result('SUCCEEDED', 'FAILED'))).toBe('failed');
   });
 
-  it('찾지 못했거나 지도에서 찾은 후보가 없으면 식별 불가', () => {
+  it('언급이 없으면 식별 불가', () => {
     expect(extractionView(result('SUCCEEDED', 'NOT_FOUND'))).toBe('notFound');
-    expect(extractionView(result('SUCCEEDED', 'SUCCESS', [candidate('a', false)]))).toBe(
-      'notFound',
-    );
+    expect(extractionView(result('SUCCEEDED', 'MULTIPLE_CANDIDATES', []))).toBe('notFound');
+  });
+
+  it('지도에서 못 찾은 언급만 있으면 성공 목록(직접 찾기 줄)', () => {
+    expect(
+      extractionView(result('SUCCEEDED', 'MULTIPLE_CANDIDATES', [candidate('a', false)])),
+    ).toBe('success');
   });
 
   it('성공과 복수 후보', () => {
     expect(extractionView(result('SUCCEEDED', 'SUCCESS', [candidate('a'), candidate('b')]))).toBe(
       'success',
     );
-    expect(
-      extractionView(result('SUCCEEDED', 'MULTIPLE_CANDIDATES', [candidate('a'), candidate('b')])),
-    ).toBe('multiple');
-    // 지도에서 찾은 후보가 하나뿐이면 고를 것이 없어 성공으로 본다
+    // 같은 이름(한 언급)의 여러 지점이면 복수 후보
     expect(
       extractionView(
-        result('SUCCEEDED', 'MULTIPLE_CANDIDATES', [candidate('a'), candidate('b', false)]),
+        result('SUCCEEDED', 'MULTIPLE_CANDIDATES', [branch('c1', '카페'), branch('c2', '카페')]),
       ),
+    ).toBe('multiple');
+    // 이름이 다른 장소 둘은 각각 한 곳이라 고를 것이 없다
+    expect(
+      extractionView(result('SUCCEEDED', 'MULTIPLE_CANDIDATES', [candidate('a'), candidate('b')])),
     ).toBe('success');
   });
 
@@ -159,6 +172,43 @@ describe('extractionView (S12)', () => {
     expect(extractionView(result('QUEUED', null), true)).toBe('failed');
     expect(extractionView(result('RUNNING', null), true)).toBe('failed');
     expect(extractionView(result('SUCCEEDED', 'NOT_FOUND'), true)).toBe('notFound');
+  });
+});
+
+describe('groupCandidates / nextToChoose / extractItems (S12 언급별 묶음)', () => {
+  // 확정 가게 A + 지점 둘인 카페 + 지도에서 못 찾은 빵집
+  const candidates = [
+    candidate('A'),
+    branch('c1', '카페', '카페 남천점'),
+    branch('c2', '카페', '카페 광안점'),
+    { ...candidate('빵집', false), candidateId: 'b1' },
+  ];
+  const groups = groupCandidates(candidates);
+
+  it('같은 name을 한 묶음으로, 처음 나온 순서대로', () => {
+    expect(groups.map((g) => [g.key, g.name, g.options.length])).toEqual([
+      ['A', 'A', 1],
+      ['c1', '카페', 2],
+      ['b1', '빵집', 0],
+    ]);
+  });
+
+  it('지점이 여럿인 묶음을 먼저 고르고, 고르거나 빼면 다음으로', () => {
+    expect(nextToChoose(groups, {}, [])?.key).toBe('c1');
+    const pick = { place: groups[1].options[1].place, evidence: 'x' };
+    expect(nextToChoose(groups, { c1: pick }, [])).toBeNull();
+    expect(nextToChoose(groups, {}, ['c1'])).toBeNull();
+  });
+
+  it('성공 목록: 확정 가게는 그대로, 고른 지점은 지점 이름, 못 찾은 언급은 장소 없이', () => {
+    // 고르기 전에는 여러 지점 묶음이 목록에 없다(확정 가게 A는 사라지지 않는다)
+    expect(extractItems(groups, {}, []).map((i) => i.key)).toEqual(['A', 'b1']);
+    const pick = { place: groups[1].options[1].place, evidence: '게시물 글에서 찾았어요' };
+    const items = extractItems(groups, { c1: pick }, ['A']);
+    expect(items.map((i) => [i.key, i.name, i.place?.id ?? null])).toEqual([
+      ['c1', '카페 광안점', 'c2'],
+      ['b1', '빵집', null],
+    ]);
   });
 });
 
