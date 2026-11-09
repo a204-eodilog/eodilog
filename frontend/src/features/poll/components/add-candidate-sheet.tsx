@@ -9,6 +9,7 @@ import { useRegionNameMap } from '../hooks/use-candidate-names';
 import { useSavedPlaces } from '../hooks/use-saved-places';
 import { MAX_CANDIDATES } from '../poll-rules';
 import type { CandidateInput, CandidateOption, Poll } from '../types';
+import { SheetHeader } from './sheet-header';
 
 type Props = {
   visible: boolean;
@@ -71,17 +72,13 @@ export function AddCandidateSheet({
   const loading = !previewOptions && saved.isPending;
 
   return (
-    <BottomSheet
-      visible={visible}
-      onClose={onClose}
-      title="후보 추가"
-      titleVariant="title2"
-      locked={busy}
-    >
-      <View style={styles.subtitle}>
-        <Icon name="map-pin" size={16} color={colors.text.icon} />
-        <Text style={styles.subtitleText}>{`${typeLabel} · 여러 곳을 골라 넣을 수 있어요`}</Text>
-      </View>
+    <BottomSheet visible={visible} onClose={onClose} locked={busy}>
+      <SheetHeader
+        title="후보 추가"
+        subtitle={`${typeLabel} · 여러 곳을 골라 넣을 수 있어요`}
+        onClose={onClose}
+        closeDisabled={busy}
+      />
       <View style={styles.card}>
         {loading ? (
           <ActivityIndicator color={colors.brand.primary} />
@@ -135,8 +132,6 @@ export function AddCandidateSheet({
 }
 
 const styles = StyleSheet.create({
-  subtitle: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
-  subtitleText: { ...typography.caption, color: colors.text.icon },
   // 피그마: 회색 면, 둥글기 24, 안쪽 18, 줄 사이 8, 위 16 아래 20
   card: {
     marginTop: spacing[16],

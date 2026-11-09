@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { BottomSheet, Button, Chip, Icon } from '@/components/ui';
+import { BottomSheet, Button, Chip } from '@/components/ui';
 import { colors, spacing, typography } from '@/theme';
 
 import { buildCandidateOptions, regionCounts } from '../candidate-options';
@@ -12,6 +12,7 @@ import { defaultClosesAt, MAX_CANDIDATES } from '../poll-rules';
 import type { CandidateOption, Poll, PollType } from '../types';
 import { ClosesAtPicker } from './closes-at-picker';
 import { OptionRow } from './option-row';
+import { SheetHeader } from './sheet-header';
 
 type Props = {
   visible: boolean;
@@ -117,19 +118,13 @@ export function OpenPollSheet({
   const title = type === 'REGION' ? '지역 투표 열기' : '장소 투표 열기';
 
   return (
-    <BottomSheet
-      visible={visible}
-      onClose={close}
-      title={title}
-      titleVariant="title2"
-      locked={open.isPending}
-    >
-      <View style={styles.subtitle}>
-        <Icon name="map-pin" size={16} color={colors.text.icon} />
-        <Text
-          style={styles.subtitleText}
-        >{`후보 ${selected.length}곳 · 여러 곳을 고를 수 있어요`}</Text>
-      </View>
+    <BottomSheet visible={visible} onClose={close} locked={open.isPending}>
+      <SheetHeader
+        title={title}
+        subtitle={`후보 ${selected.length}곳 · 여러 곳을 고를 수 있어요`}
+        onClose={close}
+        closeDisabled={open.isPending}
+      />
 
       <View style={styles.chips}>
         <Chip label="지역" selected={type === 'REGION'} onPress={() => changeType('REGION')} />
@@ -184,8 +179,6 @@ export function OpenPollSheet({
 
 const styles = StyleSheet.create({
   // 피그마: 제목 아래 지도 핀 16 + 12 글자, 사이 4
-  subtitle: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
-  subtitleText: { ...typography.caption, color: colors.text.icon },
   chips: { flexDirection: 'row', gap: spacing[8], paddingTop: spacing[16] },
   loading: { paddingVertical: spacing[24] },
   notice: {
