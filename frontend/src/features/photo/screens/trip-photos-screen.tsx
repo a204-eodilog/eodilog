@@ -149,6 +149,13 @@ export function UnplacedPhotosScreen() {
       saving={connect.isPending}
       memberName={data.memberName}
       myMemberId={data.myMemberId}
+      members={[...(data.trip?.members ?? [])]
+        .sort((a, b) => a.joinOrder - b.joinOrder)
+        .map((m) => ({
+          name: m.user.nickname,
+          imageUrl: m.user.profileImageUrl,
+          me: m.id === data.myMemberId,
+        }))}
       onBack={() => router.back()}
       onToggle={toggle}
       onPlace={setPlaceId}

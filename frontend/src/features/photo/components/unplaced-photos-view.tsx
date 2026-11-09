@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Button, ErrorState, Header, Icon } from '@/components/ui';
+import { AvatarGroup, Button, ErrorState, Header, Icon } from '@/components/ui';
 import { colors, layout, spacing, typography } from '@/theme';
 
 import type { TripPhoto } from '../types';
@@ -33,6 +33,8 @@ export type UnplacedPhotosViewProps = {
   saving: boolean;
   memberName: (memberId: string) => string;
   myMemberId: string | null;
+  /** 상단 바 오른쪽 동행 얼굴 묶음 24(참여 순) */
+  members: { name: string; imageUrl: string | null; me: boolean }[];
   onBack: () => void;
   onToggle: (photoId: string) => void;
   onPlace: (placeId: string) => void;
@@ -53,7 +55,12 @@ export function UnplacedPhotosView(props: UnplacedPhotosViewProps) {
   const othersCount = props.photos.filter((p) => p.uploaderMemberId !== props.myMemberId).length;
   const canConnect = props.selected.size > 0 && !!props.placeId && !props.saving;
   const header = (
-    <Header title="장소 미지정" subtitle={props.tripTitle ?? undefined} onBack={props.onBack} />
+    <Header
+      title="장소 미지정"
+      subtitle={props.tripTitle ?? undefined}
+      onBack={props.onBack}
+      right={props.members.length > 0 ? <AvatarGroup people={props.members} /> : undefined}
+    />
   );
 
   if (props.state !== 'ready') {
@@ -144,7 +151,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: layout.screenPaddingX,
     paddingTop: spacing[16],
     paddingBottom: spacing[24],
-    gap: spacing[24],
+    gap: spacing[14],
   },
   block: { gap: spacing[12] },
   head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
