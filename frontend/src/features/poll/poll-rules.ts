@@ -152,3 +152,12 @@ export function ballotFailLines(wanted: string[], saved: string[]): [string, str
       : `${saved.length === 1 ? saved[0] : `${saved.length}곳`} 투표는 그대로예요`;
   return [first, second];
 }
+
+/**
+ * S17 '투표' 메뉴로 들어왔을 때 보일 투표(research R7).
+ * 목록은 최근 생성 순이다. 진행 중인 투표 중 가장 최근 것, 없으면 가장 최근 투표, 없으면 null
+ */
+export function pickPoll(polls: Poll[], now: Date): Poll | null {
+  const open = polls.find((p) => pollViewState(p, now) === 'open');
+  return open ?? polls[0] ?? null;
+}

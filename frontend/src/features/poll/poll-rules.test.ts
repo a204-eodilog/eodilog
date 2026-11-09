@@ -8,6 +8,7 @@ import {
   joinNames,
   myVoteSummary,
   notVotedCount,
+  pickPoll,
   pollTitle,
   pollViewState,
   remainingLabel,
@@ -142,5 +143,22 @@ describe('문구', () => {
       '아직 투표하지 않은 그대로예요',
     ]);
     expect(ballotFailLines([], ['부산'])[0]).toBe('투표를 취소하지 못했어요.');
+  });
+});
+
+describe('pickPoll', () => {
+  it('진행 중인 투표 중 가장 최근 것을 고른다', () => {
+    const closed = poll({ id: 'p1', status: 'CLOSED' });
+    const open = poll({ id: 'p2', closesAt: at(HOUR) });
+    const olderOpen = poll({ id: 'p3', closesAt: at(DAY) });
+    expect(pickPoll([closed, open, olderOpen], NOW)?.id).toBe('p2');
+  });
+  it('진행 중이 없으면 가장 최근 투표', () => {
+    const latest = poll({ id: 'p1', status: 'FINALIZED', selectedCandidateIds: ['c1'] });
+    const old = poll({ id: 'p2', status: 'CLOSED' });
+    expect(pickPoll([latest, old], NOW)?.id).toBe('p1');
+  });
+  it('투표가 없으면 null', () => {
+    expect(pickPoll([], NOW)).toBeNull();
   });
 });
