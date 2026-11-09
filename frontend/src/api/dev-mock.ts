@@ -877,6 +877,49 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
         latitude: 35.1699,
         longitude: 129.1149,
       },
+      // 지도에서 고르기 검색 확인용 서울 몇 곳(서울역 이름이 든 곳이 여럿이라 가까운 순·같은 이름 구분을 볼 수 있다)
+      {
+        id: 'se-1',
+        name: '서울역',
+        address: '서울특별시 용산구 한강대로 405',
+        latitude: 37.5547,
+        longitude: 126.9707,
+      },
+      {
+        id: 'se-2',
+        name: '서울로7017',
+        address: '서울특별시 중구 퇴계로 22',
+        latitude: 37.5568,
+        longitude: 126.9693,
+      },
+      {
+        id: 'se-3',
+        name: '스타벅스 서울역점',
+        address: '서울특별시 중구 봉래동2가 122',
+        latitude: 37.5559,
+        longitude: 126.9723,
+      },
+      {
+        id: 'se-4',
+        name: '서울역 돼지국밥',
+        address: '서울특별시 용산구 동자동 43',
+        latitude: 37.5531,
+        longitude: 126.9725,
+      },
+      {
+        id: 'se-5',
+        name: '서울시청',
+        address: '서울특별시 중구 세종대로 110',
+        latitude: 37.5663,
+        longitude: 126.9779,
+      },
+      {
+        id: 'se-6',
+        name: '남대문시장',
+        address: '서울특별시 중구 남대문시장4길 21',
+        latitude: 37.5592,
+        longitude: 126.9775,
+      },
     ];
     const seen = new Set<string>();
     const found = q
