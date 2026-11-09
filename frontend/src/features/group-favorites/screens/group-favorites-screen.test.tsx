@@ -309,6 +309,7 @@ describe('담기와 빼기', () => {
     await waitFor(() =>
       expect(mockPatch).toHaveBeenCalledWith('trip-1', 'p-seomyeon', '저녁에 가요'),
     );
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('메모를 저장했어요'));
   });
 
   it('코스에 없는 장소는 바로 내 저장을 뺀다', async () => {

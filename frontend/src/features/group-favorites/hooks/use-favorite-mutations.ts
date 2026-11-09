@@ -70,8 +70,11 @@ export function useFavoriteMutations(tripId: string) {
         return false;
       }
     });
+    // 이미 보내는 중이라 이번 누름을 건너뛰었으면 그 요청이 끝나며 다시 받는다
+    if (ok === null) return false;
     await refresh();
-    return ok === true;
+    if (ok) toast.success('메모를 저장했어요');
+    return ok;
   }
 
   /** 내 저장만 뺀다. 다른 동행이 담았으면 장소는 목록에 남는다 */
