@@ -144,10 +144,14 @@ const mockSaved = jest.mocked(getTripSavedPlaces);
 const mockReplace = jest.mocked(replaceBallot);
 const mockAddCandidate = jest.mocked(addCandidate);
 
+let lastClient: QueryClient;
 function renderScreen() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: Infinity } },
   });
+  lastClient = client;
+  // 여행 상세 캐시가 있는 것처럼 둔다(지역 확정 뒤 무효화 확인)
+  client.setQueryData(['trips', 'trip-1'], { id: 'trip-1', title: '겨울 여행' });
   return render(
     <QueryClientProvider client={client}>
       <PollScreen />
@@ -307,5 +311,84 @@ describe('후보 추가', () => {
     expect(mockAddCandidate).toHaveBeenCalledWith('trip-1', 'poll-1', { regionId: 'yeosu' }, 1);
     expect(await screen.findByText('새 후보')).toBeTruthy();
     expect(screen.getByText('투표 중에 추가됐어요')).toBeTruthy();
+  });
+});
+
+describe('마감 결과', () => {
+  const closed = {
+    status: 'FINALIZED' as const,
+    closedReason: 'DEADLINE' as const,
+    closesAt: '2026-10-27T09:40:00Z',
+  };
+
+  beforeEach(() => {
+    mockParams.pollId = 'poll-1';
+  });
+
+  it('최다 하나면 마감 카드와 결과, 확정된 여행지 보기를 누르면 여행지 확정 카드로 바뀌고 여행 캐시를 새로 한다', async () => {
+    mockGetPoll.mockResolvedValue({
+      ...OPEN,
+      ...closed,
+      votedMemberCount: 3,
+      eligibleMemberCount: 3,
+      candidates: [
+        candidate('c1', { regionId: 'busan', voteCount: 2 }),
+        candidate('c2', { regionId: 'gangneung', voteCount: 1 }),
+      ],
+      selectedCandidateIds: ['c1'],
+    });
+    await renderScreen();
+    expect(await screen.findByText('투표가 마감됐어요')).toBeTruthy();
+    expect(screen.getByText('가장 많이 받은 부산으로 확정됐어요')).toBeTruthy();
+    expect(screen.getByText('10.27(화) 18:40 마감')).toBeTruthy();
+    expect(screen.getByText('가장 많이')).toBeTruthy();
+    expect(lastClient.getQueryState(['trips', 'trip-1'])?.isInvalidated).toBe(true);
+
+    await fireEvent.press(screen.getByText('확정된 여행지 보기'));
+    expect(await screen.findByText('겨울 여행 여행지')).toBeTruthy();
+    expect(screen.getByText('3명 중 2표')).toBeTruthy();
+    expect(screen.getByText('모두 투표했어요')).toBeTruthy();
+    expect(screen.getByText('장소 모으고 코스 짜기')).toBeTruthy();
+  });
+
+  it('동률이면 같은 표 문구와 모두 확정 줄, 코스에서 날짜별로 나누기를 보인다', async () => {
+    mockGetPoll.mockResolvedValue({ ...OPEN, ...closed, selectedCandidateIds: ['c1', 'c2'] });
+    await renderScreen();
+    expect(await screen.findByText('부산과 강릉시가 1표씩 같아요')).toBeTruthy();
+    expect(screen.getByText('1명이 투표하지 않고 마감됐어요')).toBeTruthy();
+    expect(screen.getByText('부산과 강릉시를 모두 확정했어요')).toBeTruthy();
+    expect(screen.getByText('부산과 강릉시가 함께 확정됐어요')).toBeTruthy();
+    expect(screen.getByText('코스에서 날짜별로 나누기')).toBeTruthy();
+  });
+
+  it('0표면 다시 열기가 같은 후보와 제목으로 24시간 뒤 마감 투표를 연다', async () => {
+    mockGetPoll.mockResolvedValue({
+      ...OPEN,
+      status: 'CLOSED',
+      closedReason: 'NO_VOTES',
+      myCandidateIds: [],
+      selectedCandidateIds: [],
+    });
+    mockCreatePoll.mockResolvedValue(poll({ id: 'poll-again' }));
+    await renderScreen();
+    expect(await screen.findByText('아무도 투표하지 않았어요')).toBeTruthy();
+    const before = Date.now();
+    await act(async () => {
+      fireEvent.press(screen.getByText('다시 열기'));
+    });
+    expect(mockCreatePoll).toHaveBeenCalledTimes(1);
+    const [, body] = mockCreatePoll.mock.calls[0];
+    expect(body).toMatchObject({
+      type: 'REGION',
+      title: '어디로 갈까요?',
+      candidates: [{ regionId: 'busan' }, { regionId: 'gangneung' }],
+    });
+    const hours = (Date.parse(body.closesAt) - before) / 3_600_000;
+    expect(hours).toBeGreaterThan(23.9);
+    expect(hours).toBeLessThanOrEqual(24);
+    expect(mockRouter.replace).toHaveBeenCalledWith({
+      pathname: '/trips/[tripId]/polls/[pollId]',
+      params: { tripId: 'trip-1', pollId: 'poll-again' },
+    });
   });
 });
