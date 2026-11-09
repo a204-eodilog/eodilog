@@ -505,6 +505,9 @@ function PinView({
   const [px, py] = pin.point;
   const reduced = useReducedMotion();
   const animate = pin.enterDelayMs !== undefined && !reduced;
+  // 나타나는 동안만 핀을 그림 한 장(하드웨어 텍스처)으로 굳혀 움직인다. 그림자 있는 말풍선이 반투명하게 나타나면
+  // 안드로이드가 매 순간 따로 그려 합쳐서, 핀 여러 개가 동시에 나오면 버벅였다(11/09 폰 확인)
+  const [entering, setEntering] = useState(animate);
   const rise = useSharedValue(animate ? MAP_MOTION.pinRisePx : 0);
   const shown = useSharedValue(animate ? 0 : 1);
   useEffect(() => {
@@ -513,6 +516,12 @@ function PinView({
     const easing = Easing.out(Easing.quad);
     rise.set(withDelay(delay, withTiming(0, { duration: MAP_MOTION.pinRiseMs, easing })));
     shown.set(withDelay(delay, withTiming(1, { duration: MAP_MOTION.pinFadeMs, easing })));
+    // 다 나타나면 굳힌 그림을 푼다(안의 퍼지는 원이 계속 움직이므로)
+    const done = setTimeout(
+      () => setEntering(false),
+      delay + Math.max(MAP_MOTION.pinRiseMs, MAP_MOTION.pinFadeMs) + 50,
+    );
+    return () => clearTimeout(done);
     // 처음 한 번만 재생한다
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -532,6 +541,7 @@ function PinView({
         style,
       ]}
       pointerEvents="box-none"
+      renderToHardwareTextureAndroid={entering}
     >
       <View style={styles[INNER[pin.anchor ?? 'bottom']]} pointerEvents="box-none">
         {pin.children}
