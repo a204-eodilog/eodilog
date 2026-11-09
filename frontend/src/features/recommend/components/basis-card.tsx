@@ -20,7 +20,8 @@ export function BasisCard({ cells }: { cells: readonly BasisCell[] }) {
               {c.value}
               {c.extra ? <Text style={styles.extra}>{` ${c.extra}`}</Text> : null}
             </Text>
-            <Text style={[typography.caption, styles.label]} numberOfLines={1}>
+            {/* 좁은 화면에서 기간이 잘리지 않게 두 줄까지 쓴다 */}
+            <Text style={[typography.caption, styles.label]} numberOfLines={2}>
               {c.label}
             </Text>
           </View>
