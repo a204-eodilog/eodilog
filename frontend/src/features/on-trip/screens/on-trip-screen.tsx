@@ -199,7 +199,10 @@ export function OnTripScreen() {
   const date = dayIndex >= 0 && 'date' in phase ? phase.date : null;
   const placeId = items[0]?.place.id ?? null;
   const weather = useWeather(tripId, date, placeId);
-  const affected = weather.data ? affectedIndex(items, weather.data) : null;
+  // 오늘이면 이미 지난 일정은 비 영향 안내에서 뺀다
+  const affected = weather.data
+    ? affectedIndex(items, weather.data, phase.kind === 'during' ? now : undefined)
+    : null;
   const queried = itinerary.data ? latestQueriedAt(itinerary.data) : null;
   // 시작 전에는 날짜마다 그 날 코스 첫 장소의 예보를 받는다(Q-10-4)
   const forecastDays =

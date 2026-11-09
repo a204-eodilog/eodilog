@@ -133,9 +133,17 @@ function chanceAt(w: Weather, startTime: string | null): number {
   return w.hourly.find((h) => hourOf(h.at) === hour)?.precipitationProbability ?? 0;
 }
 
-/** 비 확률 50% 이상인 시간에 시작하는 첫 일정의 칸 번호. 없으면 null(Q-10-3) */
-export function affectedIndex(items: readonly DraftItem[], w: Weather): number | null {
-  const i = items.findIndex((item) => chanceAt(w, item.startTime) >= AFFECT_P);
+/**
+ * 비 확률 50% 이상인 시간에 시작하는 첫 일정의 칸 번호. 없으면 null(Q-10-3).
+ * now를 주면(오늘) 이미 시작 시각이 지난 일정은 건너뛴다
+ */
+export function affectedIndex(items: readonly DraftItem[], w: Weather, now?: Date): number | null {
+  const current = now ? clock(now) : null;
+  const i = items.findIndex(
+    (item) =>
+      (current === null || (item.startTime !== null && item.startTime >= current)) &&
+      chanceAt(w, item.startTime) >= AFFECT_P,
+  );
   return i >= 0 ? i : null;
 }
 

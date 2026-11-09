@@ -99,6 +99,9 @@ describe('오늘 코스', () => {
   it('비 확률 50% 이상인 시간에 시작하는 첫 일정', () => {
     expect(affectedIndex(todayItems(), weather())).toBe(0);
     expect(affectedIndex(todayItems(), weather({ hourly: [hourly(10, 0.2)] }))).toBeNull();
+    // 오늘 이미 지난 일정은 건너뛴다
+    expect(affectedIndex(todayItems(), weather(), at('2026-11-14T09:40:00'))).toBe(0);
+    expect(affectedIndex(todayItems(), weather(), at('2026-11-14T15:00:00'))).toBeNull();
   });
 
   it('지금 이후 첫 일정이 다음', () => {

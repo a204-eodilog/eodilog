@@ -169,6 +169,13 @@ describe('S25 여행 중', () => {
     expect(toast.show).toHaveBeenCalledWith('준비 중이에요');
   });
 
+  it('이미 지난 일정은 비 영향 안내에서 뺀다', async () => {
+    jest.setSystemTime(new Date('2026-11-14T15:00:00'));
+    await renderScreen();
+    expect(await screen.findByText('오전 비 70%')).toBeTruthy();
+    expect(screen.queryByText(/에 비가 와요/)).toBeNull();
+  });
+
   it('준비물 수를 받지 못하면 목록 보기', async () => {
     mockChecklist.mockRejectedValue(new Error('404'));
     await renderScreen();

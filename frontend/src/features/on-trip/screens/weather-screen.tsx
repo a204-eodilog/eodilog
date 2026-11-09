@@ -22,7 +22,7 @@ import {
 import { WeatherSummary } from '../components/weather-card';
 import { useWeather } from '../hooks/use-weather';
 import { useWeatherAlternatives } from '../hooks/use-weather-alternatives';
-import { affectedIndex, alternativeView } from '../on-trip-rules';
+import { affectedIndex, alternativeView, isoDate } from '../on-trip-rules';
 import type { Weather, WeatherAlternative } from '../types';
 
 export type WeatherViewProps = {
@@ -180,7 +180,9 @@ export function WeatherScreen() {
   const draft = itinerary.data ? toDraft(itinerary.data, dayCount(start, end)) : null;
   const items = draft && day ? (draft.days[day - 1] ?? []) : [];
   const shown = alts.result?.weather ?? weather.data ?? null;
-  const affected = shown ? affectedIndex(items, shown) : null;
+  // 오늘 화면이면 이미 지난 일정은 건너뛴다
+  const today = isoDate(new Date()) === date;
+  const affected = shown ? affectedIndex(items, shown, today ? new Date() : undefined) : null;
 
   // 코스를 받으면 그 version으로 한 번 날씨 대안을 만든다
   const version = itinerary.data?.version ?? null;
