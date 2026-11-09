@@ -53,6 +53,8 @@ export type RecommendViewProps = {
   regions: RegionPick[];
   places: PlacePick[];
   cells: BasisCell[];
+  /** 여행지 카드의 지역 줄. 응답 Region에 상위 지역 이름이 없어 여행의 여행지 이름을 쓴다 */
+  regionLocation: string | null;
   /** 내가 이미 담은 장소 */
   savedIds: ReadonlySet<string>;
   savingId: string | null;
@@ -134,7 +136,7 @@ export function RecommendView(props: RecommendViewProps) {
                 <RecommendCard
                   key={r.region.id}
                   title={r.region.name}
-                  location={null}
+                  location={props.regionLocation}
                   reason={r.reason}
                   reasonIcon="bookmark"
                   action={{ kind: 'vote', onPress: () => props.onVote(r) }}
@@ -282,6 +284,7 @@ export function RecommendScreen() {
             )
           : []
       }
+      regionLocation={regionName}
       savedIds={savedIds}
       savingId={savingId}
       onSave={(id) => void save(id)}

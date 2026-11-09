@@ -162,10 +162,11 @@ describe('S21 추천 결과', () => {
     expect(screen.getByText('이번 추천에 쓴 것')).toBeTruthy();
     expect(screen.getByText(' 겹침 3')).toBeTruthy();
     expect(screen.getByText('3명')).toBeTruthy();
-    expect(screen.getByText('부산')).toBeTruthy();
     expect(screen.getByText('11.14 – 11.15')).toBeTruthy();
     expect(screen.getByText('개인 즐겨찾기와 비공개 취향은 쓰지 않았어요')).toBeTruthy();
     expect(screen.getByText('영도 흰여울 일대')).toBeTruthy();
+    // 여행지 카드의 지역 줄은 여행의 여행지 이름. 근거 칸의 부산과 함께 세 번 보인다
+    expect(screen.getAllByText('부산')).toHaveLength(3);
     expect(screen.getByText('겹친 장소 흰여울문화마을이 있는 동네예요')).toBeTruthy();
     expect(screen.getByText('자갈치 회 골목')).toBeTruthy();
     expect(screen.getByText('부산 중구')).toBeTruthy();

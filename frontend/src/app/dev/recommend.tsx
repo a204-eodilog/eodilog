@@ -71,6 +71,7 @@ function DevScreen({ state }: { state: string }) {
       regions={regions}
       places={places}
       cells={basisCells({ sharedPlaceCount: 5, usedMemberCount: 3 }, 3, '부산', '11.14 – 11.15')}
+      regionLocation="부산"
       savedIds={saved}
       savingId={null}
       onSave={(id) => setSaved(new Set([...saved, id]))}
