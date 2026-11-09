@@ -14,6 +14,7 @@ import { PollClosedHeaderCard, PollDecidedCard } from '../components/poll-header
 import {
   PollEmptyView,
   PollNoVotesView,
+  PollNotFoundView,
   PollOpenView,
   PollResultView,
   TieConfirmedLine,
@@ -69,9 +70,7 @@ export function PollScreen() {
   if ((!pollId && list.isPending) || (targetId && detail.isPending && !poll)) {
     body = <ActivityIndicator style={styles.loading} color={colors.brand.primary} />;
   } else if (detail.notFound) {
-    body = (
-      <ErrorState title="볼 수 없는 투표예요" onRetry={() => router.back()} retryLabel="뒤로" />
-    );
+    body = <PollNotFoundView onBack={() => router.back()} />;
   } else if (!poll && (list.isError || detail.isError)) {
     body = (
       <ErrorState

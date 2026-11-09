@@ -386,3 +386,28 @@ export function PollNoVotesView({
     </View>
   );
 }
+
+/**
+ * 볼 수 없는 투표(FR-022). 지워졌거나 다른 여행의 투표, 지금 동행이 아닌 여행의 투표.
+ * 디자인이 없어 채팅 비참여자 차단 화면과 같은 모양으로 둔다 (가정 — 사용자 확인 필요, Q-4-6)
+ */
+export function PollNotFoundView({ onBack }: { onBack: () => void }) {
+  return (
+    <View style={styles.zero}>
+      <View style={styles.zeroIcon}>
+        <Icon name="lock" size={28} color={colors.text.icon} />
+      </View>
+      <Text style={styles.zeroTitle} accessibilityRole="header">
+        볼 수 없는 투표예요
+      </Text>
+      <Text style={styles.zeroBody}>투표가 지워졌거나 지금 함께하는 여행이 아니에요</Text>
+      <Pressable
+        accessibilityRole="button"
+        onPress={onBack}
+        style={({ pressed }) => [styles.decide, pressed && styles.pressed]}
+      >
+        <Text style={styles.decideText}>돌아가기</Text>
+      </Pressable>
+    </View>
+  );
+}

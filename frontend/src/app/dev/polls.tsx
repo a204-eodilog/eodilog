@@ -8,6 +8,7 @@ import { PollClosedHeaderCard, PollDecidedCard } from '@/features/poll/component
 import {
   PollEmptyView,
   PollNoVotesView,
+  PollNotFoundView,
   PollOpenView,
   PollResultView,
   TieConfirmedLine,
@@ -128,6 +129,7 @@ type Example =
   | { kind: 'decidedCard' }
   | { kind: 'tie' }
   | { kind: 'noVotes' }
+  | { kind: 'notFound' }
   | { kind: 'open'; poll: Poll; fail?: [string, string]; addSheet?: boolean }
   | { kind: 'n8'; type: 'REGION' | 'PLACE'; options: CandidateOption[]; selected: string[] };
 
@@ -172,6 +174,7 @@ const EXAMPLES: { group: string; label: string; example: Example }[] = [
   { group: 'S22', label: '동률 · 같은 표 모두 확정', example: { kind: 'tie' } },
   { group: 'S22', label: '0표', example: { kind: 'noVotes' } },
   { group: 'S22', label: '여행지 확정', example: { kind: 'decidedCard' } },
+  { group: 'S22 그 밖', label: '볼 수 없는 투표', example: { kind: 'notFound' } },
   {
     group: 'S22 그 밖',
     label: '아직 투표 안 함',
@@ -295,6 +298,14 @@ export default function PollStates() {
           between={<TieConfirmedLine text="부산과 강릉을 모두 확정했어요" />}
           action={{ label: '코스에서 날짜별로 나누기', icon: 'check', onPress: noop }}
         />
+      </Frame>
+    );
+  }
+
+  if (example?.kind === 'notFound') {
+    return (
+      <Frame title="투표">
+        <PollNotFoundView onBack={back} />
       </Frame>
     );
   }
