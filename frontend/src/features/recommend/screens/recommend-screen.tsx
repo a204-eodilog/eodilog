@@ -24,9 +24,15 @@ import { colors, layout, radius, spacing, typography } from '@/theme';
 import { BasisCard } from '../components/basis-card';
 import { RecommendCard } from '../components/recommend-card';
 import { RecommendLoading } from '../components/recommend-loading';
+import {
+  InsufficientView,
+  NoOverlapNotice,
+  RecommendFailView,
+} from '../components/recommend-states';
 import { useRecommendation } from '../hooks/use-recommendation';
 import {
   basisCells,
+  insufficientLines,
   splitItems,
   viewState,
   type BasisCell,
@@ -244,6 +250,21 @@ export function RecommendScreen() {
       // 투표 열기 시트는 투표 쪽 작업과 합칠 때 그 여행지로 연다(Q-9-2)
       onVote={() => toast.show('준비 중이에요')}
       onRedo={() => void start()}
+      notice={state === 'noOverlap' ? <NoOverlapNotice /> : undefined}
+      other={
+        state === 'insufficient' && result ? (
+          <InsufficientView
+            lines={insufficientLines(result.basis)}
+            // 그룹 즐겨찾기에서 왔으면 그리로 돌아가고, 아니면 연다
+            onMorePlaces={() => router.dismissTo(`/trips/${tripId}/favorites`)}
+            onPreferences={() =>
+              router.push({ pathname: '/preferences', params: { from: 'recommendation', tripId } })
+            }
+          />
+        ) : state === 'failed' ? (
+          <RecommendFailView onRetry={() => void start()} />
+        ) : undefined
+      }
     />
   );
 }

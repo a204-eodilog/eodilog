@@ -3,7 +3,17 @@ import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Button, toast } from '@/components/ui';
-import { basisCells, splitItems, type ViewState } from '@/features/recommend/recommend-rules';
+import {
+  InsufficientView,
+  NoOverlapNotice,
+  RecommendFailView,
+} from '@/features/recommend/components/recommend-states';
+import {
+  basisCells,
+  insufficientLines,
+  splitItems,
+  type ViewState,
+} from '@/features/recommend/recommend-rules';
 import { RecommendView } from '@/features/recommend/screens/recommend-screen';
 import { sampleItems } from '@/features/recommend/testing';
 import { colors, layout, spacing, typography } from '@/theme';
@@ -16,6 +26,9 @@ import { colors, layout, spacing, typography } from '@/theme';
 const EXAMPLES: { state: string; label: string }[] = [
   { state: 'loading', label: '생성 중 201-10044' },
   { state: 'success', label: '성공 201-10081' },
+  { state: 'noOverlap', label: '겹침 없음 201-10340' },
+  { state: 'insufficient', label: '자료 부족 201-10470' },
+  { state: 'failed', label: '생성 실패 201-10530' },
 ];
 
 export default function DevRecommend() {
@@ -63,6 +76,18 @@ function DevScreen({ state }: { state: string }) {
       onSave={(id) => setSaved(new Set([...saved, id]))}
       onVote={() => toast.show('준비 중이에요')}
       onRedo={() => {}}
+      notice={state === 'noOverlap' ? <NoOverlapNotice /> : undefined}
+      other={
+        state === 'insufficient' ? (
+          <InsufficientView
+            lines={insufficientLines({ sharedPlaceCount: 1, usedMemberCount: 1 })}
+            onMorePlaces={() => toast.show('그룹 즐겨찾기로 가요')}
+            onPreferences={() => toast.show('취향 입력으로 가요')}
+          />
+        ) : state === 'failed' ? (
+          <RecommendFailView onRetry={() => {}} />
+        ) : undefined
+      }
     />
   );
 }

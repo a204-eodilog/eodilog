@@ -13,7 +13,7 @@ import { result } from '../testing';
 import { RecommendScreen } from './recommend-screen';
 
 const mockParams = { tripId: 'trip-1' };
-const mockRouter = { replace: jest.fn(), back: jest.fn(), push: jest.fn() };
+const mockRouter = { replace: jest.fn(), back: jest.fn(), push: jest.fn(), dismissTo: jest.fn() };
 
 jest.mock('@/config/env', () => ({
   env: { appEnv: 'local', apiBaseUrl: 'http://test', kakaoRedirectUri: null, devMock: false },
@@ -195,5 +195,54 @@ describe('결과로 다음 행동', () => {
     await renderScreen();
     await fireEvent.press(await screen.findByText('재추천'));
     await waitFor(() => expect(mockRequest).toHaveBeenCalledTimes(2));
+  });
+});
+
+describe('추천할 수 없을 때', () => {
+  it('자료 부족이면 지금 수와 기준, 장소 더 모으기와 취향 입력', async () => {
+    mockGet.mockResolvedValue(result({ insufficientData: true }));
+    await renderScreen();
+    expect(await screen.findByText('추천하기엔 아직 부족해요')).toBeTruthy();
+    expect(screen.getByText('모은 장소 1곳 · 3곳부터 추천해요')).toBeTruthy();
+    expect(screen.getByText('취향 고른 사람 1명 · 2명부터 추천해요')).toBeTruthy();
+    await fireEvent.press(screen.getByText('장소 더 모으기'));
+    expect(mockRouter.dismissTo).toHaveBeenCalledWith('/trips/trip-1/favorites');
+    await fireEvent.press(screen.getByText('취향 입력'));
+    expect(mockRouter.push).toHaveBeenCalledWith({
+      pathname: '/preferences',
+      params: { from: 'recommendation', tripId: 'trip-1' },
+    });
+  });
+
+  it('실패하면 모은 장소는 그대로라고 알리고 다시 시도는 새 작업', async () => {
+    mockGet.mockResolvedValueOnce(result({ status: 'FAILED' }));
+    await renderScreen();
+    expect(await screen.findByText('추천을 만들지 못했어요')).toBeTruthy();
+    expect(screen.getByText('모은 장소는 그대로예요')).toBeTruthy();
+    await fireEvent.press(screen.getByText('다시 시도'));
+    expect(await screen.findByText('여행지 2')).toBeTruthy();
+    expect(mockRequest).toHaveBeenCalledTimes(2);
+  });
+
+  it('추천 요청 자체가 실패해도 실패 화면', async () => {
+    mockRequest.mockRejectedValueOnce(new Error('network'));
+    await renderScreen();
+    expect(await screen.findByText('추천을 만들지 못했어요')).toBeTruthy();
+  });
+
+  it('그룹에 겹친 곳이 없으면 근거 칸 대신 겹침 없음 안내와 결과', async () => {
+    mockList.mockResolvedValue(
+      page(
+        sampleSaved().map((i) => ({ ...i, savedBy: i.savedBy.slice(0, 1), savedCount: 1 })),
+        {
+          totals: { allPlaceCount: 5, overlapPlaceCount: 0, filteredCount: 5 },
+        },
+      ),
+    );
+    await renderScreen();
+    expect(await screen.findByText('함께 담은 장소가 아직 없어요')).toBeTruthy();
+    expect(screen.getByText('그래서 한 사람의 취향을 따로 반영했어요')).toBeTruthy();
+    expect(screen.queryByText('이번 추천에 쓴 것')).toBeNull();
+    expect(screen.getByText('자갈치 회 골목')).toBeTruthy();
   });
 });
