@@ -3,8 +3,9 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AvatarGroup, Button, Header } from '@/components/ui';
 import { OpenPollSheet } from '@/features/poll/components/open-poll-sheet';
-import { PollEmptyView } from '@/features/poll/components/poll-views';
-import type { CandidateOption } from '@/features/poll/types';
+import { PollEmptyView, PollOpenView } from '@/features/poll/components/poll-views';
+import { candidate, poll } from '@/features/poll/testing';
+import type { CandidateOption, Poll } from '@/features/poll/types';
 import { colors, layout, spacing, typography } from '@/theme';
 
 /**
@@ -45,8 +46,26 @@ const PLACE_OPTIONS: CandidateOption[] = [
   },
 ];
 
+const NOW = new Date('2026-10-27T12:00:00Z');
+const AT = '2026-10-27T11:00:00Z';
+const NAMES: Record<string, string> = { c1: '부산', c2: '강릉', c3: '여수', c4: '경주' };
+
+/** 진행 중 지역 투표: 부산 1표(내 선택), 강릉 1표, 여수 0표, 2명 투표, 3명 대상, 2일 남음 */
+const OPEN: Poll = poll({
+  closesAt: '2026-10-29T13:00:00Z',
+  eligibleMemberCount: 3,
+  votedMemberCount: 2,
+  candidates: [
+    candidate('c1', { voteCount: 1, addedAt: AT }),
+    candidate('c2', { voteCount: 1, addedAt: AT }),
+    candidate('c3', { voteCount: 0, addedAt: AT }),
+  ],
+  myCandidateIds: ['c1'],
+});
+
 type Example =
   | { kind: 'empty' }
+  | { kind: 'open'; poll: Poll; fail?: [string, string] }
   | { kind: 'n8'; type: 'REGION' | 'PLACE'; options: CandidateOption[]; selected: string[] };
 
 const EXAMPLES: { group: string; label: string; example: Example }[] = [
@@ -74,6 +93,21 @@ const EXAMPLES: { group: string; label: string; example: Example }[] = [
     example: { kind: 'n8', type: 'PLACE', options: [], selected: [] },
   },
   { group: 'S22', label: '진행 중인 투표 없음', example: { kind: 'empty' } },
+  { group: 'S22', label: '진행 중', example: { kind: 'open', poll: OPEN } },
+  {
+    group: 'S22',
+    label: '투표 바꾸기 실패',
+    example: {
+      kind: 'open',
+      poll: OPEN,
+      fail: ['강릉으로 바꾸지 못했어요.', '부산 투표는 그대로예요'],
+    },
+  },
+  {
+    group: 'S22 그 밖',
+    label: '아직 투표 안 함',
+    example: { kind: 'open', poll: { ...OPEN, myCandidateIds: [], votedMemberCount: 1 } },
+  },
 ];
 
 const noop = () => undefined;
@@ -100,6 +134,24 @@ export default function PollStates() {
     return (
       <Frame title="투표">
         <PollEmptyView onPick={back} />
+      </Frame>
+    );
+  }
+
+  if (example?.kind === 'open') {
+    return (
+      <Frame title="지역 투표">
+        <PollOpenView
+          poll={example.poll}
+          names={NAMES}
+          myName="영광"
+          now={NOW}
+          failLines={example.fail ?? null}
+          onToggle={noop}
+          onCancel={noop}
+          onRetry={noop}
+          onAddCandidate={noop}
+        />
       </Frame>
     );
   }

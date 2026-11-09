@@ -6,11 +6,15 @@ import { AvatarGroup, ErrorState, Header } from '@/components/ui';
 import { useTrip } from '@/features/trip/hooks/use-trip';
 import { colors, spacing, typography } from '@/theme';
 
+import { useMe } from '@/hooks/use-me';
+
 import { OpenPollSheet } from '../components/open-poll-sheet';
-import { PollEmptyView } from '../components/poll-views';
+import { PollEmptyView, PollOpenView } from '../components/poll-views';
+import { useBallot } from '../hooks/use-ballot';
+import { useCandidateNames } from '../hooks/use-candidate-names';
 import { usePoll } from '../hooks/use-poll';
 import { usePolls } from '../hooks/use-polls';
-import { pollTypeLabel } from '../poll-rules';
+import { ballotFailLines, pollTypeLabel, pollViewState } from '../poll-rules';
 import type { Poll } from '../types';
 
 /**
@@ -53,6 +57,9 @@ export function PollScreen() {
     );
   } else if (!poll) {
     body = <PollEmptyView onPick={() => setSheetOpen(true)} />;
+  } else if (['open', 'closing'].includes(pollViewState(poll, new Date()))) {
+    // 투표마다 저장 큐가 따로라 투표 ID를 키로 준다
+    body = <OpenSection key={poll.id} tripId={tripId} poll={poll} />;
   } else {
     body = (
       <View style={styles.content}>
@@ -87,6 +94,36 @@ export function PollScreen() {
         onOpened={onOpened}
       />
     </View>
+  );
+}
+
+/** 진행 중 투표: 내 선택 저장과 실패 안내를 붙여 PollOpenView로 그린다 */
+function OpenSection({ tripId, poll }: { tripId: string; poll: Poll }) {
+  const { data: me } = useMe();
+  const ballot = useBallot(tripId, poll);
+  const view = ballot.view ?? poll;
+  const { names } = useCandidateNames(view.candidates);
+  const nameOf = (ids: string[]) => ids.map((id) => names[id]).filter(Boolean);
+  // 안내에는 새로 고르려던 곳만 부른다("강릉으로 바꾸지 못했어요"). 빼기만 했으면 고르려던 선택 전체
+  const failure = ballot.failure;
+  const added = failure?.wanted.filter((id) => !poll.myCandidateIds.includes(id)) ?? [];
+  const failLines = failure
+    ? ballotFailLines(
+        nameOf(added.length > 0 ? added : failure.wanted),
+        nameOf(poll.myCandidateIds),
+      )
+    : null;
+  return (
+    <PollOpenView
+      poll={view}
+      names={names}
+      myName={me?.nickname ?? '나'}
+      now={new Date()}
+      failLines={failLines}
+      onToggle={ballot.toggle}
+      onCancel={ballot.cancel}
+      onRetry={ballot.retry}
+    />
   );
 }
 
