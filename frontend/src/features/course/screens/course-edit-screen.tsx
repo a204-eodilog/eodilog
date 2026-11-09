@@ -1,20 +1,27 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState, type ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { toApiError } from '@/api/errors';
-import { AvatarGroup, ConfirmSheet, ErrorState, Header, Icon } from '@/components/ui';
+import { API_ERROR, toApiError } from '@/api/errors';
+import { AvatarGroup, ConfirmSheet, ErrorState, Header, Icon, toast } from '@/components/ui';
 import { pickPlace } from '@/features/place/place-picker';
-import { useTrip } from '@/features/trip/hooks/use-trip';
+import { updateTrip } from '@/features/trip/api';
+import { invalidateTripLists } from '@/features/trip/hooks/trip-cache';
+import { useRegionNames } from '@/features/trip/hooks/use-region-names';
+import { tripKey, useTrip } from '@/features/trip/hooks/use-trip';
+import { formatTripPeriod } from '@/lib/format-date';
 import { useMe } from '@/hooks/use-me';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
+import { AutoFailView, AutoLoadingView } from '../components/auto-views';
 import { CourseDayList } from '../components/course-day-list';
 import { CourseMap, type MapBadge } from '../components/course-map';
 import { DayTabs } from '../components/day-tabs';
 import { ItemSheet } from '../components/item-sheet';
 import { ManualBuilder } from '../components/manual-builder';
+import { ChooseView, NoDatesView, NoRegionView } from '../components/setup-views';
 import { TransportChips } from '../components/transport-chips';
 import {
   addPlace,
@@ -25,12 +32,14 @@ import {
   emptyDraft,
   latestQueriedAt,
   moveItem,
+  proposalToDraft,
   removeItem,
   replacePlace,
   setLegMode,
   toDraft,
   type CourseDraft,
 } from '../course-rules';
+import { useAutoCourse } from '../hooks/use-auto-course';
 import { useItinerary } from '../hooks/use-itinerary';
 import { useSaveItinerary } from '../hooks/use-save-itinerary';
 import { useTripSavedPlaces } from '../hooks/use-saved-places';
@@ -194,19 +203,22 @@ export function CourseEditScreen() {
   const [selectedLeg, setSelectedLeg] = useState<string | null>(null);
   const [sheetIndex, setSheetIndex] = useState<number | null>(null);
   const [leaving, setLeaving] = useState(false);
-  /** draft: 코스 초안 / manual: 직접 만들기 */
-  const [mode, setMode] = useState<'draft' | 'manual'>('draft');
-  const saved = useTripSavedPlaces(tripId, mode === 'manual');
+  /** setup: 여행지·기간 확인과 구성 방식 선택 / auto: 자동 추천 / manual: 직접 만들기 / draft: 코스 초안 */
+  const [mode, setMode] = useState<'setup' | 'auto' | 'manual' | 'draft'>('draft');
+  const [dates, setDates] = useState<{ start: string; end: string | null } | null>(null);
+  const [savingDates, setSavingDates] = useState(false);
+  const saved = useTripSavedPlaces(tripId, mode !== 'draft');
+  const auto = useAutoCourse(tripId);
+  const queryClient = useQueryClient();
+  const regionNames = useRegionNames(trip.data?.destinationRegionIds ?? []);
 
   const days = dayCount(trip.data?.startDate ?? null, trip.data?.endDate ?? null);
-  // 코스가 오면 처음 한 번 초안을 채운다(렌더 중 초기화). 비어 있으면 직접 만들기로 시작한다
-  if (!draft && itinerary.data && trip.data) {
-    if (itinerary.data.items.length > 0) {
-      setDraft(toDraft(itinerary.data, days));
-    } else {
-      setDraft(emptyDraft(itinerary.data.version, days ?? 1));
-      setMode('manual');
-    }
+  const [started, setStarted] = useState(false);
+  // 코스가 오면 처음 한 번 정한다(렌더 중 초기화). 비어 있으면 구성 방식 선택부터
+  if (!started && itinerary.data && trip.data) {
+    setStarted(true);
+    if (itinerary.data.items.length > 0) setDraft(toDraft(itinerary.data, days));
+    else setMode('setup');
   }
 
   const people: Person[] = (trip.data?.members ?? [])
@@ -259,6 +271,53 @@ export function CourseEditScreen() {
     if (picked) change(replacePlace(draft, day, index, picked, newKey()));
   };
 
+  const startManual = () => {
+    if (!itinerary.data) return;
+    setDraft(emptyDraft(itinerary.data.version, days ?? 1));
+    setOrigin('manual');
+    setDay(0);
+    setMode('manual');
+  };
+
+  /** 자동 추천을 받아 추천안 초안으로 연다. 실패하면 실패 화면에 머문다 */
+  const runAuto = async () => {
+    const base = itinerary.data;
+    if (!base) return;
+    setMode('auto');
+    const content = await auto.start(base.version);
+    if (!content) return;
+    setDraft(proposalToDraft(content, base.version, days, newKey));
+    setOrigin('proposal');
+    setDirty(false);
+    setDay(0);
+    setSelectedLeg(null);
+    setMode('draft');
+  };
+
+  /** 기간 없음의 [다음]: 여행 기간을 저장하면 구성 방식 선택으로 넘어간다 */
+  const saveDates = async () => {
+    if (!trip.data || !dates?.end || savingDates) return;
+    setSavingDates(true);
+    try {
+      const next = await updateTrip(tripId, {
+        expectedVersion: trip.data.version,
+        startDate: dates.start,
+        endDate: dates.end,
+      });
+      queryClient.setQueryData(tripKey(tripId), next);
+      invalidateTripLists(queryClient);
+    } catch (e) {
+      if (toApiError(e).code === API_ERROR.VERSION_CONFLICT) {
+        toast.show('다른 동행이 먼저 여행을 고쳤어요. 최신 내용을 불러왔어요');
+        void queryClient.invalidateQueries({ queryKey: tripKey(tripId), exact: true });
+      } else {
+        toast.error('기간을 저장하지 못했어요. 다시 시도해 주세요');
+      }
+    } finally {
+      setSavingDates(false);
+    }
+  };
+
   const findPlace = async () => {
     if (!draft) return;
     const target = day;
@@ -299,6 +358,44 @@ export function CourseEditScreen() {
     body = <ErrorState title="코스를 불러오지 못했어요" onRetry={() => void itinerary.refetch()} />;
   } else if (!itinerary.data || !trip.data) {
     body = <ActivityIndicator style={styles.loading} color={colors.brand.primary} />;
+  } else if (mode === 'setup') {
+    const regionName = regionNames.join('·');
+    if (trip.data.destinationRegionIds.length === 0) {
+      body = (
+        <NoRegionView
+          onPickRegion={() =>
+            router.push({ pathname: '/trips/[tripId]/settings-region', params: { tripId } })
+          }
+        />
+      );
+    } else if (!trip.data.startDate || !trip.data.endDate) {
+      body = (
+        <NoDatesView
+          regionName={regionName}
+          value={dates}
+          onChange={setDates}
+          onNext={() => void saveDates()}
+          saving={savingDates}
+        />
+      );
+    } else {
+      body = (
+        <ChooseView
+          regionName={regionName}
+          period={formatTripPeriod(trip.data.startDate, trip.data.endDate)}
+          savedCount={saved.data?.length ?? 0}
+          onAuto={() => void runAuto()}
+          onManual={startManual}
+        />
+      );
+    }
+  } else if (mode === 'auto') {
+    body =
+      auto.status === 'failed' ? (
+        <AutoFailView onRetry={() => void runAuto()} onManual={startManual} />
+      ) : (
+        <AutoLoadingView savedCount={saved.data?.length ?? 0} />
+      );
   } else if (draft && mode === 'manual') {
     const current = Math.min(day, draft.days.length - 1);
     body = (
@@ -348,7 +445,7 @@ export function CourseEditScreen() {
         onMore={setSheetIndex}
         {...sheetHandlers(current, draft)}
         onRecalculate={() => undefined}
-        onRedo={() => undefined}
+        onRedo={() => void runAuto()}
         onDone={() => void done()}
         saving={saver.saving}
       />
@@ -361,7 +458,10 @@ export function CourseEditScreen() {
         title="코스 짜기"
         subtitle={trip.data?.title}
         subtitleIcon="trip"
-        onBack={() => (dirty ? setLeaving(true) : leave())}
+        // 고친 것이나 아직 저장하지 않은 추천안·직접 만든 코스가 있으면 버릴지 묻는다
+        onBack={() =>
+          dirty || (mode === 'draft' && origin !== 'saved') ? setLeaving(true) : leave()
+        }
         right={
           people.length > 0 ? (
             <AvatarGroup

@@ -305,6 +305,12 @@ describe('직접 만들기', () => {
   const gwangalli = place('p-gwangalli', '광안리 바다뷰 카페');
   const seomyeon = place('p-seomyeon', '서면 돼지국밥집');
 
+  /** 빈 코스는 구성 방식 선택부터 열린다 */
+  async function openManual() {
+    await renderScreen();
+    await fireEvent.press(await screen.findByText('직접 만들기'));
+  }
+
   beforeEach(() => {
     mockGet.mockResolvedValue(itinerary({ version: 1, items: [], legs: [] }));
     mockSaved.mockResolvedValue([
@@ -315,7 +321,7 @@ describe('직접 만들기', () => {
   });
 
   it('날짜를 고르고 칩을 누르면 그 날 끝에 놓이고 코스 만들기로 초안이 된다', async () => {
-    await renderScreen();
+    await openManual();
     expect(await screen.findByText('날짜를 고르고 그룹 즐겨찾기 장소를 눌러 놓아요')).toBeTruthy();
     expect(await screen.findByText('3곳 남았어요')).toBeTruthy();
     await fireEvent.press(screen.getByLabelText('해운대 해변, 1일차에 놓기'));
@@ -336,13 +342,13 @@ describe('직접 만들기', () => {
   });
 
   it('놓은 장소가 없으면 코스 만들기를 누를 수 없다', async () => {
-    await renderScreen();
+    await openManual();
     await fireEvent.press(await screen.findByText('코스 만들기'));
     expect(screen.queryByText('재추천')).toBeNull();
   });
 
   it('놓은 장소를 빼면 칩 줄로 돌아온다', async () => {
-    await renderScreen();
+    await openManual();
     await fireEvent.press(await screen.findByLabelText('해운대 해변, 1일차에 놓기'));
     await fireEvent.press(screen.getByLabelText('해운대 해변 고치기'));
     await fireEvent.press(screen.getByText('코스에서 빼기'));
@@ -352,7 +358,7 @@ describe('직접 만들기', () => {
   it('그룹 즐겨찾기가 비었으면 장소 찾기로 고른 장소를 놓는다', async () => {
     mockSaved.mockResolvedValue([]);
     mockPick.mockResolvedValue(place('p-new', '흰여울문화마을'));
-    await renderScreen();
+    await openManual();
     expect(await screen.findByText('그룹 즐겨찾기가 비어 있어요')).toBeTruthy();
     await fireEvent.press(screen.getByText('장소 찾기'));
     expect(await screen.findByText('흰여울문화마을')).toBeTruthy();
