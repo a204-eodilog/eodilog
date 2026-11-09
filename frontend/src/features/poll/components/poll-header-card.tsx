@@ -25,7 +25,13 @@ export function PollOpenHeaderCard({ remaining, title, votedCount, notVotedCount
         </View>
         {remaining ? <Text style={styles.remaining}>{remaining}</Text> : null}
       </View>
-      <Text style={styles.title} accessibilityRole="header" numberOfLines={2}>
+      <Text
+        style={styles.title}
+        accessibilityRole="header"
+        numberOfLines={2}
+        // 좁은 화면에서 낱말 가운데서 줄이 바뀌지 않게 한다(iOS)
+        lineBreakStrategyIOS="hangul-word"
+      >
         {title}
       </Text>
       <View style={styles.bottom}>
@@ -76,7 +82,13 @@ export function PollClosedHeaderCard({ closedAt, title, sub }: ClosedProps) {
         </View>
         <IconLine icon="clock" text={`${closedAt} 마감`} />
       </View>
-      <Text style={styles.title} accessibilityRole="header" numberOfLines={2}>
+      <Text
+        style={styles.title}
+        accessibilityRole="header"
+        numberOfLines={2}
+        // 좁은 화면에서 낱말 가운데서 줄이 바뀌지 않게 한다(iOS)
+        lineBreakStrategyIOS="hangul-word"
+      >
         {title}
       </Text>
       {sub ? <IconLine icon="people" text={sub} /> : null}

@@ -92,9 +92,11 @@ export function PollOpenView({
         />
         <View style={styles.section}>
           {failLines ? (
-            <Text style={styles.heading}>후보를 눌러 투표해요</Text>
+            <Text style={styles.heading} lineBreakStrategyIOS="hangul-word">
+              후보를 눌러 투표해요
+            </Text>
           ) : (
-            <Text style={styles.heading}>
+            <Text style={styles.heading} lineBreakStrategyIOS="hangul-word">
               {`후보 ${poll.candidates.length}곳`}
               <Text style={styles.headingSub}>{'  여러 곳 골라도 돼요'}</Text>
             </Text>
@@ -295,7 +297,9 @@ export function PollResultView({
         {header}
         {between}
         <View style={styles.section}>
-          <Text style={styles.heading}>{heading}</Text>
+          <Text style={styles.heading} lineBreakStrategyIOS="hangul-word">
+            {heading}
+          </Text>
           {poll.candidates.map((c) => {
             const won = selected.has(c.id);
             const tone = tie
@@ -369,7 +373,7 @@ export function PollNoVotesView({
       <View style={styles.zeroIcon}>
         <Icon name="check" size={28} color={colors.text.icon} />
       </View>
-      <Text style={styles.zeroTitle} accessibilityRole="header">
+      <Text style={styles.zeroTitle} accessibilityRole="header" lineBreakStrategyIOS="hangul-word">
         아무도 투표하지 않았어요
       </Text>
       <Text style={styles.zeroBody}>확정 없이 마감됐어요. 다시 열 수 있어요</Text>
@@ -405,7 +409,7 @@ export function PollNotFoundView({ onBack }: { onBack: () => void }) {
       <View style={styles.zeroIcon}>
         <Icon name="lock" size={28} color={colors.text.icon} />
       </View>
-      <Text style={styles.zeroTitle} accessibilityRole="header">
+      <Text style={styles.zeroTitle} accessibilityRole="header" lineBreakStrategyIOS="hangul-word">
         볼 수 없는 투표예요
       </Text>
       <Text style={styles.zeroBody}>투표가 지워졌거나 지금 함께하는 여행이 아니에요</Text>
