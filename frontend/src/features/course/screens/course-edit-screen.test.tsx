@@ -739,6 +739,16 @@ describe('함께 편집', () => {
     expect(mockPut).toHaveBeenCalledTimes(1);
   });
 
+  it('마지막으로 고친 동행을 모르면 다른 동행으로 부른다', async () => {
+    const latest = latestCourse((c) => {
+      c.updatedByMemberId = 'm-left';
+      c.items = c.items.filter((i) => i.id !== 'i3');
+      c.legs = c.legs.filter((l) => l.toItemId !== 'i3');
+    });
+    await editDay1AndSaveIntoConflict(latest);
+    expect(await screen.findByText('다른 동행이 먼저 코스를 바꿨어요')).toBeTruthy();
+  });
+
   it('내 것으로 덮기는 내 1일차로 최신 version에 저장하고 나간다', async () => {
     const latest = latestCourse((c) => {
       c.items = c.items.filter((i) => i.id !== 'i3');

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 type Props = {
-  /** 마지막으로 코스를 고친 동행 이름. null이면 닫힌다 */
+  /** 마지막으로 코스를 고친 동행을 부르는 말. "세은님" 또는 "다른 동행". null이면 닫힌다 */
   editor: string | null;
   /** 덮어 저장하는 중 */
   busy: boolean;
@@ -20,7 +20,8 @@ type Props = {
  * 닫기 버튼이 없다. 둘 중 하나를 골라야 한다.
  */
 export function CoeditConflict({ editor, busy, onOverwrite, onLatest }: Props) {
-  const title = `${editor ?? ''}님이 먼저 코스를 바꿨어요`;
+  // 부르는 말은 늘 받침으로 끝나 '이'를 붙인다
+  const title = `${editor ?? ''}이 먼저 코스를 바꿨어요`;
   return (
     <Modal visible={editor !== null} transparent animationType="fade" onRequestClose={onLatest}>
       <View style={styles.dim}>

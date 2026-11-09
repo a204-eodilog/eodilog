@@ -74,7 +74,7 @@ function DevScreen({ state }: { state: string }) {
   // 화면이 그려진 뒤에 띄워야 상자와 안내가 올라오는 모습이 보인다
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (state === 'conflict') setEditor('세은');
+      if (state === 'conflict') setEditor('세은님');
       if (state === 'merged') {
         toast.show(
           '세은님이 다른 날을 고쳐서 최신 코스에 내 변경을 다시 얹었어요. 확인하고 완료를 눌러 주세요',

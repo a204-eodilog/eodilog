@@ -307,9 +307,11 @@ export function CourseEditScreen() {
       me: m.user.id === me.data?.id,
     }));
 
-  /** 코스를 마지막으로 고친 동행 이름. 모르거나 나간 동행이면 '다른 동행' */
-  const editorName = (memberId: string | null | undefined) =>
-    people.find((p) => p.id === memberId && !p.me)?.name ?? '다른 동행';
+  /** 코스를 마지막으로 고친 동행을 부르는 말. "세은님", 모르거나 나간 동행이면 "다른 동행" */
+  const editorName = (memberId: string | null | undefined) => {
+    const name = people.find((p) => p.id === memberId && !p.me)?.name;
+    return name ? `${name}님` : '다른 동행';
+  };
 
   /** 내 변경을 버리고 최신 코스로 채운다 */
   const takeLatest = (latest: Itinerary) => {
@@ -340,8 +342,8 @@ export function CourseEditScreen() {
       setSelectedLeg(null);
       toast.show(
         result.theirDays.length > 0
-          ? `${name}님이 다른 날을 고쳐서 최신 코스에 내 변경을 다시 얹었어요. 확인하고 완료를 눌러 주세요`
-          : `${name}님이 먼저 저장해서 최신 코스에 내 변경을 다시 얹었어요. 확인하고 완료를 눌러 주세요`,
+          ? `${name}이 다른 날을 고쳐서 최신 코스에 내 변경을 다시 얹었어요. 확인하고 완료를 눌러 주세요`
+          : `${name}이 먼저 저장해서 최신 코스에 내 변경을 다시 얹었어요. 확인하고 완료를 눌러 주세요`,
       );
     }
   };
