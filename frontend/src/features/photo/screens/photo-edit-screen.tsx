@@ -7,6 +7,7 @@ import { layout } from '@/theme';
 
 import { CoursePlaceList } from '../components/course-place-list';
 import { PhotoEditView } from '../components/photo-edit-view';
+import { useSearchPlace } from '../hooks/use-search-place';
 import { useDeletePhotos, useSavePhotoEdits, useTripPhotos } from '../hooks/use-trip-photos';
 import {
   commonTopic,
@@ -36,6 +37,9 @@ export function PhotoEditScreen() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  // S13에서 고른 코스 밖 장소. 시트를 다시 열어도 목록에 남긴다
+  const [searched, setSearched] = useState<{ id: string; name: string } | null>(null);
+  const searchPlace = useSearchPlace(data.trip, data.course);
 
   const base = useMemo(
     () => data.photos.filter((p) => p.placeId === placeId),
@@ -44,8 +48,13 @@ export function PhotoEditScreen() {
   const shown = useMemo(() => base.map((p) => withEdits(p, edits)), [base, edits]);
   const picked = shown.filter((p) => selected.has(p.id));
   const changes = pendingChanges(base, edits);
+  // 검색으로 고른 장소는 아직 저장 전이라 S31 묶음 이름에 없다. 고른 이름을 먼저 쓴다
   const nameOf = (id: string | null) =>
-    id ? (data.group(shown.filter((p) => p.placeId === id))[0]?.name ?? null) : null;
+    !id
+      ? null
+      : id === searched?.id
+        ? searched.name
+        : (data.group(shown.filter((p) => p.placeId === id))[0]?.name ?? null);
   const pickedPlaceIds = [...new Set(picked.map((p) => p.placeId))];
   const selectedPlaceName =
     pickedPlaceIds.length > 1 ? '여러 장소' : nameOf(pickedPlaceIds[0] ?? null);
@@ -100,6 +109,15 @@ export function PhotoEditScreen() {
     });
   };
 
+  // 시트를 닫고 S13을 연다(시트가 떠 있으면 검색 화면 위를 덮는다). 고른 장소는 다른 바꿈처럼 [완료]에 저장
+  const search = async () => {
+    setPlaceSheet(false);
+    const place = await searchPlace();
+    if (!place) return;
+    setSearched(place);
+    setEdits((prev) => stageEdit(prev, selected, { placeId: place.id }));
+  };
+
   const doneRef = useRef(done);
   useEffect(() => {
     doneRef.current = done;
@@ -146,7 +164,7 @@ export function PhotoEditScreen() {
         visible={placeSheet}
         onClose={() => setPlaceSheet(false)}
         title="어디서 찍었나요?"
-        description="코스 장소 중에서 골라요"
+        description="코스 장소에서 고르거나 검색해요"
       >
         <View style={styles.sheet}>
           <CoursePlaceList
@@ -157,6 +175,13 @@ export function PhotoEditScreen() {
               setEdits((prev) => stageEdit(prev, selected, { placeId: id }));
               setPlaceSheet(false);
             }}
+            picked={
+              searched ??
+              (pickedPlaceIds.length === 1 && pickedPlaceIds[0] && selectedPlaceName
+                ? { id: pickedPlaceIds[0], name: selectedPlaceName }
+                : null)
+            }
+            onSearch={() => void search()}
           />
         </View>
       </BottomSheet>
