@@ -838,6 +838,94 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
       ),
     );
   }
+  // S13 장소 검색: 예시 장소·즐겨찾기 예시·부산 몇 곳에서 이름이나 주소에 검색어가 든 곳(공공 장소 검색 흉내)
+  if (method === 'get' && url === '/places') {
+    const q = String((config.params as { query?: string } | undefined)?.query ?? '').trim();
+    const pool = [
+      ...Object.entries(EXAMPLE_PLACES).map(([id, [name, address]], i) => ({
+        id,
+        name,
+        address,
+        latitude: 37.7718 + i * 0.004,
+        longitude: 128.9478 - i * 0.003,
+      })),
+      ...BOOKMARKS.map(([name, address, latitude, longitude], i) => ({
+        id: `place-bookmark-${i + 1}`,
+        name,
+        address,
+        latitude,
+        longitude,
+      })),
+      {
+        id: 'sp-1',
+        name: '광안리 해수욕장',
+        address: '부산광역시 수영구 광안동',
+        latitude: 35.1532,
+        longitude: 129.1186,
+      },
+      {
+        id: 'sp-2',
+        name: '민락수변공원',
+        address: '부산광역시 수영구 민락동',
+        latitude: 35.1557,
+        longitude: 129.1342,
+      },
+      {
+        id: 'sp-3',
+        name: '수영 돼지국밥',
+        address: '부산광역시 수영구 수영동',
+        latitude: 35.1699,
+        longitude: 129.1149,
+      },
+    ];
+    const seen = new Set<string>();
+    const found = q
+      ? pool.filter(
+          (p) =>
+            (p.name.includes(q) || p.address.includes(q)) &&
+            !seen.has(p.name) &&
+            Boolean(seen.add(p.name)),
+        )
+      : [];
+    return ok(
+      config,
+      page(
+        found.map((p) => ({
+          ...p,
+          regionId: null,
+          provider: 'KTO',
+          providerPlaceId: p.id,
+          source: 'PROVIDER',
+        })),
+      ),
+    );
+  }
+  // S13 지도에서 직접 고른 위치를 장소로(수동 장소)
+  if (method === 'post' && url === '/places') {
+    const body = JSON.parse(String(config.data ?? '{}')) as {
+      name: string;
+      latitude: number;
+      longitude: number;
+      regionId?: string;
+    };
+    return ok(
+      config,
+      {
+        data: {
+          id: `manual-${Date.now()}`,
+          name: body.name,
+          address: null,
+          latitude: body.latitude,
+          longitude: body.longitude,
+          regionId: body.regionId ?? null,
+          provider: null,
+          providerPlaceId: null,
+          source: 'MANUAL',
+        },
+      },
+      201,
+    );
+  }
   // N7 장소 정보: 예시 장소(홈 추천 장소, S07 예시 피드 장소). 모르는 ID도 이름만 바꿔 돌려준다
   const placeInfoMatch = /^\/places\/([^/]+)(\/social-summary|\/public-reviews)?$/.exec(url);
   if (method === 'get' && placeInfoMatch && placeInfoMatch[1] !== 'search') {
