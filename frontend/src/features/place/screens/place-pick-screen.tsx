@@ -46,7 +46,9 @@ const SEARCH_HEIGHT = 48;
 /**
  * S13 장소 직접 검색·지정 · 지도에서 고르기. 지도를 움직여 가운데 핀에 위치를 맞추고 이름을 적는다.
  * 위쪽 검색칸에서 장소를 찾으면(GET /places, 공공 장소) 지도 가운데에서 가까운 순으로 보이고,
- * 누르면 지도가 그곳으로 가고 이름이 채워진다. [이 위치로] → POST /places(수동 장소) → 부른 화면에 돌려준다.
+ * 누르면 지도가 그곳으로 가고 이름이 채워지며 [이 장소로] → 그 장소를 그대로 돌려준다(같은 장소를 또 만들지 않음).
+ * 그 뒤 지도를 옮기면 직접 고르는 위치가 되어 자동으로 채운 이름·주소를 지우고 [이 위치로] → POST /places(수동 장소).
+ * 검색에 안 나오는 곳(골목 가게 등)을 위한 화면이라, 검색은 근처로 데려다 주고 마지막 위치는 가운데 핀으로 정한다.
  *
  * 서버가 가까운 순(near)과 장소 종류를 아직 주지 않아, 받은 결과 안에서만 가까운 순으로 줄 세우고
  * 종류 아이콘 대신 위치 아이콘을 쓴다. 위도·경도 숫자는 사람이 읽을 값이 아니라서 보이지 않는다
@@ -70,8 +72,14 @@ export function PlacePickScreen() {
   const [text, setText] = useState('');
   const [query, setQuery] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
-  /** 검색 결과에서 고른 장소. 주소를 보여 주고, 지도를 멀리 옮기면 지운다 */
+  /** 검색 결과에서 고른 장소. 주소를 보여 주고 [이 장소로]로 그대로 돌려준다. 지도를 멀리 옮기면 지운다 */
   const [picked, setPicked] = useState<Place | null>(null);
+  /** 이름 칸을 고른 장소 이름으로 자동으로 채웠는지(직접 고쳐 쓰면 false). 지도를 옮길 때 자동 이름만 지운다 */
+  const [nameAuto, setNameAuto] = useState(false);
+  /**
+   * 결과를 눌러 지도가 그곳으로 가는 중. 가는 도중 멈춤 알림(한 번)과 도착 알림은 "사용자가 옮겼다"로 보지 않는다
+   */
+  const arriving = useRef(false);
 
   useEffect(() => cancelPickOnLeave, []);
   useEffect(() => {
@@ -91,7 +99,10 @@ export function PlacePickScreen() {
     setSearchOpen(false);
     setPicked(place);
     setName(place.name);
+    setNameAuto(true);
+    setTouched(false);
     setText(place.name);
+    arriving.current = true;
     map.current?.animateCameraTo({
       latitude: place.latitude,
       longitude: place.longitude,
@@ -119,6 +130,12 @@ export function PlacePickScreen() {
   });
 
   const submit = () => {
+    // 검색에서 고른 곳 그대로면 그 장소를 돌려준다(새로 만들지 않는다)
+    if (picked) {
+      finishPick(picked);
+      router.back();
+      return;
+    }
     setTouched(true);
     if (valid) save.mutate();
   };
@@ -145,7 +162,17 @@ export function PlacePickScreen() {
           onCameraIdle={({ latitude, longitude }) => {
             const next = { latitude, longitude };
             setCenter(next);
-            if (picked && distanceMeters(picked, next) > MOVED_METERS) setPicked(null);
+            if (arriving.current) {
+              arriving.current = false;
+              return;
+            }
+            if (picked && distanceMeters(picked, next) > MOVED_METERS) {
+              setPicked(null);
+              if (nameAuto) {
+                setName('');
+                setNameAuto(false);
+              }
+            }
           }}
         />
         <CenterPin />
@@ -248,8 +275,11 @@ export function PlacePickScreen() {
             label="이 위치의 장소 이름"
             variant="filled"
             value={name}
-            onChangeText={setName}
-            placeholder="예: 민락 수변공원"
+            onChangeText={(v) => {
+              setName(v);
+              setNameAuto(false);
+            }}
+            placeholder={picked ? '예: 민락 수변공원' : '이 위치의 이름을 적어 주세요'}
             maxLength={PLACE_NAME_MAX_LENGTH}
             hideCount
             boxStyle={styles.nameBox}
@@ -259,7 +289,7 @@ export function PlacePickScreen() {
           />
           <View style={styles.actions}>
             <Button
-              label="이 위치로"
+              label={picked ? '이 장소로' : '이 위치로'}
               leading={<Icon name="check" size={20} color={colors.text.inverse} />}
               loading={save.isPending}
               onPress={submit}
