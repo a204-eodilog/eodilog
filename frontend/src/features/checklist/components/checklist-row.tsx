@@ -43,7 +43,12 @@ export function ChecklistRow({ item, members, onToggle, onMore }: Props) {
             >
               {item.label}
             </Text>
-            {tag ? <Tag label={tag} small /> : null}
+            {tag ? (
+              // Tag는 스스로 위쪽에 붙으므로 감싸서 이름과 세로 가운데를 맞춘다
+              <View style={styles.tagWrap}>
+                <Tag label={tag} small />
+              </View>
+            ) : null}
           </View>
           {meta ? (
             <View style={styles.metaRow}>
@@ -75,6 +80,7 @@ const styles = StyleSheet.create({
   texts: { flex: 1 },
   titleRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing[8] },
   label: { color: colors.text.default, flexShrink: 1 },
+  tagWrap: { justifyContent: 'center' },
   labelDone: { color: colors.text.sub },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[6] },
   meta: { color: colors.text.icon, flexShrink: 1 },
