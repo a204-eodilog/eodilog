@@ -36,10 +36,14 @@
 ## Phase 6: Polish
 
 - [X] T017 /dev/notifications 미리보기 6개 상태 src/app/dev/notifications.tsx
-- [ ] T018 웹 미리보기에서 Figma 6개 상태와 실제 흐름 확인
+- [X] T018 웹 미리보기에서 Figma 6개 상태와 실제 흐름 확인
 - [ ] T019 사용자 몫: 로컬 백엔드 + 웹 실서버 확인
 - [ ] T020 사용자 몫: 안드로이드 기기 확인
 
 ## Dependencies
 
 T002·T003·T004 → T005 → US1 → US2 → US3 → Polish. US3 팝업은 US2의 열기 훅을 쓴다.
+
+## Phase 7: Convergence
+
+- [X] T021 [US1] 끝까지 내리면 다음 쪽을 이어 받는 것을 화면 테스트로 증명한다 src/features/notification/screens/notifications-screen.test.tsx per US1/AC4 (partial)

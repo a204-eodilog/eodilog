@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -171,5 +171,32 @@ describe('S49 알림 목록', () => {
       }),
     );
     expect(mockTrip).not.toHaveBeenCalled();
+  });
+
+  it('끝까지 내리면 다음 쪽을 이어 받는다', async () => {
+    const [first, ...rest] = sampleNotifications();
+    mockList.mockImplementation(async ({ cursor } = {}) =>
+      cursor === 'c-2' ? page(rest) : { data: [first], page: { nextCursor: 'c-2', hasNext: true } },
+    );
+    await renderScreen();
+    await screen.findByText('겨울 여행 투표가 시작됐어요');
+    expect(screen.queryByText('지호님이 팔로우를 요청했어요')).toBeNull();
+    const list = screen.getByTestId('notification-list');
+    // 목록이 화면보다 짧다는 크기를 먼저 알려 준 뒤 끝까지 내린다
+    await act(async () => {
+      fireEvent(list, 'layout', {
+        nativeEvent: { layout: { x: 0, y: 0, width: 375, height: 700 } },
+      });
+      fireEvent(list, 'contentSizeChange', 375, 500);
+      fireEvent.scroll(list, {
+        nativeEvent: {
+          contentOffset: { x: 0, y: 400 },
+          contentSize: { width: 375, height: 500 },
+          layoutMeasurement: { width: 375, height: 700 },
+        },
+      });
+    });
+    expect(await screen.findByText('지호님이 팔로우를 요청했어요')).toBeTruthy();
+    expect(mockList).toHaveBeenLastCalledWith({ cursor: 'c-2' });
   });
 });

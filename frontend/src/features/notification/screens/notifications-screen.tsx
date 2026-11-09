@@ -55,6 +55,7 @@ export function NotificationsView(props: NotificationsViewProps) {
         <NotificationsEmpty />
       ) : (
         <SectionList
+          testID="notification-list"
           sections={sections.map((s) => ({ title: s.title, data: s.lines }))}
           keyExtractor={(line) => line.id}
           renderSectionHeader={({ section }) => (
