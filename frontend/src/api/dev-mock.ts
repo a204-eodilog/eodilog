@@ -631,6 +631,17 @@ function handlePhotos(
     });
   }
   const photoMatch = /^\/trips\/([^/]+)\/photos\/([^/]+)$/.exec(url);
+  if (method === 'delete' && photoMatch) {
+    const i = tripPhotos.findIndex((p) => p.id === photoMatch[2] && p.tripId === photoMatch[1]);
+    if (i === -1) throw fail(config, 404, 'PHOTO_NOT_FOUND', '사진을 찾을 수 없습니다.');
+    tripPhotos.splice(i, 1);
+    const jobId = `photo-delete-${(photoSeq += 1)}`;
+    return ok(
+      config,
+      { data: { jobId, status: 'QUEUED', statusUrl: `/api/v1/jobs/${jobId}` } },
+      202,
+    );
+  }
   if (method === 'patch' && photoMatch) {
     const photo = tripPhotos.find((p) => p.id === photoMatch[2] && p.tripId === photoMatch[1]);
     if (!photo) throw fail(config, 404, 'PHOTO_NOT_FOUND', '사진을 찾을 수 없습니다.');
