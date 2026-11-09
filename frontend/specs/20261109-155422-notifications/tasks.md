@@ -35,7 +35,7 @@
 
 ## Phase 6: Polish
 
-- [ ] T017 /dev/notifications 미리보기 6개 상태 src/app/dev/notifications.tsx
+- [X] T017 /dev/notifications 미리보기 6개 상태 src/app/dev/notifications.tsx
 - [ ] T018 웹 미리보기에서 Figma 6개 상태와 실제 흐름 확인
 - [ ] T019 사용자 몫: 로컬 백엔드 + 웹 실서버 확인
 - [ ] T020 사용자 몫: 안드로이드 기기 확인
