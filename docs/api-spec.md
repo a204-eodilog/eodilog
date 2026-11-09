@@ -53,7 +53,7 @@
 | 404 | `TRIP_NOT_FOUND`, `FEED_NOT_FOUND`, `JOB_NOT_FOUND` — 존재를 공개할 수 없는 자료도 같은 응답. 여행 안의 하위 자료는 `MEMBER_NOT_FOUND`(없거나 이탈한 멤버십), `CHECKLIST_ITEM_NOT_FOUND`(없거나 삭제된 준비물), `EXPENSE_NOT_FOUND`(없거나 삭제된 경비), `SETTLEMENT_NOT_FOUND`(없거나 다른 여행의 정산 계산), `CHAT_ROOM_NOT_FOUND`(없거나 삭제된 여행·참여하지 않았거나 나간 채팅방), `POLL_NOT_FOUND`(없거나 다른 여행의 투표), `VISIT_NOT_FOUND`(없거나 체크 해제한·다른 여행의 방문), `REVIEW_NOT_FOUND`(평가를 쓰지 않았거나 지운 방문), `ASSET_NOT_FOUND`(없거나 남의·볼 수 없는 파일) |
 | 409 | `VERSION_CONFLICT`, `POLL_CLOSED`, `ALREADY_MEMBER`, `ALREADY_APPLIED`, `TRIP_FULL`(여행 ACTIVE 멤버 정원 초과), `CLIENT_MESSAGE_ID_REUSED`(같은 clientMessageId를 다른 방·본문에 재사용), `REVIEW_EXISTS`(평가가 있는 방문의 체크 해제), `AI_FEATURE_DISABLED`(내 AI 기능 설정이 OFF인데 명시적 요청·채택), `SUGGESTION_ALREADY_ADOPTED`(이미 채택한 준비물 제안), `ASSET_NOT_PENDING`(이미 확인했거나 취소한 파일의 complete·취소), `UPLOAD_NOT_FOUND`(complete 때 저장소에 아직 파일이 없음) |
 | 410 | `INVITATION_EXPIRED`·`INVITATION_REVOKED` — 사용자가 제시한 유효 형식의 초대 토큰 검증 결과. 새 링크 발급이나 취소로 무효가 된 링크만 `INVITATION_REVOKED`, 없는 토큰·기간 지남·삭제된 여행·초대자 이탈은 `INVITATION_EXPIRED` |
-| 422 | `INSUFFICIENT_DATA`, `CURRENCY_MISMATCH`, `INVALID_PARTICIPANTS`, `UNSUPPORTED_INPUT`, `INVALID_ROUTE_LEGS`(코스 구간이 빠지거나 겹치거나 인접하지 않음), `UPLOAD_MISMATCH`(올린 파일의 크기·실제 형식이 업로드 요청과 다름) |
+| 422 | `INSUFFICIENT_DATA`, `CURRENCY_MISMATCH`, `INVALID_PARTICIPANTS`, `UNSUPPORTED_INPUT`, `INVALID_ROUTE_LEGS`(코스 구간이 빠지거나 겹치거나 인접하지 않음), `INPUT_LIMIT_EXCEEDED`(캡처 11장 이상·사진 51장 이상), `UPLOAD_MISMATCH`(올린 파일의 크기·실제 형식이 업로드 요청과 다름) |
 | 503 | `PROVIDER_UNAVAILABLE` — 지도·날씨·장소 공급자 장애. 결과 없음과 구분 |
 
 동시 편집 대상인 일정·투표·경비·정산·설정·피드 편집에는 `expectedVersion:integer`를 사용한다. 다른 버전을 덮어쓰지 않고 `409`를 반환한다. 공동 피드 편집과 개인 숨김 변경에도 버전 조건을 적용한다. 여행 생성·경비 생성·비동기 작업 생성·정산 계산·사진 업로드 배치 생성 POST에는 `Idempotency-Key` 헤더가 필수라는 제안이며 `(사용자, 실제 요청 경로, 키)`를 묶는다. 채팅 메시지 전송은 본문의 `clientMessageId`가 이 역할을 하므로 헤더를 요구하지 않는다(보내도 쓰지 않음, §9, 2026-11-02). 같은 키/같은 본문은 최초 결과, 다른 본문은 409. 여행 안 자료를 만드는 POST(경비 등록 등)는 최초 결과를 다시 줄 때도 현재 멤버 권한을 다시 검사한다(등록 뒤 이탈·내보내기·여행 삭제면 404). 다른 POST에는 이 헤더를 필수로 요구하지 않는다. 유효기간은 Q-12에서 확정한다.
@@ -142,9 +142,9 @@
 | PUT | `/trips/{tripId}/saved-places/{placeId}/me` | 멤버 | `{memo?:string}` | `SavedPlace` / 200 | 개인 보관함 전체를 자동 복사하지 않음 |
 | PATCH | `/trips/{tripId}/saved-places/{placeId}/me` | 본인 저장자 | `{memo:string}` | `SavedPlace` / 200 | 타인 메모 변경 권한 Q-4 |
 | DELETE | `/trips/{tripId}/saved-places/{placeId}/me` | 본인 저장자 | 없음 | 204 | 내 저장 기여만 삭제, 타인 저장 보존 |
-| POST | `/extractions` | 본인 | `{url?:string,captureAssetIds?:id[],memo?:string}` | `JobRef` / 202 | URL/캡처 하나 이상, 캡처 최대 10장·JPG/PNG. 11장 이상 422 INPUT_LIMIT_EXCEEDED. 용량·지원 사이트 Q-5 |
-| GET | `/extractions/{jobId}` | 작업 소유자 | 없음 | `ExtractionResult` / 200 | 후보는 아직 저장·방문 아님 |
-| DELETE | `/extractions/{jobId}` | 작업 소유자 | 없음 | 204 | 입력·후보 제거/작업 취소, 저장한 일반 장소와 분리 |
+| POST | `/extractions` | 본인 | `{url?:string,captureAssetIds?:id[],memo?:string}` | `JobRef` / 202 | `Idempotency-Key` 필수. URL/캡처 하나 이상(없으면 400 `url`·`captureAssetIds`), 캡처 최대 10장(11장 이상 422 INPUT_LIMIT_EXCEEDED)·중복 불가, 내가 올려 complete한 READY CAPTURE(JPG/PNG)만(남의·없는·PENDING·다른 용도 파일은 400 `captureAssetIds[i]`). url은 http(s)·계정 정보 없음·포트 생략/80/443·2048자 이하, memo 500자 이하(2026-11-09). 설정 OFF면 409 `AI_FEATURE_DISABLED`. 지원 사이트 판정은 하지 않음(Q-5) |
+| GET | `/extractions/{jobId}` | 작업 소유자 | 없음 | `ExtractionResult` / 200 | 후보는 아직 저장·방문 아님. 진행 중·실패·취소면 resultStatus=null·candidates=[](사유는 job.error). 남의·지운·다른 kind 작업은 404 `JOB_NOT_FOUND` |
+| DELETE | `/extractions/{jobId}` | 작업 소유자 | 없음 | 204 | 입력·후보 제거/작업 취소(진행 중이면 CANCELLED, 늦게 온 결과 저장 안 함). 다른 살아 있는 추출이 쓰지 않는 캡처 파일은 삭제. 저장한 일반 장소·북마크와 분리. 다시 보내면 404 |
 | POST | `/trips/{tripId}/recommendations` | 멤버 | `{regionId?:id}` | `JobRef` / 202 | 허용한 그룹 저장·취향만 스냅샷 |
 | GET | `/trips/{tripId}/recommendations/{jobId}` | 멤버 | 없음 | `RecommendationResult` / 200 | 요청 여행과 작업 귀속 일치 |
 | GET | `/me/discovery-recommendations` | 본인 | 페이지 | `DiscoveryItem[]` / 200 | 좋아요 기반 피드/장소 추천, 점수 미확정 |
@@ -298,7 +298,7 @@
 
 삭제 작업 응답에는 사진·메시지 내용이나 다른 사람의 자료를 포함하지 않는다. 재시도는 최초 승인된 대상 ID만 처리하며 신규 멤버십/동의가 없다고 기존 삭제 작업을 중단하지 않는다.
 
-jobs 공통 기반은 PostgreSQL 등록·실행·조회만 제공한다. kind별 실행기와 등록·실행·완료·조회 정책이 모두 등록된 기능만 활성화하며, 현재 운영 실행기는 정리 작업 TRIP_DELETE·LEAVE_CLEANUP·PHOTO_DELETE와 AI 준비물 제안 CHECKLIST_SUGGESTIONS다. 공개 생성·재시도·취소 API는 제공하지 않는다. 조회 불가·없는 작업은 모두 404 `JOB_NOT_FOUND`다. 정리 result는 `{scope:LEAVE_CLEANUP|PHOTO_DELETE|TRIP_DELETE,completedCount:integer,failedCount:integer}`만 공개한다. `scope`는 작업 종류이며 대상 ID·본문·파일은 반환하지 않는다. PHOTO_DELETE의 completedCount는 최초 승인 사진 수(1)이며 전체 여행 정리가 먼저 제거한 경우도 완료로 센다. 내부 SPI와 재시도·임대 보장은 [jobs 기반 문서](../EodiLog/docs/plan/jobs-foundation.md)를 따른다.
+jobs 공통 기반은 PostgreSQL 등록·실행·조회만 제공한다. kind별 실행기와 등록·실행·완료·조회 정책이 모두 등록된 기능만 활성화하며, 현재 운영 실행기는 정리 작업 TRIP_DELETE·LEAVE_CLEANUP·PHOTO_DELETE와 AI 준비물 제안 CHECKLIST_SUGGESTIONS, AI 장소 추출 PLACE_EXTRACTION(2026-11-09)이다. 공통 생성·재시도·취소 API는 제공하지 않는다(작업 취소는 `DELETE /extractions/{jobId}`처럼 자원별 API만). 조회 불가·없는 작업은 모두 404 `JOB_NOT_FOUND`다. 정리 result는 `{scope:LEAVE_CLEANUP|PHOTO_DELETE|TRIP_DELETE,completedCount:integer,failedCount:integer}`만 공개한다. `scope`는 작업 종류이며 대상 ID·본문·파일은 반환하지 않는다. PHOTO_DELETE의 completedCount는 최초 승인 사진 수(1)이며 전체 여행 정리가 먼저 제거한 경우도 완료로 센다. 내부 SPI와 재시도·임대 보장은 [jobs 기반 문서](../EodiLog/docs/plan/jobs-foundation.md)를 따른다.
 
 PHOTO_DELETE가 재시도 한도(기본 3회)를 소진해 FAILED가 되어도 삭제 승인은 유지된다. 예약 cleaner(기본 1시간 간격, `app.assets.cleanup-delay`)는 signed PUT 만료 후 다음 실행부터 DELETING 파일의 원본/표시 객체 삭제를 계속 시도한다. 사진 참조가 모두 논리 삭제된 경우에도 파일 정리는 가능하며, 살아 있는 사진이 참조하면 해당 파일 쌍을 지우지 않는다. 참조 중인 사진 tombstone과 asset 행/FK는 보존하므로 실패한 작업의 상태는 계속 FAILED이고 중복 DELETE도 같은 FAILED 작업을 반환한다. fallback 객체 정리 성공을 job 성공으로 바꾸지 않으며, 참조가 남아 있는 동안 늦은 PUT 객체도 반복 정리한다.
 
@@ -359,7 +359,7 @@ STOMP over WebSocket으로 서버 → 앱 전달만 한다. 메시지 보내기�
 | SavedPlace | `place:Place,savedBy:{memberId:id,memo:string\|null}[],savedCount:integer` |
 | JobRef | `jobId:id,status:QUEUED,statusUrl:string` |
 | Job | `id,kind:string,status:QUEUED\|RUNNING\|SUCCEEDED\|FAILED\|CANCELLED,progress:integer,result:object\|null,error:{code:string,message:string}\|null(FAILED·CANCELLED에서만),createdAt:datetime,finishedAt:datetime\|null` |
-| ExtractionResult | `job:Job,resultStatus:SUCCESS\|MULTIPLE_CANDIDATES\|NOT_FOUND\|FAILED\|null,candidates:{candidateId:id,name:string,place:Place\|null,evidence:string,confidence:number\|null}[]`. 식별 불가는 처리 성공과 별개 |
+| ExtractionResult | `job:Job,resultStatus:SUCCESS\|MULTIPLE_CANDIDATES\|NOT_FOUND\|FAILED\|null,candidates:{candidateId:id,name:string,place:Place\|null,evidence:string,confidence:number\|null}[]`. 식별 불가는 처리 성공과 별개. 작업이 SUCCEEDED가 아니면 resultStatus=null·candidates=[]. place는 AI가 찾은 네이버 장소를 공급자 ID로 upsert한 로컬 장소(regionId는 아직 null일 수 있음), 못 찾으면 null·confidence null. 같은 name의 후보는 한 언급의 여러 지점. FAILED는 모든 자료를 읽지 못함(2026-11-09) |
 | RecommendationResult | `job:Job,items:{type:REGION\|PLACE,region:Region\|null,place:Place\|null,reason:string}[],basis:{sharedPlaceCount:integer,usedMemberCount:integer},insufficientData:boolean` |
 | DiscoveryItem | `type:FEED\|PLACE,feed:FeedCard\|null,place:Place\|null,reason:string` |
 | TrendRegion | `region:Region,rank:integer,previousRank:integer\|null,rankChange:integer\|null,isNew:boolean,publishedTripCount:integer,followingCount:integer,from:date,to:date,sampleSize:integer,updatedAt:datetime,insufficientData:boolean`. 권한 필터 후 집계, 기간/집계 정의 Q-9 |
@@ -443,7 +443,7 @@ STOMP over WebSocket으로 서버 → 앱 전달만 한다. 메시지 보내기�
 | 범위 | PRD | 주요 테이블 |
 | --- | --- | --- |
 | 가입·관계·그룹 | WD-FR-01~04 | users, oauth_accounts, oauth_attempts, sessions, follows, suggestion_dismissals, trips, trip_members, trip_invitations |
-| 장소 수집·저장·취향 | WD-FR-05~08 | assets, jobs, extraction_candidates, places, regions, personal_bookmarks, trip_place_saves, user_preferences, preference_rejections, trip_members |
+| 장소 수집·저장·취향 | WD-FR-05~08 | assets, jobs(추출 후보는 result_json), places, regions, personal_bookmarks, trip_place_saves, user_preferences, preference_rejections, trip_members |
 | 추천·반응·트렌드 | WD-FR-09~11·31 | jobs, feed_likes, visits 및 원본 집계 |
 | 투표·일정·여행 중 | WD-FR-12~18 | polls, poll_candidates, poll_votes, poll_results, trip_destinations, itineraries, itinerary_items, itinerary_undo_states, poll_participants(만들지 않음), route_legs, jobs, checklist_items |
 | 사진·평가·정산 | WD-FR-19~23 | photos, photo_upload_batches, photo_topics, photo_groups, visits, reviews, expenses, expense_shares, visit_candidates, settlements, settlement_members, settlement_transfers |

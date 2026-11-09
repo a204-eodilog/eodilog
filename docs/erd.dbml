@@ -281,7 +281,7 @@ Table extraction_candidates {
   evidence text
   confidence decimal(5,4)
   indexes { job_id }
-  Note: 'PLACE_EXTRACTION 작업만 참조. 후보 place_id가 NULL일 수 있으며 식별 불가 좌표를 임의 생성하지 않음. 선택 후 일반 저장 API로 저장.'
+  Note: 'PLACE_EXTRACTION 작업만 참조. 후보 place_id가 NULL일 수 있으며 식별 불가 좌표를 임의 생성하지 않음. 선택 후 일반 저장 API로 저장. 2026-11-09 구현: 물리 테이블을 만들지 않고 후보를 jobs.result_json에 저장한다(후보는 작업과 함께 조회·삭제되고 따로 수정하지 않음).'
 }
 
 Table polls {

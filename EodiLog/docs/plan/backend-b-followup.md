@@ -1,6 +1,6 @@
 # 백엔드 B 후속 작업 — 준비물 체크리스트·멤버 관리·경비·초대·정산·채팅·나가기·투표·코스
 
-작성일: 2026-10-29 · 상태: 체크리스트·멤버 관리 병합 완료(MR !49·!50), 경비·정산 상태 병합 완료(MR !56, 2026-10-30), 초대 링크 병합 완료(MR !58·!62), 정산 계산 병합 완료(MR !69), 채팅 REST 병합 완료(MR !71), 기본 나가기 병합 완료(MR !76), 투표 구현(EODI-161), 나가기 내 채팅 삭제·방문 기록 구현(2026-11-04, §15·§16), 초대 링크 취소 병합 완료(MR !108, §9 I-11), 채팅 실시간 전달 구현(EODI-192, §12-1), 도메인 알림 이벤트 발행 병합(MR !123, §17), 방문 평가 구현(EODI-199, §18), AI 준비물 추천·채택 구현(EODI-218, §19)
+작성일: 2026-10-29 · 상태: 체크리스트·멤버 관리 병합 완료(MR !49·!50), 경비·정산 상태 병합 완료(MR !56, 2026-10-30), 초대 링크 병합 완료(MR !58·!62), 정산 계산 병합 완료(MR !69), 채팅 REST 병합 완료(MR !71), 기본 나가기 병합 완료(MR !76), 투표 구현(EODI-161), 나가기 내 채팅 삭제·방문 기록 구현(2026-11-04, §15·§16), 초대 링크 취소 병합 완료(MR !108, §9 I-11), 채팅 실시간 전달 구현(EODI-192, §12-1), 도메인 알림 이벤트 발행 병합(MR !123, §17), 방문 평가 구현(EODI-199, §18), AI 준비물 추천·채택 구현(EODI-218, §19), AI 장소 추출 구현(EODI-224, §20)
 
 [B 첫 작업](backend-b-trip-basic.md)(여행 생성·조회·수정)이 끝난 뒤 A의 카카오 로그인을 기다리는 동안 진행한 B 작업이다. [분담안](../../../docs/plan/backend-first-work-split.md) §6은 이 기능들을 "첫 통합 뒤 배분"으로 두었지만, 로그인 없이 개발할 수 있고 여행 패키지 안에서 끝나는 것부터 B가 먼저 맡았다. A와 겹치는 파일(`user`·`auth` 패키지, `SecurityConfig`)은 건드리지 않는다.
 
@@ -526,3 +526,51 @@ A가 만든 알림 기반(`events`·`notifications`, `GET /me/notifications`)에
 - `checklist_items`에 `jobs` FK가 생겼다(V202611061000). 테스트에서 `DELETE FROM jobs`를 하면 AI 준비물 행을 먼저 지워야 한다.
 - 오류 코드 `AI_FEATURE_DISABLED`는 `ChecklistErrorCode`에 두었다. 다른 AI 기능도 같은 코드 이름을 쓰면 된다.
 - 테스트 프로필(`application-test.yaml`)에 Hikari `minimum-idle: 1`, `idle-timeout: 10s`를 넣었다. 캐시된 테스트 컨텍스트(설정이 다른 `@SpringBootTest`마다 하나)가 각자 커넥션 10개를 들고 있어, 컨텍스트가 늘면 공유 PostgreSQL 한도 100을 넘었다(`too many clients already`). 그 뒤 테스트는 연결 대기 30초씩 걸리며 실패한다. 새 `@MockitoBean` 테스트를 더할 때도 이 설정이 있으면 괜찮다.
+
+## 20. AI 장소 추출 정책 (EODI-224, 2026-11-09 사용자 확정)
+
+명세 §5 `POST/GET/DELETE /extractions`를 구현했다. 실행은 jobs `PLACE_EXTRACTION`(패키지 `extraction`), AI 호출은 `global.ai`의 multipart 호출(`AiServerClient.postMultipart`)이다. AI 서버 계약은 [AI 명세](../../../ai/docs/spec.md) §1.0·§2. 분담 문서: `backend-a-b-work-split-2026-11-09`(B).
+
+| # | 질문 | 결정 | 근거 |
+| --- | --- | --- | --- |
+| E-1 | 요청 본문 | `{url?, captureAssetIds?, memo?}`만. url은 strip 후 빈 값이면 없음. url·캡처 둘 다 없으면 400(`url`·`captureAssetIds`). `regionHint`는 받지 않음 | 명세 §5 |
+| E-2 | url·memo 규칙 | url은 2048자 이하, AI `_parse_target`과 같은 규칙(http/https, host 있음, 계정 정보 없음, 포트 생략·80·443, 공백 없음). memo는 strip 후 500자(코드 포인트) 이하, 빈 값은 없음. 지원 사이트 판정은 하지 않음 | AI가 잘못된 url에 422를 주면 캡처가 정상이어도 작업 전체가 실패한다. 사이트 범위는 Q-5 |
+| E-3 | 개수 초과 | 캡처 11장 이상 422 `INPUT_LIMIT_EXCEEDED`(`ExtractionErrorCode`). 중복 ID는 400 | 명세 §5. §2 공통 표에도 추가 |
+| E-4 | 중복 요청 | `Idempotency-Key` 필수. 범위 `POST /api/v1/extractions`, 같은 키·같은 본문(정규화 후)은 처음 JobRef | 명세 §2 비동기 작업 생성 |
+| E-5 | 판정 순서 | 키 400 → 본문 400 → 개수 422 → 설정 OFF 409 `AI_FEATURE_DISABLED` → 캡처 검사 400 → 등록. 설정은 `user_settings.extraction_mode`만 읽고 행이 없으면 CONFIRM | S-15와 같다 |
+| E-6 | 캡처 검사 | 캡처 행을 id 순서로 `FOR UPDATE` 잠그고 내 것·CAPTURE·READY·표시본 있음(`display_content_type`)을 확인. 어긋나면 400 `captureAssetIds[i]`(남의·없는 파일도 같은 응답) | 존재 여부를 드러내지 않는다 |
+| E-7 | 입력 스냅샷 | `input_json = {url, memo, captureAssetIds}`. 바이트·저장소 키 없음. tripId·baseVersion null | jobs "허용 입력 스냅샷" |
+| E-8 | AUTO 모드 | CONFIRM과 같게 후보만. 자동 저장·방문 기록 없음 | 분담 문서. S-12와 같다 |
+| E-9 | 권한 | 등록·실행·완료: 요청자 설정이 OFF가 아님(계정 활성은 공통 기반). 깨지면 CANCELLED. 조회: 요청자 본인만 | 명세 §9 권한표 |
+| E-10 | 캡처 읽기 | 실행 때 행을 다시 읽어 READY가 아닌 파일은 건너뛰고, **표시본**(`display_key`, EXIF 제거본)을 15MB 한도로 읽는다. 저장소 장애는 TEMPORARY_FAILURE, 객체 없음·한도 초과는 그 장만 건너뜀. 링크도 읽은 캡처도 없으면 AI를 부르지 않고 `{resultStatus:FAILED, candidates:[]}`로 성공 | 원본은 업로드 기한(10분) 뒤 정리된다. AI 장당 한도 15MB |
+| E-11 | AI 호출 | `POST /ai/v1/place-extractions` multipart(`url`·`memo`·`captures` 파일 `capture-{n}.jpg/png`), `X-Internal-Token`·`X-Trace-Id=jobId`. 문자열 파트는 `text/plain;charset=UTF-8` 바이트 | S-23과 같은 연결 설정. 한글 깨짐 방지 |
+| E-12 | 실패 분류 | 5xx(LLM 장애 503 포함)·연결 실패·타임아웃 → TEMPORARY_FAILURE(최대 3회). 4xx·형식 오류 → EXECUTION_FAILED | AI spec §1.0 |
+| E-13 | 응답 검사 | resultStatus 4값·candidates 배열 60개 이하·name/evidence 비지 않음(255자 이하)·confidence null 또는 0~1이 아니면 전체 EXECUTION_FAILED. place만 틀리면(NAVER 아님, 이름·공급자 ID 빈값/255자 초과, 주소 500자 초과, 좌표 범위 밖) 그 후보를 place·confidence null로 | places 제약 |
+| E-14 | 장소 연결 | `PlaceResolver.resolve("NAVER", 공급자 ID=AI providerPlaceId, regionCode=null)`을 execute에서 호출(같은 ID는 한 번). DB 오류는 TEMPORARY_FAILURE. category는 버림 | complete는 결과를 바꿀 수 없다. upsert는 멱등. 예외를 던지면 worker가 영구 실패로 본다 |
+| E-15 | 결과 | `{resultStatus, candidates:[{candidateId(UUIDv7), name, place:Place\|null, evidence, confidence}]}`. place는 저장 시점 스냅샷. 저장·공개 때 같은 규칙으로 다시 고른다(`StoredExtraction`) | 명세 §10 |
+| E-16 | 조회 | `GET /extractions/{jobId}` = `JobService.get` + kind 확인(아니면 404). 성공 전에는 resultStatus null·candidates [] | 명세 §10 |
+| E-17 | JobRef | 공통 그대로(`statusUrl=/api/v1/jobs/{id}`) | |
+| E-18 | 삭제 | 요청자 아님·이미 지움·다른 kind는 404. 행을 잠그고 `deleted_at`, `input_json='{}'`, `result_json=NULL`. 끝나지 않은 작업은 CANCELLED(`POLICY_REVOKED`). 실행 중 시도는 heartbeat 실패로 멈추고 늦은 결과는 `finish`가 행을 못 찾아 버린다 | 명세 §5 "입력·후보 제거/작업 취소" |
+| E-19 | jobs 공통 변경 | `JobService.discard(viewer, jobId, kind)`(MANDATORY, cleanup kind 거부)와 `JobStore.discard` 추가 | 상태 불변식을 공통 안에 둔다 |
+| E-20 | 캡처 정리 | 삭제 때 캡처를 같은 순서로 잠근 뒤, 지워지지 않은 다른 추출 작업이 쓰지 않는 내 READY CAPTURE만 `DELETING`. 저장소 삭제·재시도·행 정리는 기존 `AssetCleanup`이 한다 | 캡처를 참조하는 다른 자료는 없다 |
+| E-21 | 캡처 보존 | 추출을 지우기 전까지 둔다(같은 캡처로 다시 시도 가능). 장기 보존 한도는 Q-11 | 프론트 "다시 시도"가 같은 캡처를 쓴다 |
+| E-22 | 테스트 충돌 | `JobIntegrationTest`의 가짜 PLACE_EXTRACTION 빈을 ROUTE_RECALCULATION으로 바꿨다 | 실제 handler와 중복 등록 |
+| E-24 | 진행률 | jobs에 중간 progress 갱신이 없어 0 → 100만 | 프론트 단계 표시는 첫 단계에 머문다 |
+
+마이그레이션 없음. ERD의 `extraction_candidates`는 물리 테이블을 만들지 않고 `jobs.result_json`에 둔다(ERD 주석 갱신).
+
+### 20-0. 검증 (2026-11-09)
+
+- 대체 테스트(가짜 AI·메모리 저장소): `ExtractionApiTest` 9개(링크+메모+캡처·링크만·캡처만, 입력 거부, 읽지 못한 캡처, 일시/영구 실패·형식 오류, 설정 OFF 취소·타인 차단, 삭제와 캡처 정리, 실행 중 삭제 후 늦은 결과 버림, Swagger), `ExtractionInputRulesTest`(url·memo 규칙), `HttpAiServerClientTest`의 multipart 본문(한글 UTF-8·파일 이름·형식)·실패 분류.
+- 실제 AI 서버(로컬 `ai/` uvicorn, GMS·네이버 키 없음): `ExtractionRealAiTest`. 11장 multipart → AI 422 `INPUT_LIMIT_EXCEEDED`(captures를 파일 목록으로 읽음) → 재시도 없는 실패. 링크+한글 메모+PNG 캡처 요청 → 202 → worker → AI가 입력 검사를 통과해 LLM 단계에서 503 `PROVIDER_UNAVAILABLE` → `TEMPORARY_FAILURE`로 재시도 대기. 실제 후보 생성·네이버 장소 연결은 키가 없어 확인하지 못했다(대체 테스트로만 확인).
+- 전체 build(A의 사진 관리 병합 870db3f 위): 457개 중 실패 1개, 건너뜀 9개(실제 AI·S3 등 환경 변수 조건부). 실패는 A의 `AssetApiTest.tripPhotoIsLimitedToActiveMembers` 하나로, HEIC 변환에 ImageMagick이 필요한데 이 PC에 `magick`이 없어 503 `IMAGE_PROCESSOR_UNAVAILABLE`이 난다(사진 업로드 문서의 설치 조건). 이번 변경과 무관하다.
+
+### 20-1. A·프론트에 공유할 것
+
+- A(MR 본문으로 충분): `JobIntegrationTest.Fixtures`의 가짜 PLACE_EXTRACTION 빈을 ROUTE_RECALCULATION으로 바꿨다. A의 사진 관리(870db3f)는 실제 사진 삭제 빈을 테스트 컨텍스트에서 빼는 방식이라 겹치지 않고, 병합 후 함께 통과했다.
+- A(MR 본문으로 충분): jobs 공통에 `JobService.discard`·`JobStore.discard`를 추가했다. 자원별 취소 API가 필요한 다른 AI 작업도 쓸 수 있다.
+- 캡처 삭제는 `AssetCleanup`의 `DELETING` 경로를 그대로 쓴다. A의 사진 관리 병합 뒤에도 사진 참조가 없는 파일은 예전과 같이 객체 삭제 → 기한 뒤 행 삭제로 처리된다(따로 알릴 필요 없음).
+- 프론트(EODI-216, 꼭 필요): `POST /extractions`에 `Idempotency-Key`가 필요하다(다시 시도마다 새 키). 2026-11-09 dbd2baa 기준 `startExtraction`은 헤더를 보내지 않아 400이 난다.
+- 프론트(참고): progress는 0 → 100만이라 진행 단계 표시는 첫 단계에 머문다. 프론트는 60초가 지나면 실패로 보여 주지만, AI 장애(503)일 때 백엔드는 30초 간격 최대 3회 시도해 1~3분 뒤 FAILED가 된다. 취소한 작업의 캡처는 지워지므로 다시 찾을 때는 새로 올린다.
+- 선택한 후보 저장 예시: 개인 `PUT /api/v1/me/bookmarks/{place.id}` `{memo?}`, 여행 `PUT /api/v1/trips/{tripId}/saved-places/{place.id}/me` `{memo?}`. `place:null` 후보는 `GET /api/v1/places?query={name}`으로 고르거나 `POST /api/v1/places`로 수동 장소를 만든 뒤 같은 PUT.
+- 남은 위험: 캡처 10장 S3(시드니) 읽기 + AI 50초가 worker 60초를 넘을 수 있다. 공급자 ID는 AI의 이름·주소 해시(AS-12)라 -162에서 규칙이 바뀌면 같은 장소가 두 행이 될 수 있다. 새 장소의 regionId는 null이다.

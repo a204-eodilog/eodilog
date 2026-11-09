@@ -1,13 +1,20 @@
 package com.eodilog.global.ai;
 
 import java.net.http.HttpClient;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.UnaryOperator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.http.HttpEntity;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
+import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.stereotype.Component;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
@@ -21,6 +28,7 @@ public class HttpAiServerClient implements AiServerClient {
 
 	static final String INTERNAL_TOKEN_HEADER = "X-Internal-Token";
 	static final String TRACE_ID_HEADER = "X-Trace-Id";
+	private static final MediaType TEXT_UTF8 = new MediaType(MediaType.TEXT_PLAIN, StandardCharsets.UTF_8);
 
 	private final RestClient client;
 	private final AiServerProperties properties;
@@ -50,20 +58,41 @@ public class HttpAiServerClient implements AiServerClient {
 
 	@Override
 	public JsonNode post(String path, UUID traceId, JsonNode body) {
+		// 바이트로 보내 문자열 변환기의 기본 문자셋(ISO-8859-1)에 한글이 깨지지 않게 한다
+		byte[] bytes = jsonMapper.writeValueAsBytes(body);
+		return call(path, traceId, request -> request.contentType(MediaType.APPLICATION_JSON).body(bytes));
+	}
+
+	@Override
+	public JsonNode postMultipart(String path, UUID traceId, Map<String, String> fields, List<FilePart> files) {
+		MultipartBodyBuilder builder = new MultipartBodyBuilder();
+		fields.forEach((name, value) -> {
+			if (value != null) {
+				// 문자열 파트도 변환기 기본 문자셋에 맡기지 않고 UTF-8 바이트로 넣는다(한글 메모)
+				builder.part(name, value.getBytes(StandardCharsets.UTF_8), TEXT_UTF8);
+			}
+		});
+		for (FilePart file : files) {
+			builder.part(file.field(), file.bytes(), MediaType.parseMediaType(file.contentType()))
+					.filename(file.filename());
+		}
+		MultiValueMap<String, HttpEntity<?>> body = builder.build();
+		return call(path, traceId, request -> request.contentType(MediaType.MULTIPART_FORM_DATA).body(body));
+	}
+
+	private JsonNode call(String path, UUID traceId, UnaryOperator<RestClient.RequestBodySpec> withBody) {
 		String response;
 		try {
-			response = client.post()
+			RestClient.RequestBodySpec request = client.post()
 					.uri(path)
-					.contentType(MediaType.APPLICATION_JSON)
 					.accept(MediaType.APPLICATION_JSON)
 					.headers(headers -> {
 						headers.set(TRACE_ID_HEADER, traceId.toString());
 						if (!properties.internalToken().isEmpty()) {
 							headers.set(INTERNAL_TOKEN_HEADER, properties.internalToken());
 						}
-					})
-					// 바이트로 보내 문자열 변환기의 기본 문자셋(ISO-8859-1)에 한글이 깨지지 않게 한다
-					.body(jsonMapper.writeValueAsBytes(body))
+					});
+			response = withBody.apply(request)
 					.retrieve()
 					.body(String.class);
 		} catch (RestClientResponseException ex) {
