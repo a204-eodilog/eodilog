@@ -14,6 +14,8 @@ type Props = {
   selectedId: string | null;
   onSelect(placeId: string | null): void;
   onOpen(item: SavedPlace): void;
+  /** 투표 후보를 고르는 중이면 고른 장소들. 아래 카드에도 체크 상자를 보인다 */
+  picked?: Set<string> | null;
 };
 
 /** 위도·경도가 둘 다 숫자인 장소만 지도에 놓는다 */
@@ -41,7 +43,7 @@ function regionOf(items: SavedPlace[]) {
  * S20 지도 보기(Figma 201-9521). 핀은 담은 사람 첫 글자 묶음과 겹친 수, 누르면 아래에 장소 카드.
  * 공통 지도의 MapMarker(S20 얼굴 묶음 + 겹친 수 모양)를 쓴다.
  */
-export function FavoritesMap({ items, members, selectedId, onSelect, onOpen }: Props) {
+export function FavoritesMap({ items, members, selectedId, onSelect, onOpen, picked }: Props) {
   const region = regionOf(items);
   const selected = items.find((i) => i.place.id === selectedId) ?? null;
   return (
@@ -63,7 +65,13 @@ export function FavoritesMap({ items, members, selectedId, onSelect, onOpen }: P
       </MapView>
       {selected ? (
         <View style={styles.card}>
-          <PlaceRow item={selected} members={members} onPress={onOpen} />
+          <PlaceRow
+            item={selected}
+            members={members}
+            onPress={onOpen}
+            selecting={picked != null}
+            selected={picked?.has(selected.place.id) ?? false}
+          />
         </View>
       ) : null}
     </View>

@@ -428,3 +428,22 @@ describe('지도 핀', () => {
     ).toBeNull();
   });
 });
+
+describe('지도에서 후보 고르기', () => {
+  it('고르는 중에 지도로 바꿔도 장소 카드를 눌러 고른다', async () => {
+    const items = sampleSaved();
+    mockList.mockResolvedValue(page(items));
+    await renderScreen();
+    await fireEvent.press(await screen.findByText('투표 열기'));
+    await fireEvent.press(screen.getByLabelText('지도로 보기'));
+    await fireEvent.press(
+      screen.getByLabelText(`${items[0].place.name}, ${items[0].savedCount}명이 담았어요`),
+    );
+    const card = screen.getByRole('checkbox');
+    expect(card.props.accessibilityState).toEqual({ checked: false });
+    await fireEvent.press(card);
+    expect(screen.getByRole('checkbox').props.accessibilityState).toEqual({ checked: true });
+    expect(screen.getByText('1곳으로 투표 열기')).toBeTruthy();
+    expect(screen.queryByLabelText('내 메모')).toBeNull();
+  });
+});

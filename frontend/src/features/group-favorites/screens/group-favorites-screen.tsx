@@ -126,6 +126,7 @@ export function GroupFavoritesView(props: GroupFavoritesViewProps) {
         selectedId={props.mapSelected}
         onSelect={props.onMapSelect}
         onOpen={props.onOpen}
+        picked={props.selecting}
       />
     );
   } else {
