@@ -124,6 +124,8 @@ export default function DevChecklist() {
           return true;
         }}
         onDelete={(item) => setItems((list) => list.filter((i) => i.id !== item.id))}
+        onSuggest={() => {}}
+        suggesting={false}
       />
     );
   }

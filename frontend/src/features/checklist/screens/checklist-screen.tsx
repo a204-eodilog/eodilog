@@ -9,6 +9,7 @@ import { useMe } from '@/hooks/use-me';
 import { colors, layout, spacing } from '@/theme';
 
 import { AddItemBar } from '../components/add-item-bar';
+import { ChecklistEmpty } from '../components/checklist-empty';
 import { ChecklistProgress } from '../components/checklist-progress';
 import { ChecklistRow } from '../components/checklist-row';
 import { EditItemSheet } from '../components/edit-item-sheet';
@@ -35,12 +36,18 @@ export type ChecklistViewProps = {
   onCloseEdit(): void;
   onSave(item: ChecklistItem, label: string): Promise<boolean>;
   onDelete(item: ChecklistItem): void;
+  onSuggest(): void;
+  suggesting: boolean;
+  /** 미리보기용. 빈 상태에서 [직접 추가]를 누른 모습으로 시작한다 */
+  initialAddOpen?: boolean;
 };
 
 /** S27 준비물 체크리스트 모습. 데이터는 ChecklistScreen이나 미리보기가 넘긴다 */
 export function ChecklistView(props: ChecklistViewProps) {
   const { tripTitle, people, status, items } = props;
   const members = people.map((p) => ({ id: p.id, name: p.name }));
+  // 빈 상태에서 [직접 추가]를 누르면 안내 아래에 입력이 나타난다(가정 Q-5-4)
+  const [addOpen, setAddOpen] = useState(props.initialAddOpen ?? false);
 
   let body;
   if (status === 'loading') {
@@ -56,6 +63,21 @@ export function ChecklistView(props: ChecklistViewProps) {
     );
   } else if (status === 'error') {
     body = <ErrorState title="준비물을 불러오지 못했어요" onRetry={props.onRetry} />;
+  } else if (items.length === 0) {
+    body = (
+      <ScrollView contentContainerStyle={styles.empty} keyboardShouldPersistTaps="handled">
+        <ChecklistEmpty
+          onSuggest={props.onSuggest}
+          suggesting={props.suggesting}
+          onAddDirect={() => setAddOpen(true)}
+        />
+        {addOpen ? (
+          <View style={styles.emptyAdd}>
+            <AddItemBar onAdd={props.onAdd} busy={props.adding} autoFocus />
+          </View>
+        ) : null}
+      </ScrollView>
+    );
   } else {
     body = (
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
@@ -149,6 +171,8 @@ export function ChecklistScreen() {
       onCloseEdit={() => setEditingId(null)}
       onSave={mutations.rename}
       onDelete={(item) => void mutations.remove(item)}
+      onSuggest={() => {}}
+      suggesting={false}
     />
   );
 }
@@ -163,4 +187,12 @@ const styles = StyleSheet.create({
     gap: spacing[20],
   },
   list: { gap: spacing[10] },
+  // 디자인은 아래 110을 비워 안내를 화면 가운데보다 조금 위에 둔다
+  empty: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingTop: spacing[16],
+    paddingBottom: 110,
+  },
+  emptyAdd: { paddingHorizontal: layout.screenPaddingX, marginTop: spacing[24] },
 });
