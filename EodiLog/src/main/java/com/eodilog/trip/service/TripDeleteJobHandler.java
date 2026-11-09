@@ -93,6 +93,8 @@ public class TripDeleteJobHandler implements JobHandler {
 		jdbcTemplate.update("delete from poll_votes where candidate_id in (select c.id from poll_candidates c join polls p on p.id = c.poll_id where p.trip_id = ?)", tripId);
 		jdbcTemplate.update("delete from poll_candidates where poll_id in (select id from polls where trip_id = ?)", tripId);
 		jdbcTemplate.update("delete from polls where trip_id = ?", tripId);
+		// 직전 AI 적용 보관 행은 코스·멤버십을 가리키므로 코스보다 먼저 지운다(EODI-231)
+		jdbcTemplate.update("delete from itinerary_undo_states where itinerary_id in (select id from itineraries where trip_id = ?)", tripId);
 		jdbcTemplate.update("delete from route_legs where itinerary_id in (select id from itineraries where trip_id = ?)", tripId);
 		jdbcTemplate.update("delete from itinerary_items where itinerary_id in (select id from itineraries where trip_id = ?)", tripId);
 		jdbcTemplate.update("delete from itineraries where trip_id = ?", tripId);

@@ -574,3 +574,52 @@ A가 만든 알림 기반(`events`·`notifications`, `GET /me/notifications`)에
 - 프론트(참고): progress는 0 → 100만이라 진행 단계 표시는 첫 단계에 머문다. 프론트는 60초가 지나면 실패로 보여 주지만, AI 장애(503)일 때 백엔드는 30초 간격 최대 3회 시도해 1~3분 뒤 FAILED가 된다. 취소한 작업의 캡처는 지워지므로 다시 찾을 때는 새로 올린다.
 - 선택한 후보 저장 예시: 개인 `PUT /api/v1/me/bookmarks/{place.id}` `{memo?}`, 여행 `PUT /api/v1/trips/{tripId}/saved-places/{place.id}/me` `{memo?}`. `place:null` 후보는 `GET /api/v1/places?query={name}`으로 고르거나 `POST /api/v1/places`로 수동 장소를 만든 뒤 같은 PUT.
 - 남은 위험: 캡처 10장 S3(시드니) 읽기 + AI 50초가 worker 60초를 넘을 수 있다. 공급자 ID는 AI의 이름·주소 해시(AS-12)라 -162에서 규칙이 바뀌면 같은 장소가 두 행이 될 수 있다. 새 장소의 regionId는 null이다.
+
+## 21. AI 최초 코스 제안·적용·되돌리기 정책 (EODI-231, 2026-11-09 사용자 확정)
+
+명세 §6 `POST /itinerary/proposals`, `GET /itinerary/proposals/{jobId}`, `POST .../apply`, `POST /itinerary/undo`를 구현했다. 실행은 jobs `ITINERARY_PROPOSAL`(패키지 `itinerary.proposal`), AI 호출은 JSON `POST /ai/v1/itinerary-proposals`([AI 명세](../../../ai/docs/spec.md) §5). 분담 문서: `backend-a-b-ai-work-split-2026-11-09`(B). AI 쪽 코스 제안은 구현 중에 dev에 들어왔다(ef31816, AS-16). 병합 직전 최신 dev(cdee75f) 위에서 실제 AI 서버로도 확인했다(21-0).
+
+| # | 질문 | 결정 | 근거 |
+| --- | --- | --- | --- |
+| I-1 | 요청 본문 | `{reason, expectedVersion, defaultTransportMode?}`. reason은 INITIAL만, PLACE_REMOVED·WEATHER는 400 `reason`. INITIAL에 `excludedPlaceIds`·`sourceWeatherJobId`·`selectedAlternativeId`가 오면 400 | 다른 사유는 날씨 대안·장소 제외 작업 때 |
+| I-2 | 기본 이동 수단 | 생략 시 TRANSIT | AI spec 예시 |
+| I-3 | 중복 요청 | `Idempotency-Key` 필수. 범위 `POST /api/v1/trips/{tripId}/itinerary/proposals`, 지문은 (reason, expectedVersion, 수단) | 명세 §2 비동기 작업 생성 |
+| I-4 | 판정 순서 | 키·본문 400 → 비멤버 404 → version 409 → 기간·장소 없음 422 → 장소 수 422 → 등록. version·장소 검사는 처음 등록할 때만(같은 키 재요청은 처음 JobRef) | 권한은 `execute` 앞 |
+| I-5 | 기간·장소 없음 | 422 `INSUFFICIENT_DATA`, fields `trip.startDate`·`places` | AI spec §0: 사용자에게 보일 사유는 등록 전에 |
+| I-6 | 대상 장소 | `trip_place_saves`(저장 순, 나간 멤버의 저장 포함) ∪ 현재 코스 장소. 최대 200곳, 초과 422 `INPUT_LIMIT_EXCEEDED`. 개인 북마크는 넣지 않음 | `GET /saved-places`와 같은 기준 |
+| I-7 | 기존 코스 | INITIAL도 허용. 적용하면 코스 전체가 제안으로 바뀐다 | "AI로 다시 짜기" |
+| I-8 | 입력 스냅샷 | 여행 행을 잠근 트랜잭션에서 AI 요청 본문 모양 그대로 고정: `{reason, expectedVersion, trip{id,startDate,endDate,destinationRegionIds}, places[Place], current{items,legs}, defaultTransportMode, excludedPlaceIds:[], selectedAlternative:null}`. `base_version=expectedVersion` | 재시도 때 다시 읽지 않는다 |
+| I-9 | 설정·동의 | 코스 AI 설정 열이 없어 검사하지 않는다. 설정이 생기면 `ItineraryProposalAccess`에 추가 | 명세 §9 "동의 검사"는 미적용 |
+| I-10 | 권한 | 등록·실행·완료: 요청자가 삭제 안 된 여행의 ACTIVE 멤버(깨지면 CANCELLED). 조회: 그 여행의 현재 ACTIVE 멤버 누구나 | 공동 코스, 준비물과 같다 |
+| I-11 | 실행 중 코스 변경 | execute·complete에서 막지 않고 apply에서 409 | 명세 |
+| I-12 | 실패 분류 | 5xx·연결 실패·타임아웃 TEMPORARY_FAILURE(최대 3회), 4xx·형식 오류 EXECUTION_FAILED | 준비물과 같다 |
+| I-13 | 응답 검증 | baseVersion·reason 일치, 항목 1~200개, 장소는 입력 places 안, 항목 id는 null 또는 요청 당시 코스 항목(한 번만), day 1~여행 일수, 날짜별 order 1부터 빈틈없이, startTime HH:mm/null, stayMinutes 1~1440/null, 구간은 같은 날 인접 쌍마다 정확히 하나, AVAILABLE이면 시간 있음·UNAVAILABLE이면 시간 없음, description은 문자열. 하나라도 어긋나면 EXECUTION_FAILED. description이 1000자를 넘으면 자른다(여행 기간 상한이 없어 일차별 문구가 길어질 수 있다) | AI spec T-04-10, PUT 규칙 |
+| I-14 | 저장 형태 | `{baseVersion, reason, proposed{items[{id,place,day,order,startTime,stayMinutes}], legs[{fromItemId,toItemId,day,fromOrder,toOrder,transportMode,durationSeconds,distanceMeters:null,geometry:null,status,queriedAt}]}, diff}`. place는 입력 스냅샷 값으로 바꿔 끼우고, 구간 항목 ID는 위치로, diff 목록은 백엔드가 다시 계산(description만 AI). queriedAt이 없으면 응답 받은 시각 | AI 값을 그대로 믿지 않는다 |
+| I-15 | 조회 | `JobService.get` + kind·trip 일치(아니면 404). 성공 전 proposed null·빈 diff. appliedAt은 `jobs.applied_at`, canUndo는 조회 시 계산. "변경 전" 필드는 추가하지 않음 | 명세 스키마 |
+| I-16 | 알림 | AI_PROPOSAL_READY는 만들지 않는다(수신 대상 미정) | 후속 |
+| I-17 | 적용 판정 순서 | 400 → 여행 404 → 작업 404(삭제·다른 kind·다른 여행) → `ALREADY_APPLIED` → `PROPOSAL_NOT_READY` → `VERSION_CONFLICT`(현재≠expected 또는 ≠base) → 여행 기간 축소로 날짜 넘침 `VERSION_CONFLICT`. 잠금은 여행 → 코스 → 작업 행 | worker 완료는 작업 행만 잠가 교착 없음 |
+| I-18 | 적용 내용 | 유지 항목 id 그대로, 나머지 기존 항목 삭제, 새 항목 발급. 구간에 AI 이동 시간·상태 저장. 교체 로직은 `CourseWriter`로 PUT과 공유 | |
+| I-19 | 원자 처리 | 한 트랜잭션에서 적용 전 코스 보관(upsert) → 교체 → version+1(내용이 같아도) → `jobs.applied_at·applied_by_member_id` → COURSE_CHANGED 알림 | 적용 기록·되돌릴 대상 |
+| I-20 | 동시 적용 | 같은 제안 동시 적용은 코스 행 잠금으로 직렬화되어 하나만 성공(나머지 409 `ALREADY_APPLIED`). 다른 제안 둘은 뒤가 409 `VERSION_CONFLICT`. apply에 Idempotency-Key는 받지 않음 | |
+| I-21 | undo 조건 | undo 행이 있고 applied_job_id=appliedJobId, 현재 version=applied_version. 바뀐 것 없는 PUT은 쓰기가 아님 | |
+| I-22 | undo 판정 순서 | 400 → 404 → expectedVersion 불일치 `VERSION_CONFLICT` → `UNDO_UNAVAILABLE` | |
+| I-23 | 복원 | 항목 id·구간 결과(지도선 포함)까지 그대로 SQL로 복원, version+1, undo 행 삭제, 알림. ACTIVE 멤버 누구나. jobs.applied_at은 유지 | |
+| I-24 | 시간 제한 | 두지 않음(Q-15 합의 전) | 임의 숫자 금지 |
+| I-25 | 마이그레이션 | `V202611091200__create_itinerary_undo_states.sql` | ERD 그대로 |
+| I-26 | 여행 삭제 | `TripDeleteJobHandler`가 itinerary_undo_states를 코스보다 먼저 지운다 | FK |
+| I-27 | PUT과 undo 행 | 실제로 바꾼 PUT은 undo 행을 지운다 | ERD "다른 쓰기 뒤 토큰 제거" |
+| I-28 | route_legs 제약 | `ck_route_legs_result`를 "AVAILABLE이면 시간 필수"로 넓혔다(거리·지도선 NULL 허용). UNAVAILABLE 조건은 그대로 | 기존 제약은 AVAILABLE에 거리를 요구해 AI 이동 시간(거리 없음)을 저장할 수 없었다. 구현 중 발견, I-18을 지키기 위한 변경 |
+
+### 21-0. 검증 (2026-11-09)
+
+- 대체 테스트(가짜 AI): `ItineraryProposalApiTest` 11개(Swagger `/v3/api-docs` 확인, 긴 description 자르기 포함). 요청·같은 키 재요청·AI 입력 스냅샷, 조회(공동 멤버·job 결과), 적용(id 유지·새 id·이동 시간 저장·알림), 재적용 409, undo(원래 id 복원·재undo 409), 요청 검증 400/404/409, 기간·장소 없음·201곳 422, 잘못된 AI 결과 4종 EXECUTION_FAILED와 적용 409, 일시/영구 실패, 실행 중 수동 수정·기간 축소 뒤 적용 409, 바뀐 것 없는 PUT 뒤 undo 가능·실제 PUT 뒤 불가, 요청자 이탈 CANCELLED·다른 여행·다른 kind 404, 동시 적용 하나만 성공, 적용 뒤 여행 삭제.
+- 실제 AI(2026-11-09, 로컬 `ai/` uvicorn, dev cdee75f, 카카오 길찾기 키 없음): `ItineraryProposalRealAiTest` 통과. 1박 2일 5곳(그중 1곳은 현재 코스 항목) → 202 → worker → SUCCEEDED, 1일차 2곳·2일차 3곳, 현재 코스 항목 id 유지 → 적용(version 3, id 유지) → 되돌리기(version 4, 원래 항목 1개·id 복원). 키가 없어 구간은 모두 UNAVAILABLE이었고 AI 이동 시간이 있는 구간 저장은 대체 테스트로만 확인했다.
+- 전체 build(최신 dev cdee75f 위, ImageMagick 7.1.2-34·`IMAGE_MAGICK` 지정): 469개 중 실패 0개, 건너뜀 7개(실제 AI 4개·실제 S3 3개). 실제 S3 왕복 `AssetRealS3Test`(`-PrealS3=true`, 개발 버킷) 3개도 따로 통과. ImageMagick이 없으면 기존 `AssetApiTest.tripPhotoIsLimitedToActiveMembers`가 503으로 실패한다(이 테스트만 `IMAGE_MAGICK` 조건이 없다). 기존 코스 PUT(`ItineraryApiTest` 11개)·여행 삭제·jobs 공통·준비물·장소 추출 테스트 모두 통과.
+
+### 21-1. A·AI·프론트에 공유할 것
+
+- A: `TripDeleteJobHandler`에 `itinerary_undo_states` 삭제 한 줄을 넣었다. 사진 AI(photo_groups)도 이 파일을 고칠 가능성이 높으니 병합 순서를 맞춘다. 마이그레이션 번호는 `V202611091200`이다.
+- A: api-spec §2 409 표에 `PROPOSAL_NOT_READY`·`UNDO_UNAVAILABLE`을 추가했고, §9 운영 실행기 문장에 ITINERARY_PROPOSAL을 넣었다.
+- AI(장수철, -150): 구현(ef31816)이 백엔드 계약과 맞는 것을 실제 호출로 확인했다. INITIAL의 `current` id 유지와 지역 모르는 장소 처리는 AS-16에 답이 있다. 알릴 것: 백엔드는 대상 장소를 200곳까지 보낸다. places에 `category`가 없어(places 열 없음) 식당·카페 시간 규칙은 적용되지 않는다. 카카오 키가 있을 때 구간이 많으면 45초 예산 안에 끝나는지는 아직 확인하지 않았다.
+- 프론트: 요청 → `GET /itinerary/proposals/{jobId}` 폴링 → 비교(현재 코스는 `GET /itinerary`) → apply(`expectedVersion`) → 필요하면 undo(`expectedVersion`=적용 후 version, `appliedJobId`). 409 VERSION_CONFLICT면 코스를 다시 조회하고 새 제안을 요청한다. 제안 구간은 새 항목 사이라 `day/fromOrder/toOrder`로 가리킨다.
+- 남은 위험: 카카오 키가 있을 때 AVAILABLE 구간의 실제 저장과 45초 예산은 확인하지 못했다. 코스 AI 설정이 없어 동의 검사가 없다. AI 이동 시간을 저장한 구간도 이후 PUT으로 바꾸면 UNAVAILABLE로 다시 저장된다(경로 재계산 작업 때 정한다).
