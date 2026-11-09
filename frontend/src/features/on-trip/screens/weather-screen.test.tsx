@@ -24,7 +24,14 @@ const mockParams = { tripId: 'trip-1', date: '2026-11-14', placeId: 'p-haeundae'
 jest.mock('@/config/env', () => ({
   env: { appEnv: 'local', apiBaseUrl: 'http://test', kakaoRedirectUri: null, devMock: false },
 }));
-jest.mock('expo-router', () => ({ useLocalSearchParams: () => mockParams }));
+const mockRouter = { push: jest.fn() };
+jest.mock('expo-router', () => ({
+  useLocalSearchParams: () => mockParams,
+  // jest.mock은 위로 끌어올려져 mockRouter가 만들어지기 전에 불릴 수 있어 꺼낼 때 읽는다
+  get router() {
+    return mockRouter;
+  },
+}));
 jest.mock('@/features/course/api', () => ({
   getItinerary: jest.fn(),
   getJob: jest.fn(),
@@ -183,9 +190,19 @@ describe('S26 날씨 대안', () => {
     expect(screen.getByText('1일차 오전 일정')).toBeTruthy();
     expect(screen.getAllByText('해운대 실내 수족관').length).toBeGreaterThan(1);
     expect(screen.getByText('적용 전까지 지금 코스는 그대로예요')).toBeTruthy();
-    await fireEvent.press(screen.getByText('변경안 보기'));
-    expect(toast.show).toHaveBeenCalledWith('준비 중이에요');
     await fireEvent.press(screen.getByText('닫기'));
+    expect(screen.queryByText('변경안을 만들었어요')).toBeNull();
+  });
+
+  it('변경안 보기는 만든 변경안의 AI 변경안 화면을 연다', async () => {
+    await renderScreen();
+    await fireEvent.press(await screen.findByRole('radio', { name: '해운대 실내 수족관' }));
+    await fireEvent.press(screen.getByText('변경안 만들기'));
+    await fireEvent.press(await screen.findByText('변경안 보기'));
+    expect(mockRouter.push).toHaveBeenCalledWith({
+      pathname: '/trips/[tripId]/proposal',
+      params: { tripId: 'trip-1', jobId: 'job-p' },
+    });
     expect(screen.queryByText('변경안을 만들었어요')).toBeNull();
   });
 
