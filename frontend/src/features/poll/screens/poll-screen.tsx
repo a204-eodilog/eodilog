@@ -57,6 +57,7 @@ export function PollScreen() {
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const poll: Poll | null = detail.data ?? (pollId ? null : list.picked);
+  const { data: me } = useMe();
   const members = (trip.data?.members ?? []).filter((m) => m.status === 'ACTIVE');
 
   const onOpened = (opened: Poll) => {
@@ -102,9 +103,11 @@ export function PollScreen() {
         right={
           members.length > 0 ? (
             <AvatarGroup
+              // 나는 연파랑으로 구분한다(Figma 201-10912 머리)
               people={members.map((m) => ({
                 name: m.user.nickname,
                 imageUrl: m.user.profileImageUrl,
+                me: m.user.id === me?.id,
               }))}
               max={3}
             />

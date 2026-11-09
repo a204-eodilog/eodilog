@@ -23,7 +23,7 @@ import { colors, layout, spacing, typography } from '@/theme';
  * 피그마 상태(docs/design/screens/README.md의 N8·S22 줄)와 피그마에 없는 상태를 모두 둔다. /dev/polls로만 들어온다
  */
 
-const PEOPLE = [{ name: '영광' }, { name: '세은' }, { name: '승기' }];
+const PEOPLE = [{ name: '영광', me: true }, { name: '세은' }, { name: '승기' }];
 
 const PLACE_OPTIONS: CandidateOption[] = [
   {
