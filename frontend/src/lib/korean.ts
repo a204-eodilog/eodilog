@@ -25,3 +25,13 @@ export function withWa(word: string): string {
   if (jong === null) return `${word}와(과)`;
   return `${word}${jong === 0 ? '와' : '과'}`;
 }
+
+/**
+ * 단어 뒤에 '을/를'을 붙인다. 받침이 있으면 '을', 없으면 '를'.
+ * 한글로 끝나지 않으면 '을(를)'. "광안리 바다뷰 카페" → "광안리 바다뷰 카페를", "해운대 해변" → "해운대 해변을"
+ */
+export function withEulReul(word: string): string {
+  const jong = finalConsonant(word);
+  if (jong === null) return `${word}을(를)`;
+  return `${word}${jong === 0 ? '를' : '을'}`;
+}
