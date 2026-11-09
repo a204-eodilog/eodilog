@@ -17,7 +17,13 @@ type MenuItem = {
 const MENU: MenuItem[] = [
   { key: 'favorites', label: '즐겨찾기', icon: 'bookmark' },
   { key: 'recommend', label: '추천', icon: 'search' },
-  { key: 'poll', label: '투표', icon: 'check' },
+  {
+    key: 'poll',
+    label: '투표',
+    icon: 'check',
+    // S22 지역·장소 투표(투표 명세). 폴더(polls/index.tsx)라 평가 메뉴처럼 실제 주소로 보낸다
+    open: (tripId) => router.push(`/trips/${tripId}/polls`),
+  },
   { key: 'course', label: '코스', icon: 'map-pin' },
   { key: 'today', label: '여행 중', icon: 'trip' },
   { key: 'photos', label: '사진', icon: 'copy' },
