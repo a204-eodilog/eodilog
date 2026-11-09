@@ -31,7 +31,7 @@
 
 - [X] T014 [P] [US3] 모아 보기·투표 시작 팝업 모양 src/features/notification/components/notification-popup.tsx
 - [X] T015 [US3] 실행·복귀 때 팝업을 띄우는 자리와 테스트 src/features/notification/screens/popup-host.tsx(+test)
-- [ ] T016 [US3] 로그인한 화면 묶음에 팝업 자리 추가 src/app/(main)/_layout.tsx
+- [X] T016 [US3] 로그인한 화면 묶음에 팝업 자리 추가 src/app/(main)/_layout.tsx
 
 ## Phase 6: Polish
 
