@@ -1,11 +1,11 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button, Icon } from '@/components/ui';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 type Props = {
   onSuggest(): void;
-  /** 제안을 받는 중이면 [제안 받기]가 돌아가는 표시로 바뀐다 */
+  /** 제안을 받는 중이면 [제안 받기]가 돌아가는 표시와 '제안 받는 중…'으로 바뀌고 눌리지 않는다 */
   suggesting: boolean;
   onAddDirect(): void;
 };
@@ -21,13 +21,20 @@ export function ChecklistEmpty({ onSuggest, suggesting, onAddDirect }: Props) {
       <Text style={[typography.title1, styles.title]}>준비물이 없어요</Text>
       <Text style={[typography.body, styles.body]}>날씨·일정 기준 준비물</Text>
       <View style={styles.actions}>
+        {/* 아래 다시 제안 받기 버튼과 같이 받는 동안에도 글자를 남긴다(Button loading은 글자를 숨긴다) */}
         <Button
-          label="제안 받기"
+          label={suggesting ? '제안 받는 중…' : '제안 받기'}
           size="lg"
           weight="medium"
-          leading={<Icon name="bulb" size={20} color={colors.text.inverse} />}
+          leading={
+            suggesting ? (
+              <ActivityIndicator size="small" color={colors.text.inverse} />
+            ) : (
+              <Icon name="bulb" size={20} color={colors.text.inverse} />
+            )
+          }
           onPress={onSuggest}
-          loading={suggesting}
+          disabled={suggesting}
           style={styles.suggest}
         />
         {/* 공통 Button의 글자 버튼은 파랑이라 디자인의 회색 글자 버튼을 따로 그린다 */}

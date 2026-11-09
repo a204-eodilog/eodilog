@@ -504,6 +504,16 @@ describe('다시 제안 받기', () => {
     expect(mockRouter.push).toHaveBeenCalledWith('/settings');
   });
 
+  it('빈 상태의 제안 받기도 받는 동안 제안 받는 중…으로 바뀐다', async () => {
+    mockGet.mockResolvedValue([]);
+    mockRequest.mockReturnValue(new Promise<JobRef>(() => {}));
+    await renderScreen();
+    await fireEvent.press(await screen.findByText('제안 받기'));
+    expect(await screen.findByText('제안 받는 중…')).toBeTruthy();
+    await fireEvent.press(screen.getByText('제안 받는 중…'));
+    expect(mockRequest).toHaveBeenCalledTimes(1);
+  });
+
   it('빈 상태의 제안 받기도 같은 제안을 시작한다', async () => {
     mockGet.mockResolvedValue([]);
     mockRequest.mockResolvedValue(REF);
