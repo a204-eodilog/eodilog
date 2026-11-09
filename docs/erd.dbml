@@ -424,9 +424,17 @@ Table visits {
 Table photo_groups {
   id uuid [pk]
   trip_id uuid [not null, ref: > trips.id]
-  source_job_id uuid [ref: > jobs.id]
+  source_job_id uuid [not null, ref: > jobs.id]
   created_at timestamp [not null]
-  Note: '유사 사진 묶음. 대표 사진은 보관 사진 중 결정적 순서로 선택하는 제안. AI로 원본 자동 삭제하지 않음.'
+  indexes { (id, trip_id) [unique] }
+  Note: 'PHOTO_CLASSIFICATION의 명시적 apply가 만든 유사 사진 묶음. AI UUID는 다른 작업/여행 충돌 검사 후 사용. photos(group_id,trip_id) 복합 FK로 같은 여행만 연결. 적용 대상 성공 사진 2장 이상일 때 생성. 이후 삭제로 한 장만 남아도 유지하고 빈 그룹은 요약에서 제외. 대표 자동 선정·원본 자동 삭제 없음.'
+}
+
+Table photo_classification_applies {
+  job_id uuid [pk, ref: > jobs.id]
+  request_json json [not null, note: '최초 apply 사진 ID·expected version 본문']
+  response_json json [not null, note: '최초 적용 Photo 응답. 재요청에도 현재 권한·사진 생존·version 검사 후 반환']
+  Note: '작업당 한 번 원자 apply. 같은 본문은 version/그룹 중복 증가 없이 최초 결과, 다른 본문은409. 사진/멤버 FK 없이 작업에 귀속. 사진 삭제가 과거 응답을 다시 노출시키지 않도록 서비스에서 현재 상태 재검사.'
 }
 
 Table photo_upload_batches {

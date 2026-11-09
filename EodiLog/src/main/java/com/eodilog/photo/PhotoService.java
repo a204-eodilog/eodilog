@@ -44,7 +44,7 @@ public class PhotoService {
     private final JobService jobs;
     private final JsonMapper json;
     private static final java.util.Set<String> TOPICS = java.util.Set.of("LANDSCAPE", "FOOD", "PEOPLE", "OTHER");
-    private static final String PHOTO_SELECT = "select photos.*, array(select topic from photo_topics where photo_id=photos.id order by topic) as topics from photos";
+    public static final String PHOTO_SELECT = "select photos.*, array(select topic from photo_topics where photo_id=photos.id order by topic) as topics from photos";
 
     @Transactional
     public PhotoBatchResponse createBatch(UUID user, UUID trip, String key, CreatePhotoBatchRequest request) {
@@ -161,7 +161,9 @@ public class PhotoService {
                 (rs,row) -> new PhotoSummaryResponse.TopicCount(rs.getString(1),rs.getLong(2)), trip);
         var counts = jdbc.query("select place_id,count(*) from photos where trip_id=? and deleted_at is null and place_id is not null group by place_id order by place_id",
                 (rs,row) -> new PhotoSummaryResponse.PlaceCount(rs.getObject(1,UUID.class),rs.getLong(2)), trip);
-        return new PhotoSummaryResponse(total, unplaced, topics, counts, List.of());
+        var groups = jdbc.query("select group_id,count(*) from photos where trip_id=? and deleted_at is null and group_id is not null group by group_id order by group_id",
+                (rs,row) -> new PhotoSummaryResponse.GroupCount(rs.getObject(1,UUID.class),rs.getLong(2)), trip);
+        return new PhotoSummaryResponse(total, unplaced, topics, counts, groups);
     }
 
     @Transactional(readOnly = true)
@@ -170,10 +172,10 @@ public class PhotoService {
         CreatedAtCursor after = cursor == null || cursor.isBlank() ? null : CreatedAtCursor.decode(cursor);
         if (after != null) validateTimestamp(after.createdAt());
         if (topic != null && !TOPICS.contains(topic)) throw new BusinessException(CommonErrorCode.VALIDATION_ERROR);
-        if (group != null) return PageResponse.of(List.of(), null, false);
         String sql = PHOTO_SELECT + " where trip_id=? and deleted_at is null";
         List<Object> params = new ArrayList<>();
         params.add(trip);
+        if (group != null) { sql += " and group_id=?"; params.add(group); }
         if (topic != null) {
             sql += " and exists(select 1 from photo_topics t where t.photo_id=photos.id and t.topic=?)";
             params.add(topic);
@@ -196,11 +198,11 @@ public class PhotoService {
         if (instant != null && (instant.isBefore(MIN_TIMESTAMP) || instant.isAfter(MAX_TIMESTAMP)))
             throw new BusinessException(CommonErrorCode.VALIDATION_ERROR);
     }
-    private static PhotoResponse map(ResultSet rs, int row) throws SQLException {
+    public static PhotoResponse map(ResultSet rs, int row) throws SQLException {
         Timestamp captured = rs.getTimestamp("captured_at");
         return new PhotoResponse(rs.getObject("id", UUID.class), rs.getObject("asset_id", UUID.class),
                 rs.getObject("trip_id", UUID.class), rs.getObject("batch_id", UUID.class), rs.getObject("uploader_member_id", UUID.class),
                 rs.getObject("place_id", UUID.class), captured == null ? null : captured.toInstant(),
-                java.util.Arrays.stream((Object[]) rs.getArray("topics").getArray()).map(Object::toString).toList(), null, rs.getLong("version"));
+                java.util.Arrays.stream((Object[]) rs.getArray("topics").getArray()).map(Object::toString).toList(), rs.getObject("group_id",UUID.class), rs.getLong("version"));
     }
 }

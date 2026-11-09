@@ -79,6 +79,7 @@ public class TripDeleteJobHandler implements JobHandler {
 		// FK 순서: 자식 → 부모. 멤버십은 마지막, 여행 행은 남긴다
 		jdbcTemplate.update("delete from photo_topics where photo_id in (select id from photos where trip_id=?)", tripId);
 		jdbcTemplate.update("delete from photos where trip_id = ?", tripId);
+		jdbcTemplate.update("delete from photo_groups where trip_id = ?", tripId);
 		// A presigned PUT cannot be revoked. Keep deletion tombstones/keys throughout the grace period
 		// so cleanup can remove late uploads after this job completes and members disappear.
 		jdbcTemplate.update("update assets set status='DELETING', upload_batch_id=null where trip_id = ?", tripId);
