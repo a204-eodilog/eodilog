@@ -103,7 +103,7 @@ export function createPollMock({ getTrips, ok, fail }: Helpers) {
         error: {
           code: 'VALIDATION_ERROR',
           message: '입력값을 확인해 주세요.',
-          fields: [{ field, reason }],
+          fields: [{ field, message: reason }],
           traceId: 'dev-mock',
         },
       },
