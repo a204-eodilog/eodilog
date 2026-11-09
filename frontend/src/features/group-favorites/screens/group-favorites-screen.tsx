@@ -218,6 +218,8 @@ export function GroupFavoritesScreen() {
   const [adding, setAdding] = useState(false);
   const [picking, setPicking] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
+  // 투표 후보 고르기 모드. null이면 평소 화면
+  const [selecting, setSelecting] = useState<Set<string> | null>(null);
   /** 코스에 든 장소를 빼려 할 때 그 장소와 코스를 고친 동행 */
   const [confirm, setConfirm] = useState<{ placeId: string; editor: string } | null>(null);
   // 개인 즐겨찾기는 고르기 시트를 열 때만 받는다(개인 즐겨찾기 화면과 같은 캐시)
@@ -277,15 +279,26 @@ export function GroupFavoritesScreen() {
       loadingMore={list.isFetchingNextPage}
       memberFilter={memberFilter}
       onMember={() => setMemberSheet(true)}
-      onOpen={(item) => setOpenId(item.place.id)}
+      onOpen={(item) => {
+        if (!selecting) return setOpenId(item.place.id);
+        const next = new Set(selecting);
+        if (next.has(item.place.id)) next.delete(item.place.id);
+        else next.add(item.place.id);
+        setSelecting(next);
+      }}
       mapSelected={mapSelected}
       onMapSelect={setMapSelected}
-      selecting={null}
+      selecting={selecting}
       onAdd={() => setAdding(true)}
-      onPoll={notReady}
+      onPoll={() => {
+        // 체크 상자는 목록에서만 보여 지도에서 눌러도 목록으로 돌아온다
+        setView('list');
+        setSelecting(new Set());
+      }}
       onRecommend={notReady}
-      onCancelSelect={() => undefined}
-      onConfirmSelect={() => undefined}
+      onCancelSelect={() => setSelecting(null)}
+      // 투표 열기 시트는 투표 쪽 작업과 합칠 때 고른 장소로 연다. 그 전까지는 안내만 띄우고 고른 것은 둔다
+      onConfirmSelect={notReady}
       onRetry={() => void list.refetch()}
       empty={
         list.totals?.allPlaceCount === 0 ? (

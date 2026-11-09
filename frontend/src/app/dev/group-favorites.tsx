@@ -32,6 +32,7 @@ const EXAMPLES = [
   { state: 'overlap', label: '겹친 곳만' },
   { state: 'map', label: '지도 보기 201-9521' },
   { state: 'empty', label: '장소 없음 201-9686' },
+  { state: 'selecting', label: '투표 후보 고르기' },
   { state: 'add-sheet', label: '장소 추가 시트 201-9751' },
   { state: 'place-sheet', label: '장소 시트' },
   { state: 'in-course', label: '코스에 있는 장소 빼기 201-29151' },
@@ -75,6 +76,9 @@ function DevScreen({ state }: { state: string }) {
   const [adding, setAdding] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [editor, setEditor] = useState<string | null>(null);
+  const [selecting, setSelecting] = useState<Set<string> | null>(
+    state === 'selecting' ? new Set(['p-haeundae', 'p-gamcheon']) : null,
+  );
   // 웹의 아래 시트는 화면이 그려진 뒤에 열어야 올라오는 모습이 보인다
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -108,14 +112,20 @@ function DevScreen({ state }: { state: string }) {
       loadingMore={false}
       memberFilter={member}
       onMember={() => setMemberSheet(true)}
-      onOpen={(item) => setOpenId(item.place.id)}
+      onOpen={(item) => {
+        if (!selecting) return setOpenId(item.place.id);
+        const next = new Set(selecting);
+        if (next.has(item.place.id)) next.delete(item.place.id);
+        else next.add(item.place.id);
+        setSelecting(next);
+      }}
       mapSelected={mapSelected}
       onMapSelect={setMapSelected}
-      selecting={null}
+      selecting={selecting}
       onAdd={() => setAdding(true)}
-      onPoll={noop}
+      onPoll={() => setSelecting(new Set())}
       onRecommend={noop}
-      onCancelSelect={noop}
+      onCancelSelect={() => setSelecting(null)}
       onConfirmSelect={noop}
       onRetry={noop}
       empty={

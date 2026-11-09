@@ -379,3 +379,32 @@ describe('장소 없음', () => {
     expect(screen.queryByText('아직 모은 장소가 없어요')).toBeNull();
   });
 });
+
+describe('후보 고르기와 추천', () => {
+  it('투표 열기를 누르면 줄을 골라 개수가 버튼에 보이고 확정하면 준비 중 안내', async () => {
+    mockList.mockResolvedValue(page(sampleSaved()));
+    await renderScreen();
+    await fireEvent.press(await screen.findByText('투표 열기'));
+    expect(screen.getByText('후보를 골라 주세요')).toBeTruthy();
+    const rows = screen.getAllByRole('checkbox');
+    await fireEvent.press(rows[0]);
+    await fireEvent.press(rows[1]);
+    expect(screen.getByText('2곳으로 투표 열기')).toBeTruthy();
+    await fireEvent.press(rows[1]);
+    expect(screen.getByText('1곳으로 투표 열기')).toBeTruthy();
+    await fireEvent.press(screen.getByText('1곳으로 투표 열기'));
+    expect(toast.show).toHaveBeenCalledWith('준비 중이에요');
+    // 고르는 중에는 장소 시트가 열리지 않는다
+    expect(screen.queryByLabelText('내 메모')).toBeNull();
+    await fireEvent.press(screen.getByText('취소'));
+    expect(screen.queryAllByRole('checkbox')).toHaveLength(0);
+    expect(screen.getByText('투표 열기')).toBeTruthy();
+  });
+
+  it('추천 받기는 준비 중 안내', async () => {
+    mockList.mockResolvedValue(page(sampleSaved()));
+    await renderScreen();
+    await fireEvent.press(await screen.findByText('추천 받기'));
+    expect(toast.show).toHaveBeenCalledWith('준비 중이에요');
+  });
+});
