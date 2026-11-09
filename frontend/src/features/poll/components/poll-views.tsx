@@ -23,7 +23,7 @@ import {
   voteRatio,
 } from '../poll-rules';
 import type { Poll } from '../types';
-import { CandidateRow } from './candidate-row';
+import { CandidateRow, type CandidateRowTone } from './candidate-row';
 import { MyVoteBar } from './my-vote-bar';
 import { PollOpenHeaderCard } from './poll-header-card';
 
@@ -302,17 +302,7 @@ export function PollResultView({
           </Text>
           {poll.candidates.map((c) => {
             const won = selected.has(c.id);
-            const tone = tie
-              ? won
-                ? mine.has(c.id)
-                  ? 'mine'
-                  : 'plain'
-                : 'muted'
-              : won
-                ? 'winner'
-                : c.voteCount === 0 && tie
-                  ? 'muted'
-                  : 'plain';
+            const tone = resultTone({ tie, won, mine: mine.has(c.id) });
             return (
               <CandidateRow
                 key={c.id}
@@ -344,6 +334,24 @@ export function PollResultView({
       ) : null}
     </View>
   );
+}
+
+/**
+ * 결과 목록 후보 줄 색. 동률이면 확정 후보 중 내 선택은 연파랑, 다른 확정 후보는 회색 면, 확정되지 않은 후보는 흐리게.
+ * 동률이 아니면 확정 후보는 초록, 나머지는 회색 면
+ */
+function resultTone({
+  tie,
+  won,
+  mine,
+}: {
+  tie: boolean;
+  won: boolean;
+  mine: boolean;
+}): CandidateRowTone {
+  if (!tie) return won ? 'winner' : 'plain';
+  if (!won) return 'muted';
+  return mine ? 'mine' : 'plain';
 }
 
 /** 동률 화면 카드 아래 줄(Figma 201-11213). 회색 면에 사람 아이콘 + "부산과 강릉을 모두 확정했어요" */
