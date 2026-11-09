@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { BottomSheet, Button, Chip } from '@/components/ui';
+import { useTrip } from '@/features/trip/hooks/use-trip';
 import { colors, spacing, typography } from '@/theme';
 
 import { buildCandidateOptions, regionCounts } from '../candidate-options';
@@ -51,6 +52,11 @@ export function OpenPollSheet({
   const saved = useSavedPlaces(tripId, visible && !previewOptions);
   const regionNames = useRegionNameMap(regionCounts(saved.data ?? []).map((r) => r.regionId));
   const open = useOpenPoll(tripId);
+  const trip = useTrip(tripId);
+  const memberNames = useMemo(
+    () => Object.fromEntries((trip.data?.members ?? []).map((m) => [m.id, m.user.nickname])),
+    [trip.data?.members],
+  );
   // isPending은 다시 그린 뒤에 바뀌어서, 그 전에 한 번 더 누르면 요청이 두 번 나간다. 누르는 즉시 막는다
   const submitting = useRef(false);
 
@@ -72,8 +78,9 @@ export function OpenPollSheet({
   };
 
   const options = useMemo(
-    () => previewOptions ?? buildCandidateOptions(type, saved.data ?? [], [], regionNames),
-    [previewOptions, type, saved.data, regionNames],
+    () =>
+      previewOptions ?? buildCandidateOptions(type, saved.data ?? [], [], regionNames, memberNames),
+    [previewOptions, type, saved.data, regionNames, memberNames],
   );
 
   const changeType = (next: PollType) => {

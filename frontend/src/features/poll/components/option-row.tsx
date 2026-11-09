@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Icon, Tag } from '@/components/ui';
+import { AvatarGroup, Icon, Tag } from '@/components/ui';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 import type { CandidateOption } from '../types';
@@ -49,8 +49,21 @@ export function OptionRow({ option, checked, disabled = false, onToggle }: Props
             </Text>
           </View>
         ) : null}
-        {overlap ? (
-          <Tag label={`겹침 ${option.savedCount}명`} tone="brandSoft" icon="people" small />
+        {(option.savers?.length ?? 0) > 0 || overlap ? (
+          // 피그마 385-827: 담은 동행 얼굴, "세은, 승기", 겹침 태그. 위 4, 사이 8
+          <View style={styles.savers}>
+            {option.savers && option.savers.length > 0 ? (
+              <>
+                <AvatarGroup people={option.savers.map((name) => ({ name }))} max={3} />
+                <Text style={styles.subText} numberOfLines={1}>
+                  {option.savers.join(', ')}
+                </Text>
+              </>
+            ) : null}
+            {overlap ? (
+              <Tag label={`겹침 ${option.savedCount}명`} tone="brandSoft" icon="people" small />
+            ) : null}
+          </View>
         ) : null}
       </View>
     </Pressable>
@@ -91,4 +104,5 @@ const styles = StyleSheet.create({
   title: { ...typography.bodyBold, color: colors.text.default },
   sub: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
   subText: { ...typography.caption, color: colors.text.icon, flexShrink: 1 },
+  savers: { flexDirection: 'row', alignItems: 'center', gap: spacing[8], paddingTop: spacing[4] },
 });

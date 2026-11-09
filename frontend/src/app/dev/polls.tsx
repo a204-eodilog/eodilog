@@ -31,6 +31,7 @@ const PLACE_OPTIONS: CandidateOption[] = [
     subtitle: '부산 해운대구',
     input: { placeId: 'p1' },
     savedCount: 2,
+    savers: ['세은', '승기'],
   },
   {
     key: 'p2',
@@ -38,6 +39,7 @@ const PLACE_OPTIONS: CandidateOption[] = [
     subtitle: '부산 수영구',
     input: { placeId: 'p2' },
     savedCount: 1,
+    savers: ['세은'],
   },
   {
     key: 'p3',

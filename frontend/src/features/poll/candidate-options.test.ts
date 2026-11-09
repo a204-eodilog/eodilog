@@ -49,7 +49,10 @@ describe('buildCandidateOptions', () => {
       subtitle: '부산 해운대구',
       input: { placeId: 'p1' },
       savedCount: 1,
+      savers: [],
     });
+    const named = buildCandidateOptions('PLACE', saved, [], names, { me: '영광' });
+    expect(named[0].savers).toEqual(['영광']);
   });
 
   it('이미 후보인 곳은 뺀다', () => {

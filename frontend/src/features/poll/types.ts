@@ -83,4 +83,6 @@ export type CandidateOption = {
   input: CandidateInput;
   /** 장소 후보를 담은 동행 수. 2명 이상이면 '겹침 N명'을 보인다 */
   savedCount?: number;
+  /** 장소 후보를 담은 동행 닉네임(Figma 385-827 "세은, 승기") */
+  savers?: string[];
 };

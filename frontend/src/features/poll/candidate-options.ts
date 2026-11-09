@@ -25,6 +25,8 @@ export function buildCandidateOptions(
   saved: SavedPlace[],
   existing: PollCandidate[],
   regionNames: Record<string, string>,
+  /** 여행 동행 ID → 닉네임. 장소를 담은 동행 이름에 쓴다 */
+  memberNames: Record<string, string> = {},
 ): CandidateOption[] {
   if (type === 'PLACE') {
     const taken = new Set(existing.map((c) => c.placeId).filter(Boolean));
@@ -36,6 +38,9 @@ export function buildCandidateOptions(
         subtitle: s.place.address,
         input: { placeId: s.place.id },
         savedCount: s.savedCount,
+        savers: s.savedBy.flatMap((b) =>
+          memberNames[b.memberId] ? [memberNames[b.memberId]] : [],
+        ),
       }));
   }
   const taken = new Set(existing.map((c) => c.regionId).filter(Boolean));
