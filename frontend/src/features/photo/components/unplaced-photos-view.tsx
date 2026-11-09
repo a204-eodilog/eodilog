@@ -28,18 +28,21 @@ export type UnplacedPhotosViewProps = {
   days: CourseDay[];
   courseState: 'loading' | 'error' | 'ready';
   placeId: string | null;
+  /** S13에서 고른 코스 밖 장소 */
+  searched: { id: string; name: string } | null;
   saving: boolean;
   memberName: (memberId: string) => string;
   myMemberId: string | null;
   onBack: () => void;
   onToggle: (photoId: string) => void;
   onPlace: (placeId: string) => void;
+  onSearch: () => void;
   onConnect: () => void;
 };
 
 /**
  * S31 장소 미지정 묶음(별도 화면). 연결할 사진을 고르고(기본 모두, 내 사진만) 코스 장소 하나를 골라 [연결하기].
- * 장소 검색 줄(S13)은 장소 기능(A)의 공개 파일이 dev에 들어오면 붙인다
+ * 코스에 없는 곳은 아래 장소 검색 줄(S13)로 찾아 고른다
  */
 export function UnplacedPhotosView(props: UnplacedPhotosViewProps) {
   const insets = useSafeAreaInsets();
@@ -111,6 +114,8 @@ export function UnplacedPhotosView(props: UnplacedPhotosViewProps) {
             state={props.courseState}
             placeId={props.placeId}
             onPlace={props.onPlace}
+            picked={props.searched}
+            onSearch={props.onSearch}
           />
         </View>
       </ScrollView>
