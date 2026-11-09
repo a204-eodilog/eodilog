@@ -8,7 +8,7 @@ npx tsc --noEmit
 npx eslint src/features/checklist src/app/dev/checklist.tsx "src/app/(main)/trips/[tripId]/checklist.tsx"
 ```
 
-기대: 규칙·큐·제안 더하기·화면 테스트 모두 통과.
+기대: 규칙·큐·제안 더하기·제안 훅·화면 테스트 60개 통과.
 
 ## 미리보기(서버 없이)
 
@@ -26,6 +26,8 @@ set EXPO_PUBLIC_DEV_MOCK=true&& npx expo start --web --port 8090
 4. [다시 제안 받기] → 잠시 뒤 새 준비물이 더해지고, 직접 고친 항목은 그대로.
 5. `globalThis.__devMock.checklist.failNextSuggestion()` 뒤 [다시 제안 받기] → 실패 카드와 [다시 시도].
 6. `globalThis.__devMock.checklist.disableAi()` 뒤 제안 → 꺼짐 카드와 [설정 열기].
+7. `globalThis.__devMock.checklist.deleteByOther()` 뒤 첫 항목 체크·고치기·지우기 → "이미 지워진 준비물이에요".
+8. 상태를 처음으로 되돌리려면 `globalThis.__devMock.checklist.reset()` 뒤 화면을 다시 연다. `disableAi(false)`로 추천을 다시 켠다.
 
 ## 실서버(사용자 몫)
 
