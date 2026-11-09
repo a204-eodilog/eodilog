@@ -128,7 +128,9 @@ public class AssetService {
         if (asset.tripId() == null) {
             if (!asset.purpose().equals("PROFILE") && !asset.ownerId().equals(user)) throw new BusinessException(AssetErrorCode.ASSET_NOT_FOUND);
         } else {
-            requireDownloadAccess(asset.tripId(), user, false);
+            // Trip lock serializes the admission of a new stream with photo/trip deletion approval.
+            requireDownloadAccess(asset.tripId(), user, true);
+            asset = repository.find(id, true);
             if (asset.batchId() != null && jdbc.queryForObject("select count(*) from photos where asset_id=? and trip_id=? and deleted_at is null",
                     Long.class, id, asset.tripId()) == 0) throw new BusinessException(AssetErrorCode.ASSET_NOT_FOUND);
         }
@@ -139,6 +141,7 @@ public class AssetService {
             // Preserve legacy READY rows without serving historical signature-only originals.
             if (asset.tripId() != null) requireDownloadAccess(asset.tripId(), user, true);
             asset = repository.find(id, true);
+            if (!asset.status().equals("READY")) throw new BusinessException(AssetErrorCode.ASSET_NOT_FOUND);
             if (asset.displayContentType() == null) sanitize(asset);
             asset = repository.find(id, false);
             } finally { completionCapacity.unlock(); }

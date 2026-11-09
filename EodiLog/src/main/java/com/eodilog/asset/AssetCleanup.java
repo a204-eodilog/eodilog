@@ -39,11 +39,15 @@ public class AssetCleanup {
                     } else if (!java.util.Set.of("PENDING", "CANCELLED", "READY").contains(asset.status())
                             || asset.expiresAt().isAfter(clock.instant())) return;
                     if (asset.status().equals("READY") && (!asset.purpose().equals("TRIP_PHOTO") || asset.batchId() == null || asset.displayContentType() == null)) return;
-                    if (jdbc.queryForObject("select count(*) from photos where asset_id=?", Long.class, id) != 0) return;
+                    long references = jdbc.queryForObject("select count(*) from photos where asset_id=?", Long.class, id);
+                    if (references != 0 && (!asset.status().equals("DELETING") || Boolean.TRUE.equals(jdbc.queryForObject(
+                            "select exists(select 1 from photos where asset_id=? and deleted_at is null)", Boolean.class, id)))) return;
                     storage.delete(asset.objectKey()); storage.delete(asset.displayKey());
                     if (asset.status().equals("DELETING")) {
                         // Requests signed before expiry can still be writing. Revisit keys throughout the grace period.
-                        if (!asset.expiresAt().isAfter(clock.instant())) jdbc.update("delete from assets where id=?", id);
+                        // A FAILED photo job may leave a photo tombstone forever. Keep its asset FK, but keep
+                        // retrying approved object deletion independently of the terminal job status.
+                        if (references == 0 && !asset.expiresAt().isAfter(clock.instant())) jdbc.update("delete from assets where id=?", id);
                     }
                     else jdbc.update("update assets set status='DELETED', deleted_at=? where id=?", Timestamp.from(clock.instant()), id);
                 });

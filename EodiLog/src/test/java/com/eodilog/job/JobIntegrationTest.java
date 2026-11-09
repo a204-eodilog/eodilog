@@ -44,6 +44,7 @@ class JobIntegrationTest {
     TransactionTemplate tx;
 
     @BeforeEach void setUp() {
+        jdbc.update("DELETE FROM photo_delete_requests");
         jdbc.update("DELETE FROM jobs");
         tx = new TransactionTemplate(manager);
         clock.now = Instant.parse("2026-11-02T00:00:00Z");
@@ -329,6 +330,17 @@ class JobIntegrationTest {
     }
     @TestConfiguration(proxyBeanMethods = false)
     static class Fixtures {
+        // This suite exercises generic worker mechanics with controllable fixtures.
+        // The real photo handler/policy are tested by PhotoUploadApiTest in a separate context.
+        @Bean static org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor isolatePhotoCleanupFixtures() {
+            return new org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor() {
+                public void postProcessBeanDefinitionRegistry(org.springframework.beans.factory.support.BeanDefinitionRegistry registry) {
+                    registry.removeBeanDefinition("photoDeleteJobHandler");
+                    registry.removeBeanDefinition("photoDeleteJobAccessPolicy");
+                }
+                public void postProcessBeanFactory(org.springframework.beans.factory.config.ConfigurableListableBeanFactory factory) { }
+            };
+        }
         AtomicBoolean allowed = new AtomicBoolean(true), readable = new AtomicBoolean(true), completeAllowed = new AtomicBoolean(true);
         AtomicInteger hooks = new AtomicInteger();
         volatile boolean throwHook;

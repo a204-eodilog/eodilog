@@ -60,6 +60,9 @@ class AssetRealS3Test {
 	@Autowired
 	private ObjectStorage objectStorage;
 
+	@Autowired
+	private com.eodilog.job.JobWorker jobWorker;
+
 	private final HttpClient http = HttpClient.newHttpClient();
 
 	@DynamicPropertySource
@@ -126,6 +129,69 @@ class AssetRealS3Test {
 						.content("{\"purpose\":\"CAPTURE\",\"contentType\":\"image/png\",\"byteSize\":" + PNG.length + "}"))
 				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
 		return jsonMapper.readTree(response).get("data");
+	}
+
+	@Test
+	void photoDeleteApiRemovesOriginalAndDisplayFromRealS3() throws Exception {
+		assertThat(objectStorage).isInstanceOf(com.eodilog.global.storage.S3ObjectStorage.class);
+		UUID userId = insertUser();
+		JsonNode trip = responseData(mockMvc.perform(post("/api/v1/trips").with(authUser(userId))
+				.header("Idempotency-Key", UUID.randomUUID().toString()).contentType(MediaType.APPLICATION_JSON)
+				.content("{\"title\":\"실제 S3 사진 삭제 검증\"}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+		String tripId = trip.path("id").asString();
+		JsonNode batch = responseData(mockMvc.perform(post("/api/v1/trips/{tripId}/photo-upload-batches", tripId)
+				.with(authUser(userId)).header("Idempotency-Key", UUID.randomUUID().toString())
+				.contentType(MediaType.APPLICATION_JSON).content("{\"fileCount\":1}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+		String batchId = batch.path("id").asString();
+		JsonNode intent = responseData(mockMvc.perform(post("/api/v1/assets/upload-intents").with(authUser(userId))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"purpose\":\"TRIP_PHOTO\",\"tripId\":\"%s\",\"batchId\":\"%s\",\"contentType\":\"image/png\",\"byteSize\":%d}"
+						.formatted(tripId, batchId, PNG.length)))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+		UUID assetId = UUID.fromString(intent.path("assetId").asString());
+		String key = objectKey(assetId);
+		String displayKey = jdbcTemplate.queryForObject("select display_key from assets where id=?", String.class, assetId);
+		try {
+			assertThat(put(intent, PNG)).isEqualTo(200);
+			mockMvc.perform(post("/api/v1/assets/{id}/complete", assetId).with(authUser(userId))).andExpect(status().isOk());
+			JsonNode photo = responseData(mockMvc.perform(post("/api/v1/trips/{tripId}/photos", tripId).with(authUser(userId))
+					.contentType(MediaType.APPLICATION_JSON).content("{\"batchId\":\"%s\",\"assetId\":\"%s\"}".formatted(batchId, assetId)))
+					.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+			String photoId = photo.path("id").asString();
+			assertThat(objectStorage.head(key)).isPresent();
+			assertThat(objectStorage.head(displayKey)).isPresent();
+			mockMvc.perform(get("/api/v1/assets/{id}/download", assetId).with(authUser(userId))).andExpect(status().isOk());
+			JsonNode deletion = responseData(mockMvc.perform(delete("/api/v1/trips/{tripId}/photos/{photoId}", tripId, photoId)
+					.with(authUser(userId))).andExpect(status().isAccepted()).andReturn().getResponse().getContentAsString());
+			UUID jobId = UUID.fromString(deletion.path("jobId").asString());
+			mockMvc.perform(get("/api/v1/assets/{id}/download", assetId).with(authUser(userId))).andExpect(status().isNotFound());
+			long deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(60);
+			String jobStatus;
+			do {
+				jobWorker.pollOnce();
+				jobStatus = jdbcTemplate.queryForObject("select status from jobs where id=?", String.class, jobId);
+				if (Set.of("SUCCEEDED", "FAILED", "CANCELLED").contains(jobStatus)) break;
+				Thread.sleep(100);
+			} while (System.nanoTime() < deadline);
+			assertThat(jobStatus).isEqualTo("SUCCEEDED");
+			// finally의 안전 정리 전에 실제 삭제 API/worker가 두 객체를 없앴는지 검증한다.
+			assertThat(objectStorage.head(key)).isEmpty();
+			assertThat(objectStorage.head(displayKey)).isEmpty();
+			mockMvc.perform(get("/api/v1/jobs/{id}", jobId).with(authUser(userId)))
+					.andExpect(status().isOk()).andExpect(jsonPath("$.data.result.scope").value("PHOTO_DELETE"))
+					.andExpect(jsonPath("$.data.result.completedCount").value(1));
+			mockMvc.perform(delete("/api/v1/trips/{tripId}/photos/{photoId}", tripId, photoId).with(authUser(userId)))
+					.andExpect(status().isAccepted()).andExpect(jsonPath("$.data.jobId").value(jobId.toString()));
+		} finally {
+			try { objectStorage.delete(key); }
+			finally { objectStorage.delete(displayKey); }
+		}
+	}
+
+	private JsonNode responseData(String response) {
+		return jsonMapper.readTree(response).path("data");
 	}
 
 	// 앱이 하는 것처럼 응답의 method·headers 그대로 올린다. Authorization은 붙이지 않는다
