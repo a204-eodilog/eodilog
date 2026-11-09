@@ -1,18 +1,28 @@
+import { useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState, type ReactNode } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { toApiError } from '@/api/errors';
 import { ErrorState, Header, Icon, toast } from '@/components/ui';
+import { pickPlace } from '@/features/place/place-picker';
+import { getAllBookmarks } from '@/features/saved/api';
+import { bookmarkKeys } from '@/features/saved/hooks/use-bookmarks';
 import { useTrip } from '@/features/trip/hooks/use-trip';
 import { useMe } from '@/hooks/use-me';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
+import { AddPlaceSheet } from '../components/add-place-sheet';
+import { BookmarkPickSheet } from '../components/bookmark-pick-sheet';
 import { BottomActions } from '../components/bottom-actions';
 import { FavoritesMap } from '../components/favorites-map';
 import { FilterBar } from '../components/filter-bar';
+import { InCourseConfirm } from '../components/in-course-confirm';
 import { MemberFilterSheet } from '../components/member-filter-sheet';
 import { PlaceRow } from '../components/place-row';
+import { PlaceSheet } from '../components/place-sheet';
+import { useCoursePlaces } from '../hooks/use-course-places';
+import { useFavoriteMutations } from '../hooks/use-favorite-mutations';
 import { useGroupFavorites } from '../hooks/use-group-favorites';
 import type { SavedFilter, SavedPlace, SavedPlacePage } from '../types';
 
@@ -193,6 +203,19 @@ export function GroupFavoritesScreen() {
   const [mapSelected, setMapSelected] = useState<string | null>(null);
   const [memberSheet, setMemberSheet] = useState(false);
   const list = useGroupFavorites(tripId, { filter, memberId: memberFilter });
+  const mutations = useFavoriteMutations(tripId);
+  const course = useCoursePlaces(tripId);
+  const [adding, setAdding] = useState(false);
+  const [picking, setPicking] = useState(false);
+  const [openId, setOpenId] = useState<string | null>(null);
+  /** 코스에 든 장소를 빼려 할 때 그 장소와 코스를 고친 동행 */
+  const [confirm, setConfirm] = useState<{ placeId: string; editor: string } | null>(null);
+  // 개인 즐겨찾기는 고르기 시트를 열 때만 받는다(개인 즐겨찾기 화면과 같은 캐시)
+  const bookmarks = useQuery({
+    queryKey: bookmarkKeys.all,
+    queryFn: getAllBookmarks,
+    enabled: picking,
+  });
 
   const people: Person[] = (trip.data?.members ?? [])
     .filter((m) => m.status === 'ACTIVE')
@@ -207,6 +230,25 @@ export function GroupFavoritesScreen() {
   const status = notFound ? 'notFound' : list.data ? 'ready' : list.isError ? 'error' : 'loading';
 
   const notReady = () => toast.show('준비 중이에요');
+  const myMemberId = people.find((p) => p.me)?.id ?? null;
+  const openItem = list.items.find((i) => i.place.id === openId) ?? null;
+  const nameOf = (memberId: string | null) => people.find((p) => p.id === memberId)?.name ?? '동행';
+
+  const search = async () => {
+    setAdding(false);
+    const picked = await pickPlace({ regionId: trip.data?.destinationRegionIds[0] });
+    if (picked) await mutations.add([picked.id]);
+  };
+
+  const removeMine = (placeId: string) => {
+    setOpenId(null);
+    // 코스에 든 장소면 빼기 전에 확인한다(Figma 201-29151)
+    if (course.data?.placeIds.has(placeId)) {
+      setConfirm({ placeId, editor: nameOf(course.data.updatedByMemberId) });
+      return;
+    }
+    void mutations.remove(placeId);
+  };
 
   return (
     <GroupFavoritesView
@@ -225,11 +267,11 @@ export function GroupFavoritesScreen() {
       loadingMore={list.isFetchingNextPage}
       memberFilter={memberFilter}
       onMember={() => setMemberSheet(true)}
-      onOpen={() => undefined}
+      onOpen={(item) => setOpenId(item.place.id)}
       mapSelected={mapSelected}
       onMapSelect={setMapSelected}
       selecting={null}
-      onAdd={notReady}
+      onAdd={() => setAdding(true)}
       onPoll={notReady}
       onRecommend={notReady}
       onCancelSelect={() => undefined}
@@ -242,6 +284,56 @@ export function GroupFavoritesScreen() {
         members={people}
         value={memberFilter}
         onChange={setMemberFilter}
+      />
+      <AddPlaceSheet
+        visible={adding}
+        onClose={() => setAdding(false)}
+        tripTitle={trip.data?.title}
+        onBookmarks={() => {
+          setAdding(false);
+          setPicking(true);
+        }}
+        // S11 링크·캡처 등록은 FE B 담당이라 아직 없다(가정 Q-7-1)
+        onLink={notReady}
+        onSearch={() => void search()}
+      />
+      <BookmarkPickSheet
+        visible={picking}
+        onClose={() => setPicking(false)}
+        bookmarks={bookmarks.data}
+        inGroup={new Set(list.items.map((i) => i.place.id))}
+        busy={mutations.busy}
+        onConfirm={(ids) =>
+          void mutations.add(ids).then((n) => {
+            if (n > 0) setPicking(false);
+          })
+        }
+      />
+      <PlaceSheet
+        item={openItem}
+        members={people}
+        myMemberId={myMemberId}
+        onClose={() => setOpenId(null)}
+        busy={mutations.busy}
+        onSaveMemo={(memo) => {
+          if (openItem) void mutations.saveMemo(openItem.place.id, memo);
+        }}
+        onAdd={() => {
+          if (openItem) void mutations.add([openItem.place.id]).then(() => setOpenId(null));
+        }}
+        onRemove={() => openItem && removeMine(openItem.place.id)}
+      />
+      <InCourseConfirm
+        editor={confirm?.editor ?? null}
+        onRemoveAnyway={() => {
+          if (confirm) void mutations.remove(confirm.placeId);
+          setConfirm(null);
+        }}
+        onRefresh={() => {
+          setConfirm(null);
+          void list.refetch();
+          void course.refetch();
+        }}
       />
     </GroupFavoritesView>
   );
