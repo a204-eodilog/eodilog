@@ -125,6 +125,27 @@ export function failedNotice(
   return { icon: 'image', title: '캡처를 읽지 못했어요', description };
 }
 
+/** 진행 단계 이름(값 문서 S12) */
+export const EXTRACTION_STEPS = ['링크와 캡처 읽기', '장소 이름 찾기', '지도에 표시하기'] as const;
+
+/**
+ * 지금 단계 아래 "지금 하는 일" 한 줄(FE 제안). 첫 단계는 보낸 입력(링크·캡처 수)에 맞춘다.
+ * sent가 없으면(앱을 다시 켜 보낸 입력을 잊음) 일반 문구
+ */
+export function stepDetail(
+  step: 0 | 1 | 2,
+  sent: { link: string | null; captureCount: number } | null,
+): string {
+  if (step === 1) return '가게 이름과 주소를 찾고 있어요';
+  if (step === 2) return '찾은 곳을 지도에 올리고 있어요';
+  if (sent?.link && sent.captureCount > 0) {
+    return `게시물 글과 캡처 ${sent.captureCount}장을 읽고 있어요`;
+  }
+  if (sent?.link) return '링크 속 글을 읽고 있어요';
+  if (sent && sent.captureCount > 0) return `캡처 ${sent.captureCount}장을 읽고 있어요`;
+  return '보낸 내용을 읽고 있어요';
+}
+
 /** 진행 단계(값 문서: 링크와 캡처 읽기 / 장소 이름 찾기 / 지도에 표시하기). 지금 하고 있는 단계 0~2 */
 export function progressStep(progress: number): 0 | 1 | 2 {
   if (progress >= 67) return 2;

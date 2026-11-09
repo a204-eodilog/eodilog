@@ -11,6 +11,7 @@ import {
   linkLabel,
   linkStatus,
   progressStep,
+  stepDetail,
 } from './extract-rules';
 import type { ExtractionCandidate, ExtractionResult, Job, Place } from './types';
 
@@ -186,6 +187,22 @@ describe('failedNotice (S12 처리 실패 글)', () => {
     expect(failedNotice({ link: null, captureCount: 1 }, true).description).toBe(
       '시간이 너무 오래 걸려요. 다시 시도해 주세요',
     );
+  });
+});
+
+describe('stepDetail (S12 지금 하는 일)', () => {
+  it('첫 단계는 보낸 입력에 맞춘다', () => {
+    expect(stepDetail(0, { link: 'a.com', captureCount: 2 })).toBe(
+      '게시물 글과 캡처 2장을 읽고 있어요',
+    );
+    expect(stepDetail(0, { link: 'a.com', captureCount: 0 })).toBe('링크 속 글을 읽고 있어요');
+    expect(stepDetail(0, { link: null, captureCount: 3 })).toBe('캡처 3장을 읽고 있어요');
+    expect(stepDetail(0, null)).toBe('보낸 내용을 읽고 있어요');
+  });
+
+  it('다음 단계는 입력과 상관없이 같은 글', () => {
+    expect(stepDetail(1, null)).toBe('가게 이름과 주소를 찾고 있어요');
+    expect(stepDetail(2, { link: null, captureCount: 1 })).toBe('찾은 곳을 지도에 올리고 있어요');
   });
 });
 

@@ -9,13 +9,16 @@ import { pickPlace } from '@/features/place';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 import { cancelExtraction } from '../api';
+import { ExtractSteps } from '../components/extract-steps';
 import { PlaceSaveSheet } from '../components/place-save-sheet';
 import {
   candidateLetter,
+  EXTRACTION_STEPS,
   extractRegion,
   extractionView,
   failedNotice,
   progressStep,
+  stepDetail,
 } from '../extract-rules';
 import { forgetExtraction, sentExtraction } from '../extract-session';
 import { useExtraction, useRetryExtraction } from '../hooks/use-extraction';
@@ -27,8 +30,6 @@ type FoundItem = { key: string; name: string; place: Place; evidence: string };
 
 /** S13에서 직접 고른 장소의 근거 줄 */
 const PICKED = '직접 고른 장소예요';
-
-const STEPS = ['링크와 캡처 읽기', '장소 이름 찾기', '지도에 표시하기'];
 
 const areaOf = (place: Place) => addressParts(place.address).join(' ') || null;
 
@@ -144,38 +145,15 @@ export function ExtractResultScreen() {
     return (
       <View style={styles.screen}>
         <Header title="장소 찾기" largeTitle />
-        <View style={styles.progressTop}>
-          <View style={[styles.ring, styles.ring140]}>
-            <View style={[styles.ring, styles.ring100]}>
-              <View style={[styles.ring, styles.ring64]}>
-                <View style={styles.ringDot} />
-              </View>
-            </View>
-          </View>
-          <SourceChip link={sent?.link ?? null} captures={sent?.captureCount ?? 0} />
-        </View>
-        <View style={[styles.progressBottom, { paddingBottom: Math.max(insets.bottom + 12, 34) }]}>
-          <View style={styles.centerTexts}>
+        <View style={styles.progressBody}>
+          <SourceChip link={sent?.link ?? null} captures={sent?.captureCount ?? 0} flat />
+          <View style={styles.progressTexts}>
             <Text style={[typography.title1, styles.text]}>장소를 찾고 있어요</Text>
             <Text style={[typography.caption, styles.sub]}>보통 10초 안에 끝나요</Text>
           </View>
-          <View style={styles.steps} accessibilityLiveRegion="polite">
-            {STEPS.map((label, i) => {
-              const done = i < step;
-              const now = i === step;
-              return (
-                <View key={label} style={styles.stepRow}>
-                  <View
-                    style={[styles.stepDot, done && styles.stepDone, now && styles.stepNow]}
-                    accessibilityLabel={`${label} ${done ? '끝남' : now ? '하는 중' : '남음'}`}
-                  >
-                    {done ? <Icon name="check" size={16} color={colors.text.inverse} /> : null}
-                  </View>
-                  <Text style={[typography.body, styles.sub]}>{label}</Text>
-                </View>
-              );
-            })}
-          </View>
+          <ExtractSteps steps={EXTRACTION_STEPS} current={step} detail={stepDetail(step, sent)} />
+        </View>
+        <View style={[styles.progressBottom, { paddingBottom: Math.max(insets.bottom + 12, 34) }]}>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="취소"
@@ -445,10 +423,19 @@ export function ExtractResultScreen() {
 }
 
 /** 원본 요약 칩: [링크 + 주소] [사진 + "2장"]. 보낸 입력을 모르면(앱을 다시 켬) 그리지 않는다 */
-function SourceChip({ link, captures }: { link: string | null; captures: number }) {
+/** 보낸 원본 요약 칩. 지도 위(성공)는 그림자 있는 흰 칩, 진행 중 화면 위쪽은 flat(회색 바탕, 그림자 없음) */
+function SourceChip({
+  link,
+  captures,
+  flat = false,
+}: {
+  link: string | null;
+  captures: number;
+  flat?: boolean;
+}) {
   if (!link && captures === 0) return null;
   return (
-    <View style={styles.chip}>
+    <View style={[styles.chip, flat && styles.chipFlat]}>
       {link ? (
         <View style={[styles.inline, styles.shrink]}>
           <Icon name="link" size={16} color={colors.text.default} />
@@ -500,34 +487,16 @@ const styles = StyleSheet.create({
   inverse: { color: colors.text.inverse },
   pressed: { opacity: 0.6 },
 
-  // 진행 중: 동그라미 세 겹(140·100·64, 바깥일수록 옅게) + 가운데 점 20
-  progressTop: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing[28] },
-  ring: { alignItems: 'center', justifyContent: 'center', borderRadius: radius.full },
-  ring140: { width: 140, height: 140, backgroundColor: colors.brand.primaryBg },
-  ring100: { width: 100, height: 100, backgroundColor: colors.brand.primaryLight },
-  ring64: { width: 64, height: 64, backgroundColor: colors.brand.primarySoft },
-  ringDot: {
-    width: 20,
-    height: 20,
-    borderRadius: radius.full,
-    borderWidth: 3,
-    borderColor: colors.surface.white,
-    backgroundColor: colors.brand.primary,
+  // 진행 중(FE 제안): 위에 원본 칩 → 제목 → 세로 단계 표시(ExtractSteps), 왼쪽 정렬. 아래 가운데 [취소]
+  progressBody: {
+    flex: 1,
+    paddingHorizontal: layout.screenPaddingX,
+    paddingTop: spacing[14],
+    alignItems: 'flex-start',
+    gap: spacing[28],
   },
-  progressBottom: { paddingHorizontal: 40, alignItems: 'center', gap: spacing[20] },
-  centerTexts: { alignItems: 'center', gap: spacing[2] },
-  steps: { width: 160, gap: spacing[14] },
-  stepRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[10] },
-  stepDot: {
-    width: 24,
-    height: 24,
-    borderRadius: radius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.line.default,
-  },
-  stepDone: { backgroundColor: colors.status.successMid },
-  stepNow: { backgroundColor: colors.brand.primary },
+  progressTexts: { gap: spacing[2] },
+  progressBottom: { alignItems: 'center' },
   cancel: { height: 48, paddingHorizontal: spacing[16], justifyContent: 'center' },
 
   // 원본 요약 칩: 흰 알약 높이 36, 좌우 12, 간격 14
@@ -546,6 +515,13 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
     elevation: 3,
+  },
+  chipFlat: {
+    maxWidth: '100%',
+    height: 32,
+    backgroundColor: colors.surface.default,
+    shadowOpacity: 0,
+    elevation: 0,
   },
 
   // 아래 시트(지도 위에 겹치는 패널)

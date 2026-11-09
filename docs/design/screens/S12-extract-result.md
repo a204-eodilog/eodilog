@@ -34,6 +34,14 @@
 
 상단 바 [뒤로] + 큰 제목 "장소 찾기" `typography.title1`. 지도는 없고 흰 배경.
 
+> **FE 제안(2026-11-09, 구현 `components/extract-steps.tsx`)** — 아래 1~3(Figma 기준)을 이렇게 바꿨다. Figma 반영과 팀 합의 전이다.
+> - 위에서부터 왼쪽 정렬, 좌우 20: **원본 요약 칩**(회색 `colors.surface.default` 알약 높이 32, 그림자 없음) → 간격 28 → "장소를 찾고 있어요" `typography.title1` + "보통 10초 안에 끝나요" `typography.caption` → 간격 28 → **세로 단계 표시**. 아래 가운데 [취소]. 동그라미 세 겹 그림은 뺐다
+> - **세로 단계 표시**: 번호 동그라미 28을 세로선 2(`colors.line.default`, 끝난 구간은 `colors.brand.primary`)로 잇고 줄 간격 24, 동그라미와 글자 간격 14
+>   - 끝난 단계: `colors.brand.primary` 동그라미 + 흰 체크 16, 글자 `typography.body` `colors.text.icon`
+>   - 지금 단계: `colors.brand.primaryBg` 바탕 + `colors.brand.primary` 테두리 1.5 + 파란 번호, 바깥 4 띄워 한쪽만 파란 테두리 2가 1초에 한 바퀴 돈다(움직임 줄이기면 멈춤). 글자 `typography.bodyBold` `colors.text.default`, 아래에 "지금 하는 일" 한 줄 `typography.caption` `colors.text.sub`
+>   - 남은 단계: 흰 바탕 + `colors.line.strong` 테두리 + 번호 `colors.text.muted`, 글자 `typography.body` `colors.text.muted`
+> - **지금 하는 일**: 1단계는 보낸 입력에 맞춘다 — 링크+캡처 "게시물 글과 캡처 N장을 읽고 있어요" / 링크 "링크 속 글을 읽고 있어요" / 캡처 "캡처 N장을 읽고 있어요" / 모름 "보낸 내용을 읽고 있어요". 2단계 "가게 이름과 주소를 찾고 있어요", 3단계 "찾은 곳을 지도에 올리고 있어요"
+
 1. **찾는 중 그림** — 화면 가운데 위쪽에 `colors.brand.primary` 동그라미 세 겹(140·100·64, 바깥일수록 옅게)과 가운데 점 20(흰 테두리). 퍼져 나가는 움직임을 넣으면 좋다
 2. **원본 요약 칩** — 성공 상태와 같은 흰 알약 [링크 아이콘 + 주소] [사진 아이콘 + "2장"]
 3. **아래 영역** — 좌우 40·아래 34, 세로 간격 20, 가운데 정렬
