@@ -142,11 +142,10 @@ function MapCard(props: MyPageViewProps & { summary: MyPageSummary }) {
         pointerEvents={empty ? 'none' : 'box-none'}
       >
         <KoreaMap
-          // 핀이 바뀌면 처음 맞춤을 다시 한다(처음 맞춤은 한 번만 반영된다)
-          key={map.pins.map((p) => p.key).join('|')}
           pins={map.pins}
           interactive={false}
           initialFocus={map.focus}
+          focus={map.moveTo}
           creditBottom={spacing[6]}
         />
       </View>
@@ -231,7 +230,12 @@ export function useTripPinMap<P extends MyTripPin>(pins: readonly P[], onPress: 
       />
     ),
   }));
-  return { onLayout, pins: mapPins, focus };
+  // 핀이 바뀌면(친구 칩·늦게 온 지역) 지도를 새로 만들지 않고 범위만 부드럽게 옮긴다.
+  // 지도를 key로 새로 만들면 선·면 700개를 처음부터 다시 그려 버벅인다(11/09 직접 확인)
+  const moveTo = focus
+    ? { key: placed.map(({ pin }) => pin.regionCode).join('|'), ...focus }
+    : undefined;
+  return { onLayout, pins: mapPins, focus, moveTo };
 }
 
 /** 지도 핀. 게시한 여행은 파란 알약(사람 아이콘), 게시 전은 흰 알약(자물쇠) */

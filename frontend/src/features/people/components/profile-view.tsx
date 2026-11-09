@@ -102,10 +102,10 @@ function FeedMap({
     <>
       <View style={styles.map} onLayout={map.onLayout}>
         <KoreaMap
-          key={map.pins.map((p) => p.key).join('|')}
           pins={map.pins}
           interactive={false}
           initialFocus={map.focus}
+          focus={map.moveTo}
           creditBottom={spacing[6]}
         />
         {pins.length === 0 ? (

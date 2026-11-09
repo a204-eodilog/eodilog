@@ -114,10 +114,10 @@ function MiniMap({ view }: { view: FriendView }) {
   return (
     <View style={styles.map} onLayout={map.onLayout}>
       <KoreaMap
-        key={view.pins.map((p) => p.regionCode).join('-') || 'none'}
         pins={map.pins}
         interactive={false}
         initialFocus={map.focus}
+        focus={map.moveTo}
         creditBottom={spacing[6]}
       />
     </View>
