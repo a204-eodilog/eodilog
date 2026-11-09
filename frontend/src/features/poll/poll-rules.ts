@@ -181,3 +181,54 @@ export function applyMyBallot(poll: Poll, selected: readonly string[]): Poll {
     })),
   };
 }
+
+/** 받침이 있으면 a, 없으면 b. 한글로 끝나지 않으면 "a(b)" (lib/korean과 같은 기준) */
+function particle(word: string, withFinal: string, withoutFinal: string): string {
+  const last = word.trim().charCodeAt(word.trim().length - 1);
+  if (Number.isNaN(last) || last < 0xac00 || last > 0xd7a3) {
+    return `${word}${withFinal}(${withoutFinal})`;
+  }
+  return `${word}${(last - 0xac00) % 28 === 0 ? withoutFinal : withFinal}`;
+}
+
+/** 위쪽 마감 카드 제목과 보조 줄(Figma 201-11073·201-11213) */
+export function resultHeadline(
+  state: 'decided' | 'tie',
+  winners: string[],
+  topVotes: number,
+): { title: string; sub: string } {
+  if (state === 'decided') {
+    return {
+      title: '투표가 마감됐어요',
+      sub: `가장 많이 받은 ${withRo(winners[0] ?? '')} 확정됐어요`,
+    };
+  }
+  return {
+    title: `${particle(joinNames(winners), '이', '가')} ${topVotes}표씩 같아요`,
+    sub: '',
+  };
+}
+
+/** 동률 카드 보조 줄. 투표하지 않은 동행이 있으면 "1명이 투표하지 않고 마감됐어요" */
+export function notVotedLine(notVoted: number): string {
+  return notVoted > 0 ? `${notVoted}명이 투표하지 않고 마감됐어요` : '모두 투표하고 마감됐어요';
+}
+
+/** 동률 확정 줄 "부산과 강릉을 모두 확정했어요"와 결과 제목 "부산과 강릉이 함께 확정됐어요" */
+export function tieLines(winners: string[]): { confirmed: string; heading: string } {
+  const names = joinNames(winners);
+  return {
+    confirmed: `${particle(names, '을', '를')} 모두 확정했어요`,
+    heading: `${particle(names, '이', '가')} 함께 확정됐어요`,
+  };
+}
+
+/** 여행지 확정 카드 아래 두 줄 "3명 중 2표", "모두 투표했어요"·"1명이 투표하지 않았어요" */
+export function decidedLines(poll: Poll): { votes: string; voters: string } {
+  const top = Math.max(0, ...poll.candidates.map((c) => c.voteCount));
+  const notVoted = notVotedCount(poll);
+  return {
+    votes: `${poll.eligibleMemberCount}명 중 ${top}표`,
+    voters: notVoted === 0 ? '모두 투표했어요' : `${notVoted}명이 투표하지 않았어요`,
+  };
+}

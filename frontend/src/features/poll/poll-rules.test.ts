@@ -3,6 +3,10 @@ import { describe, expect, it } from '@jest/globals';
 import {
   applyMyBallot,
   ballotFailLines,
+  decidedLines,
+  notVotedLine,
+  resultHeadline,
+  tieLines,
   closesAtLabel,
   defaultClosesAt,
   isNewCandidate,
@@ -183,5 +187,40 @@ describe('applyMyBallot', () => {
   });
   it('선택이 서버와 같으면 그대로 돌려준다', () => {
     expect(applyMyBallot(saved, ['c1'])).toBe(saved);
+  });
+});
+
+describe('결과 문구', () => {
+  it('최다 하나면 투표가 마감됐어요와 가장 많이 받은 곳으로 확정', () => {
+    expect(resultHeadline('decided', ['부산'], 2)).toEqual({
+      title: '투표가 마감됐어요',
+      sub: '가장 많이 받은 부산으로 확정됐어요',
+    });
+    expect(resultHeadline('decided', ['제주'], 2).sub).toBe('가장 많이 받은 제주로 확정됐어요');
+  });
+  it('동률이면 이름을 잇고 이 가를 맞춘다', () => {
+    expect(resultHeadline('tie', ['부산', '강릉'], 1).title).toBe('부산과 강릉이 1표씩 같아요');
+    expect(resultHeadline('tie', ['강릉', '여수'], 2).title).toBe('강릉과 여수가 2표씩 같아요');
+    expect(tieLines(['부산', '강릉'])).toEqual({
+      confirmed: '부산과 강릉을 모두 확정했어요',
+      heading: '부산과 강릉이 함께 확정됐어요',
+    });
+    expect(tieLines(['강릉', '제주']).confirmed).toBe('강릉과 제주를 모두 확정했어요');
+  });
+  it('투표하지 않은 동행 줄', () => {
+    expect(notVotedLine(1)).toBe('1명이 투표하지 않고 마감됐어요');
+    expect(notVotedLine(0)).toBe('모두 투표하고 마감됐어요');
+  });
+  it('여행지 확정 카드 두 줄', () => {
+    const decided = poll({
+      status: 'FINALIZED',
+      eligibleMemberCount: 3,
+      votedMemberCount: 3,
+      candidates: [candidate('c1', { voteCount: 2 }), candidate('c2', { voteCount: 1 })],
+    });
+    expect(decidedLines(decided)).toEqual({ votes: '3명 중 2표', voters: '모두 투표했어요' });
+    expect(decidedLines({ ...decided, votedMemberCount: 2 }).voters).toBe(
+      '1명이 투표하지 않았어요',
+    );
   });
 });
