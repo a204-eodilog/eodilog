@@ -4,16 +4,19 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AvatarGroup, Button, Header } from '@/components/ui';
 import {
+  addPlace,
   dayLegs,
+  emptyDraft,
   moveItem,
   removeItem,
   setLegMode,
   toDraft,
   type CourseDraft,
 } from '@/features/course/course-rules';
-import { DraftView, type DraftOrigin } from '@/features/course/screens/course-edit-screen';
+import { ManualBuilder } from '@/features/course/components/manual-builder';
+import { DraftView, newKey, type DraftOrigin } from '@/features/course/screens/course-edit-screen';
 import { CourseView, type Person } from '@/features/course/screens/course-screen';
-import { sampleCourse } from '@/features/course/testing';
+import { place, sampleCourse, savedPlace } from '@/features/course/testing';
 import { colors, layout, spacing, typography } from '@/theme';
 
 /**
@@ -38,6 +41,8 @@ const EXAMPLES: Example[] = [
   { state: 'load-error', label: '불러오기 실패', group: 'S24' },
   { state: 'draft', label: '코스 초안 201-12879', group: 'S23' },
   { state: 'item-sheet', label: '장소 교체·순서·삭제 201-13071', group: 'S23' },
+  { state: 'manual', label: '직접 만들기 201-12753', group: 'S23' },
+  { state: 'manual-placed', label: '직접 만들기 · 장소 놓은 뒤 523-349', group: 'S23' },
 ];
 
 export default function DevCourse() {
@@ -78,6 +83,14 @@ export default function DevCourse() {
           origin="proposal"
           openSheet={state === 'item-sheet' ? 1 : null}
         />
+      </EditFrame>
+    );
+  }
+
+  if (state === 'manual' || state === 'manual-placed') {
+    return (
+      <EditFrame>
+        <DevManual placed={state === 'manual-placed'} />
       </EditFrame>
     );
   }
@@ -179,6 +192,56 @@ function DevDraft(props: { initial: CourseDraft; origin: DraftOrigin; openSheet:
       onRedo={() => {}}
       onDone={() => setDirty(false)}
       saving={false}
+    />
+  );
+}
+
+const SAVED = [
+  place('p-haeundae', '해운대 해변'),
+  place('p-gwangalli', '광안리 바다뷰 카페'),
+  place('p-seomyeon', '서면 돼지국밥집'),
+  place('p-gamcheon', '감천문화마을'),
+  place('p-huinnyeoul', '흰여울문화마을'),
+].map((p) => savedPlace(p));
+
+/** 미리보기 안에서 칩을 눌러 놓아 볼 수 있는 직접 만들기 */
+function DevManual({ placed }: { placed: boolean }) {
+  const [draft, setDraft] = useState(() => {
+    let d = emptyDraft(1, 2);
+    if (placed) {
+      for (const s of SAVED.slice(0, 3)) d = addPlace(d, 0, s.place, newKey());
+    }
+    return d;
+  });
+  const [day, setDay] = useState(0);
+  const [sheet, setSheet] = useState<number | null>(null);
+  return (
+    <ManualBuilder
+      draft={draft}
+      startDate={START}
+      day={day}
+      onSelectDay={setDay}
+      saved={SAVED}
+      onPlace={(p) => setDraft(addPlace(draft, day, p, newKey()))}
+      onFind={() => {}}
+      onBuild={() => {}}
+      sheetIndex={sheet}
+      onMore={(d, i) => {
+        setDay(d);
+        setSheet(i);
+      }}
+      onCloseSheet={() => setSheet(null)}
+      onReplace={() => setSheet(null)}
+      onMove={(delta) => {
+        if (sheet === null) return;
+        setDraft(moveItem(draft, day, sheet, delta));
+        setSheet(sheet + delta);
+      }}
+      onRemove={() => {
+        if (sheet === null) return;
+        setDraft(removeItem(draft, day, sheet));
+        setSheet(null);
+      }}
     />
   );
 }

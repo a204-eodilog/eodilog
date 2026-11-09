@@ -7,8 +7,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { toast } from '@/components/ui';
 import { pickPlace } from '@/features/place/place-picker';
 
-import { getItinerary, replaceItinerary } from '../api';
-import { httpError, item, itinerary, place, sampleCourse } from '../testing';
+import { getItinerary, getTripSavedPlaces, replaceItinerary } from '../api';
+import { httpError, item, itinerary, place, sampleCourse, savedPlace } from '../testing';
 import type { Itinerary, ItineraryWrite } from '../types';
 
 import { CourseEditScreen } from './course-edit-screen';
@@ -133,6 +133,7 @@ jest.setTimeout(20_000);
 const mockGet = jest.mocked(getItinerary);
 const mockPut = jest.mocked(replaceItinerary);
 const mockPick = jest.mocked(pickPlace);
+const mockSaved = jest.mocked(getTripSavedPlaces);
 
 function renderScreen() {
   const client = new QueryClient({
@@ -296,5 +297,64 @@ describe('코스 초안 고치고 저장하기', () => {
     await renderScreen();
     await fireEvent.press(await screen.findByText('완료'));
     expect(mockRouter.replace).toHaveBeenCalledWith('/trips/trip-1/course');
+  });
+});
+
+describe('직접 만들기', () => {
+  const haeundae = place('p-haeundae', '해운대 해변');
+  const gwangalli = place('p-gwangalli', '광안리 바다뷰 카페');
+  const seomyeon = place('p-seomyeon', '서면 돼지국밥집');
+
+  beforeEach(() => {
+    mockGet.mockResolvedValue(itinerary({ version: 1, items: [], legs: [] }));
+    mockSaved.mockResolvedValue([
+      savedPlace(haeundae),
+      savedPlace(gwangalli),
+      savedPlace(seomyeon),
+    ]);
+  });
+
+  it('날짜를 고르고 칩을 누르면 그 날 끝에 놓이고 코스 만들기로 초안이 된다', async () => {
+    await renderScreen();
+    expect(await screen.findByText('날짜를 고르고 그룹 즐겨찾기 장소를 눌러 놓아요')).toBeTruthy();
+    expect(await screen.findByText('3곳 남았어요')).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText('해운대 해변, 1일차에 놓기'));
+    await fireEvent.press(screen.getByLabelText('광안리 바다뷰 카페, 1일차에 놓기'));
+    expect(screen.getByText('1곳 남았어요')).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText('2일차에 놓기'));
+    await fireEvent.press(screen.getByLabelText('서면 돼지국밥집, 2일차에 놓기'));
+    await fireEvent.press(screen.getByText('코스 만들기'));
+
+    expect(await screen.findByText('재추천')).toBeTruthy();
+    await fireEvent.press(screen.getByText('완료'));
+    await waitFor(() => expect(mockPut).toHaveBeenCalled());
+    const body = lastBody();
+    expect(body.expectedVersion).toBe(1);
+    expect(day1(body)).toEqual(['p-haeundae', 'p-gwangalli']);
+    expect(body.items.filter((i) => i.day === 2).map((i) => i.placeId)).toEqual(['p-seomyeon']);
+    expect(body.legs).toEqual([{ day: 1, fromOrder: 1, toOrder: 2, transportMode: 'TRANSIT' }]);
+  });
+
+  it('놓은 장소가 없으면 코스 만들기를 누를 수 없다', async () => {
+    await renderScreen();
+    await fireEvent.press(await screen.findByText('코스 만들기'));
+    expect(screen.queryByText('재추천')).toBeNull();
+  });
+
+  it('놓은 장소를 빼면 칩 줄로 돌아온다', async () => {
+    await renderScreen();
+    await fireEvent.press(await screen.findByLabelText('해운대 해변, 1일차에 놓기'));
+    await fireEvent.press(screen.getByLabelText('해운대 해변 고치기'));
+    await fireEvent.press(screen.getByText('코스에서 빼기'));
+    expect(screen.getByText('3곳 남았어요')).toBeTruthy();
+  });
+
+  it('그룹 즐겨찾기가 비었으면 장소 찾기로 고른 장소를 놓는다', async () => {
+    mockSaved.mockResolvedValue([]);
+    mockPick.mockResolvedValue(place('p-new', '흰여울문화마을'));
+    await renderScreen();
+    expect(await screen.findByText('그룹 즐겨찾기가 비어 있어요')).toBeTruthy();
+    await fireEvent.press(screen.getByText('장소 찾기'));
+    expect(await screen.findByText('흰여울문화마을')).toBeTruthy();
   });
 });
