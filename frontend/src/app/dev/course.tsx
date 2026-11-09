@@ -13,7 +13,9 @@ import {
   toDraft,
   type CourseDraft,
 } from '@/features/course/course-rules';
+import { AutoFailView, AutoLoadingView } from '@/features/course/components/auto-views';
 import { ManualBuilder } from '@/features/course/components/manual-builder';
+import { ChooseView, NoDatesView, NoRegionView } from '@/features/course/components/setup-views';
 import { DraftView, newKey, type DraftOrigin } from '@/features/course/screens/course-edit-screen';
 import { CourseView, type Person } from '@/features/course/screens/course-screen';
 import { place, sampleCourse, savedPlace } from '@/features/course/testing';
@@ -39,6 +41,11 @@ const EXAMPLES: Example[] = [
   { state: 'view', label: '기본 201-13969', group: 'S24' },
   { state: 'view-fail', label: '이동 시간 갱신 실패 201-29705', group: 'S24' },
   { state: 'load-error', label: '불러오기 실패', group: 'S24' },
+  { state: 'choose', label: '구성 방식 선택 201-12269', group: 'S23' },
+  { state: 'no-region', label: '여행지 미정 201-12377', group: 'S23' },
+  { state: 'no-dates', label: '기간 없음 201-12442', group: 'S23' },
+  { state: 'auto-loading', label: '자동 추천 생성 중 201-12610', group: 'S23' },
+  { state: 'auto-fail', label: '자동 추천 실패 201-12684', group: 'S23' },
   { state: 'draft', label: '코스 초안 201-12879', group: 'S23' },
   { state: 'item-sheet', label: '장소 교체·순서·삭제 201-13071', group: 'S23' },
   { state: 'manual', label: '직접 만들기 201-12753', group: 'S23' },
@@ -82,6 +89,51 @@ export default function DevCourse() {
           initial={toDraft(sampleCourse(true), 2)}
           origin="proposal"
           openSheet={state === 'item-sheet' ? 1 : null}
+        />
+      </EditFrame>
+    );
+  }
+
+  if (state === 'choose') {
+    return (
+      <EditFrame>
+        <ChooseView
+          regionName="부산"
+          period="11.14(토) – 11.15(일)"
+          savedCount={5}
+          onAuto={() => setState('auto-loading')}
+          onManual={() => setState('manual')}
+        />
+      </EditFrame>
+    );
+  }
+  if (state === 'no-region') {
+    return (
+      <EditFrame>
+        <NoRegionView onPickRegion={back} />
+      </EditFrame>
+    );
+  }
+  if (state === 'no-dates') {
+    return (
+      <EditFrame>
+        <DevDates />
+      </EditFrame>
+    );
+  }
+  if (state === 'auto-loading') {
+    return (
+      <EditFrame>
+        <AutoLoadingView savedCount={5} />
+      </EditFrame>
+    );
+  }
+  if (state === 'auto-fail') {
+    return (
+      <EditFrame>
+        <AutoFailView
+          onRetry={() => setState('auto-loading')}
+          onManual={() => setState('manual')}
         />
       </EditFrame>
     );
@@ -242,6 +294,23 @@ function DevManual({ placed }: { placed: boolean }) {
         setDraft(removeItem(draft, day, sheet));
         setSheet(null);
       }}
+    />
+  );
+}
+
+/** Figma 201-12442처럼 12.05(토)–12.06(일) 1박 2일을 고른 기간 없음 */
+function DevDates() {
+  const [value, setValue] = useState<{ start: string; end: string | null } | null>({
+    start: '2026-12-05',
+    end: '2026-12-06',
+  });
+  return (
+    <NoDatesView
+      regionName="강릉"
+      value={value}
+      onChange={setValue}
+      onNext={() => {}}
+      saving={false}
     />
   );
 }

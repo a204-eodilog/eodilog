@@ -7,9 +7,17 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { toast } from '@/components/ui';
 import { pickPlace } from '@/features/place/place-picker';
 
-import { getItinerary, getTripSavedPlaces, replaceItinerary } from '../api';
+import { updateTrip } from '@/features/trip/api';
+
+import {
+  getAutoCourse,
+  getItinerary,
+  getTripSavedPlaces,
+  replaceItinerary,
+  requestAutoCourse,
+} from '../api';
 import { httpError, item, itinerary, place, sampleCourse, savedPlace } from '../testing';
-import type { Itinerary, ItineraryWrite } from '../types';
+import type { Itinerary, ItineraryProposal, ItineraryWrite } from '../types';
 
 import { CourseEditScreen } from './course-edit-screen';
 
@@ -58,6 +66,12 @@ jest.mock('@/features/trip/hooks/use-trip', () => ({
   tripKey: (id: string) => ['trips', id],
   useTrip: () => ({ data: mockTrip, error: null }),
 }));
+
+jest.mock('@/features/trip/hooks/use-region-names', () => ({
+  useRegionNames: (ids: string[]) => ids.map((id) => (id === 'region-busan' ? '부산' : id)),
+}));
+jest.mock('@/features/trip/api', () => ({ updateTrip: jest.fn() }));
+jest.mock('@/features/trip/hooks/trip-cache', () => ({ invalidateTripLists: jest.fn() }));
 
 jest.mock('@/hooks/use-me', () => ({ useMe: () => ({ data: { id: 'u-me' } }) }));
 
@@ -124,9 +138,33 @@ jest.mock('@/components/ui', () => {
           </Pressable>
         </View>
       ) : null,
+    Button: ({
+      label,
+      onPress,
+      disabled,
+    }: {
+      label: string;
+      onPress?: () => void;
+      disabled?: boolean;
+    }) => (
+      <Pressable onPress={onPress} disabled={disabled} accessibilityRole="button">
+        <Text>{label}</Text>
+      </Pressable>
+    ),
+    Chip: ({ label, onPress }: { label: string; onPress?: () => void }) => (
+      <Pressable onPress={onPress}>
+        <Text>{label}</Text>
+      </Pressable>
+    ),
     toast: { show: jest.fn(), success: jest.fn(), error: jest.fn() },
   };
 });
+
+// 달력은 테스트에서 그리지 않는다. 칩으로 기간을 고른다
+jest.mock('react-native-calendars', () => ({
+  Calendar: () => null,
+  LocaleConfig: { locales: {}, defaultLocale: '' },
+}));
 
 jest.setTimeout(20_000);
 
@@ -134,6 +172,9 @@ const mockGet = jest.mocked(getItinerary);
 const mockPut = jest.mocked(replaceItinerary);
 const mockPick = jest.mocked(pickPlace);
 const mockSaved = jest.mocked(getTripSavedPlaces);
+const mockRequestAuto = jest.mocked(requestAutoCourse);
+const mockGetAuto = jest.mocked(getAutoCourse);
+const mockUpdateTrip = jest.mocked(updateTrip);
 
 function renderScreen() {
   const client = new QueryClient({
@@ -176,6 +217,9 @@ const day1 = (b: ItineraryWrite) => b.items.filter((i) => i.day === 1).map((i) =
 beforeEach(() => {
   jest.clearAllMocks();
   mockParams.entry = undefined;
+  mockTrip.startDate = '2026-11-14';
+  mockTrip.endDate = '2026-11-15';
+  mockTrip.destinationRegionIds = ['region-busan'];
   mockGet.mockResolvedValue(sampleCourse(true));
   echoPut();
 });
@@ -362,5 +406,128 @@ describe('직접 만들기', () => {
     expect(await screen.findByText('그룹 즐겨찾기가 비어 있어요')).toBeTruthy();
     await fireEvent.press(screen.getByText('장소 찾기'));
     expect(await screen.findByText('흰여울문화마을')).toBeTruthy();
+  });
+});
+
+describe('구성 방식과 준비 상태', () => {
+  const proposalOf = (status: 'SUCCEEDED' | 'FAILED'): ItineraryProposal => ({
+    job: {
+      id: 'job-1',
+      kind: 'ITINERARY_PROPOSAL',
+      status,
+      progress: 100,
+      result: null,
+      error: null,
+      createdAt: '',
+      finishedAt: '',
+    },
+    baseVersion: 1,
+    reason: 'INITIAL',
+    proposed:
+      status === 'SUCCEEDED'
+        ? {
+            items: [
+              {
+                day: 1,
+                order: 1,
+                place: place('p-a', '추천 장소 A'),
+                startTime: '10:00',
+                stayMinutes: 60,
+              },
+              {
+                day: 1,
+                order: 2,
+                place: place('p-b', '추천 장소 B'),
+                startTime: '13:00',
+                stayMinutes: 60,
+              },
+            ],
+            legs: [{ day: 1, fromOrder: 1, toOrder: 2, transportMode: 'CAR' }],
+          }
+        : null,
+    diff: null,
+    appliedAt: null,
+    canUndo: false,
+  });
+
+  beforeEach(() => {
+    mockGet.mockResolvedValue(itinerary({ version: 1, items: [], legs: [] }));
+    mockSaved.mockResolvedValue([savedPlace(place('a', 'A')), savedPlace(place('b', 'B'))]);
+    mockRequestAuto.mockResolvedValue({ jobId: 'job-1', status: 'QUEUED', statusUrl: '' });
+  });
+
+  it('여행지와 기간이 있으면 구성 방식 선택을 보인다', async () => {
+    await renderScreen();
+    expect(await screen.findByText('이 내용으로 짜요')).toBeTruthy();
+    expect(screen.getByText('여행지 부산')).toBeTruthy();
+    expect(screen.getByText('기간 11.14(토) – 11.15(일)')).toBeTruthy();
+    expect(await screen.findByText('모은 장소 2곳')).toBeTruthy();
+    expect(screen.getByText('어떻게 짤까요?')).toBeTruthy();
+  });
+
+  it('여행지가 없으면 여행지를 먼저 정하게 한다', async () => {
+    mockTrip.destinationRegionIds = [];
+    await renderScreen();
+    expect(await screen.findByText('여행지를 먼저 정해요')).toBeTruthy();
+    await fireEvent.press(screen.getByText('여행지 정하기'));
+    expect(mockRouter.push).toHaveBeenCalledWith({
+      pathname: '/trips/[tripId]/settings-region',
+      params: { tripId: 'trip-1' },
+    });
+  });
+
+  it('기간이 없으면 기간을 고르고 다음에서 여행 기간을 저장한다', async () => {
+    mockTrip.startDate = null;
+    mockTrip.endDate = null;
+    mockUpdateTrip.mockResolvedValue({} as never);
+    await renderScreen();
+    expect(await screen.findByText('언제 가요?')).toBeTruthy();
+    await fireEvent.press(screen.getByText('1박 2일'));
+    await fireEvent.press(screen.getByText('다음'));
+    await waitFor(() => expect(mockUpdateTrip).toHaveBeenCalled());
+    const [, body] = mockUpdateTrip.mock.calls[0];
+    expect(body.expectedVersion).toBe(1);
+    expect(Date.parse(body.endDate as string) - Date.parse(body.startDate as string)).toBe(
+      86_400_000,
+    );
+  });
+
+  it('자동 추천이 끝나면 추천안 초안을 열고 완료로 저장한다', async () => {
+    mockGetAuto.mockResolvedValue(proposalOf('SUCCEEDED'));
+    await renderScreen();
+    await fireEvent.press(await screen.findByText('자동 추천'));
+    expect(await screen.findByText('추천안')).toBeTruthy();
+    expect(screen.getByText('추천 장소 A')).toBeTruthy();
+    await fireEvent.press(screen.getByText('완료'));
+    await waitFor(() => expect(mockPut).toHaveBeenCalled());
+    expect(lastBody().items.every((i) => !('id' in i))).toBe(true);
+    expect(lastBody().legs).toEqual([{ day: 1, fromOrder: 1, toOrder: 2, transportMode: 'CAR' }]);
+  });
+
+  it('자동 추천이 실패하면 다시 시도와 직접 만들기를 보인다', async () => {
+    mockGetAuto.mockResolvedValue(proposalOf('FAILED'));
+    await renderScreen();
+    await fireEvent.press(await screen.findByText('자동 추천'));
+    expect(await screen.findByText('코스를 만들지 못했어요')).toBeTruthy();
+    await fireEvent.press(screen.getByText('직접 만들기'));
+    expect(await screen.findByText('날짜를 고르고 그룹 즐겨찾기 장소를 눌러 놓아요')).toBeTruthy();
+  });
+
+  it('추천안에서 뒤로 가면 버릴지 묻는다', async () => {
+    mockGetAuto.mockResolvedValue(proposalOf('SUCCEEDED'));
+    await renderScreen();
+    await fireEvent.press(await screen.findByText('자동 추천'));
+    await screen.findByText('추천안');
+    await fireEvent.press(screen.getByLabelText('뒤로'));
+    expect(screen.getByText('고친 내용을 버릴까요?')).toBeTruthy();
+  });
+
+  it('초안의 재추천은 새 추천안으로 바꾼다', async () => {
+    mockGet.mockResolvedValue(sampleCourse(true));
+    mockGetAuto.mockResolvedValue(proposalOf('SUCCEEDED'));
+    await renderScreen();
+    await fireEvent.press(await screen.findByText('재추천'));
+    expect(await screen.findByText('추천 장소 A')).toBeTruthy();
+    expect(mockRequestAuto).toHaveBeenCalledWith('trip-1', 3);
   });
 });
