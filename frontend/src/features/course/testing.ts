@@ -1,3 +1,5 @@
+import { AxiosError, AxiosHeaders, type InternalAxiosRequestConfig } from 'axios';
+
 import type { Place } from '@/features/place/types';
 
 import type { Itinerary, ItineraryItem, RouteLeg, SavedPlace, TransportMode } from './types';
@@ -97,5 +99,17 @@ export function sampleCourse(available = true): Itinerary {
       item('i4', gamcheon, 2, 1, { startTime: '10:30' }),
     ],
     legs: [leg('i1', 'i2', 'TRANSIT', done(22 * 60)), leg('i2', 'i3', 'TRANSIT', done(25 * 60))],
+  });
+}
+
+/** 서버가 오류 코드로 답한 것과 같은 오류. toApiError가 status와 code를 읽는다 */
+export function httpError(status: number, code: string): AxiosError {
+  const config = { headers: new AxiosHeaders() } as InternalAxiosRequestConfig;
+  return new AxiosError(code, 'ERR_BAD_REQUEST', config, null, {
+    status,
+    statusText: code,
+    headers: {},
+    config,
+    data: { error: { code, message: code, fields: [], traceId: null } },
   });
 }
