@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { BottomSheet, Button, Chip, Icon } from '@/components/ui';
@@ -50,6 +50,8 @@ export function OpenPollSheet({
   const saved = useSavedPlaces(tripId, visible && !previewOptions);
   const regionNames = useRegionNameMap(regionCounts(saved.data ?? []).map((r) => r.regionId));
   const open = useOpenPoll(tripId);
+  // isPending은 다시 그린 뒤에 바뀌어서, 그 전에 한 번 더 누르면 요청이 두 번 나간다. 누르는 즉시 막는다
+  const submitting = useRef(false);
 
   // 시트를 다시 열면 처음 값으로 돌린다. effect 대신 그리는 중에 맞춘다(React 문서 '이전 값과 비교')
   const [wasVisible, setWasVisible] = useState(visible);
@@ -94,6 +96,8 @@ export function OpenPollSheet({
   };
 
   const submit = () => {
+    if (submitting.current) return;
+    submitting.current = true;
     const candidates = options.filter((o) => selected.includes(o.key)).map((o) => o.input);
     open.mutate(
       { type, candidates, closesAt },
@@ -101,6 +105,9 @@ export function OpenPollSheet({
         onSuccess: (poll) => {
           onOpened(poll);
           close();
+        },
+        onSettled: () => {
+          submitting.current = false;
         },
       },
     );
@@ -119,7 +126,9 @@ export function OpenPollSheet({
     >
       <View style={styles.subtitle}>
         <Icon name="map-pin" size={16} color={colors.text.icon} />
-        <Text style={styles.subtitleText}>후보 {selected.length}곳 · 여러 곳을 고를 수 있어요</Text>
+        <Text
+          style={styles.subtitleText}
+        >{`후보 ${selected.length}곳 · 여러 곳을 고를 수 있어요`}</Text>
       </View>
 
       <View style={styles.chips}>
