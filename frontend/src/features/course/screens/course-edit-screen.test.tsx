@@ -550,6 +550,22 @@ describe('구성 방식과 준비 상태', () => {
     expect(await screen.findByText('날짜를 고르고 그룹 즐겨찾기 장소를 눌러 놓아요')).toBeTruthy();
   });
 
+  it('요청이 바로 실패하면 생성 중 화면을 거치지 않고, 다시 시도해도 실패 화면에 머문다', async () => {
+    mockRequestAuto.mockRejectedValue(new Error('404'));
+    await renderScreen();
+    await fireEvent.press(await screen.findByText('자동 추천'));
+    // 서버가 받기 전에는 선택 화면을 그대로 둔다
+    expect(screen.getByText('이 내용으로 짜요')).toBeTruthy();
+    expect(screen.queryByText('코스를 짜고 있어요')).toBeNull();
+    expect(await screen.findByText('코스를 만들지 못했어요')).toBeTruthy();
+    await fireEvent.press(screen.getByText('다시 시도'));
+    expect(screen.getByText('코스를 만들지 못했어요')).toBeTruthy();
+    expect(screen.queryByText('코스를 짜고 있어요')).toBeNull();
+    await waitFor(() => expect(mockRequestAuto).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.getByText('다시 시도')).toBeTruthy());
+    expect(screen.queryByText('코스를 짜고 있어요')).toBeNull();
+  });
+
   it('추천안에서 뒤로 가면 버릴지 묻는다', async () => {
     mockGetAuto.mockResolvedValue(proposalOf('SUCCEEDED'));
     await renderScreen();

@@ -357,15 +357,20 @@ export function CourseEditScreen() {
     setMode('manual');
   };
 
-  /** 자동 추천을 받아 추천안 초안으로 연다. 실패하면 실패 화면에 머문다 */
+  /**
+   * 자동 추천을 받아 추천안 초안으로 연다. 실패하면 실패 화면에 머문다.
+   * 서버가 요청을 받기 전까지는 지금 화면을 두고 누른 버튼만 돌게 한다. 바로 실패하면 생성 중 화면 없이 실패 화면
+   */
   const runAuto = async () => {
     const base = itinerary.data;
     if (!base) return;
-    // 초안에서 재추천했으면 실패했을 때 그 초안으로 돌아갈 수 있게 기억한다
-    setAutoFromDraft(mode === 'draft' && draft !== null);
-    setMode('auto');
-    const content = await auto.start(base.version);
-    if (!content) return;
+    // 초안에서 재추천했으면 실패했을 때 그 초안으로 돌아갈 수 있게 기억한다. 실패 화면의 다시 시도는 그대로 둔다
+    if (mode !== 'auto') setAutoFromDraft(mode === 'draft' && draft !== null);
+    const content = await auto.start(base.version, () => setMode('auto'));
+    if (!content) {
+      setMode('auto');
+      return;
+    }
     setDraft(proposalToDraft(content, base.version, days, newKey));
     setOrigin('proposal');
     setDirty(false);
@@ -466,16 +471,18 @@ export function CourseEditScreen() {
           savedCount={saved.data?.length ?? 0}
           onAuto={() => void runAuto()}
           onManual={startManual}
+          autoBusy={auto.status === 'requesting'}
         />
       );
     }
   } else if (mode === 'auto') {
     body =
-      auto.status === 'failed' ? (
+      auto.status === 'failed' || auto.status === 'requesting' ? (
         <AutoFailView
           onRetry={() => void runAuto()}
           onManual={autoFromDraft ? () => setMode('draft') : startManual}
           backToDraft={autoFromDraft}
+          retrying={auto.status === 'requesting'}
         />
       ) : (
         <AutoLoadingView savedCount={saved.data?.length ?? 0} />
