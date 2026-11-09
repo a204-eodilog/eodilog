@@ -25,7 +25,8 @@ const MENU: MenuItem[] = [
     key: 'review',
     label: '평가',
     icon: 'star',
-    open: (tripId) => router.push({ pathname: '/trips/[tripId]/visits', params: { tripId } }),
+    // 평가 목록도 폴더(visits/index.tsx)라 경비처럼 실제 주소로 보낸다. pathname 객체는 타입 검사가 막는다
+    open: (tripId) => router.push(`/trips/${tripId}/visits`),
   },
   {
     key: 'expense',
@@ -36,7 +37,13 @@ const MENU: MenuItem[] = [
     open: (tripId) => router.push(`/trips/${tripId}/expenses`),
   },
   { key: 'publish', label: '게시', icon: 'link' },
-  { key: 'chat', label: '채팅', icon: 'chat' },
+  {
+    key: 'chat',
+    label: '채팅',
+    icon: 'chat',
+    // S47 대화방(채팅 명세). 여행 아래 주소라 나가기의 dismissAll이 함께 닫는다
+    open: (tripId) => router.push({ pathname: '/trips/[tripId]/chat', params: { tripId } }),
+  },
 ];
 
 /**

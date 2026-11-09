@@ -2,6 +2,7 @@ import type { InfiniteData, QueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 
 import type { PageResponse } from '@/api/types';
+import { forgetChatForTrip } from '@/features/chat/hooks/chat-forget';
 
 import { getTrip } from '../api';
 import { forgetInviteLink } from '../invite-storage';
@@ -82,6 +83,9 @@ export async function forgetTrip(queryClient: QueryClient, tripId: string) {
 export async function exitTrip(queryClient: QueryClient, tripId: string) {
   // 이동하기 전에 목록 캐시에서 먼저 뺀다. 그러지 않으면 목록을 새로 받는 동안(실서버 약 1초) 나간 여행이 보인다(FR-028)
   await dropFromTripLists(queryClient, tripId);
+  // 채팅 탭 목록에서도 그 여행의 대화방을 바로 빼고 보내는 중 메시지를 지운다(채팅 명세 FR-026).
+  // 대화방·메시지 캐시는 ['trips', tripId] 아래라 아래 forgetTrip이 함께 지운다
+  forgetChatForTrip(queryClient, tripId);
   if (router.canDismiss()) router.dismissAll();
   // replace는 탭 묶음을 새로 만들어 첫 탭(홈)부터 그릴 수 있다. 이미 있는 탭 묶음에서 여행 탭으로만 옮긴다
   router.navigate('/trips');

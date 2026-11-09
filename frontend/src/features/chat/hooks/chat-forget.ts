@@ -1,0 +1,26 @@
+import type { QueryClient } from '@tanstack/react-query';
+
+import { forgetTripRooms, tripIdOf } from '../room-index';
+import type { ChatRoom } from '../types';
+
+import { dropRoomFromList } from './chat-cache';
+import { chatRoomKey } from './chat-keys';
+import { useChatOutbox } from './use-chat-outbox';
+
+/**
+ * 여행에서 빠졌을 때(나가기·삭제·차단) 그 여행의 채팅 상태를 정리한다.
+ * - 대화방 목록에서 그 방을 뺀다
+ * - 그 방의 보내는 중 메시지를 지운다
+ * - roomId → tripId 표에서 뺀다
+ * ['trips', tripId] 아래 대화방·메시지 캐시는 forgetTrip이 지운다.
+ * trip-cache.ts(exitTrip)가 이 함수를 부르므로 이 파일은 trip-cache.ts를 불러오지 않는다(순환 import 방지)
+ */
+export function forgetChatForTrip(queryClient: QueryClient, tripId: string) {
+  const roomId = queryClient.getQueryData<ChatRoom>(chatRoomKey(tripId))?.id;
+  dropRoomFromList(queryClient, tripId);
+  const outbox = useChatOutbox.getState();
+  for (const id of Object.keys(outbox.items)) {
+    if (id === roomId || tripIdOf(id) === tripId) outbox.clearRoom(id);
+  }
+  forgetTripRooms(tripId);
+}
