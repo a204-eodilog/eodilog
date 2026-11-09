@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { API_ERROR, toApiError } from '@/api/errors';
+import { createIdempotencyKeyStore } from '@/api/idempotency';
 import { getAutoCourse, getItinerary } from '@/features/course/api';
 import { itineraryKey } from '@/features/course/hooks/course-keys';
 import type { ItineraryProposal } from '@/features/course/types';
@@ -19,6 +20,7 @@ export type ApplyResult = 'applied' | 'conflict' | 'unschedulable' | 'failed' | 
 /**
  * 변경안 작업을 기다리고 적용한다. 장소 빼기는 지금 코스 version으로 작업을 먼저 만든다.
  * 적용은 한 번 누른 것이 끝나기 전에는 다시 보내지 않는다. 화면을 나가면 기다리기를 멈춘다.
+ * 장소 빼기 요청의 Idempotency-Key는 응답 없이 끊겼을 때만 다시 쓰고, 서버가 답했으면 버린다.
  */
 export function useProposal(tripId: string, source: ProposalSource) {
   const queryClient = useQueryClient();
@@ -28,6 +30,7 @@ export function useProposal(tripId: string, source: ProposalSource) {
   const [applying, setApplying] = useState(false);
   const sending = useRef(false);
   const controller = useRef<AbortController | null>(null);
+  const removalKeys = useRef(createIdempotencyKeyStore()).current;
   useEffect(() => () => controller.current?.abort(), []);
 
   const removePlaceId = 'removePlaceId' in source ? source.removePlaceId : null;
@@ -47,7 +50,14 @@ export function useProposal(tripId: string, source: ProposalSource) {
           queryFn: () => getItinerary(tripId),
           staleTime: 0,
         });
-        id = (await requestRemoval(tripId, current.version, removePlaceId)).jobId;
+        const key = removalKeys.keyFor({ version: current.version, removePlaceId });
+        try {
+          id = (await requestRemoval(tripId, current.version, removePlaceId, key)).jobId;
+          removalKeys.clear();
+        } catch (e) {
+          if (toApiError(e).status !== null) removalKeys.clear();
+          throw e;
+        }
       }
       if (!id) throw new Error('no job');
       setJobId(id);
@@ -67,7 +77,7 @@ export function useProposal(tripId: string, source: ProposalSource) {
     } catch (e) {
       if (!(e instanceof JobStopped)) setPhase('failed');
     }
-  }, [queryClient, tripId, givenJobId, removePlaceId]);
+  }, [queryClient, tripId, givenJobId, removePlaceId, removalKeys]);
 
   /** 변경안을 지금 코스로. 끝나면 코스 캐시를 바꾼다 */
   const apply = useCallback(async (): Promise<ApplyResult> => {

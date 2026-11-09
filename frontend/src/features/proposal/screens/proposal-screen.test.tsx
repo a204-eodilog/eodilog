@@ -19,6 +19,8 @@ const mockParams: { tripId: string; jobId?: string; removePlaceId?: string } = {
 };
 const mockRouter = { replace: jest.fn(), back: jest.fn(), push: jest.fn() };
 
+let mockKeySeq = 0;
+jest.mock('expo-crypto', () => ({ randomUUID: () => `key-${++mockKeySeq}` }));
 jest.mock('@/config/env', () => ({
   env: { appEnv: 'local', apiBaseUrl: 'http://test', kakaoRedirectUri: null, devMock: false },
 }));
@@ -101,7 +103,7 @@ describe('S29 비교', () => {
   it('장소를 뺀 변경안을 만들어 바뀐 날을 비교한다', async () => {
     await renderScreen();
     expect(await screen.findByText('광안리 바다뷰 카페를 빼요')).toBeTruthy();
-    expect(mockRemove).toHaveBeenCalledWith('trip-1', 3, 'p-gwangalli');
+    expect(mockRemove).toHaveBeenCalledWith('trip-1', 3, 'p-gwangalli', expect.any(String));
     expect(screen.getByText('1일차 2번째 장소')).toBeTruthy();
     expect(screen.getByText('2곳')).toBeTruthy();
     expect(screen.getByText('기존 3곳')).toBeTruthy();

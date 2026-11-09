@@ -11,6 +11,8 @@ import { job, proposal } from '../testing';
 
 import { useProposal, type ProposalSource } from './use-proposal';
 
+let mockKeySeq = 0;
+jest.mock('expo-crypto', () => ({ randomUUID: () => `key-${++mockKeySeq}` }));
 jest.mock('@/config/env', () => ({
   env: { appEnv: 'local', apiBaseUrl: 'http://test', kakaoRedirectUri: null, devMock: false },
 }));
@@ -53,7 +55,7 @@ it('장소 빼기는 지금 version으로 작업을 만들고 끝날 때까지 �
     void result.current.start();
     await jest.advanceTimersByTimeAsync(0);
   });
-  expect(mockRemove).toHaveBeenCalledWith('trip-1', 3, 'p-gwangalli');
+  expect(mockRemove).toHaveBeenCalledWith('trip-1', 3, 'p-gwangalli', expect.any(String));
   expect(result.current.phase).toBe('running');
   await act(() => jest.advanceTimersByTimeAsync(1500));
   expect(result.current.phase).toBe('done');
@@ -124,4 +126,21 @@ it('적용 409와 422를 구분한다', async () => {
   await act(async () => {
     expect(await result.current.apply()).toBe('unschedulable');
   });
+});
+
+it('장소 빼기 요청이 응답 없이 끊기면 같은 키로, 서버가 답했으면 새 키로 다시 보낸다', async () => {
+  mockRemove
+    .mockRejectedValueOnce(new Error('Network Error'))
+    .mockRejectedValueOnce(httpError(400, 'VALIDATION_ERROR'));
+  mockGet.mockResolvedValue(proposal());
+  const { result } = await render({ removePlaceId: 'p-gwangalli' });
+  for (let i = 0; i < 3; i += 1) {
+    await act(async () => {
+      await result.current.start();
+    });
+  }
+  const keys = mockRemove.mock.calls.map((c) => c[3]);
+  expect(keys).toHaveLength(3);
+  expect(keys[1]).toBe(keys[0]);
+  expect(keys[2]).not.toBe(keys[1]);
 });
