@@ -202,7 +202,7 @@
 
 근거: WD-FR-19~23. 파일 업로드와 여행 사진 등록을 분리해 업로드 일부 실패를 처리한다.
 
-2026-11-06 dev 통합(EODI-214/220): PROFILE·CAPTURE는 JPG/PNG, TRIP_PHOTO는 JPG/PNG/HEIC(HEIF)를 지원한다. 파일 업로드 intent·완료·PENDING 취소·인증 다운로드와 여행 사진 배치·등록·목록을 제공한다. 기본 최대 15MiB, PUT URL 10분은 공개된 dev 정책을 유지하며 STORAGE_* 설정이 기존 S3_*/ASSET_* 별칭보다 우선한다. 배치와 미완료 파일은 기본 24시간이다. 기존 배치 없는 여행 파일 업로드/다운로드도 유지하며 사진 등록은 같은 여행·본인 배치에 속한 파일만 받는다. 실제 전체 디코딩 후 메타데이터가 없는 별도 표시 이미지를 제공하고 HEIC는 JPEG로 변환한다. 기존 READY도 최초 이용 시 실제 검증·변환하며 원본과 상태/ID를 마이그레이션에서 지우지 않는다. PROFILE은 로그인 사용자, CAPTURE는 본인, 여행 사진은 업로더도 현재 ACTIVE 멤버만 접근한다. 배치 파일은 사진 등록 뒤 다운로드한다. 같은 사진 등록 재요청은 배치 만료 후에도 기존 결과를 반환한다. 사진 편집·개별 삭제·분류·그룹·피드 경유는 후속이다. [설정·검증 기록](../EodiLog/docs/plan/photo-upload.md).
+2026-11-06 dev 통합(EODI-214/220): PROFILE·CAPTURE는 JPG/PNG, TRIP_PHOTO는 JPG/PNG/HEIC(HEIF)를 지원한다. 파일 업로드 intent·완료·PENDING 취소·인증 다운로드와 여행 사진 배치·등록·목록을 제공한다. 기본 최대 15MiB, PUT URL 10분은 공개된 dev 정책을 유지하며 STORAGE_* 설정이 기존 S3_*/ASSET_* 별칭보다 우선한다. 배치와 미완료 파일은 기본 24시간이다. 기존 배치 없는 여행 파일 업로드/다운로드도 유지하며 사진 등록은 같은 여행·본인 배치에 속한 파일만 받는다. 실제 전체 디코딩 후 메타데이터가 없는 별도 표시 이미지를 제공하고 HEIC는 JPEG로 변환한다. 기존 READY도 최초 이용 시 실제 검증·변환하며 원본과 상태/ID를 마이그레이션에서 지우지 않는다. PROFILE은 로그인 사용자, CAPTURE는 본인, 여행 사진은 업로더도 현재 ACTIVE 멤버만 접근한다. 배치 파일은 사진 등록 뒤 다운로드한다. 같은 사진 등록 재요청은 배치 만료 후에도 기존 결과를 반환한다. 사진 편집·개별 삭제와 AI 분류·그룹의 후속 구현 계약은 아래 표를 따른다. 피드 경유는 후속이다. [설정·검증 기록](../EodiLog/docs/plan/photo-upload.md).
 
 | Method | URL | 권한 | 요청 | 성공 data / 상태 | 주요 규칙 |
 | --- | --- | --- | --- | --- | --- |
@@ -210,15 +210,15 @@
 | DELETE | `/assets/{assetId}` | 업로더 | 없음 | 204 | PENDING 업로드 취소만, 서버 객체 정리·이후 complete 거부(409 ASSET_NOT_PENDING). 이미 취소한 파일은 다시 204, READY는 409 ASSET_NOT_PENDING. 등록된 사진은 사진 삭제 API 사용. 없거나 남의 파일은 404 ASSET_NOT_FOUND |
 | POST | `/assets/{assetId}/complete` | 업로더 | 없음 | `Asset` / 200 | 객체 존재·크기·형식 검증, 본인 파일만. 이미 READY면 그대로 200. 객체가 없으면 409 UPLOAD_NOT_FOUND, 크기·실제 형식·전체 픽셀 디코딩이 요청과 다르거나 실패하면 객체를 지우고 422 UPLOAD_MISMATCH(PENDING 유지). 허용된 EXIF 위치/촬영시각은 비공개 메타데이터로 추출, 표시 파일은 위치·촬영시각 메타데이터를 제거한다. HEIC 표시 변환은 JPEG이며 미완료 기한 초과는 410 UPLOAD_EXPIRED, 처리 슬롯 사용 중은 503 IMAGE_PROCESSOR_UNAVAILABLE |
 | GET | `/assets/{assetId}/download` | 실제 자료 접근권자 | `feedId?:id` | 파일 바이트 / 200 | 인증 게이트웨이 스트리밍 제안. READY만. PROFILE은 로그인 사용자, CAPTURE는 업로더만, TRIP_PHOTO는 업로더를 포함해 현재 ACTIVE 멤버만. 배치 파일은 사진 등록 후, 기존 배치 없는 여행 파일도 멤버 접근을 유지한다. HEIC는 메타데이터 없는 JPEG 표시 파일로 반환한다. 볼 수 없으면 404 ASSET_NOT_FOUND. 피드 경유면 매 요청 직접 공동 피드 공개 정책·포함 사진·삭제/이동 상태를 재검사(feedId는 피드 구현 때 추가). 개인 경로 숨김을 직접 파일 접근 차단으로 확대하지 않음, private/no-store |
-| GET | `/trips/{tripId}/photos` | 멤버 | `topic?:string,groupId?:id` + 페이지 | `Photo[]` / 200 | 부분 업로드 실패는 기존 성공 사진과 독립. 삭제 사진 제외. topic은 LANDSCAPE/FOOD/PEOPLE/OTHER만(그 외 400) 실제 분류에 적용. groupId는 후속 기능으로 지정하면 빈 결과 |
+| GET | `/trips/{tripId}/photos` | 멤버 | `topic?:string,groupId?:id` + 페이지 | `Photo[]` / 200 | 부분 업로드 실패는 기존 성공 사진과 독립. 삭제 사진 제외. topic은 LANDSCAPE/FOOD/PEOPLE/OTHER만(그 외 400). groupId는 같은 여행의 적용된 AI 묶음에 속한 사진을 필터링하며 topic과 함께 지정하면 교집합 |
 | POST | `/trips/{tripId}/photos` | 멤버 | `{batchId:id,assetId:id,placeId?:id,capturedAt?:datetime}` | `Photo` / 201 | READY·본인·같은 여행/배치·지원 형식 확인. 배치 한도 예약/소비는 원자적, 부분 성공 유지 |
 | POST | `/trips/{tripId}/photo-upload-batches` | 멤버 | `{fileCount:integer}` | `PhotoUploadBatch` / 201 | Idempotency-Key 필수 제안. 한 번의 업로드 1~50장. 51장 이상 422 INPUT_LIMIT_EXCEEDED. 형식/파일 크기는 각 intent에서 검사 |
 | PATCH | `/trips/{tripId}/photos/{photoId}` | ACTIVE 멤버인 업로더 | `{placeId?:id\|null,topics?:string[],expectedVersion:integer}` | `Photo` / 200 | 2026-11-09 구현. 생략 유지, 장소 null 해제, 존재하는 장소만. topics는 LANDSCAPE/FOOD/PEOPLE/OTHER 중 중복 없는 0~4개, [] 해제, null 거부. 빈 수정·누락/잘못된 version·groupId(명시 null 포함)는 400. 타인/없는/삭제된 사진 404 PHOTO_NOT_FOUND, 여행 접근 실패 404 TRIP_NOT_FOUND. 버전 불일치 409 VERSION_CONFLICT, 성공 시 version 증가. 장소·주제 각각 수동 보정/해제 표시를 영구 보존해 후속 AI 덮어쓰기 방지 |
 | DELETE | `/trips/{tripId}/photos/{photoId}` | ACTIVE 멤버인 업로더 | 없음 | `JobRef` / 202 | 2026-11-09 구현. 승인 트랜잭션에서 사진 숨김·asset DELETING 전환·고정 대상 PHOTO_DELETE 등록. 원본/표시 객체만 정리, 일시 실패는 jobs 재시도. 요청자 이탈·여행 전체 삭제 후에도 승인 범위를 처리. 같은 사진 재요청은 완료 후에도 같은 jobId/현재 status 반환(현재 ACTIVE 여행 권한 재확인). 없거나 타인 사진 404 PHOTO_NOT_FOUND. 승인 이후 새 다운로드는 404, 이미 열린 스트림은 회수하지 않음. signed PUT 회수 불가로 키를 남겨 PUT 만료 후 유예기간 동안 반복 정리 |
-| POST | `/trips/{tripId}/photo-classifications` | 멤버 | `{photoIds:id[]}` | `JobRef` / 202 | 성공/실패 사진별 결과, 원본 자동 삭제 없음 |
-| GET | `/trips/{tripId}/photo-summary` | 멤버 | 없음 | `PhotoSummary` / 200 | 2026-11-09 구현. 목록 필터와 독립적으로 삭제되지 않은 전체·주제/장소별 건수·장소 미지정 수. 주제/장소는 사진이 있는 항목만 이름/ID 순, 복수 주제로 주제 합계는 전체 수와 다를 수 있음. groups는 미지원으로 [] |
+| POST | `/trips/{tripId}/photo-classifications` | 멤버 | `{photoIds:id[]}` + `Idempotency-Key` | `JobRef` / 202 | EODI-229: 1~50개, 중복 금지. 현재 여행의 삭제되지 않은 READY 사진만. 요청 사진·asset·version·표시 파일을 고정하고 PHOTO_CLASSIFICATION 등록. 51장 이상 422 INPUT_LIMIT_EXCEEDED, 설정 OFF는 409 AI_FEATURE_DISABLED. 동일 키·본문 재요청은 동일 작업. 결과는 GET /jobs/{jobId}. 사진별 성공/실패, 원본 자동 삭제 없음 |
+| GET | `/trips/{tripId}/photo-summary` | 멤버 | 없음 | `PhotoSummary` / 200 | 목록 필터와 독립적으로 삭제되지 않은 전체·주제/장소별 건수·장소 미지정 수. 주제/장소는 사진이 있는 항목만 이름/ID 순, 복수 주제로 주제 합계는 전체 수와 다를 수 있음. groups는 현재 사진이 있는 적용된 AI 묶음별 건수 |
 | POST | `/trips/{tripId}/photos/batch` | 업로더(D-16) | `PhotoBatchWrite` | `{photos:Photo[],deletedPhotoIds:id[]}` / 200 | 수정·이동·묶음 해제·삭제 중 하나. 검증 실패 시 전체 변경 없음 제안 |
-| POST | `/trips/{tripId}/photo-classifications/{jobId}/apply` | 멤버 | `{expectedPhotoVersions:{photoId:id,version:integer}[]}` | `{photos:Photo[]}` / 200 | 확인 후 모드의 성공 결과만 명시 반영. 변경된 사진/수동 보정은 409 |
+| POST | `/trips/{tripId}/photo-classifications/{jobId}/apply` | 멤버 | `{expectedPhotoVersions:{photoId:id,version:integer}[]}` | `{photos:Photo[]}` / 200 | EODI-229: 성공한 해당 여행 작업의 사진 중 선택한 결과만 원자 적용. 중복 ID 금지, snapshot/expected/current version 일치 필수. 수동 주제 보정·[] 해제 이력은 409로 보호. 적용 시 source=AI, 사진 version 증가. 선택한 성공 사진 2장 이상인 묶음만 그룹 연결. 같은 작업·같은 본문 재요청은 최초 응답, 다른 본문 재사용은 409. 재요청도 현재 사진·권한·설정 검사, 삭제·후속 수정 후 과거 응답 재노출 금지 |
 | GET | `/trips/{tripId}/reviews` | 멤버 | `memberId?:id` + 페이지 | `Review[]` / 200 | 실제 방문 기록 참조. 기본은 여행 전체(동행 평가 포함), memberId는 같은 여행 멤버십(나간 멤버 포함)만, 아니면 400. 정렬 createdAt DESC. 항목마다 `visit`·`place` 요약 포함. 나간 멤버의 평가도 남는다 |
 | PUT | `/trips/{tripId}/visits/{visitId}/review` | 방문 기록 작성자 | `{score:integer,body:string,expectedVersion?:integer}` | `Review` / 200 | 1~5 정수 필수, 반 점·문자열 거부·확인한 본인 방문만 작성(남의 방문 403, 없거나 해제한 방문 404 `VISIT_NOT_FOUND`). 방문 하나에 평가 하나, 처음이면 생성·있으면 수정(모두 200). body는 공백만 불가·1,000자(코드 포인트) 이하, 받은 그대로 저장. expectedVersion은 다르면 409 `VERSION_CONFLICT`, 생략하면 덮어쓰기, 평가가 없는데 보내면 400. 값이 바뀔 때만 version 증가 |
 | DELETE | `/trips/{tripId}/visits/{visitId}/review` | 평가 작성자 | 없음 | 204 | 타인 평가 변경 불가(403). 물리 삭제, 다시 쓰면 새 평가(version 1). 없는 평가 404 `REVIEW_NOT_FOUND` |
@@ -235,6 +235,13 @@
 | POST | `/trips/{tripId}/settlements` | 멤버 | `{expectedExpenseVersion:integer}` | `Settlement` / 201 | KRW·비용 스냅샷·원금/올림 금액/차액·송금 제안 저장 및 current 포인터 교체(여행 행 잠금). Idempotency-Key 필수, 오래된 비용 버전 409 `VERSION_CONFLICT`. 같은 키 재요청도 현재 ACTIVE 멤버만. 경비가 없어도 빈 결과로 계산 |
 | GET | `/trips/{tripId}/settlements` | 멤버 | 페이지 | `Settlement[]` / 200 | 이전 계산 결과, 최근 계산 순(calculatedAt DESC, id DESC) 커서. 완료 상태 없음. 여행이 있는 동안 모두 보관(물리 삭제 시점은 Q-11) |
 | GET | `/trips/{tripId}/settlements/{settlementId}` | 멤버 | 없음 | `Settlement` / 200 | 원래 계산시각·버전·포함 지출 확인 |
+
+### 사진 AI 처리 계약
+
+- 분류에는 원본 대신 메타데이터를 제거한 표시 파일을 사용한다. 파일별 최대 15MiB이며 전체 50장을 메모리 배열로 모으지 않고 임시 파일로 전송한다. 임시 디스크 사용 상한은 작업당 최대 750MiB이며 worker 동시 실행 수에 맞춰 용량을 확보한다.
+- 누락된 표시 파일은 해당 사진의 FAILED/FILE_UNAVAILABLE, 과대 파일은 FAILED/INPUT_LIMIT_EXCEEDED로 표시한다. AI의 UNSUPPORTED_INPUT·IMAGE_DECODE_FAILED도 사진별 실패다. 일시적인 저장소/로컬 I/O·AI 5xx/연결 오류는 작업 TEMPORARY_FAILURE로 재시도한다.
+- OFF는 요청·실행·완료·조회·적용에서 검사한다. AUTO도 자동 반영하지 않고 명시적 apply를 사용한다. 요청자 권한/설정과 조회·적용자의 현재 권한/설정을 검사하며 삭제 사진은 작업 공개 결과에서 제외한다.
+- 주제 수동 보정은 [] 해제까지 보호한다. 장소는 분류가 변경하지 않는다. 사진 삭제 후 한 장이 남은 그룹은 유지하며 빈 그룹은 요약에서 제외한다.
 
 ## 8. 공동 피드·특정 친구 숨김·지도·타임라인
 
@@ -298,7 +305,7 @@
 
 삭제 작업 응답에는 사진·메시지 내용이나 다른 사람의 자료를 포함하지 않는다. 재시도는 최초 승인된 대상 ID만 처리하며 신규 멤버십/동의가 없다고 기존 삭제 작업을 중단하지 않는다.
 
-jobs 공통 기반은 PostgreSQL 등록·실행·조회만 제공한다. kind별 실행기와 등록·실행·완료·조회 정책이 모두 등록된 기능만 활성화하며, 현재 운영 실행기는 정리 작업 TRIP_DELETE·LEAVE_CLEANUP·PHOTO_DELETE와 AI 준비물 제안 CHECKLIST_SUGGESTIONS, AI 장소 추출 PLACE_EXTRACTION(2026-11-09), AI 코스 제안 ITINERARY_PROPOSAL(2026-11-09, reason INITIAL만)이다. 공통 생성·재시도·취소 API는 제공하지 않는다(작업 취소는 `DELETE /extractions/{jobId}`처럼 자원별 API만). 조회 불가·없는 작업은 모두 404 `JOB_NOT_FOUND`다. 정리 result는 `{scope:LEAVE_CLEANUP|PHOTO_DELETE|TRIP_DELETE,completedCount:integer,failedCount:integer}`만 공개한다. `scope`는 작업 종류이며 대상 ID·본문·파일은 반환하지 않는다. PHOTO_DELETE의 completedCount는 최초 승인 사진 수(1)이며 전체 여행 정리가 먼저 제거한 경우도 완료로 센다. 내부 SPI와 재시도·임대 보장은 [jobs 기반 문서](../EodiLog/docs/plan/jobs-foundation.md)를 따른다.
+jobs 공통 기반은 PostgreSQL 등록·실행·조회만 제공한다. kind별 실행기와 등록·실행·완료·조회 정책이 모두 등록된 기능만 활성화하며, 현재 운영 실행기는 정리 작업 TRIP_DELETE·LEAVE_CLEANUP·PHOTO_DELETE와 AI 준비물 제안 CHECKLIST_SUGGESTIONS, AI 장소 추출 PLACE_EXTRACTION(2026-11-09), AI 코스 제안 ITINERARY_PROPOSAL(2026-11-09, reason INITIAL만), 사진 분류 PHOTO_CLASSIFICATION이다. 공통 생성·재시도·취소 API는 제공하지 않는다(작업 취소는 `DELETE /extractions/{jobId}`처럼 자원별 API만). 조회 불가·없는 작업은 모두 404 `JOB_NOT_FOUND`다. 정리 result는 `{scope:LEAVE_CLEANUP|PHOTO_DELETE|TRIP_DELETE,completedCount:integer,failedCount:integer}`만 공개한다. `scope`는 작업 종류이며 대상 ID·본문·파일은 반환하지 않는다. PHOTO_DELETE의 completedCount는 최초 승인 사진 수(1)이며 전체 여행 정리가 먼저 제거한 경우도 완료로 센다. 내부 SPI와 재시도·임대 보장은 [jobs 기반 문서](../EodiLog/docs/plan/jobs-foundation.md)를 따른다.
 
 PHOTO_DELETE가 재시도 한도(기본 3회)를 소진해 FAILED가 되어도 삭제 승인은 유지된다. 예약 cleaner(기본 1시간 간격, `app.assets.cleanup-delay`)는 signed PUT 만료 후 다음 실행부터 DELETING 파일의 원본/표시 객체 삭제를 계속 시도한다. 사진 참조가 모두 논리 삭제된 경우에도 파일 정리는 가능하며, 살아 있는 사진이 참조하면 해당 파일 쌍을 지우지 않는다. 참조 중인 사진 tombstone과 asset 행/FK는 보존하므로 실패한 작업의 상태는 계속 FAILED이고 중복 DELETE도 같은 FAILED 작업을 반환한다. fallback 객체 정리 성공을 job 성공으로 바꾸지 않으며, 참조가 남아 있는 동안 늦은 PUT 객체도 반복 정리한다.
 

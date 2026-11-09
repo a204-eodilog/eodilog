@@ -46,7 +46,7 @@ public class PhotoController {
         return ResponseEntity.status(201).body(DataResponse.of(service.register(CurrentUser.requireUserId(user), tripId, request)));
     }
 
-    @Operation(summary = "여행 사진 목록", description = "ACTIVE 여행 멤버. createdAt DESC, id DESC 커서 목록. topic은 LANDSCAPE/FOOD/PEOPLE/OTHER만 허용. 삭제 사진 제외. 그룹은 미지원으로 지정하면 빈 목록.")
+    @Operation(summary = "여행 사진 목록", description = "ACTIVE 여행 멤버. createdAt DESC, id DESC 커서 목록. topic은 LANDSCAPE/FOOD/PEOPLE/OTHER만 허용. 삭제 사진 제외. groupId로 해당 여행의 유사 사진 그룹을 필터링한다.")
     @ApiResponse(responseCode = "200", description = "사진 목록")
     @GetMapping("/photos")
     public PageResponse<PhotoResponse> list(@Parameter(hidden = true) @AuthenticationPrincipal AuthUser user,
@@ -76,7 +76,7 @@ public class PhotoController {
         return ResponseEntity.accepted().body(DataResponse.of(service.delete(CurrentUser.requireUserId(user), tripId, photoId)));
     }
 
-    @Operation(summary = "사진 전체 요약", description = "ACTIVE 여행 멤버. 목록 필터와 독립적으로 삭제되지 않은 전체 사진을 집계한다. 주제별 수의 합은 전체 수와 다를 수 있으며 groups는 빈 배열이다.")
+    @Operation(summary = "사진 전체 요약", description = "ACTIVE 여행 멤버. 목록 필터와 독립적으로 삭제되지 않은 전체 사진을 집계한다. 주제별 수의 합은 전체 수와 다를 수 있다. 그룹은 삭제되지 않은 사진 수를 집계하며 빈 그룹은 제외한다.")
     @ApiResponse(responseCode = "200", description = "여행 사진 요약")
     @GetMapping("/photo-summary")
     public DataResponse<PhotoSummaryResponse> summary(@Parameter(hidden = true) @AuthenticationPrincipal AuthUser user,
