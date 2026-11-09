@@ -236,7 +236,7 @@ export function GroupFavoritesScreen() {
 
   const search = async () => {
     setAdding(false);
-    const picked = await pickPlace({ regionId: trip.data?.destinationRegionIds[0] });
+    const picked = await pickPlace({ regionId: trip.data?.destinationRegionIds?.[0] });
     if (picked) await mutations.add([picked.id]);
   };
 

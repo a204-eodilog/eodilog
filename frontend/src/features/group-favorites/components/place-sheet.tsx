@@ -66,6 +66,7 @@ export function PlaceSheet({ item, members, myMemberId, onClose, ...props }: Pro
               <TextField
                 variant="filled"
                 label="내 메모"
+                accessibilityLabel="내 메모"
                 value={memo}
                 onChangeText={setMemo}
                 placeholder="동행에게 남길 말"

@@ -1,9 +1,12 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui';
+import { AddPlaceSheet } from '@/features/group-favorites/components/add-place-sheet';
+import { InCourseConfirm } from '@/features/group-favorites/components/in-course-confirm';
 import { MemberFilterSheet } from '@/features/group-favorites/components/member-filter-sheet';
+import { PlaceSheet } from '@/features/group-favorites/components/place-sheet';
 import {
   GroupFavoritesView,
   type Person,
@@ -27,6 +30,9 @@ const EXAMPLES = [
   { state: 'list', label: '목록 201-9344' },
   { state: 'overlap', label: '겹친 곳만' },
   { state: 'map', label: '지도 보기 201-9521' },
+  { state: 'add-sheet', label: '장소 추가 시트 201-9751' },
+  { state: 'place-sheet', label: '장소 시트' },
+  { state: 'in-course', label: '코스에 있는 장소 빼기 201-29151' },
   { state: 'load-error', label: '불러오기 실패' },
 ];
 
@@ -64,6 +70,18 @@ function DevScreen({ state }: { state: string }) {
   const [mapSelected, setMapSelected] = useState<string | null>(
     state === 'map' ? 'p-haeundae' : null,
   );
+  const [adding, setAdding] = useState(false);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [editor, setEditor] = useState<string | null>(null);
+  // 웹의 아래 시트는 화면이 그려진 뒤에 열어야 올라오는 모습이 보인다
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (state === 'add-sheet') setAdding(true);
+      if (state === 'place-sheet') setOpenId('p-gamcheon');
+      if (state === 'in-course') setEditor('세은');
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [state]);
   const all = sampleSaved();
   const items = all
     .filter((i) => filter === 'ALL' || i.savedCount >= 2)
@@ -88,11 +106,11 @@ function DevScreen({ state }: { state: string }) {
       loadingMore={false}
       memberFilter={member}
       onMember={() => setMemberSheet(true)}
-      onOpen={noop}
+      onOpen={(item) => setOpenId(item.place.id)}
       mapSelected={mapSelected}
       onMapSelect={setMapSelected}
       selecting={null}
-      onAdd={noop}
+      onAdd={() => setAdding(true)}
       onPoll={noop}
       onRecommend={noop}
       onCancelSelect={noop}
@@ -105,6 +123,32 @@ function DevScreen({ state }: { state: string }) {
         members={PEOPLE}
         value={member}
         onChange={setMember}
+      />
+      <AddPlaceSheet
+        visible={adding}
+        onClose={() => setAdding(false)}
+        tripTitle="겨울 여행"
+        onBookmarks={noop}
+        onLink={noop}
+        onSearch={noop}
+      />
+      <PlaceSheet
+        item={all.find((i) => i.place.id === openId) ?? null}
+        members={PEOPLE}
+        myMemberId="m-me"
+        onClose={() => setOpenId(null)}
+        onSaveMemo={noop}
+        onAdd={noop}
+        onRemove={() => {
+          setOpenId(null);
+          setEditor('세은');
+        }}
+        busy={false}
+      />
+      <InCourseConfirm
+        editor={editor}
+        onRemoveAnyway={() => setEditor(null)}
+        onRefresh={() => setEditor(null)}
       />
     </GroupFavoritesView>
   );
