@@ -64,7 +64,10 @@ const mockTrip = {
   endDate: '2026-11-15' as string | null,
   destinationRegionIds: ['region-busan'],
   version: 1,
-  members: [{ id: 'm-me', status: 'ACTIVE', user: { id: 'u-me', nickname: '영광' } }],
+  members: [
+    { id: 'm-me', status: 'ACTIVE', user: { id: 'u-me', nickname: '영광' } },
+    { id: 'm-seeun', status: 'ACTIVE', user: { id: 'u-seeun', nickname: '세은' } },
+  ],
 };
 jest.mock('@/features/trip/hooks/use-trip', () => ({
   tripKey: (id: string) => ['trips', id],
@@ -335,8 +338,8 @@ describe('코스 초안 고치고 저장하기', () => {
     expect(mockRouter.back).not.toHaveBeenCalled();
   });
 
-  it('다른 동행이 먼저 저장했으면 덮어쓰지 않고 최신 코스로 다시 채운다', async () => {
-    mockPut.mockRejectedValue(httpError(409, 'VERSION_CONFLICT'));
+  it('먼저 저장한 동행이 내용은 그대로 두었으면 최신 version에 내 변경을 다시 얹는다', async () => {
+    mockPut.mockRejectedValueOnce(httpError(409, 'VERSION_CONFLICT'));
     await renderScreen();
     await fireEvent.press(await screen.findByLabelText('해운대 해변 고치기'));
     await fireEvent.press(screen.getByText('코스에서 빼기'));
@@ -346,10 +349,10 @@ describe('코스 초안 고치고 저장하기', () => {
     await fireEvent.press(screen.getByText('완료'));
     await waitFor(() =>
       expect(toast.show).toHaveBeenCalledWith(
-        '다른 동행이 먼저 코스를 고쳤어요. 최신 코스를 불러왔어요',
+        '세은님이 먼저 저장해서 최신 코스에 내 변경을 다시 얹었어요. 확인하고 완료를 눌러 주세요',
       ),
     );
-    expect(await screen.findByText('해운대 해변')).toBeTruthy();
+    expect(screen.queryByText('해운대 해변')).toBeNull();
     expect(mockRouter.back).not.toHaveBeenCalled();
   });
 
@@ -675,5 +678,79 @@ describe('여러 지역 날짜별로 나누기', () => {
     expect(await screen.findByText('날짜를 고르고 그룹 즐겨찾기 장소를 눌러 놓아요')).toBeTruthy();
     expect(screen.getByText('1일차 지역')).toBeTruthy();
     expect(screen.queryByText('이 내용으로 짜요')).toBeNull();
+  });
+});
+
+describe('함께 편집', () => {
+  /** 다른 동행이 저장한 최신 코스. 세은이 고쳤고 version 4 */
+  function latestCourse(change: (c: Itinerary) => void) {
+    const c = sampleCourse(true);
+    c.version = 4;
+    c.updatedByMemberId = 'm-seeun';
+    change(c);
+    return c;
+  }
+
+  async function editDay1AndSaveIntoConflict(latest: Itinerary) {
+    mockPut.mockRejectedValueOnce(httpError(409, 'VERSION_CONFLICT'));
+    await renderScreen();
+    await fireEvent.press(await screen.findByLabelText('해운대 해변 고치기'));
+    await fireEvent.press(screen.getByText('코스에서 빼기'));
+    mockGet.mockResolvedValue(latest);
+    await fireEvent.press(screen.getByText('완료'));
+  }
+
+  it('동행이 다른 날을 고쳤으면 내 1일차를 얹은 초안을 보이고 다시 완료하면 저장한다', async () => {
+    // 세은은 2일차 시작 시각만 바꿨다
+    const latest = latestCourse((c) => {
+      c.items[3] = { ...c.items[3], startTime: '11:30' };
+    });
+    await editDay1AndSaveIntoConflict(latest);
+    await waitFor(() =>
+      expect(toast.show).toHaveBeenCalledWith(
+        '세은님이 다른 날을 고쳐서 최신 코스에 내 변경을 다시 얹었어요. 확인하고 완료를 눌러 주세요',
+      ),
+    );
+    expect(screen.queryByText('해운대 해변')).toBeNull();
+    expect(mockPut).toHaveBeenCalledTimes(1);
+    await fireEvent.press(screen.getByText('완료'));
+    await waitFor(() => expect(mockPut).toHaveBeenCalledTimes(2));
+    const body = lastBody();
+    expect(body.expectedVersion).toBe(4);
+    expect(day1(body)).toEqual(['p-gwangalli', 'p-seomyeon']);
+    expect(body.items.find((i) => i.day === 2)?.startTime).toBe('11:30');
+    await waitFor(() => expect(mockRouter.back).toHaveBeenCalled());
+  });
+
+  it('같은 날을 고쳤으면 확인 상자를 띄우고 최신 코스 보기는 동행 코스로 채운다', async () => {
+    // 세은도 1일차에서 서면을 뺐다
+    const latest = latestCourse((c) => {
+      c.items = c.items.filter((i) => i.id !== 'i3');
+      c.legs = c.legs.filter((l) => l.toItemId !== 'i3');
+    });
+    await editDay1AndSaveIntoConflict(latest);
+    expect(await screen.findByText('세은님이 먼저 코스를 바꿨어요')).toBeTruthy();
+    expect(screen.getByText(/같은 곳을 고쳤어요/)).toBeTruthy();
+    await fireEvent.press(screen.getByText('최신 코스 보기'));
+    expect(screen.queryByText('세은님이 먼저 코스를 바꿨어요')).toBeNull();
+    expect(screen.getByText('해운대 해변')).toBeTruthy();
+    expect(screen.queryByText('서면 돼지국밥집')).toBeNull();
+    expect(mockPut).toHaveBeenCalledTimes(1);
+  });
+
+  it('내 것으로 덮기는 내 1일차로 최신 version에 저장하고 나간다', async () => {
+    const latest = latestCourse((c) => {
+      c.items = c.items.filter((i) => i.id !== 'i3');
+      c.legs = c.legs.filter((l) => l.toItemId !== 'i3');
+    });
+    await editDay1AndSaveIntoConflict(latest);
+    await fireEvent.press(await screen.findByText('내 것으로 덮기'));
+    await waitFor(() => expect(mockPut).toHaveBeenCalledTimes(2));
+    const body = lastBody();
+    expect(body.expectedVersion).toBe(4);
+    // 세은이 지운 서면은 내가 남겨 두어 새 항목으로 다시 들어간다
+    expect(day1(body)).toEqual(['p-gwangalli', 'p-seomyeon']);
+    expect(body.items.find((i) => i.placeId === 'p-seomyeon')?.id).toBeUndefined();
+    await waitFor(() => expect(mockRouter.back).toHaveBeenCalled());
   });
 });
