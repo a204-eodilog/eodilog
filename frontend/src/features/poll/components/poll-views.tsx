@@ -235,7 +235,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: spacing[8],
   },
-  zeroButton: { marginTop: spacing[24] },
+  // Button은 부모 가운데 정렬을 따르지 않아 스스로 가운데에 둔다
+  zeroButton: { marginTop: spacing[24], alignSelf: 'center' },
   decide: {
     flexDirection: 'row',
     alignItems: 'center',
