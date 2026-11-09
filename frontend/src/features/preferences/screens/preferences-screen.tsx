@@ -255,8 +255,21 @@ function PreferencesForm({
                       setDraftError(undefined);
                     }}
                     placeholder="직접 쓰기 (예: 온천, 전시)"
-                    // 20자가 차면 더 써지지 않아서, 왜 안 써지는지 보이게 "18/20"을 띄운다(S02 닉네임과 같음)
                     maxLength={KEYWORD_MAX_LENGTH}
+                    hideCount
+                    // 20자가 차면 더 써지지 않아서 왜 안 써지는지 보이게, 쓰는 중에만 칸 안 오른쪽에 "18/20"(다 차면 빨강)
+                    trailing={
+                      draft ? (
+                        <Text
+                          style={[
+                            typography.caption,
+                            draft.length >= KEYWORD_MAX_LENGTH ? styles.countFull : styles.count,
+                          ]}
+                        >
+                          {draft.length}/{KEYWORD_MAX_LENGTH}
+                        </Text>
+                      ) : null
+                    }
                     error={draftError}
                     returnKeyType="done"
                     onSubmitEditing={() => add(draft) && setDraft('')}
@@ -396,6 +409,8 @@ const styles = StyleSheet.create({
   text: { color: colors.text.default },
   sub: { color: colors.text.icon },
   hint: { color: colors.text.icon },
+  count: { color: colors.text.muted, marginLeft: spacing[8] },
+  countFull: { color: colors.status.danger, marginLeft: spacing[8] },
   addRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing[8] },
   addButton: {
     height: 48,
