@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Button, ErrorState, Header, Icon, type IconName } from '@/components/ui';
+import { Button, ErrorState, Header, Icon } from '@/components/ui';
 import { assetSource } from '@/lib/asset-image';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -76,20 +76,16 @@ export function TrendsView(props: TrendsViewProps) {
   );
 }
 
+/** 순위 기준 한 줄. 왼쪽 기간·무엇을 셌는지, 오른쪽 끝 갱신 시각. 아래 옅은 선으로 순위와 나눈다 */
 function Basis({ board }: { board: TrendBoard }) {
-  const lines: [IconName, string][] = [
-    ...(board.periodLine ? ([['calendar', board.periodLine]] as [IconName, string][]) : []),
-    ['trip', '게시된 여행 수 기준'],
-    ['refresh', `매일 오전 6시 갱신${board.updatedLine ? ` · ${board.updatedLine}` : ''}`],
-  ];
   return (
-    <View style={styles.basis}>
-      {lines.map(([icon, text]) => (
-        <View key={text} style={styles.basisRow}>
-          <Icon name={icon} size={14} color={colors.text.icon} />
-          <Text style={styles.basisText}>{text}</Text>
-        </View>
-      ))}
+    <View
+      style={styles.basis}
+      accessible
+      accessibilityLabel={`${board.period ?? board.basisLeft}, 게시된 여행 수 순위${board.basisRight ? `, ${board.basisRight}` : ''}`}
+    >
+      <Text style={styles.basisText}>{board.basisLeft}</Text>
+      {board.basisRight ? <Text style={styles.basisText}>{board.basisRight}</Text> : null}
     </View>
   );
 }
@@ -116,7 +112,7 @@ function Row({ row, onPress }: { row: TrendRow; onPress: () => void }) {
         </Text>
         <View style={styles.counts}>
           <Icon name="trip" size={14} color={colors.text.icon} />
-          <Text style={styles.count}>{row.tripCount}</Text>
+          <Text style={styles.count}>여행 {row.tripCount}</Text>
           {row.friendCount > 0 ? (
             <>
               <Icon name="people" size={14} color={colors.text.icon} />
@@ -155,8 +151,16 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   pressed: { opacity: 0.7 },
   content: { paddingHorizontal: layout.screenPaddingX, paddingBottom: spacing[32], flexGrow: 1 },
-  basis: { gap: spacing[8], paddingTop: spacing[8], paddingBottom: spacing[16] },
-  basisRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[8] },
+  basis: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: spacing[4],
+    paddingBottom: spacing[12],
+    marginBottom: spacing[8],
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.line.default,
+  },
   basisText: { ...typography.caption, color: colors.text.sub },
   row: {
     flexDirection: 'row',

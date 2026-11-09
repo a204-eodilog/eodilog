@@ -57,10 +57,12 @@ export type TrendRow = {
 };
 
 export type TrendBoard = {
-  /** "최근 30일 · 09.24 – 10.23" */
-  periodLine: string | null;
-  /** "오늘 06:00 기준" / "11.05 06:00 기준" */
-  updatedLine: string | null;
+  /** 기준 줄 왼쪽 "최근 30일 · 게시 여행 순" */
+  basisLeft: string;
+  /** 기준 줄 오른쪽 "06:00 갱신" / "11.05 06:00 갱신" */
+  basisRight: string | null;
+  /** 기간 "09.24 – 10.23"(읽어 주기용) */
+  period: string | null;
   /** 자료가 적어 순위를 보이지 않음 */
   insufficient: boolean;
   rows: TrendRow[];

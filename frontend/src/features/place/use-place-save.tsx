@@ -25,5 +25,5 @@ export function usePlaceSave() {
       onClose={() => setVisible(false)}
     />
   );
-  return { open, sheet };
+  return { open, sheet, visible };
 }

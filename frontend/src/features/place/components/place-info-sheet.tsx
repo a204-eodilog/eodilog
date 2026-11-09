@@ -60,17 +60,12 @@ export function PlaceInfoSheetView(props: PlaceInfoSheetViewProps) {
               <Text style={styles.lineText}>{info.reason}</Text>
             </View>
           ) : null}
+          {/* 다녀간 친구 목록 화면이 아직 없어 누를 수 없는 글 한 줄로 둔다(화면이 생기면 [>]와 onVisitors를 붙인다) */}
           {info.visitorsLine ? (
-            <Pressable
-              onPress={props.onVisitors}
-              style={styles.line}
-              accessibilityRole="button"
-              accessibilityLabel={info.visitorsLine}
-            >
+            <View style={styles.line}>
               {info.firstVisitor ? <Avatar name={info.firstVisitor} size="sm" /> : null}
               <Text style={[styles.lineText, styles.flex]}>{info.visitorsLine}</Text>
-              <Icon name="chevron-right" size={18} color={colors.text.icon} />
-            </Pressable>
+            </View>
           ) : null}
           {info.score !== null ? (
             <View style={styles.line}>

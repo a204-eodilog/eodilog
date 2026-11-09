@@ -36,14 +36,14 @@ function distinctArea(code: string, name: string): string | null {
 const hhmm = (d: Date) =>
   `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 
-/** 갱신 시각 → "오늘 06:00 기준" / "11.05 06:00 기준" */
+/** 갱신 시각 → 오늘이면 "06:00 갱신", 아니면 "11.05 06:00 갱신"(오래된 순위라는 걸 보이게) */
 export function updatedLine(updatedAt: string | null, today: string = seoulToday()): string | null {
   if (!updatedAt) return null;
   const d = new Date(updatedAt);
   if (Number.isNaN(d.getTime())) return null;
   const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  if (day === today) return `오늘 ${hhmm(d)} 기준`;
-  return `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')} ${hhmm(d)} 기준`;
+  if (day === today) return `${hhmm(d)} 갱신`;
+  return `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')} ${hhmm(d)} 갱신`;
 }
 
 /** GET /trends/regions → S09 화면 값. 서버가 자료 부족을 알려 주거나 목록이 비면 순위를 보이지 않는다 */
@@ -57,8 +57,11 @@ export function toTrendBoard(
   const to = first?.to ?? range.to;
   const period = formatPeriodShort(from, to);
   return {
-    periodLine: period ? `최근 ${TREND_DAYS}일 · ${period}` : null,
-    updatedLine: updatedLine(first?.updatedAt ?? null, today),
+    // 기간·집계 대상(왼쪽)과 갱신(오른쪽)을 한 줄 양 끝에(Q-9: 무엇을 언제까지 센 순위인지 밝힌다).
+    // 11/09 직접 확인에서 아이콘 세 줄이 무겁다고 해 줄였다. 날짜 범위는 "최근 30일"로 대신한다
+    basisLeft: `최근 ${TREND_DAYS}일 · 게시 여행 순`,
+    basisRight: updatedLine(first?.updatedAt ?? null, today),
+    period,
     insufficient: items.length === 0 || items.every((t) => t.insufficientData),
     rows: [...items]
       .sort((a, b) => a.rank - b.rank)
