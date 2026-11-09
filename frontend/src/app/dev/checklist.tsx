@@ -131,6 +131,8 @@ export default function DevChecklist() {
         onDelete={(item) => setItems((list) => list.filter((i) => i.id !== item.id))}
         onSuggest={() => {}}
         suggesting={false}
+        failure={null}
+        onFailAction={() => {}}
         initialAddOpen={state === 'empty-adding'}
       />
     );
