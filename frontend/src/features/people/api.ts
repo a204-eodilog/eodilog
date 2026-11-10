@@ -48,11 +48,17 @@ export async function getUser(userId: string): Promise<PublicProfile> {
   return data.data;
 }
 
-/** GET /users/{userId}/feeds. 계정 공개 범위와 숨김 설정으로 걸러진 목록이 온다 */
-export async function getUserFeeds(userId: string): Promise<UserFeedCard[]> {
-  const { data } = await apiClient.get<PageResponse<UserFeedCard>>(
-    `/users/${encodeURIComponent(userId)}/feeds`,
-    { params: { limit: 100 } },
+/**
+ * GET /users/{userId}/feeds. 계정 공개 범위와 숨김 설정으로 걸러진 목록이 온다.
+ * 서버에 아직 없으면 게시한 피드 없음으로 본다
+ */
+export function getUserFeeds(userId: string): Promise<UserFeedCard[]> {
+  return emptyIfMissing(
+    apiClient
+      .get<PageResponse<UserFeedCard>>(`/users/${encodeURIComponent(userId)}/feeds`, {
+        params: { limit: 100 },
+      })
+      .then(({ data }) => data.data),
+    [],
   );
-  return data.data;
 }

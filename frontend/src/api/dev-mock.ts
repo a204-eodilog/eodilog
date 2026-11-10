@@ -908,9 +908,17 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
 
   if (method === 'get' && url === '/me') return ok(config, { data: ME });
   if (method === 'patch' && url === '/me') {
-    const body = JSON.parse(String(config.data ?? '{}')) as { nickname?: string };
-    if (body.nickname) ME.nickname = body.nickname;
-    ME.profileCompleted = true;
+    const body = JSON.parse(String(config.data ?? '{}')) as {
+      nickname?: string;
+      ageBand?: string | null;
+      accountVisibility?: MyProfile['accountVisibility'];
+    };
+    if (body.nickname) {
+      ME.nickname = body.nickname;
+      ME.profileCompleted = true;
+    }
+    if ('ageBand' in body) ME.ageBand = body.ageBand ?? null;
+    if (body.accountVisibility) ME.accountVisibility = body.accountVisibility;
     return ok(config, { data: ME });
   }
   if (method === 'get' && url === '/me/preferences') {
