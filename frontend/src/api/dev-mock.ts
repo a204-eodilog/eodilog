@@ -11,6 +11,7 @@ import { addDays, seoulToday } from '@/lib/seoul-date';
 
 import { createChatMock } from './dev-mock-chat';
 import { createNotificationMock } from './dev-mock-notification';
+import { mockMyTimeline, mockTripSummary, mockTripTimeline } from './dev-mock-timeline';
 
 import type { Follow, MyProfile, Session, UserCard } from './types';
 
@@ -88,12 +89,55 @@ const PEOPLE = [
 ];
 let hiddenSuggestions: string[] = [];
 
-/** S39 내 노출 설정(테스트 모드 메모리). 처음엔 아무도 숨기지 않음 */
-let feedVisibility = {
-  hiddenViewerUserIds: [] as string[],
-  version: 1,
-  updatedAt: '2026-11-01T00:00:00Z',
+/**
+ * 내가 게시한 공동 피드(테스트 모드 메모리, 여행 ID → 피드). S37·S38·S39·S40이 같이 본다.
+ * 처음에는 예시 여행 "남도 맛집 여행"을 경주로 게시해 둔다. visibility는 S39 내 노출 설정(처음엔 아무도 숨기지 않음)
+ */
+type MockOwnFeed = {
+  id: string;
+  tripId: string;
+  title: string;
+  body: string;
+  regions: { id: string; code: string; name: string }[];
+  startDate: string | null;
+  endDate: string | null;
+  publishedAt: string;
+  version: number;
+  visibility: {
+    feedId: string;
+    hiddenViewerUserIds: string[];
+    version: number;
+    updatedAt: string;
+  };
 };
+const ownFeeds = new Map<string, MockOwnFeed>();
+// 응답은 복사해서 준다. 메모리의 객체를 그대로 주면 화면 캐시가 같은 객체를 들고 있다가 바뀐 줄 모른다
+const copyFeed = (f: MockOwnFeed): MockOwnFeed => JSON.parse(JSON.stringify(f)) as MockOwnFeed;
+function publishMockFeed(
+  trip: { id: string; title: string; startDate: string | null; endDate: string | null },
+  write: { title: string; body: string; regions?: MockOwnFeed['regions'] },
+): MockOwnFeed {
+  const id = `feed-${trip.id}`;
+  const feed: MockOwnFeed = {
+    id,
+    tripId: trip.id,
+    title: write.title,
+    body: write.body,
+    regions: write.regions ?? [],
+    startDate: trip.startDate,
+    endDate: trip.endDate,
+    publishedAt: new Date().toISOString(),
+    version: 1,
+    visibility: {
+      feedId: id,
+      hiddenViewerUserIds: [],
+      version: 1,
+      updatedAt: '2026-11-01T00:00:00Z',
+    },
+  };
+  ownFeeds.set(trip.id, feed);
+  return feed;
+}
 
 /** S07 공동 피드 좋아요(테스트 모드 메모리) */
 const feedLikes = new Map<string, { liked: boolean; count: number }>();
@@ -255,6 +299,90 @@ let bookmarks: MockBookmark[] = BOOKMARKS.map(
 
 let seq = 0;
 
+/** 테스트 모드 추출 작업. 결과는 링크 글자로 정한다 */
+type MockExtraction = {
+  startedAt: number;
+  /** STUCK은 끝나지 않고 진행 중에 머문다(S12 시간 초과 확인용) */
+  outcome: 'SUCCESS' | 'MULTIPLE_CANDIDATES' | 'NOT_FOUND' | 'FAILED' | 'STUCK';
+};
+const extractions = new Map<string, MockExtraction>();
+/** 추출 요청 Idempotency-Key → 처음 만든 작업 id와 본문 */
+const extractionByKey = new Map<string, { id: string; body: string }>();
+const EXTRACTION_MS = 4500;
+
+/** 즐겨찾기 예시 장소를 추출 후보 장소로 쓴다(저장하면 개인 즐겨찾기 PUT이 그대로 받는다) */
+function bookmarkPlace(index: number) {
+  const [name, address, latitude, longitude] = BOOKMARKS[index];
+  return {
+    id: `place-bookmark-${index + 1}`,
+    name,
+    address,
+    latitude,
+    longitude,
+    regionId: null,
+    provider: 'NAVER',
+    providerPlaceId: null,
+    source: 'PROVIDER' as const,
+  };
+}
+
+function extractionResult(id: string, job: MockExtraction) {
+  const elapsed = Date.now() - job.startedAt;
+  const done = job.outcome !== 'STUCK' && elapsed >= EXTRACTION_MS;
+  const failed = done && job.outcome === 'FAILED';
+  const candidates = !done
+    ? []
+    : job.outcome === 'SUCCESS'
+      ? [
+          { index: 0, evidence: '게시물 글에서 찾았어요' },
+          { index: 2, evidence: '캡처 속 간판에서 찾았어요' },
+        ].map(({ index, evidence }, i) => ({
+          candidateId: `${id}-c${i + 1}`,
+          name: BOOKMARKS[index][0],
+          place: bookmarkPlace(index),
+          evidence,
+          confidence: 0.9,
+        }))
+      : job.outcome === 'MULTIPLE_CANDIDATES'
+        ? // AI 서버처럼 언급(name)마다 후보를 이어 붙인다: 한 곳으로 정해진 가게 + 지점이 둘인 카페
+          // (지점 이름은 place.name) + 지도에서 못 찾은 빵집(place: null)
+          [
+            {
+              name: BOOKMARKS[3][0],
+              place: bookmarkPlace(3),
+              evidence: '캡처 속 간판에서 찾았어요',
+              confidence: 1,
+            },
+            ...(['광안점', '전포점'] as const).map((branch, i) => ({
+              name: '바다 앞 카페',
+              place: { ...bookmarkPlace([0, 2][i]), name: `바다 앞 카페 ${branch}` },
+              evidence: '게시물 글에서 찾았어요',
+              confidence: 0.8,
+            })),
+            {
+              name: '골목 빵집',
+              place: null,
+              evidence: '게시물 글에서 찾았어요',
+              confidence: null,
+            },
+          ].map((c, i) => ({ candidateId: `${id}-c${i + 1}`, ...c }))
+        : [];
+  return {
+    job: {
+      id,
+      kind: 'PLACE_EXTRACTION',
+      status: !done ? (elapsed < 600 ? 'QUEUED' : 'RUNNING') : failed ? 'FAILED' : 'SUCCEEDED',
+      progress: done ? 100 : Math.min(Math.floor((elapsed / EXTRACTION_MS) * 100), 99),
+      result: null,
+      error: failed ? { code: 'SOURCE_UNREACHABLE', message: '링크를 열지 못했어요.' } : null,
+      createdAt: new Date(job.startedAt).toISOString(),
+      finishedAt: done ? new Date(job.startedAt + EXTRACTION_MS).toISOString() : null,
+    },
+    resultStatus: !done ? null : job.outcome,
+    candidates,
+  };
+}
+
 function makeTrip(input: {
   title: string;
   start?: number;
@@ -340,6 +468,17 @@ const SAMPLE_TRIPS: Trip[] = [
 // 신규 가입자 모드는 여행 없이 시작해 첫 방문 홈을 본다
 let trips: Trip[] = env.devMockNewUser ? [] : SAMPLE_TRIPS;
 
+{
+  const posted = trips.find((t) => t.title === '남도 맛집 여행');
+  if (posted) {
+    publishMockFeed(posted, {
+      title: '봄 경주',
+      body: '',
+      regions: [{ id: 'region-gyeongju', code: '4713000000', name: '경상북도 경주시' }],
+    });
+  }
+}
+
 /** 이 여행에서 지금 쓸 수 있는 초대 링크의 토큰. 새로 만들거나 취소하면 바뀐다 */
 const inviteTokens = new Map<string, string>();
 
@@ -403,6 +542,11 @@ function ok<T>(config: InternalAxiosRequestConfig, data: T, status = 200): Axios
   return { data, status, statusText: 'OK', headers: {}, config };
 }
 
+/** 요청 본문(문자열이면 JSON으로 읽는다) */
+function parseBody<T>(config: InternalAxiosRequestConfig): T {
+  return (typeof config.data === 'string' ? JSON.parse(config.data) : (config.data ?? {})) as T;
+}
+
 function fail(config: InternalAxiosRequestConfig, status: number, code: string, message: string) {
   const response = ok(
     config,
@@ -455,7 +599,7 @@ const photoBatches = new Map<string, { id: string; tripId: string; fileCount: nu
 const photoBatchByKey = new Map<string, string>();
 const assets = new Map<
   string,
-  { status: 'PENDING' | 'READY' | 'DELETED'; batchId: string | null }
+  { status: 'PENDING' | 'READY' | 'DELETED'; batchId: string | null; purpose: string }
 >();
 type MockPhoto = {
   id: string;
@@ -552,7 +696,11 @@ function handlePhotos(
   }
   if (method === 'post' && url === '/assets/upload-intents') {
     const assetId = `asset-${(photoSeq += 1)}`;
-    assets.set(assetId, { status: 'PENDING', batchId: (body.batchId as string) ?? null });
+    assets.set(assetId, {
+      status: 'PENDING',
+      batchId: (body.batchId as string) ?? null,
+      purpose: String(body.purpose ?? 'TRIP_PHOTO'),
+    });
     return ok(
       config,
       {
@@ -578,8 +726,9 @@ function handlePhotos(
       asset.status = 'DELETED';
       return ok(config, null, 204);
     }
-    completeCalls += 1;
-    if (completeCalls % 5 === 3) {
+    // 일부 실패는 S30 사진 올리기에서만 본다. S11 캡처는 늘 성공
+    if (asset.purpose === 'TRIP_PHOTO') completeCalls += 1;
+    if (asset.purpose === 'TRIP_PHOTO' && completeCalls % 5 === 3) {
       throw fail(config, 422, 'UPLOAD_MISMATCH', '올린 파일이 요청한 크기나 형식과 다릅니다.');
     }
     asset.status = 'READY';
@@ -647,6 +796,32 @@ function handlePhotos(
       },
     });
   }
+  // S31 여러 장 장소 연결. 테스트 모드는 UPDATE만 받는다. 한 장이라도 안 맞으면 아무것도 바꾸지 않는다
+  const editBatchMatch = /^\/trips\/([^/]+)\/photos\/batch$/.exec(url);
+  if (method === 'post' && editBatchMatch) {
+    const targets = (body.photos ?? []) as { photoId: string; expectedVersion: number }[];
+    if (body.action !== 'UPDATE' || targets.length === 0 || targets.length > 50) {
+      throw fail(config, 400, 'VALIDATION_ERROR', '요청 값을 확인해 주세요.');
+    }
+    const found = targets.map((t) => ({
+      t,
+      photo: tripPhotos.find((p) => p.id === t.photoId && p.tripId === editBatchMatch[1]),
+    }));
+    if (found.some((f) => !f.photo)) {
+      throw fail(config, 404, 'PHOTO_NOT_FOUND', '사진을 찾을 수 없습니다.');
+    }
+    if (found.some((f) => f.photo?.version !== f.t.expectedVersion)) {
+      throw fail(config, 409, 'VERSION_CONFLICT', '다른 곳에서 바뀌었어요');
+    }
+    const changed = found.map(({ photo }) => {
+      const p = photo as (typeof tripPhotos)[number];
+      if ('placeId' in body) p.placeId = (body.placeId as string | null) ?? null;
+      if (Array.isArray(body.topics)) p.topics = body.topics as string[];
+      p.version += 1;
+      return { ...p, topics: [...p.topics] };
+    });
+    return ok(config, { data: { photos: changed, deletedPhotoIds: [] } });
+  }
   const photoMatch = /^\/trips\/([^/]+)\/photos\/([^/]+)$/.exec(url);
   if (method === 'delete' && photoMatch) {
     const i = tripPhotos.findIndex((p) => p.id === photoMatch[2] && p.tripId === photoMatch[1]);
@@ -691,6 +866,22 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
   if (notification) return notification;
   const photo = handlePhotos(config, method, url);
   if (photo) return photo;
+
+  // S41 타임라인·S42 여행 요약(서버에 아직 없는 API, 명세 모양). 게시한 여행은 /me/feeds와 같은 "남도 맛집 여행"
+  if (method === 'get' && url === '/me/timeline') {
+    const posted = trips.find((t) => t.title === '남도 맛집 여행')?.id ?? null;
+    return ok(config, page(mockMyTimeline(trips, posted)));
+  }
+  const timelineMatch = /^\/trips\/([^/]+)\/(timeline|summary)$/.exec(url);
+  if (method === 'get' && timelineMatch) {
+    const trip = trips.find((t) => t.id === timelineMatch[1]);
+    if (!trip) throw fail(config, 404, 'TRIP_NOT_FOUND', '여행을 찾을 수 없습니다.');
+    if (timelineMatch[2] === 'timeline') {
+      return ok(config, { data: { items: mockTripTimeline(trip) } });
+    }
+    const photoCount = tripPhotos.filter((p) => p.tripId === trip.id).length;
+    return ok(config, { data: mockTripSummary(trip, photoCount) });
+  }
 
   if (method === 'get' && url === '/me/following') {
     return followPage(
@@ -739,12 +930,12 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
     follows = follows.filter((f) => f.id !== found.id);
     return ok(config, undefined, 204);
   }
-  // S44 추천 친구(명세에 아직 없는 제안 경로)·숨기기
-  if (method === 'get' && url === '/me/friend-recommendations') {
+  // S44 추천 친구·숨기기
+  if (method === 'get' && url === '/me/follow-suggestions') {
     const reasons = [
-      { kind: 'taste', tags: ['바다', '카페'] },
-      { kind: 'taste', tags: ['맛집'] },
-      { kind: 'trips', count: 4 },
+      { kind: 'CO_TRAVELER', count: 2 },
+      { kind: 'CO_TRAVELER', count: 1 },
+      { kind: 'FOLLOWS_YOU' },
     ];
     return ok(
       config,
@@ -755,8 +946,8 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
       ),
     );
   }
-  const hideMatch = /^\/me\/friend-recommendations\/([^/]+)\/hide$/.exec(url);
-  if (method === 'post' && hideMatch) {
+  const hideMatch = /^\/me\/follow-suggestion-dismissals\/([^/]+)$/.exec(url);
+  if (method === 'put' && hideMatch) {
     hiddenSuggestions = [...hiddenSuggestions, decodeURIComponent(hideMatch[1])];
     return ok(config, undefined, 204);
   }
@@ -826,9 +1017,23 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
 
   if (method === 'get' && url === '/me') return ok(config, { data: ME });
   if (method === 'patch' && url === '/me') {
-    const body = JSON.parse(String(config.data ?? '{}')) as { nickname?: string };
-    if (body.nickname) ME.nickname = body.nickname;
-    ME.profileCompleted = true;
+    const body = JSON.parse(String(config.data ?? '{}')) as {
+      nickname?: string;
+      ageBand?: string | null;
+      accountVisibility?: MyProfile['accountVisibility'];
+      profileImageAssetId?: string | null;
+    };
+    if (body.nickname) {
+      ME.nickname = body.nickname;
+      ME.profileCompleted = true;
+    }
+    if ('ageBand' in body) ME.ageBand = body.ageBand ?? null;
+    if (body.accountVisibility) ME.accountVisibility = body.accountVisibility;
+    if ('profileImageAssetId' in body) {
+      ME.profileImageUrl = body.profileImageAssetId
+        ? `/assets/${body.profileImageAssetId}/download`
+        : null;
+    }
     return ok(config, { data: ME });
   }
   if (method === 'get' && url === '/me/preferences') {
@@ -915,34 +1120,118 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
     }
     throw fail(config, 404, 'NOT_FOUND', '저장한 장소를 찾을 수 없어요.');
   }
+  // S12 장소 추출(백엔드 미구현, API 명세 §5). 4.5초 동안 진행률이 오르고 끝난다.
+  // 링크나 메모에 many·none·fail·stuck이 들어 있으면 복수 후보·식별 불가·처리 실패·끝나지 않음
+  // (캡처만 보낼 때는 메모로 고른다)
+  // Idempotency-Key 필수. 같은 키 + 같은 본문이면 처음 작업 id, 다른 본문이면 409
+  if (method === 'post' && url === '/extractions') {
+    const body = parseBody<{ url?: string; captureAssetIds?: string[]; memo?: string }>(config);
+    const key = String(config.headers['Idempotency-Key'] ?? '');
+    if (!key) throw fail(config, 400, 'VALIDATION_ERROR', 'Idempotency-Key 헤더가 필요해요.');
+    const serialized = JSON.stringify(body);
+    const previous = extractionByKey.get(key);
+    if (previous && previous.body !== serialized) {
+      throw fail(config, 409, 'IDEMPOTENCY_KEY_REUSED', '다른 요청에 쓴 키예요.');
+    }
+    if (previous) {
+      return ok(
+        config,
+        {
+          data: { jobId: previous.id, status: 'QUEUED', statusUrl: `/api/v1/jobs/${previous.id}` },
+        },
+        202,
+      );
+    }
+    if (!body.url && !(body.captureAssetIds?.length ?? 0)) {
+      throw fail(config, 400, 'VALIDATION_ERROR', '링크나 캡처를 하나 이상 넣어 주세요.');
+    }
+    if ((body.captureAssetIds?.length ?? 0) > 10) {
+      throw fail(config, 422, 'INPUT_LIMIT_EXCEEDED', '캡처는 10장까지 넣을 수 있어요.');
+    }
+    if (settings.ai.placeExtraction === 'OFF') {
+      throw fail(config, 409, 'AI_FEATURE_DISABLED', '장소 찾기 설정이 꺼져 있어요.');
+    }
+    seq += 1;
+    const id = `extraction-${seq}`;
+    const hint = `${body.url ?? ''} ${body.memo ?? ''}`;
+    extractions.set(id, {
+      startedAt: Date.now(),
+      outcome: /stuck/i.test(hint)
+        ? 'STUCK'
+        : /fail/i.test(hint)
+          ? 'FAILED'
+          : /none/i.test(hint)
+            ? 'NOT_FOUND'
+            : /many/i.test(hint)
+              ? 'MULTIPLE_CANDIDATES'
+              : 'SUCCESS',
+    });
+    extractionByKey.set(key, { id, body: serialized });
+    return ok(
+      config,
+      { data: { jobId: id, status: 'QUEUED', statusUrl: `/api/v1/jobs/${id}` } },
+      202,
+    );
+  }
+  const extractionMatch = /^\/extractions\/([^/]+)$/.exec(url);
+  if (extractionMatch) {
+    const id = decodeURIComponent(extractionMatch[1]);
+    const found = extractions.get(id);
+    if (!found) throw fail(config, 404, 'NOT_FOUND', '작업을 찾을 수 없어요.');
+    if (method === 'delete') {
+      extractions.delete(id);
+      return ok(config, undefined, 204);
+    }
+    if (method === 'get') return ok(config, { data: extractionResult(id, found) });
+  }
   // 그룹 즐겨찾기에 추가(S14): 담기만 하고 S20 목록은 아직 흉내 내지 않는다
   if (method === 'put' && /^\/trips\/[^/]+\/saved-places\/[^/]+\/me$/.test(url)) {
     return ok(config, { data: null });
   }
   if (method === 'get' && url === '/me/trips') return ok(config, page(trips));
-  // S37 내가 게시한 공동 피드: 예시 여행 중 "남도 맛집 여행"을 경주로 게시한 것으로 본다
+  // S37·S39·S40 내가 게시한 공동 피드(나간 여행은 빠진다). 최근 게시한 것부터
   if (method === 'get' && url === '/me/feeds') {
-    const posted = trips.find((t) => t.title === '남도 맛집 여행');
-    return ok(
-      config,
-      page(
-        remember(
-          posted
-            ? [
-                {
-                  id: `feed-${posted.id}`,
-                  tripId: posted.id,
-                  title: '봄 경주',
-                  regions: [{ id: 'region-gyeongju', code: '4713000000', name: '경상북도 경주시' }],
-                  startDate: posted.startDate,
-                  endDate: posted.endDate,
-                  visibility: { feedId: `feed-${posted.id}`, ...feedVisibility },
-                },
-              ]
-            : [],
-        ),
-      ),
-    );
+    const mine = [...ownFeeds.values()]
+      .filter((f) => trips.some((t) => t.id === f.tripId))
+      .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
+    return ok(config, page(remember(mine.map(copyFeed))));
+  }
+  // S38 이 여행의 공동 피드. 게시 전이면 null, 게시하면 여행당 하나(이미 있으면 그대로 200)
+  // S38이 함께 읽는 코스·방문·지출·정산. 테스트 모드에서는 모두 비어 있다(요약 카드가 "없음"으로 보임)
+  const recordPartMatch = /^\/trips\/([^/]+)\/(itinerary|visits|expenses|settlement)$/.exec(url);
+  if (method === 'get' && recordPartMatch && trips.some((t) => t.id === recordPartMatch[1])) {
+    const part = recordPartMatch[2];
+    if (part === 'itinerary') return ok(config, { data: { items: [] } });
+    if (part === 'settlement') {
+      return ok(config, {
+        data: { current: null, currentExpenseVersion: 0, recalculationRequired: false },
+      });
+    }
+    return ok(config, page([]));
+  }
+  const tripFeedMatch = /^\/trips\/([^/]+)\/feed$/.exec(url);
+  if (tripFeedMatch) {
+    const trip = trips.find((t) => t.id === tripFeedMatch[1]);
+    if (!trip) throw fail(config, 404, 'TRIP_NOT_FOUND', '여행을 찾을 수 없어요');
+    const found = ownFeeds.get(trip.id);
+    const existing = found ? copyFeed(found) : null;
+    if (method === 'get') return ok(config, { data: existing });
+    if (method === 'post') {
+      if (existing) return ok(config, { data: existing });
+      // 실패 화면을 보려면 제목에 "fail"을 넣은 여행에서 게시한다
+      if (trip.title.includes('fail'))
+        throw fail(config, 500, 'INTERNAL_ERROR', '게시하지 못했어요');
+      const body = JSON.parse(String(config.data ?? '{}')) as { title?: string; body?: string };
+      return ok(
+        config,
+        {
+          data: copyFeed(
+            publishMockFeed(trip, { title: body.title ?? trip.title, body: body.body ?? '' }),
+          ),
+        },
+        201,
+      );
+    }
   }
 
   if (method === 'post' && url === '/trips') {
@@ -1015,15 +1304,46 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
       hiddenViewerUserIds: string[];
       expectedVersion: number;
     };
-    if (body.expectedVersion !== feedVisibility.version) {
+    const feed = [...ownFeeds.values()].find((f) => f.id === visibilityMatch[1]);
+    if (!feed) throw fail(config, 404, 'FEED_NOT_FOUND', '공동 피드를 찾을 수 없어요');
+    if (body.expectedVersion !== feed.visibility.version) {
       throw fail(config, 409, 'VERSION_CONFLICT', '다른 곳에서 바뀌었어요');
     }
-    feedVisibility = {
+    feed.visibility = {
+      feedId: feed.id,
       hiddenViewerUserIds: body.hiddenViewerUserIds,
-      version: feedVisibility.version + 1,
+      version: feed.visibility.version + 1,
       updatedAt: new Date().toISOString(),
     };
-    return ok(config, { data: { feedId: visibilityMatch[1], ...feedVisibility } });
+    return ok(config, { data: { ...feed.visibility } });
+  }
+  // S38 공동 피드 삭제(S39 삭제 확인). 버전이 다르면 409, 이미 지웠으면 404
+  const deleteFeedMatch = /^\/feeds\/([^/]+)$/.exec(url);
+  if (method === 'delete' && deleteFeedMatch) {
+    const feed = [...ownFeeds.values()].find((f) => f.id === deleteFeedMatch[1]);
+    if (!feed) throw fail(config, 404, 'FEED_NOT_FOUND', '공동 피드를 찾을 수 없어요');
+    if (Number(config.params?.expectedVersion) !== feed.version) {
+      throw fail(config, 409, 'VERSION_CONFLICT', '다른 곳에서 바뀌었어요');
+    }
+    ownFeeds.delete(feed.tripId);
+    return ok(config, undefined, 204);
+  }
+  // S39 기록까지 삭제. 피드를 내리고 정리 작업을 접수한다(테스트 모드는 피드만 내림). 피드가 없으면 404
+  const ownRecordsMatch = /^\/feeds\/([^/]+)\/delete-own-records$/.exec(url);
+  if (method === 'post' && ownRecordsMatch) {
+    const feed = [...ownFeeds.values()].find((f) => f.id === ownRecordsMatch[1]);
+    if (!feed) throw fail(config, 404, 'FEED_NOT_FOUND', '공동 피드를 찾을 수 없어요');
+    const { expectedVersion } = parseBody<{ expectedVersion?: number }>(config);
+    if (expectedVersion !== feed.version) {
+      throw fail(config, 409, 'VERSION_CONFLICT', '다른 곳에서 바뀌었어요');
+    }
+    ownFeeds.delete(feed.tripId);
+    const jobId = `job-own-records-${feed.id}`;
+    return ok(
+      config,
+      { data: { jobId, status: 'QUEUED', statusUrl: `/api/v1/jobs/${jobId}` } },
+      202,
+    );
   }
   // S09 최근 트렌드 여행지: 예시 지역 다섯 곳
   if (method === 'get' && url === '/trends/regions') {

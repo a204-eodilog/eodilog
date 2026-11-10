@@ -41,12 +41,19 @@ public class ItineraryProposalJobHandler implements JobHandler {
 		JsonNode input = submission.input();
 		boolean fieldsMatch = input.size() == INPUT_FIELDS.size() && INPUT_FIELDS.stream().allMatch(input::has);
 		if (submission.tripId() == null || submission.baseVersion() == null || !fieldsMatch
-				|| !"INITIAL".equals(input.get("reason").asString())
+				|| !validReason(input)
 				|| input.get("expectedVersion").asLong() != submission.baseVersion()
 				|| !input.get("trip").isObject() || !input.get("places").isArray() || input.get("places").isEmpty()
 				|| !input.get("current").isObject()) {
 			throw new IllegalArgumentException("Invalid ITINERARY_PROPOSAL submission");
 		}
+	}
+
+	// INITIAL은 선택 대안이 없고, WEATHER는 고른 날씨 대안이 있다(정책 W-26)
+	private static boolean validReason(JsonNode input) {
+		String reason = input.get("reason").asString();
+		return ("INITIAL".equals(reason) && input.get("selectedAlternative").isNull())
+				|| ("WEATHER".equals(reason) && input.get("selectedAlternative").isObject());
 	}
 
 	@Override

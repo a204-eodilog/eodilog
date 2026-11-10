@@ -36,7 +36,11 @@ export function useVisibility(feedId: string) {
   const hidden = draft ?? new Set(saved);
 
   const save = useMutation({
-    mutationFn: () => saveVisibility(feedId, [...hidden], feed?.visibility.version ?? 0),
+    mutationFn: () => {
+      // 서버는 버전 1부터 받는다. 피드를 아직 못 읽었으면 보내지 않는다
+      if (!feed) throw new Error('피드를 아직 불러오지 못했어요');
+      return saveVisibility(feedId, [...hidden], feed.visibility.version);
+    },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['me', 'feeds'] });
       toast.show('노출 설정을 저장했어요');

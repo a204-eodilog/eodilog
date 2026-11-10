@@ -24,3 +24,13 @@ export type RecordTrip = {
   /** 참여 중인 동행만, 참여 순 */
   members: MyTrip['members'];
 };
+
+/**
+ * S38 이 여행의 공동 피드(GET /trips/{tripId}/feed, 명세 OwnFeed 중 쓰는 것). 게시 전이면 null.
+ * version은 삭제할 때(expectedVersion), visibility는 내 경로에서 숨긴 친구
+ */
+export type TripFeed = {
+  id: string;
+  version: number;
+  visibility: { hiddenViewerUserIds: string[]; version: number };
+};

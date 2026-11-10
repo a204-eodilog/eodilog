@@ -29,4 +29,12 @@ describe('assetSource', () => {
     });
     expect(assetSource(null)).toBeNull();
   });
+
+  it('기기 안 주소(방금 고른 사진)는 서버 주소를 붙이지 않고 그대로 쓴다', () => {
+    expect(assetSource('file:///data/cache/a.jpg')).toEqual({ uri: 'file:///data/cache/a.jpg' });
+    expect(assetSource('content://media/1')).toEqual({ uri: 'content://media/1' });
+    expect(assetSource('blob:http://localhost:8081/abc')).toEqual({
+      uri: 'blob:http://localhost:8081/abc',
+    });
+  });
 });

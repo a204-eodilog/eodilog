@@ -1,6 +1,6 @@
 # 백엔드 B 후속 작업 — 준비물 체크리스트·멤버 관리·경비·초대·정산·채팅·나가기·투표·코스
 
-작성일: 2026-10-29 · 상태: 체크리스트·멤버 관리 병합 완료(MR !49·!50), 경비·정산 상태 병합 완료(MR !56, 2026-10-30), 초대 링크 병합 완료(MR !58·!62), 정산 계산 병합 완료(MR !69), 채팅 REST 병합 완료(MR !71), 기본 나가기 병합 완료(MR !76), 투표 구현(EODI-161), 나가기 내 채팅 삭제·방문 기록 구현(2026-11-04, §15·§16), 초대 링크 취소 병합 완료(MR !108, §9 I-11), 채팅 실시간 전달 구현(EODI-192, §12-1), 도메인 알림 이벤트 발행 병합(MR !123, §17), 방문 평가 구현(EODI-199, §18), AI 준비물 추천·채택 구현(EODI-218, §19), AI 장소 추출 구현(EODI-224, §20)
+작성일: 2026-10-29 · 상태: 체크리스트·멤버 관리 병합 완료(MR !49·!50), 경비·정산 상태 병합 완료(MR !56, 2026-10-30), 초대 링크 병합 완료(MR !58·!62), 정산 계산 병합 완료(MR !69), 채팅 REST 병합 완료(MR !71), 기본 나가기 병합 완료(MR !76), 투표 구현(EODI-161), 나가기 내 채팅 삭제·방문 기록 구현(2026-11-04, §15·§16), 초대 링크 취소 병합 완료(MR !108, §9 I-11), 채팅 실시간 전달 구현(EODI-192, §12-1), 도메인 알림 이벤트 발행 병합(MR !123, §17), 방문 평가 구현(EODI-199, §18), AI 준비물 추천·채택 구현(EODI-218, §19), AI 장소 추출 구현(EODI-224, §20), 날씨 조회·날씨 대안·WEATHER 코스 제안 구현(EODI-247, §22)
 
 [B 첫 작업](backend-b-trip-basic.md)(여행 생성·조회·수정)이 끝난 뒤 A의 카카오 로그인을 기다리는 동안 진행한 B 작업이다. [분담안](../../../docs/plan/backend-first-work-split.md) §6은 이 기능들을 "첫 통합 뒤 배분"으로 두었지만, 로그인 없이 개발할 수 있고 여행 패키지 안에서 끝나는 것부터 B가 먼저 맡았다. A와 겹치는 파일(`user`·`auth` 패키지, `SecurityConfig`)은 건드리지 않는다.
 
@@ -27,6 +27,7 @@
 | 도메인 알림 이벤트 발행 | 새 API 없음(`GET /me/notifications`에 투표·초대 수락·코스 알림이 생김), 주기 작업 `PollReminderScheduler` | EODI-196 | 병합(MR !123, §17) |
 | 방문 평가 | `PUT/DELETE /trips/{tripId}/visits/{visitId}/review`, `GET /trips/{tripId}/reviews`, 방문 목록·해제 보강 | EODI-199 | 구현(§18) |
 | AI 준비물 추천·채택 | `POST /trips/{tripId}/checklist-suggestions`, CHECKLIST_SUGGESTIONS 작업, `POST /trips/{tripId}/checklist`의 제안 채택 | EODI-218 | 구현(§19) |
+| 날씨 조회·날씨 대안 | `GET /trips/{tripId}/weather`, `POST /trips/{tripId}/weather-alternatives`(WEATHER_ALTERNATIVES), `POST /itinerary/proposals`의 `reason=WEATHER` | EODI-247 | 구현(§22) |
 
 검증은 B 첫 작업과 같이 테스트에서 `AuthUser` principal을 넣어 했다. A 로그인 병합 뒤 실제 카카오 계정 2개로 여행 API 통합 검증(B-7)을 마쳤다([계약 §8](backend-a-b-contract.md)).
 
@@ -573,7 +574,19 @@ A가 만든 알림 기반(`events`·`notifications`, `GET /me/notifications`)에
 - 프론트(EODI-216, 꼭 필요): `POST /extractions`에 `Idempotency-Key`가 필요하다(다시 시도마다 새 키). 2026-11-09 dbd2baa 기준 `startExtraction`은 헤더를 보내지 않아 400이 난다.
 - 프론트(참고): progress는 0 → 100만이라 진행 단계 표시는 첫 단계에 머문다. 프론트는 60초가 지나면 실패로 보여 주지만, AI 장애(503)일 때 백엔드는 30초 간격 최대 3회 시도해 1~3분 뒤 FAILED가 된다. 취소한 작업의 캡처는 지워지므로 다시 찾을 때는 새로 올린다.
 - 선택한 후보 저장 예시: 개인 `PUT /api/v1/me/bookmarks/{place.id}` `{memo?}`, 여행 `PUT /api/v1/trips/{tripId}/saved-places/{place.id}/me` `{memo?}`. `place:null` 후보는 `GET /api/v1/places?query={name}`으로 고르거나 `POST /api/v1/places`로 수동 장소를 만든 뒤 같은 PUT.
-- 남은 위험: 캡처 10장 S3(시드니) 읽기 + AI 50초가 worker 60초를 넘을 수 있다. 공급자 ID는 AI의 이름·주소 해시(AS-12)라 -162에서 규칙이 바뀌면 같은 장소가 두 행이 될 수 있다. 새 장소의 regionId는 null이다.
+- 남은 위험: 캡처 10장 S3(시드니) 읽기 + AI 50초가 worker 60초를 넘을 수 있다. 공급자 ID는 AI의 이름·주소 해시(AS-12)라 -162에서 규칙이 바뀌면 같은 장소가 두 행이 될 수 있다. 새 장소의 regionId는 주소로 채운다(§20-2).
+
+### 20-2. 추출 장소 지역 채우기 (EODI-246, 2026-11-09)
+
+네이버 응답에는 지역 코드가 없어 추출 장소의 `regionId`가 비었다. 지역으로 거르는 장소 검색·북마크에서 빠지고, 여행지 추천(AI가 저장 장소를 `region_id`로 묶음)의 근거가 되지 못한다.
+
+- 규칙: 주소 앞 두 단어 "시·도 시·군·구"가 `regions.name`과 정확히 같으면 그 지역이다. 일반구가 있는 시(수원시 장안구)는 시 단위로 묶인다. 시·도 줄임말·옛 이름(부산, 경남, 강원도, 전라북도, 광주광역시, 전라남도 등)과 관할·이름이 바뀐 곳(경상북도 군위군 → 대구광역시 군위군, 인천광역시 남구 → 미추홀구)은 대응표로 바꾼다. 시·도 이름만으로는 하위 지역이 없는 세종만 맞추고, 다른 시·도로 넓혀 맞추지 않는다(`RegionCodeResolver`와 같은 원칙). 못 찾으면 null이다. 지역 전체 이름은 seed에서 모두 하나뿐이다.
+- 위치: DB 함수 `region_code_for_address`(V202611091800). 추출 실행기는 `RegionAddressMatcher`로 이 함수를 불러 `ProviderPlace.regionCode`에 넣는다. `PlaceResolver`는 바꾸지 않았다. 기존 장소에 지역이 있고 새로 못 찾으면 기존 지역을 유지한다(기존 COALESCE).
+- 기존 장소: V202611091801이 provider=NAVER이고 region_id가 빈 장소만 같은 함수로 한 번 채운다. 다른 공급자·수동 장소는 건드리지 않는다.
+- 근거(공공 장소 덤프 2026-11-05, 280만 건을 임시 PostGIS 컨테이너에 마이그레이션과 함께 복원해 비교): 저장된 지역과 같음 2,802,338건(99.96%), 못 찾음 932건(주소 없음 916건, 오타 16건), 다름 22건(모두 KTO, 원본 주소와 코드가 서로 다른 행). SBDC는 2,753,778건 전부 같았다.
+- 테스트: `RegionAddressMatcherTest`(주소 18가지·빈 주소, 1300 → 1801 업그레이드로 네이버 장소만 채움), `ExtractionApiTest`의 추출 장소 regionId(부산 수영구). A의 `PhotoClassificationMigrationUpgradeTest`는 마지막 버전을 1300으로 가정해 깨지므로 `target("202611091300")`으로 고정했다(검사 내용은 그대로).
+- 전체 build(dev 2caf8ad 위): 531개 중 실패 0개, 건너뜀 12개(실제 AI·S3 등 환경 변수 조건부).
+- 남은 위험: 실제 네이버 주소 표기를 이번에 다시 호출해 보지는 않았다. 네이버가 대응표에 없는 표기(예: 새 통합 지역의 다른 줄임말)를 주면 null로 남는다.
 
 ## 21. AI 최초 코스 제안·적용·되돌리기 정책 (EODI-231, 2026-11-09 사용자 확정)
 
@@ -623,3 +636,67 @@ A가 만든 알림 기반(`events`·`notifications`, `GET /me/notifications`)에
 - AI(장수철, -150): 구현(ef31816)이 백엔드 계약과 맞는 것을 실제 호출로 확인했다. INITIAL의 `current` id 유지와 지역 모르는 장소 처리는 AS-16에 답이 있다. 알릴 것: 백엔드는 대상 장소를 200곳까지 보낸다. places에 `category`가 없어(places 열 없음) 식당·카페 시간 규칙은 적용되지 않는다. 카카오 키가 있을 때 구간이 많으면 45초 예산 안에 끝나는지는 아직 확인하지 않았다.
 - 프론트: 요청 → `GET /itinerary/proposals/{jobId}` 폴링 → 비교(현재 코스는 `GET /itinerary`) → apply(`expectedVersion`) → 필요하면 undo(`expectedVersion`=적용 후 version, `appliedJobId`). 409 VERSION_CONFLICT면 코스를 다시 조회하고 새 제안을 요청한다. 제안 구간은 새 항목 사이라 `day/fromOrder/toOrder`로 가리킨다.
 - 남은 위험: 카카오 키가 있을 때 AVAILABLE 구간의 실제 저장과 45초 예산은 확인하지 못했다. 코스 AI 설정이 없어 동의 검사가 없다. AI 이동 시간을 저장한 구간도 이후 PUT으로 바꾸면 UNAVAILABLE로 다시 저장된다(경로 재계산 작업 때 정한다).
+
+## 22. 날씨 조회·AI 날씨 대안·WEATHER 코스 제안 정책 (EODI-247, 2026-11-09)
+
+명세 §6 `GET /trips/{tripId}/weather`, `POST /trips/{tripId}/weather-alternatives`와 `POST /itinerary/proposals`의 `reason=WEATHER`를 구현했다. 날씨는 패키지 `weather`(`WeatherService`, 기상청 클라이언트 `weather.kma`), 대안 작업은 jobs `WEATHER_ALTERNATIVES`(패키지 `weather.alternative`)이다. AI 호출은 JSON `POST /ai/v1/weather-alternatives`(AI 명세 §6)와 기존 `POST /ai/v1/itinerary-proposals`(§5 WEATHER)이다. 분담 문서는 `backend-a-b-preferences-weather-split-2026-11-09`(B)이고, 계획 초안 W-1~W-30을 사용자와 정한 뒤 구현했다. 구현하면서 바뀐 점은 표의 "구현" 열에 적었다.
+
+| # | 항목 | 결정 | 근거·구현 |
+| --- | --- | --- | --- |
+| W-1 | 공급자 | 기상청 단기예보 `VilageFcstInfoService_2.0/getVilageFcst`와 중기예보 `MidFcstInfoService/getMidLandFcst`·`getMidTa`(data.go.kr). Open-Meteo는 쓰지 않는다 | 사용자 결정(11/09). 국내 공식 예보라 사용자가 보는 날씨와 맞는다 |
+| W-2 | 범위 | 오늘~3일 뒤는 단기(1시간 단위), 4~10일 뒤는 중기(4~7일 오전·오후, 8~10일 하루). 지난 날짜·10일 뒤 초과는 422 `WEATHER_NOT_AVAILABLE`. 관측(ASOS)은 붙이지 않는다 | 사용자 결정. 3일 뒤라도 단기 값이 없으면 중기로 넘어간다. 최종 검증: 중기는 06·18시 발표라 00:00~06:10(KST)에는 10일 뒤 값이 아직 없어 422다(기상청 한계, 명세에 적음) |
+| W-3 | 좌표 | 위경도를 기상청 격자(LCC, 5km)로 바꾸고, 격자 밖은 422. 중기는 장소에서 가장 가까운 기온 지점 23곳 중 하나와 그 지점의 육상 구역 10곳 중 하나를 쓴다 | 지점·구역 코드는 실제 호출로 모두 확인했다. 울릉도 구역(11E00000)은 NO_DATA라 포항 쪽으로 간다 |
+| W-4 | 발표 시각 | 단기: 02·05·…·23시(KST), 중기: 06·18시. 발표 10분 전까지는 직전 발표를 쓴다. NO_DATA(03)이면 한 번 더 이전 발표로 간다 | 발표 직후 API 반영 지연 |
+| W-5 | 설정 | `app.weather.service-key`(`KMA_SERVICE_KEY`, 단기·중기 공용), 연결 3초·응답 5초. 키가 없어도 서버는 뜨고 요청만 503이다. 키는 Decoding(원문)·Encoding(`%`) 어느 쪽이든 한 번만 인코딩해 보낸다. 오류 로그에 URI(키 포함)를 남기지 않는다 | 사용자가 로컬 `.env`에 등록했다 |
+| W-6 | 캐시 | 메모리 캐시를 (격자 또는 구역·지점) 단위로 두고, 같은 발표면 다시 부르지 않는다 | 서버 한 대. DB 테이블 없음 |
+| W-7 | 장애 | 공급자 장애(HTTP 오류·업무 오류·비JSON·키 없음) 때 같은 위치의 직전 성공 값이 6시간 안이면 `stale=true`로 준다(`queriedAt`은 그 시각). 아니면 503 `PROVIDER_UNAVAILABLE` | S25 "날씨 갱신 실패" 화면용. 6시간은 B가 정한 기본값이다(발표 두 번 놓친 정도) |
+| W-8 | GET 권한·입력 | ACTIVE 멤버만(아니면 404). `date`·`placeId` 필수. 장소는 그 여행의 현재 코스나 여행 저장 장소(아니면 400 `placeId`). 여행 기간이 있으면 날짜는 그 안(아니면 400 `date`). 날씨 대안 설정이 OFF여도 조회는 된다 | 일반 날씨 조회 통로로 쓰이지 않게 막는다 |
+| W-9 | 응답 매핑 | `source` = `KMA_SHORT_TERM_FORECAST`/`KMA_MID_TERM_FORECAST`, `forecastAt` = 발표 시각, `hourly.at` = UTC, 확률은 POP/100. min/max는 TMN/TMX가 없으면 시간별 최소·최대, 일 확률은 시간별 최댓값, `temperatureCelsius`는 오늘만(지금과 가장 가까운 시간). 누락 값(-999·빈 값)은 null. 중기는 hourly=[] | 명세 Weather에 새 필드를 넣지 않았다 |
+| W-10 | condition | `CLEAR`·`PARTLY_CLOUDY`·`CLOUDY`·`RAIN`·`RAIN_SNOW`·`SNOW`·`SHOWER`·`UNKNOWN`. 단기는 PTY가 있으면 강수 값, 없으면 SKY. 하루 값은 강수 시간이 있으면 가장 많은 강수 값. 중기는 문구('흐리고 비' 등)를 읽어 오전·오후 중 더 궂은 쪽 | |
+| W-11 | 중복 요청 | `Idempotency-Key` 필수. 범위 `POST /api/v1/trips/{tripId}/weather-alternatives`, 지문 (date, placeId, expectedVersion) | 명세 §2 |
+| W-12 | 판정 순서 | 키·본문 400 → 404 → (같은 키로 끝난 요청이면 처음 JobRef, 다른 본문이면 409 `IDEMPOTENCY_KEY_REUSED`) → 설정 OFF 409 `AI_FEATURE_DISABLED` → 기간 없음 422 `INSUFFICIENT_DATA`(`trip.startDate`) → 기간 밖 날짜 400 → 날씨 조회(422/503) → [여행 행 잠금] 설정 OFF 409 → version 409 → 그 일차 코스에 없는 장소 422 `INSUFFICIENT_DATA`(`placeId`) → 등록 | 구현: 초안은 version·코스 검사를 날씨보다 앞에 두었다. 같은 키 재요청이 늦은 코스 변경 때문에 실패하지 않도록, 코스 검사를 멱등 실행 안으로 옮겨 날씨 뒤가 됐다. 최종 검증: 같은 키 재요청이 자정·기상청 장애·기간 변경 때 사전 검사에 걸리지 않도록 `IdempotencyService.findCompleted`로 먼저 처음 결과를 돌려준다. 날씨 조회 중 설정을 끄면 404 대신 409가 나도록 잠금 뒤 다시 본다 |
+| W-13 | 날씨 고정 | 요청 때 조회한 Weather를 입력에 넣는다. 외부 호출은 트랜잭션 밖에서 하고, 잠금 뒤 다시 검사한다. stale 날씨로도 등록할 수 있다 | 재시도해도 근거 날씨가 같다 |
+| W-14 | 입력 스냅샷 | AI §6 그대로: `{date, placeId, expectedVersion, weather, dayItems, alternativePool, defaultTransportMode}`. 장소에 `category`를 싣는다. 수단은 대상 일정의 나가는 구간, 없으면 들어오는 구간, 없으면 TRANSIT. `base_version=expectedVersion` | 멤버 정보는 넣지 않는다 |
+| W-15 | 후보 풀 | 여행 저장 장소와 KTO 관광정보 장소 중 대상 반경 2km 안·category 있음·그날 코스에 없는 곳. 저장 장소 먼저, 그다음 가까운 순으로 최대 30곳. SBDC 상가는 뺀다 | 구현: 저장 장소에도 반경을 걸었다(먼 저장 장소가 가장 가까운 후보로 뽑히지 않게) |
+| W-16 | 영업 정보 | 모두 `{value:UNKNOWN, checkedAt:null}` | 공급자 없음. KTO 이용 시간 문장을 해석하지 않는다 |
+| W-17 | 장소 분류 | `places.category varchar(200)`를 추가했다. SBDC는 `상권업종대>중>소분류명`, KTO는 관광 타입 이름(관광지·문화시설·축제공연행사·여행코스·레포츠·숙박·쇼핑·음식점). 분류가 없는 재수집은 기존 분류를 지우지 않는다. 최종 검증: 링크·캡처 추출로 저장하는 네이버 장소도 AI가 준 분류(예 `여행,명소>해수욕장`)를 `PlaceResolver`로 저장한다(`ProviderPlace.category`). 직접 만든(MANUAL) 장소는 분류가 없다 | 구현: 공개 Place DTO에는 넣지 않고 AI 입력에만 실었다. A·프론트 계약을 바꾸지 않으려고 했다. 기존 행은 재수집해야 채워진다 |
+| W-18 | 좌표 인덱스 | `idx_places_location` GiST `geography(ST_MakePoint(longitude, latitude))` 식 인덱스 | 마이그레이션 `V202611091900__add_place_category.sql` |
+| W-19 | 권한 | 등록·실행·완료: 요청자가 ACTIVE 멤버이고 날씨 설정이 OFF가 아니어야 한다(깨지면 CANCELLED). 조회: 그 여행의 현재 ACTIVE 멤버 누구나 | 준비물과 같다 |
+| W-20 | 실패 분류 | 5xx·연결 실패·타임아웃 TEMPORARY(3회), 4xx·형식 오류 EXECUTION_FAILED | |
+| W-21 | 응답 검증 | 대안 0~10개, alternativeId는 UUID이고 중복이 없어야 한다. TIME_SHIFT·PLACE_SWAP의 itemId는 대상 일정. TIME_SHIFT는 `HH:mm`이고 place가 없다. PLACE_SWAP의 place는 입력 풀 안이고 시각이 없다. INFO는 place·itemId·시각이 모두 null. activity 300자, reason 200자 이하. baseVersion은 입력과 같아야 한다 | 길이는 B가 정한 기본값이다(AI 문구 실측 20~30자). 최종 검증: AI가 activity에 장소 이름(최대 255자)을 그대로 넣어 100자에서 300자로 늘렸다 |
+| W-22 | 저장 | `{alternatives, weather, baseVersion}`. place는 입력 장소에서 공개 필드만 남긴다(category 제외). weather는 입력에 고정한 값이다. 조회는 `GET /jobs/{jobId}` | |
+| W-23 | 대안 없음 | `alternatives: []`도 성공이다 | S26 "대안 없음" |
+| W-24 | WEATHER 요청 | `sourceWeatherJobId`·`selectedAlternativeId` 필수(INITIAL에는 금지), `excludedPlaceIds` 금지. 지문에 두 ID를 넣는다. PLACE_REMOVED는 계속 400 | |
+| W-25 | WEATHER 판정 순서 | 400 → 404 → 요청자 설정 OFF 409 → 원본 작업(같은 여행·kind·삭제 안 됨, 아니면 404 `JOB_NOT_FOUND`, 성공 전 409 `PROPOSAL_NOT_READY`) → 결과에 없는 대안 400 → INFO 422 `UNSCHEDULABLE_ALTERNATIVE` → expectedVersion과 원본 baseVersion이 모두 현재 version과 같지 않으면 409 → 기간 없음 422 → 원본 날짜가 지금 대상 일정의 일차가 아니면 409 → 등록. 실행 중 요청자 설정이 OFF가 되면 CANCELLED | 다른 여행의 대안, 대안 뒤의 수동 변경·다른 적용은 여기서 걸린다. 최종 검증: 여행 기간 수정은 코스 version을 올리지 않아, 기간을 옮기면 다른 날짜 날씨로 코스가 바뀌던 것을 일차 검사로 막았다 |
+| W-26 | WEATHER 입력 | INITIAL과 같은 모양. `places` = 현재 코스 장소 + PLACE_SWAP 장소, `selectedAlternative` = 저장된 대안 객체 | `StoredProposal`의 "입력 places 안" 검사와 diff 재계산을 그대로 쓴다 |
+| W-27 | 결과 검증 | 기존 `StoredProposal.fromAi`를 쓰고, reason은 입력과 같아야 한다 | |
+| W-28 | 적용·되돌리기 | 기존 apply·undo를 쓴다. WEATHER 제안은 작업 404 다음에 적용하는 사람의 날씨 설정이 OFF면 409 `AI_FEATURE_DISABLED`, 기간 축소 검사 다음에 제안 입력의 여행 시작일이 지금과 다르면 409 `VERSION_CONFLICT` | INITIAL 동작은 그대로. INITIAL 지문 해시는 WEATHER 필드를 null이면 빼서 배포 전과 같다 |
+| W-29 | 대안 하나에 제안 여럿 | 허용한다. 하나를 적용하면 version이 올라 나머지는 409 | |
+| W-30 | 여행 삭제 | 새 테이블이 없어 `TripDeleteJobHandler`는 바꾸지 않았다. 날씨 작업 행은 tombstone이다 | |
+
+### 22-0. 검증 (2026-11-09)
+
+- 11/10 최종 검증: `.\gradlew.bat clean build` 통과(테스트 543개, 실패 0, 건너뜀 12 = 실제 외부 연동 테스트). 날씨 쪽은 `WeatherServiceTest` 10, `HttpKmaForecastClientTest` 5, `WeatherApiTest` 11(`/v3/api-docs`의 "날씨" 태그·응답 코드, 여행 기간 이동 409, 같은 키 재요청 포함), 수집기·추출 분류 검사(`PublicPlaceImportTest`, `PublicPlaceCatalogIntegrationTest`, `PlaceFoundationTest`, `ExtractionApiTest`)다.
+- 11/10 독립 리뷰 지적 8건을 반영했다(W-2·W-12·W-17·W-21·W-25·W-28 "최종 검증"). 실제 AI 코스 제안 INITIAL(`ItineraryProposalRealAiTest`)도 다시 통과해 INITIAL 동작이 그대로임을 확인했다.
+- 11/10 -246(MR !175) 병합 뒤 dev(730b92e)를 받아 다시 검증했다: 전체 build 통과(테스트 563개 = -246 테스트 포함, 실패 0, 건너뜀 12). 실제 기상청, 실제 AI 계약, INITIAL 실제 AI도 다시 통과했다. 이번에는 `ai/.env`에 키를 넣어 카카오 길찾기가 실제로 호출됐고, PLACE_SWAP 사유에 실제 이동 시간(도보 8분)이 들어갔다.
+- 실제 기상청(`WeatherRealProviderTest`, `KMA_SERVICE_KEY` 필요): 단기·중기 조회가 통과했다.
+- 실제 AI(`WeatherAlternativeAiContractTest`, `AI_E2E_BASE_URL` 필요, 로컬 uvicorn): 기상청 응답만 "내일 09~12시 비, 그 뒤 맑음"으로 바꾸고 나머지는 실제로 돌렸다. 10:00 해수욕장 일정에 TIME_SHIFT(13:00)와 PLACE_SWAP(저장한 실내 카페)이 나왔다. TIME_SHIFT 제안 → 적용(version 3) → 되돌리기(4), 같은 대안 작업의 PLACE_SWAP 제안은 409, 다시 받은 PLACE_SWAP 제안 → 적용(5) → 되돌리기(6)를 확인했다. 대안 응답의 place에 category가 없음도 확인했다.
+- 실제 기상청 + 실제 AI를 한 번에 잇는 `WeatherAlternativeRealAiTest`는 11/09·11/10 모두 후보 7개 도시에 3일 안 낮 시간 비 예보(강수확률 0.6 이상)가 없어 건너뛰었다. 비 예보가 있는 날 같은 명령으로 다시 돌리면 된다.
+- 실행: `ai/`를 `INTERNAL_API_TOKEN=<값> uvicorn app.main:app --port 18765`로 띄우고 `AI_E2E_BASE_URL=http://127.0.0.1:18765`, `AI_E2E_INTERNAL_TOKEN=<값>`, `KMA_SERVICE_KEY`를 환경 변수로 준 뒤 `.\gradlew.bat test --tests "*WeatherRealProviderTest" --tests "*WeatherAlternative*Test"`.
+
+### 22-1. A·AI·프론트에 공유할 것
+
+| 받는 쪽 | 내용 |
+| --- | --- |
+| A | `places.category` 열·`idx_places_location` 인덱스 추가(공개 PlaceView에는 넣지 않음). 공공 수집기(-193)가 분류를 저장하도록 바꿨다. dev·운영 DB의 기존 행은 다시 수집해야 category가 채워진다(그 전에는 PLACE_SWAP 후보가 없다). `user_settings.weather_mode`는 읽기만 한다. 새 환경 변수 `KMA_SERVICE_KEY`(운영 배포에도 필요) |
+| AI | 백엔드가 보내는 `category` 형식(SBDC `대>중>소`, KTO 타입 이름). KTO `문화시설`, SBDC `음식`이 §1.1 실내 낱말과 맞지 않아 "모름"이 된다. AI 쪽 낱말 목록에 넣어 달라고 요청했다. 중기예보(4~10일 뒤)는 `hourly: []`라 대안이 `[]`다 |
+| 프론트 | 흐름(날씨 조회 → 대안 작업 → WEATHER 제안 → apply/undo), Weather 값 표, 오류 표, `INFO`에는 변경안 버튼을 두지 않는다는 점 |
+
+남은 위험:
+
+- 기존 places 행에 category가 없다. 재수집 전에는 장소 바꾸기 대안이 나오지 않는다.
+- 직접 만든(MANUAL) 장소와 이번 배포 전에 추출된 네이버 장소는 분류가 없어, 그 장소가 대상이면 AI가 실내·실외를 몰라 대안이 `[]`다. 네이버 장소는 같은 장소를 다시 추출하면 채워진다.
+- -246(추출 장소 지역 채우기, MR !175)이 먼저 병합됐다. 11/10 dev를 받으면서 -246의 `withRegion`이 지역 코드와 함께 `category`도 넘기도록 고쳤다(`ProviderPlace` 생성자는 하나만 둬서 분류가 빠지면 컴파일 오류가 난다).
+- AI 실내 판단 낱말이 공공 분류 이름과 다르다(위 AI 행). 고쳐지기 전에는 KTO 문화시설이 후보에서 빠진다.
+- 4~10일 뒤 날씨는 오전·오후 단위라 시간별 대안을 만들 수 없다.
+- 날씨 캐시가 서버 메모리라 서버를 여러 대로 늘리면 대당 따로 기상청을 부른다. 재시작하면 stale 대체 값도 사라진다.

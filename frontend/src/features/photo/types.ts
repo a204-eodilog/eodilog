@@ -70,7 +70,8 @@ export type PhotoSummary = {
 /** 코스 장소(GET /trips/{tripId}/itinerary의 items 중 쓰는 값) */
 export type CoursePlace = {
   id: string;
-  place: { id: string; name: string };
+  /** 서버는 Place 전체를 준다. 좌표는 장소 검색(S13)을 그 근처에서 열 때 쓴다 */
+  place: { id: string; name: string; latitude?: number; longitude?: number };
   day: number;
   order: number;
 };

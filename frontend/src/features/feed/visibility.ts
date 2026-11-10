@@ -70,6 +70,21 @@ export async function deleteFeed(feedId: string, expectedVersion: number): Promi
 }
 
 /**
+ * POST /feeds/{feedId}/delete-own-records "기록까지 삭제"(202). 피드는 바로 내려가고(동행에게 알림),
+ * 요청한 순간까지의 내 사진·방문·평가는 바로 숨겨진 뒤 작업(jobId)으로 지워진다. 동행 기록·경비·멤버십은 남는다
+ */
+export async function deleteFeedWithOwnRecords(
+  feedId: string,
+  expectedVersion: number,
+): Promise<{ jobId: string }> {
+  const { data } = await apiClient.post<DataResponse<{ jobId: string }>>(
+    `/feeds/${encodeURIComponent(feedId)}/delete-own-records`,
+    { expectedVersion },
+  );
+  return data.data;
+}
+
+/**
  * S39 목록. 나를 팔로우하는 사람 + 이 여행 동행(나 빼고). 동행은 숨길 수 없고 맨 위.
  * 숨긴 사람(hidden)은 위 "숨긴 친구"로, 나머지는 "보여 주는 친구"로 나눠 보인다
  */

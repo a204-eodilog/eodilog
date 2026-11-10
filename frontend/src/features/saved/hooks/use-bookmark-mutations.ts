@@ -79,14 +79,23 @@ export type SaveTarget = { kind: 'personal' } | { kind: 'trip'; tripId: string }
  * S08 장소 저장. 장소 여러 곳(S12에서 찾은 장소)도 한 번에 저장한다.
  * PUT은 같은 장소면 덮어쓰고 메모를 빼면 메모가 지워져서, 이미 개인 즐겨찾기에 있는 장소는 그 메모를 다시 보낸다.
  * 원본 피드(sourceFeedId)는 서버가 아직 받지 않아(400) 보내지 않는다(백엔드 후속).
- * 그룹 즐겨찾기는 내 저장 메모를 읽을 방법이 없어 메모 없이 보낸다(이미 담은 장소면 내 메모가 지워진다, 백엔드 후속)
+ * 그룹 즐겨찾기는 내 저장 메모를 읽을 방법이 없어 메모 없이 보낸다(이미 담은 장소면 내 메모가 지워진다, 백엔드 후속).
+ * memo를 주면(S11에서 쓴 메모) 그 메모로 저장한다
  */
 export function useSavePlaces() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ placeIds, target }: { placeIds: string[]; target: SaveTarget }) => {
+    mutationFn: async ({
+      placeIds,
+      target,
+      memo: newMemo,
+    }: {
+      placeIds: string[];
+      target: SaveTarget;
+      memo?: string;
+    }) => {
       if (target.kind === 'trip') {
-        await Promise.all(placeIds.map((placeId) => addToTrip(target.tripId, placeId)));
+        await Promise.all(placeIds.map((placeId) => addToTrip(target.tripId, placeId, newMemo)));
         return;
       }
       const saved = await queryClient.ensureQueryData({
@@ -95,7 +104,7 @@ export function useSavePlaces() {
       });
       await Promise.all(
         placeIds.map((placeId) => {
-          const memo = saved.find((b) => samePlace(b, placeId))?.memo;
+          const memo = newMemo || saved.find((b) => samePlace(b, placeId))?.memo;
           return putBookmark(placeId, memo ? { memo } : {});
         }),
       );

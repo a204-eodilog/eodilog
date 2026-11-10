@@ -17,6 +17,8 @@ public enum ItineraryErrorCode implements ErrorCode {
 	ALREADY_APPLIED(HttpStatus.CONFLICT, "이미 적용한 제안입니다. 코스를 다시 조회해 주세요."),
 	// 진행 중·실패·취소된 제안은 적용할 수 없다(I-17)
 	PROPOSAL_NOT_READY(HttpStatus.CONFLICT, "아직 적용할 수 있는 제안이 아닙니다."),
+	// 날씨 대안 중 INFO(안내만)는 코스를 바꿀 수 없다(정책 W-25)
+	UNSCHEDULABLE_ALTERNATIVE(HttpStatus.UNPROCESSABLE_CONTENT, "코스를 바꿀 수 없는 안내용 대안입니다."),
 	// 직전 AI 적용이 아니거나 그 뒤 코스가 바뀌었다(I-21)
 	UNDO_UNAVAILABLE(HttpStatus.CONFLICT, "되돌릴 수 있는 AI 적용이 없습니다. 코스를 다시 조회해 주세요.");
 

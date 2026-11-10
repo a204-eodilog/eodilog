@@ -50,6 +50,13 @@ app:
     internal-token: ${AI_INTERNAL_TOKEN:}
     connect-timeout: 5s
     read-timeout: 50s
+  # 기상청 단기·중기예보(data.go.kr). 키가 없어도 서버는 시작하고 날씨 요청만 503이 된다(EODI-247 W-5)
+  # stale-limit: 기상청 장애 때 이 시간 안에 받은 값을 stale=true로 대신 준다(W-7)
+  weather:
+    service-key: ${KMA_SERVICE_KEY:}
+    connect-timeout: 3s
+    read-timeout: 5s
+    stale-limit: 6h
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:}
   storage:

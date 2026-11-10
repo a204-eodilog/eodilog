@@ -5,6 +5,7 @@ import com.eodilog.job.JobContext;
 import com.eodilog.job.JobKind;
 import com.eodilog.job.JobSubmission;
 import java.util.UUID;
+import com.eodilog.weather.alternative.WeatherAccess;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.JsonNode;
@@ -18,6 +19,7 @@ import tools.jackson.databind.json.JsonMapper;
 public class ItineraryProposalJobAccessPolicy implements JobAccessPolicy {
 
 	private final ItineraryProposalAccess access;
+	private final WeatherAccess weatherAccess;
 	private final JsonMapper jsonMapper;
 
 	@Override
@@ -25,9 +27,12 @@ public class ItineraryProposalJobAccessPolicy implements JobAccessPolicy {
 		return JobKind.ITINERARY_PROPOSAL;
 	}
 
+	// WEATHER 제안은 요청자의 날씨 대안 설정이 OFF가 되면 더 진행하지 않는다(정책 W-25)
 	@Override
 	public boolean canSubmit(JobSubmission submission) {
-		return access.activeMember(submission.tripId(), submission.requestedByUserId());
+		boolean weather = "WEATHER".equals(submission.input().path("reason").asString(""));
+		return access.activeMember(submission.tripId(), submission.requestedByUserId())
+				&& !(weather && weatherAccess.disabled(submission.requestedByUserId()));
 	}
 
 	@Override

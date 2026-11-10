@@ -127,13 +127,13 @@ const person = (id: string, nickname: string, extra: Partial<UserCard> = {}): Us
   ...extra,
 });
 
-/** Figma S44: 취향이 같은 두 명, 공개 여행을 올린 한 명 */
+/** 미리보기 예시: 여행을 함께한 두 명, 나를 팔로우하는 한 명(서버가 주는 이유 두 가지) */
 const SUGGESTIONS: FriendSuggestion[] = [
-  { user: person('s1', '도윤'), reason: { kind: 'taste', tags: ['바다', '카페'] } },
-  { user: person('s2', '하린'), reason: { kind: 'taste', tags: ['맛집'] } },
+  { user: person('s1', '도윤'), reason: { kind: 'CO_TRAVELER', count: 2 } },
+  { user: person('s2', '하린'), reason: { kind: 'CO_TRAVELER', count: 1 } },
   {
     user: person('s3', '서준', { accountVisibility: 'PRIVATE' }),
-    reason: { kind: 'trips', count: 4 },
+    reason: { kind: 'FOLLOWS_YOU' },
   },
 ];
 

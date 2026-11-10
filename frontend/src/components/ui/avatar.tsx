@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { assetSource } from '@/lib/asset-image';
 import { colors, radius, size, typography } from '@/theme';
 
 export type AvatarProps = {
@@ -23,10 +24,10 @@ export function Avatar({ name, imageUrl, size: sz = 'md', me = false }: AvatarPr
   // 36 이상은 굵은 본문, 그보다 작으면 굵은 캡션(Figma S35 얼굴 글자)
   const letterStyle = dim >= 36 ? typography.bodyBold : typography.captionBold;
 
-  if (imageUrl) {
-    return (
-      <Image source={{ uri: imageUrl }} style={base} contentFit="cover" accessibilityLabel={name} />
-    );
+  // 서버 프로필 사진은 로그인해야 받는 경로라 주소와 토큰을 붙인다. 못 쓰는 주소면 첫 글자로 둔다
+  const source = assetSource(imageUrl);
+  if (source) {
+    return <Image source={source} style={base} contentFit="cover" accessibilityLabel={name} />;
   }
 
   return (

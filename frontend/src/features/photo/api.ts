@@ -92,6 +92,25 @@ export async function updatePhoto(
   return data.data;
 }
 
+/**
+ * 여러 장을 한 번에 수동 보정(`POST /trips/{tripId}/photos/batch`, action UPDATE, 올린 사람만, 1~50장).
+ * 한 장이라도 실패하면 아무것도 바뀌지 않는다. 버전이 하나라도 다르면 409 VERSION_CONFLICT
+ */
+export async function batchUpdatePhotos(
+  tripId: string,
+  photos: readonly Pick<TripPhoto, 'id' | 'version'>[],
+  change: { placeId?: string | null; topics?: PhotoTopic[] },
+): Promise<TripPhoto[]> {
+  const { data } = await apiClient.post<
+    DataResponse<{ photos: TripPhoto[]; deletedPhotoIds: string[] }>
+  >(`/trips/${encodeURIComponent(tripId)}/photos/batch`, {
+    action: 'UPDATE',
+    photos: photos.map((p) => ({ photoId: p.id, expectedVersion: p.version })),
+    ...change,
+  });
+  return data.data.photos;
+}
+
 /** 사진 지우기(올린 사람만). 서버는 바로 목록에서 빼고 파일은 나중에 정리한다(202 작업) */
 export async function deletePhoto(tripId: string, photoId: string): Promise<void> {
   await apiClient.delete(
