@@ -11,6 +11,7 @@ import { addDays, seoulToday } from '@/lib/seoul-date';
 
 import { createChatMock } from './dev-mock-chat';
 import { createGroupMock } from './dev-mock-group';
+import { createPollMock } from './dev-mock-poll';
 import { createRecommendMock } from './dev-mock-recommend';
 import { mockMyTimeline, mockTripSummary, mockTripTimeline } from './dev-mock-timeline';
 
@@ -502,6 +503,9 @@ const groupMock = createGroupMock({
   fail,
 });
 
+/** 투표 가짜 서버. 장소 조회와 그룹 즐겨찾기 목록도 함께 답한다 */
+const pollMock = createPollMock({ getTrips: () => trips, ok, fail });
+
 /**
  * 웹 테스트 모드 콘솔에서 다른 동행의 변경을 흉내 낸다(동행 명세 research R15).
  * globalThis.__devMock.bumpVersion('trip-1') → 다음 저장·나가기가 409를 받는다
@@ -510,6 +514,8 @@ const groupMock = createGroupMock({
 export const devMockControls = {
   /** 채팅: globalThis.__devMock.chat.incoming('trip-1', '안녕') 등(contracts/realtime.md "테스트 모드") */
   chat: chatMock.controls,
+  /** 투표: globalThis.__devMock.poll.addCandidateByOther(), closeNow('tie') 등(투표 quickstart) */
+  poll: pollMock.controls,
   /** 그룹 즐겨찾기: globalThis.__devMock.group.saveByOther('trip-1'), reset() */
   group: groupMock.controls,
   /** 추천: globalThis.__devMock.recommend.failNext(), insufficientNext() */
@@ -872,8 +878,12 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
 
   const chat = chatMock.handle(config, method, url, params);
   if (chat) return chat;
+  // 그룹 즐겨찾기 GET /trips/{id}/saved-places는 그룹 가짜 서버가 먼저 답한다. 다른 가짜 서버의 같은 주소 처리보다 앞선다
   const group = groupMock.handle(config, method, url, params);
   if (group) return group;
+  const poll = pollMock.handle(config, method, url);
+  if (poll) return poll;
+
   const recommend = recommendMock.handle(config, method, url);
   if (recommend) return recommend;
   const photo = handlePhotos(config, method, url);

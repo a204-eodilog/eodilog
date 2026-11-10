@@ -21,6 +21,10 @@ export const API_ERROR = {
   CLIENT_MESSAGE_ID_REUSED: 'CLIENT_MESSAGE_ID_REUSED',
   /** 요청이 너무 많다. 잠시 뒤 다시 보낸다 */
   RATE_LIMITED: 'RATE_LIMITED',
+  /** 마감 시각이 지났거나 이미 마감한 투표에 투표·후보 추가를 했다 */
+  POLL_CLOSED: 'POLL_CLOSED',
+  /** 없거나 다른 여행의 투표 */
+  POLL_NOT_FOUND: 'POLL_NOT_FOUND',
 } as const;
 
 /**
