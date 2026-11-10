@@ -15,8 +15,18 @@ type MenuItem = {
 // 공통 아이콘(components/ui/icon.tsx)에 없는 메뉴(추천·사진·평가·경비·게시)는 가까운 모양을 임시로 쓴다.
 // 아이콘이 추가되면 바꾼다
 const MENU: MenuItem[] = [
-  { key: 'favorites', label: '즐겨찾기', icon: 'bookmark' },
-  { key: 'recommend', label: '추천', icon: 'search' },
+  {
+    key: 'favorites',
+    label: '즐겨찾기',
+    icon: 'bookmark',
+    open: (tripId) => router.push({ pathname: '/trips/[tripId]/favorites', params: { tripId } }),
+  },
+  {
+    key: 'recommend',
+    label: '추천',
+    icon: 'search',
+    open: (tripId) => router.push({ pathname: '/trips/[tripId]/recommend', params: { tripId } }),
+  },
   {
     key: 'poll',
     label: '투표',
