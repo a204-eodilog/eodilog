@@ -34,6 +34,18 @@ public class JobStore {
     Optional<Row> find(UUID id, boolean lock) {
         return jdbc.query("SELECT * FROM jobs WHERE id=? AND deleted_at IS NULL" + (lock ? " FOR UPDATE" : ""), this::map, id).stream().findFirst();
     }
+    /**
+     * Soft-deletes a job the requester withdrew. The private input and result are erased; unfinished work becomes CANCELLED.
+     * A running execution loses its heartbeat and its late result finds no row (find filters deleted_at).
+     */
+    boolean discard(UUID id, Instant now) {
+        return jdbc.update("""
+            UPDATE jobs SET deleted_at=?, input_json='{}'::jsonb, result_json=NULL,
+              error_code=CASE WHEN status IN ('QUEUED','RUNNING') THEN 'POLICY_REVOKED' ELSE error_code END,
+              status=CASE WHEN status IN ('QUEUED','RUNNING') THEN 'CANCELLED' ELSE status END,
+              finished_at=COALESCE(finished_at, ?), execution_id=NULL, lease_until=NULL
+            WHERE id=? AND deleted_at IS NULL""", time(now), time(now), id) == 1;
+    }
     boolean active(UUID userId) {
         return Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM users WHERE id=? AND status='ACTIVE')", Boolean.class, userId));
     }

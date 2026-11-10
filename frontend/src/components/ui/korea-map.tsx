@@ -89,17 +89,19 @@ const PIN_ROOM = 280;
 const LAND = colors.surface.white;
 
 /**
- * Figma S05 모션(3.5초 타임라인) 값. 지역은 0.2초부터 0.18초 간격으로 0.5초 동안 물들고,
- * 더 진한 층은 0.35초씩 뒤에 겹친다. 핀은 물들기가 끝난 뒤 0.15초 간격으로 10px 올라오며 나타난다.
+ * S05 지도 모션 값. 지역은 0.2초부터 0.13초 간격으로 0.5초 동안 물들고,
+ * 더 진한 층은 0.35초씩 뒤에 겹친다. 핀은 물들기 0.18초 뒤 0.12초 간격으로 10px 올라오며 나타난다.
+ * Figma(3.5초 타임라인: 물들기 0.18초·핀 0.15초 간격, 물들기 뒤 0.26초)보다 빠르게 맞춘 값이다.
+ * 실기기에서 지역이 많으면 핀을 누를 수 있을 때까지 3초쯤 기다려 줄였다(S05 문서와 같은 값).
  * Figma는 미리보기라 전체가 반복되지만 앱은 화면에 들어올 때 한 번만 재생한다
  */
 export const MAP_MOTION = {
   fillStartMs: 200,
-  fillStaggerMs: 180,
+  fillStaggerMs: 130,
   fillFadeMs: 500,
   layerGapMs: 350,
-  pinGapAfterFillMs: 260,
-  pinStaggerMs: 150,
+  pinGapAfterFillMs: 180,
+  pinStaggerMs: 120,
   pinRiseMs: 350,
   pinFadeMs: 300,
   pinRisePx: 10,
@@ -363,69 +365,93 @@ function MapCanvas({
     transform: [{ translateX: tx.value }, { translateY: ty.value }, { scale: scale.value }],
   }));
 
+  // 그림을 세 장으로 나눠 겹친다(아래 땅·시군구 / 가운데 물드는 지역 / 위 시도 경계).
+  // 한 장이면 물드는 동안 매 순간 550개 넘는 선·면 전체를 다시 그려 안드로이드에서 버벅인다(11/09 폰 확인).
+  // 나누면 물드는 동안 가운데 장(지역 몇 개)만 다시 그린다
   const paths = useMemo(
     () => (
-      <Svg width={baseW} height={baseH} viewBox={`0 0 ${KOREA_MAP.width} ${KOREA_MAP.height}`}>
-        {/* 땅 아래 옅은 그림자와 흰 빛 (Figma S05) */}
-        <G transform={`translate(0 ${px(2)})`}>
-          {KOREA_MAP.sido.map((r) => (
-            <Path key={r.code} d={r.d} fill={colors.shadow} />
-          ))}
-        </G>
-        {KOREA_MAP.sido.map((r) => (
-          <Path
-            key={r.code}
-            d={r.d}
-            fill={LAND}
-            stroke={LAND}
-            strokeWidth={px(5)}
-            strokeLinejoin="round"
-            strokeOpacity={0.8}
-          />
-        ))}
-        {KOREA_MAP.sigungu.map((r) => (
-          <Path key={r.code} d={r.d} fill={fills[r.code] ?? fills[r.parent] ?? LAND} />
-        ))}
-        {/* 시군구 선은 칠한 면과 따로 그려, 단계가 바뀌어도 면은 다시 그리지 않는다 */}
-        {/* 2~3단계는 옅게, 4단계부터 제대로 보인다 */}
-        {detail ? (
-          <G
-            fill="none"
-            stroke={colors.line.default}
-            strokeWidth={px(0.6)}
-            strokeOpacity={stage >= 3 ? 1 : 0.45}
-          >
-            {KOREA_MAP.sigungu.map((r) => (
-              <Path key={r.code} d={r.d} />
+      <>
+        <Svg
+          style={styles.layer}
+          width={baseW}
+          height={baseH}
+          viewBox={`0 0 ${KOREA_MAP.width} ${KOREA_MAP.height}`}
+        >
+          {/* 땅 아래 옅은 그림자와 흰 빛 (Figma S05) */}
+          <G transform={`translate(0 ${px(2)})`}>
+            {KOREA_MAP.sido.map((r) => (
+              <Path key={r.code} d={r.d} fill={colors.shadow} />
             ))}
           </G>
-        ) : null}
-        {fillSteps.map((step, i) => {
-          const shape = SHAPE.get(step.code);
-          if (!shape) return null;
-          return step.colors.map((color, layer) => (
-            <FillLayer
-              key={`${step.code}-${layer}`}
-              d={shape}
-              color={color}
-              delayMs={
-                MAP_MOTION.fillStartMs +
-                i * MAP_MOTION.fillStaggerMs +
-                layer * MAP_MOTION.layerGapMs
-              }
+          {KOREA_MAP.sido.map((r) => (
+            <Path
+              key={r.code}
+              d={r.d}
+              fill={LAND}
+              stroke={LAND}
+              strokeWidth={px(5)}
+              strokeLinejoin="round"
+              strokeOpacity={0.8}
             />
-          ));
-        })}
-        {KOREA_MAP.sido.map((r) => (
-          <Path
-            key={r.code}
-            d={r.d}
-            fill="none"
-            stroke={colors.line.default}
-            strokeWidth={px(detail ? 1 : 0.8)}
-          />
-        ))}
-      </Svg>
+          ))}
+          {KOREA_MAP.sigungu.map((r) => (
+            <Path key={r.code} d={r.d} fill={fills[r.code] ?? fills[r.parent] ?? LAND} />
+          ))}
+          {/* 시군구 선은 칠한 면과 따로 그려, 단계가 바뀌어도 면은 다시 그리지 않는다 */}
+          {/* 2~3단계는 옅게, 4단계부터 제대로 보인다 */}
+          {detail ? (
+            <G
+              fill="none"
+              stroke={colors.line.default}
+              strokeWidth={px(0.6)}
+              strokeOpacity={stage >= 3 ? 1 : 0.45}
+            >
+              {KOREA_MAP.sigungu.map((r) => (
+                <Path key={r.code} d={r.d} />
+              ))}
+            </G>
+          ) : null}
+        </Svg>
+        <Svg
+          style={styles.layer}
+          width={baseW}
+          height={baseH}
+          viewBox={`0 0 ${KOREA_MAP.width} ${KOREA_MAP.height}`}
+        >
+          {fillSteps.map((step, i) => {
+            const shape = SHAPE.get(step.code);
+            if (!shape) return null;
+            return step.colors.map((color, layer) => (
+              <FillLayer
+                key={`${step.code}-${layer}`}
+                d={shape}
+                color={color}
+                delayMs={
+                  MAP_MOTION.fillStartMs +
+                  i * MAP_MOTION.fillStaggerMs +
+                  layer * MAP_MOTION.layerGapMs
+                }
+              />
+            ));
+          })}
+        </Svg>
+        <Svg
+          style={styles.layer}
+          width={baseW}
+          height={baseH}
+          viewBox={`0 0 ${KOREA_MAP.width} ${KOREA_MAP.height}`}
+        >
+          {KOREA_MAP.sido.map((r) => (
+            <Path
+              key={r.code}
+              d={r.d}
+              fill="none"
+              stroke={colors.line.default}
+              strokeWidth={px(detail ? 1 : 0.8)}
+            />
+          ))}
+        </Svg>
+      </>
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [baseW, baseH, fills, fillSteps, stage],
@@ -481,6 +507,9 @@ function PinView({
   const [px, py] = pin.point;
   const reduced = useReducedMotion();
   const animate = pin.enterDelayMs !== undefined && !reduced;
+  // 나타나는 동안만 핀을 그림 한 장(하드웨어 텍스처)으로 굳혀 움직인다. 그림자 있는 말풍선이 반투명하게 나타나면
+  // 안드로이드가 매 순간 따로 그려 합쳐서, 핀 여러 개가 동시에 나오면 버벅였다(11/09 폰 확인)
+  const [entering, setEntering] = useState(animate);
   const rise = useSharedValue(animate ? MAP_MOTION.pinRisePx : 0);
   const shown = useSharedValue(animate ? 0 : 1);
   useEffect(() => {
@@ -489,6 +518,12 @@ function PinView({
     const easing = Easing.out(Easing.quad);
     rise.set(withDelay(delay, withTiming(0, { duration: MAP_MOTION.pinRiseMs, easing })));
     shown.set(withDelay(delay, withTiming(1, { duration: MAP_MOTION.pinFadeMs, easing })));
+    // 다 나타나면 굳힌 그림을 푼다(안의 퍼지는 원이 계속 움직이므로)
+    const done = setTimeout(
+      () => setEntering(false),
+      delay + Math.max(MAP_MOTION.pinRiseMs, MAP_MOTION.pinFadeMs) + 50,
+    );
+    return () => clearTimeout(done);
     // 처음 한 번만 재생한다
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -508,6 +543,7 @@ function PinView({
         style,
       ]}
       pointerEvents="box-none"
+      renderToHardwareTextureAndroid={entering}
     >
       <View style={styles[INNER[pin.anchor ?? 'bottom']]} pointerEvents="box-none">
         {pin.children}
@@ -526,6 +562,7 @@ const INNER = {
 const styles = StyleSheet.create({
   box: { flex: 1, overflow: 'hidden', backgroundColor: colors.map.seaEdge },
   map: { position: 'absolute', left: 0, top: 0, transformOrigin: 'left top' },
+  layer: { position: 'absolute', left: 0, top: 0 },
   pin: { position: 'absolute', left: 0, top: 0, width: 0, height: 0, alignItems: 'center' },
   center: { justifyContent: 'center' },
   bottom: { justifyContent: 'flex-end' },

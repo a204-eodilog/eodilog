@@ -1,13 +1,20 @@
 package com.eodilog.global.ai;
 
 import java.net.http.HttpClient;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.UnaryOperator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.http.HttpEntity;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
+import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.stereotype.Component;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
@@ -21,6 +28,7 @@ public class HttpAiServerClient implements AiServerClient {
 
 	static final String INTERNAL_TOKEN_HEADER = "X-Internal-Token";
 	static final String TRACE_ID_HEADER = "X-Trace-Id";
+	private static final MediaType TEXT_UTF8 = new MediaType(MediaType.TEXT_PLAIN, StandardCharsets.UTF_8);
 
 	private final RestClient client;
 	private final AiServerProperties properties;
@@ -50,37 +58,71 @@ public class HttpAiServerClient implements AiServerClient {
 
 	@Override
 	public JsonNode post(String path, UUID traceId, JsonNode body) {
+		// 바이트로 보내 문자열 변환기의 기본 문자셋(ISO-8859-1)에 한글이 깨지지 않게 한다
+		byte[] bytes = jsonMapper.writeValueAsBytes(body);
+		return call(path, traceId, request -> request.contentType(MediaType.APPLICATION_JSON).body(bytes));
+	}
+
+	@Override
+	public JsonNode postMultipart(String path, UUID traceId, Map<String, String> fields, List<FilePart> files) {
+		MultipartBodyBuilder builder = multipartFields(fields);
+		for (FilePart file : files) {
+			builder.part(file.field(), file.bytes(), MediaType.parseMediaType(file.contentType()))
+					.filename(file.filename());
+		}
+		MultiValueMap<String, HttpEntity<?>> body = builder.build();
+		return call(path, traceId, request -> request.contentType(MediaType.MULTIPART_FORM_DATA).body(body));
+	}
+
+	@Override
+	public JsonNode postMultipart(String path, UUID traceId, JsonNode meta, List<MultipartFile> files) {
+		return postMultipart(path, traceId, Map.of("meta", jsonMapper.writeValueAsString(meta)), "files", files);
+	}
+
+	@Override
+	public JsonNode postMultipart(String path, UUID traceId, Map<String, String> fields,
+			String fileFieldName, List<MultipartFile> files) {
+		MultipartBodyBuilder builder = multipartFields(fields);
+		for (MultipartFile file : files) {
+			builder.part(fileFieldName, new org.springframework.core.io.FileSystemResource(file.path()),
+					MediaType.parseMediaType(file.contentType()));
+		}
+		return call(path, traceId, request -> request.contentType(MediaType.MULTIPART_FORM_DATA).body(builder.build()));
+	}
+
+	private static MultipartBodyBuilder multipartFields(Map<String, String> fields) {
+		MultipartBodyBuilder builder = new MultipartBodyBuilder();
+		fields.forEach((name, value) -> {
+			if (value != null) builder.part(name, value.getBytes(StandardCharsets.UTF_8), TEXT_UTF8);
+		});
+		return builder;
+	}
+
+	private JsonNode call(String path, UUID traceId, UnaryOperator<RestClient.RequestBodySpec> withBody) {
 		String response;
 		try {
-			response = client.post()
+			RestClient.RequestBodySpec request = client.post()
 					.uri(path)
-					.contentType(MediaType.APPLICATION_JSON)
 					.accept(MediaType.APPLICATION_JSON)
 					.headers(headers -> {
 						headers.set(TRACE_ID_HEADER, traceId.toString());
 						if (!properties.internalToken().isEmpty()) {
 							headers.set(INTERNAL_TOKEN_HEADER, properties.internalToken());
 						}
-					})
-					// 바이트로 보내 문자열 변환기의 기본 문자셋(ISO-8859-1)에 한글이 깨지지 않게 한다
-					.body(jsonMapper.writeValueAsBytes(body))
+					});
+			response = withBody.apply(request)
 					.retrieve()
 					.body(String.class);
 		} catch (RestClientResponseException ex) {
-			// 응답 본문에는 오류 코드와 필드 이름만 있다(AI spec §1). 원인을 찾을 수 있게 남긴다
-			log.warn("ai_call_failed path={} traceId={} status={} body={}", path, traceId, ex.getStatusCode().value(),
-					abbreviate(ex.getResponseBodyAsString()));
+			// 외부 응답/예외 메시지에는 자료·URL이 포함될 수 있어 상태와 분류만 기록한다.
+			log.warn("ai_call_failed path={} traceId={} status={}", path, traceId, ex.getStatusCode().value());
 			throw new AiServerException(ex.getStatusCode().is5xxServerError());
 		} catch (ResourceAccessException ex) {
 			// 연결 실패·읽기 타임아웃
-			log.warn("ai_call_unreachable path={} traceId={} reason={}", path, traceId, ex.getMessage());
+			log.warn("ai_call_unreachable path={} traceId={} exceptionClass={}", path, traceId, ex.getClass().getSimpleName());
 			throw new AiServerException(true);
 		}
 		return data(response);
-	}
-
-	private static String abbreviate(String text) {
-		return text.length() <= 500 ? text : text.substring(0, 500) + "...";
 	}
 
 	private JsonNode data(String response) {

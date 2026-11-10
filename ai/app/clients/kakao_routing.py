@@ -11,6 +11,7 @@ from typing import Literal
 
 import httpx
 
+from app.core.metrics import record_provider_failure
 from app.core.schemas import CamelModel
 
 log = logging.getLogger("ai")
@@ -52,6 +53,7 @@ class KakaoRoutingClient:
         self, origin: Coordinate, destination: Coordinate, mode: TransportMode
     ) -> RouteLeg:
         if not self._key:
+            record_provider_failure()
             return _leg(mode, None)
         try:
             seconds = await self._seconds(origin, destination, mode)
@@ -63,6 +65,7 @@ class KakaoRoutingClient:
                 mode = TransportMode.WALK
                 seconds = await self._seconds(origin, destination, mode)
         except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError, AttributeError) as e:
+            record_provider_failure()
             log.warning("route_failed mode=%s error=%s", mode.value, type(e).__name__)
             return _leg(mode, None)
         return _leg(mode, seconds)

@@ -29,6 +29,22 @@ public class JobService {
         return JobRef.queued(id);
     }
 
+    /**
+     * The requester withdraws a non-cleanup job (e.g. DELETE /extractions/{jobId}). Locks the row, so a concurrent completion
+     * either commits first (then its result is erased here) or finds the row gone. Returns the submission as it was before
+     * erasure so the caller can release domain inputs in the same transaction. Anything else is JOB_NOT_FOUND.
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public JobSubmission discard(UUID viewer, UUID id, JobKind kind) {
+        if (kind.cleanup()) throw new IllegalArgumentException("Cleanup jobs cannot be discarded");
+        var row = store.find(id, true).orElseThrow(() -> new BusinessException(JobErrorCode.JOB_NOT_FOUND));
+        var c = row.context();
+        if (c.submission().kind() != kind || !viewer.equals(c.submission().requestedByUserId()) || !store.active(viewer)
+            || !registry.enabled(kind) || !registry.policy(kind).canRead(viewer, c))
+            throw new BusinessException(JobErrorCode.JOB_NOT_FOUND);
+        store.discard(id, clock.instant());
+        return c.submission();
+    }
     @Transactional(readOnly = true)
     public Job get(UUID viewer, UUID id) {
         var row = store.find(id, false).orElseThrow(() -> new BusinessException(JobErrorCode.JOB_NOT_FOUND));
@@ -47,7 +63,7 @@ public class JobService {
         var safe = JsonNodeFactory.instance.objectNode();
         // A kind name describes scope without disclosing target IDs or content.
         var scope = source.get("scope");
-        if (scope == null || !scope.isString() || !java.util.Set.of("LEAVE_CLEANUP", "PHOTO_DELETE", "TRIP_DELETE", "ACCOUNT_DELETE").contains(scope.asString()))
+        if (scope == null || !scope.isString() || !java.util.Set.of("LEAVE_CLEANUP", "PHOTO_DELETE", "TRIP_DELETE", "ACCOUNT_DELETE", "OWN_RECORDS_DELETE").contains(scope.asString()))
             throw new IllegalArgumentException("Invalid cleanup result scope");
         safe.put("scope", scope.asString());
         for (String count : new String[]{"completedCount", "failedCount"}) {

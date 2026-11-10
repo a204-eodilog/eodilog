@@ -55,4 +55,19 @@ public class RouteLeg {
 		return leg;
 	}
 
+	// 조회 결과가 있는 구간(AI 코스 제안 적용, 정책 I-18). AVAILABLE이면 시간은 있고 거리는 비어 있을 수 있다(I-28)
+	public static RouteLeg withResult(UUID itineraryId, UUID fromItemId, UUID toItemId, TransportMode transportMode,
+			Integer durationSeconds, Integer distanceMeters, RouteLegStatus status, Instant queriedAt) {
+		RouteLeg leg = new RouteLeg();
+		leg.itineraryId = itineraryId;
+		leg.fromItemId = fromItemId;
+		leg.toItemId = toItemId;
+		leg.transportMode = transportMode;
+		leg.durationSeconds = status == RouteLegStatus.AVAILABLE ? durationSeconds : null;
+		leg.distanceMeters = status == RouteLegStatus.AVAILABLE ? distanceMeters : null;
+		leg.status = status;
+		leg.queriedAt = queriedAt;
+		return leg;
+	}
+
 }
