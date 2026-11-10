@@ -1,4 +1,5 @@
 import { apiClient } from '@/api/client';
+import { emptyIfMissing } from '@/api/missing';
 import type { DataResponse, PageResponse } from '@/api/types';
 
 import type { MyFeed, MyTrip } from './types';
@@ -11,12 +12,14 @@ export async function getMyTrips(): Promise<MyTrip[]> {
   return data.data;
 }
 
-/** GET /me/feeds 첫 쪽. 게시한 공동 피드 */
-export async function getMyFeeds(): Promise<MyFeed[]> {
-  const { data } = await apiClient.get<PageResponse<MyFeed>>('/me/feeds', {
-    params: { limit: 100 },
-  });
-  return data.data;
+/** GET /me/feeds 첫 쪽. 게시한 공동 피드. 서버에 아직 없으면 게시한 피드 없음으로 본다 */
+export function getMyFeeds(): Promise<MyFeed[]> {
+  return emptyIfMissing(
+    apiClient
+      .get<PageResponse<MyFeed>>('/me/feeds', { params: { limit: 100 } })
+      .then(({ data }) => data.data),
+    [],
+  );
 }
 
 /** GET /regions/{id} → 지역 코드. 게시 전 여행은 지역 ID만 있어 지도 자리를 찾으려고 부른다 */

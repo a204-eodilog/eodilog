@@ -1,4 +1,5 @@
 import { apiClient } from '@/api/client';
+import { emptyIfMissing } from '@/api/missing';
 import type { DataResponse, Follow, PageResponse, Trip, UserCard } from '@/api/types';
 
 /** docs/api-spec.md FeedVisibility. 본인 경로의 특정 친구별 숨김 */
@@ -19,6 +20,8 @@ export type OwnFeedLite = {
   regions: { id: string; code: string; name: string }[];
   coverPhotoId?: string | null;
   photos?: { id: string; imageUrl: string }[];
+  /** 피드 자체 버전. 삭제(DELETE /feeds/{id})의 expectedVersion에 쓴다. 노출 설정 버전과 따로 센다 */
+  version: number;
   visibility: FeedVisibility;
 };
 
@@ -30,19 +33,23 @@ export type ViewerRow = {
 };
 
 /** GET /me/feeds → 내가 게시한 공동 피드와 내 숨김 설정 */
-export async function getOwnFeeds(): Promise<OwnFeedLite[]> {
-  const { data } = await apiClient.get<PageResponse<OwnFeedLite>>('/me/feeds', {
-    params: { limit: 100 },
-  });
-  return data.data;
+export function getOwnFeeds(): Promise<OwnFeedLite[]> {
+  return emptyIfMissing(
+    apiClient
+      .get<PageResponse<OwnFeedLite>>('/me/feeds', { params: { limit: 100 } })
+      .then(({ data }) => data.data),
+    [],
+  );
 }
 
 /** GET /me/followers → 나를 팔로우하는 사람(내 피드를 볼 수 있는 사람) */
-export async function getMyFollowers(): Promise<UserCard[]> {
-  const { data } = await apiClient.get<PageResponse<Follow>>('/me/followers', {
-    params: { limit: 100 },
-  });
-  return data.data.map((f) => f.follower);
+export function getMyFollowers(): Promise<UserCard[]> {
+  return emptyIfMissing(
+    apiClient
+      .get<PageResponse<Follow>>('/me/followers', { params: { limit: 100 } })
+      .then(({ data }) => data.data.map((f) => f.follower)),
+    [],
+  );
 }
 
 /** GET /trips/{tripId} → 이 여행 동행(활성 멤버) */

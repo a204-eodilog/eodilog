@@ -1,4 +1,5 @@
 import { apiClient } from '@/api/client';
+import { emptyIfMissing } from '@/api/missing';
 import type { DataResponse, PageResponse } from '@/api/types';
 import type { Follow, FriendsBoard } from '@/features/friends/types';
 
@@ -30,10 +31,13 @@ async function getFollows(path: string, signal?: AbortSignal, received = false):
   return follows;
 }
 
-export const getFollowing = (signal?: AbortSignal) => getFollows('/me/following', signal);
-export const getFollowers = (signal?: AbortSignal) => getFollows('/me/followers', signal);
+// 팔로우 API가 서버에 아직 없으면 빈 목록(친구 없음)으로 보여 준다
+export const getFollowing = (signal?: AbortSignal) =>
+  emptyIfMissing(getFollows('/me/following', signal), []);
+export const getFollowers = (signal?: AbortSignal) =>
+  emptyIfMissing(getFollows('/me/followers', signal), []);
 export const getFollowRequests = (signal?: AbortSignal) =>
-  getFollows('/me/follow-requests', signal, true);
+  emptyIfMissing(getFollows('/me/follow-requests', signal, true), []);
 
 export async function getFriendsBoard(signal?: AbortSignal): Promise<FriendsBoard> {
   const [following, followers, requests] = await Promise.all([
