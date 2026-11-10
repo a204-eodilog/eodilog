@@ -8,8 +8,8 @@ export const SEARCH_TIMEOUT_MS = 8_000;
 const SEARCH_LIMIT = 20;
 
 /**
- * 장소 이름 검색. 서버가 네이버 장소 결과를 우리 places에 저장한 뒤 우리 ID로 준다.
- * 첫 페이지만 쓴다(한 화면에 20곳). 2026-11-04 기준 백엔드 컨트롤러는 아직 없다.
+ * 장소 이름 검색. 백엔드가 모은 공공 장소 목록(소상공인 상가·관광공사, !134)에서 찾아 우리 ID로 준다.
+ * 첫 페이지만 쓴다(한 화면에 20곳)
  */
 export async function searchPlaces(
   query: string,

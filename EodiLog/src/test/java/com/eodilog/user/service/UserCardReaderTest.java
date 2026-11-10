@@ -64,8 +64,10 @@ class UserCardReaderTest {
 
 	@BeforeAll
 	static void initializeUsersOnly() throws Exception {
-		try (var input = UserCardReaderTest.class.getResourceAsStream("/db/migration/V202610281100__create_users.sql")) {
-			Files.copy(Objects.requireNonNull(input), migrations.resolve("V202610281100__create_users.sql"));
+		for (String file : List.of("V202610281100__create_users.sql", "V202611101000__create_follows.sql")) {
+			try (var input = UserCardReaderTest.class.getResourceAsStream("/db/migration/" + file)) {
+				Files.copy(Objects.requireNonNull(input), migrations.resolve(file));
+			}
 		}
 		Flyway.configure().dataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())
 				.locations("filesystem:" + migrations).load().migrate();
@@ -82,6 +84,7 @@ class UserCardReaderTest {
 
 	@BeforeEach
 	void clean() {
+		jdbc.update("DELETE FROM follows");
 		jdbc.update("DELETE FROM users");
 	}
 
@@ -103,14 +106,48 @@ class UserCardReaderTest {
 		assertThat(cards.get(active).accountVisibility()).isEqualTo(AccountVisibility.PUBLIC);
 		assertThat(cards.get(active).nickname()).isEqualTo("reader");
 		assertThat(cards.get(inactive).accountVisibility()).isEqualTo(AccountVisibility.PRIVATE);
+		assertThat(cards.get(active).profileImageUrl()).isNull();
+		UUID asset = UUID.randomUUID();
+		jdbc.update("UPDATE users SET profile_asset_id=? WHERE id IN (?,?)", asset, active, inactive);
+		cards = reader.findCards(active, List.of(active, inactive));
+		assertThat(cards.get(active).profileImageUrl()).isEqualTo("/assets/" + asset + "/download");
+		// 탈퇴 회원은 사진도 숨긴다
 		assertThat(cards.get(inactive)).isEqualTo(new UserCard(inactive, "탈퇴한 사용자", null,
 				AccountVisibility.PRIVATE, FollowStatus.NONE, FollowStatus.NONE));
 		assertThat(jdbc.queryForObject("SELECT nickname FROM users WHERE id=?", String.class, inactive)).isEqualTo("reader");
 		assertThat(Arrays.stream(UserCard.class.getRecordComponents()).map(c -> c.getName()))
 				.containsExactly("id", "nickname", "profileImageUrl", "accountVisibility", "followingStatus", "followedByStatus");
 		assertThat(jdbc.queryForList("SELECT tablename FROM pg_tables WHERE schemaname='public'", String.class))
-				.containsExactlyInAnyOrder("users", "flyway_schema_history");
+				.containsExactlyInAnyOrder("users", "follows", "flyway_schema_history");
 		assertThat(new AuthUser(active).userId()).isEqualTo(active);
+	}
+
+	@Test
+	void fillsBothFollowDirectionsIndependentlyForViewer() {
+		UUID viewer = UUID.randomUUID(), a = UUID.randomUUID(), b = UUID.randomUUID(), c = UUID.randomUUID();
+		for (UUID id : List.of(viewer, a, b, c)) insert(id, "ACTIVE");
+		follow(viewer, a, "ACCEPTED");
+		follow(b, viewer, "REQUESTED");
+		follow(viewer, c, "REQUESTED");
+		follow(c, viewer, "ACCEPTED");
+		// viewer와 무관한 관계는 카드에 나타나지 않는다
+		follow(a, b, "ACCEPTED");
+		var cards = reader.findCards(viewer, List.of(viewer, a, b, c));
+		assertThat(cards.get(viewer).followingStatus()).isEqualTo(FollowStatus.NONE);
+		assertThat(cards.get(viewer).followedByStatus()).isEqualTo(FollowStatus.NONE);
+		assertThat(cards.get(a).followingStatus()).isEqualTo(FollowStatus.ACCEPTED);
+		assertThat(cards.get(a).followedByStatus()).isEqualTo(FollowStatus.NONE);
+		assertThat(cards.get(b).followingStatus()).isEqualTo(FollowStatus.NONE);
+		assertThat(cards.get(b).followedByStatus()).isEqualTo(FollowStatus.REQUESTED);
+		assertThat(cards.get(c).followingStatus()).isEqualTo(FollowStatus.REQUESTED);
+		assertThat(cards.get(c).followedByStatus()).isEqualTo(FollowStatus.ACCEPTED);
+		// 다른 viewer 기준으로는 그 사람의 관계를 채운다
+		assertThat(reader.findCards(a, List.of(b)).get(b).followingStatus()).isEqualTo(FollowStatus.ACCEPTED);
+	}
+
+	void follow(UUID follower, UUID followee, String status) {
+		jdbc.update("INSERT INTO follows(id,follower_user_id,followee_user_id,status,requested_at,accepted_at) VALUES(?,?,?,?,CURRENT_TIMESTAMP,"
+				+ ("ACCEPTED".equals(status) ? "CURRENT_TIMESTAMP" : "NULL") + ")", UUID.randomUUID(), follower, followee, status);
 	}
 
 	@Test

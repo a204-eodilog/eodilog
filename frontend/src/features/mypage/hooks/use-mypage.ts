@@ -38,7 +38,8 @@ export function useMyPage(): { state: MyPageState; summary?: MyPageSummary; retr
     void feeds.refetch();
   };
   if (me.isError || trips.isError) return { state: 'error', retry };
-  if (!me.data || !trips.data) return { state: 'loading', retry };
+  // 지역 코드를 다 받은 뒤 그린다. 지도 처음 맞춤은 한 번만이라 늦게 온 핀이 화면 밖에 남는다(!145 리뷰)
+  if (!me.data || !trips.data || codes.some((c) => c.isPending)) return { state: 'loading', retry };
 
   const regionCodes = new Map<string, string>();
   ids.forEach((id, i) => {

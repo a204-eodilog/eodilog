@@ -1,12 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { hasErrorCode, API_ERROR } from '@/api/errors';
+import type { MyProfile } from '@/api/types';
 import { toast } from '@/components/ui';
+import { updateProfile } from '@/features/auth/api';
+import { ageBandLabel } from '@/features/auth/profile-rules';
 import { getPreferences, PREFERENCES_QUERY_KEY } from '@/features/preferences';
 import { getSettings, patchSettings } from '@/features/settings/api';
 import { settingsPatch } from '@/features/settings/settings-rules';
 import type { SettingsData } from '@/features/settings/types';
-import { useMe } from '@/hooks/use-me';
+import { ME_QUERY_KEY, useMe } from '@/hooks/use-me';
 
 export const SETTINGS_QUERY_KEY = ['me', 'settings'] as const;
 
@@ -28,6 +31,30 @@ export function useServerSettings() {
   });
 
   const save = useMutation({ mutationFn: patchSettings });
+  const visibility = useMutation({
+    mutationFn: (next: MyProfile['accountVisibility']) =>
+      updateProfile({ accountVisibility: next }),
+  });
+
+  /** 계정 공개/비공개. 먼저 화면을 바꾸고, 실패하면 되돌린다 */
+  function changeAccountVisibility(next: MyProfile['accountVisibility']) {
+    const previous = queryClient.getQueryData<MyProfile>(ME_QUERY_KEY);
+    if (!previous || visibility.isPending || previous.accountVisibility === next) return;
+    queryClient.setQueryData<MyProfile>(ME_QUERY_KEY, { ...previous, accountVisibility: next });
+    visibility.mutate(next, {
+      onSuccess: (saved) => {
+        queryClient.setQueryData<MyProfile>(ME_QUERY_KEY, saved);
+        // 공개로 바꾸면 서버가 받은 팔로우 요청을 모두 수락한다
+        void queryClient.invalidateQueries({ queryKey: ['friends'] });
+      },
+      onError: () => {
+        queryClient.setQueryData<MyProfile>(ME_QUERY_KEY, previous);
+        toast.error('공개 설정을 바꾸지 못했어요', {
+          action: { label: '다시 시도', onPress: () => changeAccountVisibility(next) },
+        });
+      },
+    });
+  }
 
   const data: SettingsData | undefined =
     me.data && settings.data
@@ -36,7 +63,7 @@ export function useServerSettings() {
             id: me.data.id,
             nickname: me.data.nickname,
             profileImageUrl: me.data.profileImageUrl,
-            ageBand: me.data.ageBand,
+            ageBand: ageBandLabel(me.data.ageBand),
             accountVisibility: me.data.accountVisibility,
             profileUrl: me.data.profileUrl,
           },
@@ -74,8 +101,9 @@ export function useServerSettings() {
 
   return {
     data,
-    pending: save.isPending,
+    pending: save.isPending || visibility.isPending,
     change,
+    changeAccountVisibility,
     isPending: me.isPending || settings.isPending,
     isError: me.isError || settings.isError,
     refetch: () => {

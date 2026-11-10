@@ -7,7 +7,9 @@ import {
   companionLine,
   courseSummary,
   expenseSummary,
+  hiddenLabel,
   publishedVisibility,
+  recordFeed,
   reviewSummary,
 } from './record-rules';
 
@@ -133,5 +135,51 @@ describe('publishedVisibility', () => {
   it('숨긴 친구가 있으면 이름을 붙인다', () => {
     expect(publishedVisibility([])).toBe('전체 공개');
     expect(publishedVisibility(['하늘'])).toBe('전체 공개 · 하늘에게 숨김');
+  });
+});
+
+const NAMES = new Map([
+  ['u1', '하늘'],
+  ['u2', '바다'],
+]);
+const feed = (hidden: string[]) => ({
+  id: 'f1',
+  version: 1,
+  visibility: { hiddenViewerUserIds: hidden, version: 1 },
+});
+
+describe('hiddenLabel', () => {
+  it('첫 이름과 나머지 수, 이름을 모르면 수만', () => {
+    expect(hiddenLabel([], NAMES)).toBeNull();
+    expect(hiddenLabel(['u1'], NAMES)).toBe('하늘');
+    expect(hiddenLabel(['u9', 'u2', 'u1'], NAMES, '님')).toBe('바다님 외 2명');
+    expect(hiddenLabel(['u8', 'u9'], NAMES)).toBe('2명');
+  });
+});
+
+describe('recordFeed', () => {
+  it('게시 전이면 draft', () => {
+    expect(recordFeed(null, NAMES, ['서연'])).toEqual({ status: 'draft' });
+    expect(recordFeed(undefined, NAMES, [])).toEqual({ status: 'draft' });
+  });
+
+  it('숨긴 친구와 다른 동행이 있으면 동행 피드에서는 보인다고 알린다', () => {
+    expect(recordFeed(feed(['u1']), NAMES, ['서연'])).toEqual({
+      status: 'published',
+      visibility: '전체 공개 · 하늘에게 숨김',
+      hiddenNote: '하늘님은 서연님 피드에서는 볼 수 있어요',
+    });
+    expect(recordFeed(feed(['u1', 'u2']), NAMES, ['서연', '민준'])).toMatchObject({
+      hiddenNote: '하늘님 외 1명은 다른 동행 피드에서는 볼 수 있어요',
+    });
+  });
+
+  it('혼자 간 여행이거나 숨긴 친구가 없으면 안내 줄이 없다', () => {
+    expect(recordFeed(feed(['u1']), NAMES, [])).toMatchObject({ hiddenNote: null });
+    expect(recordFeed(feed([]), NAMES, ['서연'])).toEqual({
+      status: 'published',
+      visibility: '전체 공개',
+      hiddenNote: null,
+    });
   });
 });
