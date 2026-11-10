@@ -42,16 +42,19 @@ export function AutoFailView({
   onRetry,
   onManual,
   backToDraft = false,
+  retrying = false,
 }: {
   onRetry(): void;
   onManual(): void;
+  /** 다시 시도 요청을 보내는 중. 화면은 그대로 두고 버튼만 도는 표시 */
+  retrying?: boolean;
   /** 초안의 재추천이 실패했으면 직접 만들기 대신 고치던 코스로 돌아간다 */
   backToDraft?: boolean;
 }) {
   return (
     <View style={styles.center}>
       <View style={styles.badge}>
-        <Icon name="wifi-off" size={28} color={colors.text.icon} />
+        <Icon name="alert" size={28} color={colors.text.icon} />
       </View>
       <Text style={[typography.title1, styles.title]}>코스를 만들지 못했어요</Text>
       <Text style={[typography.body, styles.body]}>
@@ -65,6 +68,7 @@ export function AutoFailView({
         weight="medium"
         leading={<Icon name="refresh" size={20} color={colors.text.inverse} />}
         onPress={onRetry}
+        loading={retrying}
         style={styles.button}
       />
       <Pressable style={styles.manual} onPress={onManual} accessibilityRole="button">
