@@ -10,6 +10,7 @@ import { sampleFeed } from '@/features/feed/preview-data';
 import { addDays, seoulToday } from '@/lib/seoul-date';
 
 import { createChatMock } from './dev-mock-chat';
+import { createChecklistMock } from './dev-mock-checklist';
 import { createGroupMock } from './dev-mock-group';
 import { createPollMock } from './dev-mock-poll';
 import { createRecommendMock } from './dev-mock-recommend';
@@ -492,6 +493,14 @@ function bump(trip: Trip) {
 
 /** 채팅 가짜 서버. 여행 목록(trips)에 없는 여행의 방은 404다 */
 const chatMock = createChatMock({ getTrips: () => trips, me: ME, ok, fail });
+/** 준비물 가짜 서버. 추천 설정이 OFF면 제안을 막는다 */
+const checklistMock = createChecklistMock({
+  getTrips: () => trips,
+  me: ME,
+  getAiChecklistMode: () => settings.ai.checklist,
+  ok,
+  fail,
+});
 /** 추천 결과 가짜 서버. 백엔드에 추천 API가 없다(Q-9-1) */
 const recommendMock = createRecommendMock({ getTrips: () => trips, ok, fail });
 /** 그룹 즐겨찾기 가짜 서버. 담는 장소는 개인 즐겨찾기나 추천 결과에서 찾는다 */
@@ -514,6 +523,8 @@ const pollMock = createPollMock({ getTrips: () => trips, ok, fail });
 export const devMockControls = {
   /** 채팅: globalThis.__devMock.chat.incoming('trip-1', '안녕') 등(contracts/realtime.md "테스트 모드") */
   chat: chatMock.controls,
+  /** 준비물: globalThis.__devMock.checklist.editByOther('trip-1'), failNextSuggestion() 등(준비물 quickstart) */
+  checklist: checklistMock.controls,
   /** 투표: globalThis.__devMock.poll.addCandidateByOther(), closeNow('tie') 등(투표 quickstart) */
   poll: pollMock.controls,
   /** 그룹 즐겨찾기: globalThis.__devMock.group.saveByOther('trip-1'), reset() */
@@ -878,6 +889,8 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
 
   const chat = chatMock.handle(config, method, url, params);
   if (chat) return chat;
+  const checklist = checklistMock.handle(config, method, url);
+  if (checklist) return checklist;
   // 그룹 즐겨찾기 GET /trips/{id}/saved-places는 그룹 가짜 서버가 먼저 답한다. 다른 가짜 서버의 같은 주소 처리보다 앞선다
   const group = groupMock.handle(config, method, url, params);
   if (group) return group;

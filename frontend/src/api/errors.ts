@@ -21,6 +21,12 @@ export const API_ERROR = {
   CLIENT_MESSAGE_ID_REUSED: 'CLIENT_MESSAGE_ID_REUSED',
   /** 요청이 너무 많다. 잠시 뒤 다시 보낸다 */
   RATE_LIMITED: 'RATE_LIMITED',
+  /** 없거나 이미 지워진 준비물. 다른 여행의 항목도 같은 코드다 */
+  CHECKLIST_ITEM_NOT_FOUND: 'CHECKLIST_ITEM_NOT_FOUND',
+  /** 내 준비물 추천 설정이 꺼져 있어 제안 요청과 채택을 막았다 */
+  AI_FEATURE_DISABLED: 'AI_FEATURE_DISABLED',
+  /** 같은 준비물 제안은 한 번만 채택한다. 채택 뒤 지운 제안도 다시 채택하지 않는다 */
+  SUGGESTION_ALREADY_ADOPTED: 'SUGGESTION_ALREADY_ADOPTED',
   /** 마감 시각이 지났거나 이미 마감한 투표에 투표·후보 추가를 했다 */
   POLL_CLOSED: 'POLL_CLOSED',
   /** 없거나 다른 여행의 투표 */
