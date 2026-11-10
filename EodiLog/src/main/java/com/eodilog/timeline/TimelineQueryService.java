@@ -57,7 +57,7 @@ public class TimelineQueryService {
 		TimelineCursor after = cursor == null ? null : TimelineCursor.decode(cursor);
 		var params = new MapSqlParameterSource("userId", userId).addValue("limit", limit + 1);
 		String sql = """
-				select t.id, t.start_date, t.end_date from trips t where t.deleted_at is null
+				select t.id, t.start_date, t.end_date, (select f.id from feeds f where f.trip_id=t.id and f.deleted_at is null) as feed_id from trips t where t.deleted_at is null
 				and exists (select 1 from trip_members m where m.trip_id=t.id and m.user_id=:userId and m.status='ACTIVE')
 				""";
 		if (after != null) {
@@ -73,7 +73,7 @@ public class TimelineQueryService {
 		LocalDate today = TripStatusPolicy.today(clock);
 		List<TimelineItem> found = jdbc.query(sql, params, (rs, row) -> {
 			LocalDate start = rs.getObject("start_date", LocalDate.class);
-			return new TimelineItem(rs.getObject("id", UUID.class), null, start,
+			return new TimelineItem(rs.getObject("id", UUID.class), rs.getObject("feed_id", UUID.class), start,
 					start == null ? DateBasis.UNKNOWN : DateBasis.TRIP,
 					TripStatusPolicy.resolve(start, rs.getObject("end_date", LocalDate.class), today));
 		});

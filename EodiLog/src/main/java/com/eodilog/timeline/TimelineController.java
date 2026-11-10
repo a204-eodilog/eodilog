@@ -28,7 +28,7 @@ public class TimelineController {
 
 	private final TimelineQueryService service;
 
-	@Operation(summary = "내 여행 타임라인", description = "본인이 현재 ACTIVE 멤버인 비삭제 여행을 시작일 DESC NULLS LAST, tripId DESC로 조회한다. 게시 전·날짜 미정 여행을 포함하며 feedId는 null이다. 상태는 Asia/Seoul 날짜 기준이다.")
+	@Operation(summary = "내 여행 타임라인", description = "본인이 현재 ACTIVE 멤버인 비삭제 여행을 시작일 DESC NULLS LAST, tripId DESC로 조회한다. 게시 전·날짜 미정 여행을 포함하며 feedId는 현재 게시 피드 ID, 미게시·삭제 후 null이다. 상태는 Asia/Seoul 날짜 기준이다.")
 	@ApiResponse(responseCode = "200", description = "조회 성공")
 	@GetMapping("/me/timeline")
 	public PageResponse<TimelineItem> myTimeline(
