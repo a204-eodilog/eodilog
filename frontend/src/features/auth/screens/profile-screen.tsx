@@ -108,15 +108,19 @@ export function ProfileScreen() {
       // 내 닉네임·사진은 마이페이지, 여행 동행, 채팅방 참여자, 친구 목록에도 들어 있어 모두 새로 받는다.
       // 처음 가입도 마찬가지다: 탭 화면이 미리 만들어져 마이페이지가 가입 전(닉네임 빈) 정보를 들고 있다.
       // 채팅 메시지는 이어 받기 규칙이 따로 있어 뺀다(보낸 사람 얼굴은 채팅방 참여자에서 온다)
-      await queryClient.invalidateQueries({
+      const refresh = queryClient.invalidateQueries({
         predicate: (query) => query.queryKey[2] !== 'chat-messages',
       });
       if (editing) {
+        await refresh;
         if (!photoMessage) toast.show('저장했어요');
         if (router.canGoBack()) router.back();
         else router.replace('/settings');
         return;
       }
+      // 처음 가입은 새로 받기를 기다리지 않고 바로 넘어간다(미리 떠 있는 탭 화면들을 다 받을 때까지
+      // S02 버튼이 돌며 멈춰 있지 않게). 실패해도 각 화면이 다시 받는다
+      void refresh;
       await markProfileCompleted();
       // 초대 링크로 가입했으면 S04 초대 참여 확인, 아니면 S03 취향 입력
       const invite = useSessionStore.getState().pendingInviteToken;
