@@ -19,11 +19,10 @@ const TAB_BY_ROUTE = Object.fromEntries(
 export default function TabsLayout() {
   return (
     <Tabs
-      // lazy: false로 탭 화면 다섯 개를 처음부터 띄워 둔다. 여행 목록도 미리 받아 둔다.
-      // 안드로이드는 기본으로 보이지 않는 탭 화면을 화면 트리에서 떼어 두는데(detachInactiveScreens),
-      // 탭을 바꿀 때 다시 붙이며 빈 화면이 잠깐 보인다. 탭이 다섯 개뿐이라 모두 붙여 둔다
-      detachInactiveScreens={false}
-      screenOptions={{ headerShown: false, lazy: false }}
+      // 탭 화면은 처음 누를 때 만든다(lazy 기본값). 다섯 개를 처음부터 띄우면 앱 시작 때 요청 13개가
+      // 한꺼번에 나가고(여행 목록만 3번) 화면이 끊겼다. 기본값으로 바꾸자 실기기에서 시작 요청 6개,
+      // 끊긴 화면 비율 26~28% → 15~17%였고 탭을 바꿀 때 빈 화면은 보이지 않았다(11/10 갤럭시, 개발 빌드)
+      screenOptions={{ headerShown: false }}
       tabBar={({ state, navigateToTab }) => (
         <TabBar
           active={TAB_BY_ROUTE[state.routes[state.index].name] ?? 'home'}
