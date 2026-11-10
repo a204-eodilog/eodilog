@@ -2,7 +2,14 @@ import { describe, expect, it } from '@jest/globals';
 
 import type { UserCard } from '@/api/types';
 
-import { afterFollow, feedPins, followButtonState, isLocked, profileStats } from './people-rules';
+import {
+  afterFollow,
+  feedPins,
+  followButtonState,
+  isLocked,
+  profileStats,
+  suggestionReason,
+} from './people-rules';
 
 const person = (extra: Partial<UserCard> = {}): UserCard => ({
   id: 'u1',
@@ -34,6 +41,11 @@ describe('팔로우', () => {
 });
 
 describe('글자', () => {
+  it('추천 이유', () => {
+    expect(suggestionReason({ kind: 'CO_TRAVELER', count: 2 })).toBe('여행 2번을 함께했어요');
+    expect(suggestionReason({ kind: 'CO_TRAVELER' })).toBe('여행을 함께했어요');
+    expect(suggestionReason({ kind: 'FOLLOWS_YOU' })).toBe('나를 팔로우해요');
+  });
   it('프로필 한 줄. 모르는 수는 빼고, 비공개면 앞에 비공개 계정', () => {
     expect(
       profileStats({ ...person(), feedCount: 3, followerCount: 12, followingCount: 9 }, false),

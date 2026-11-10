@@ -1,5 +1,4 @@
 import { apiClient } from '@/api/client';
-import { emptyIfMissing } from '@/api/missing';
 import type { DataResponse, Follow, PageResponse, UserCard } from '@/api/types';
 
 import type { FriendSuggestion, PublicProfile, UserFeedCard } from './types';
@@ -12,14 +11,12 @@ export async function searchUsers(query: string): Promise<UserCard[]> {
   return data.data;
 }
 
-/** 추천 친구 `GET /me/follow-suggestions`. 서버에 아직 없으면 빈 목록으로 본다 */
-export function getSuggestions(): Promise<FriendSuggestion[]> {
-  return emptyIfMissing(
-    apiClient
-      .get<PageResponse<FriendSuggestion>>('/me/follow-suggestions')
-      .then(({ data }) => data.data),
-    [],
-  );
+/** 추천 친구 `GET /me/follow-suggestions` 첫 쪽(서버 최대 50) */
+export async function getSuggestions(): Promise<FriendSuggestion[]> {
+  const { data } = await apiClient.get<PageResponse<FriendSuggestion>>('/me/follow-suggestions', {
+    params: { limit: 50 },
+  });
+  return data.data;
 }
 
 /** 추천에서 숨기기(다시 추천 안 함, 만료 없음) `PUT /me/follow-suggestion-dismissals/{userId}` */

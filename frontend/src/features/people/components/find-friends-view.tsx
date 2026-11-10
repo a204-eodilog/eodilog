@@ -14,7 +14,7 @@ import type { UserCard } from '@/api/types';
 import { Avatar, EmptyState, ErrorState, Header, Icon } from '@/components/ui';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
-import { followButtonState } from '../people-rules';
+import { followButtonState, suggestionReason } from '../people-rules';
 import type { FriendSuggestion } from '../types';
 
 import { FollowButton } from './follow-button';
@@ -101,14 +101,18 @@ function Suggestions(props: FindFriendsViewProps) {
             onPress={() => props.onPerson(s.user)}
             style={styles.cardHead}
             accessibilityRole="button"
-            accessibilityLabel={`${s.user.nickname}, ${s.reason}`}
+            accessibilityLabel={`${s.user.nickname}, ${suggestionReason(s.reason)}`}
           >
             <Avatar name={s.user.nickname} imageUrl={s.user.profileImageUrl} size={44} />
             <View style={styles.cardText}>
               <Text style={styles.name}>{s.user.nickname}</Text>
               <View style={styles.reason}>
-                <Icon name="heart" size={14} color={colors.text.icon} />
-                <Text style={styles.reasonText}>{s.reason}</Text>
+                <Icon
+                  name={s.reason.kind === 'CO_TRAVELER' ? 'image' : 'heart'}
+                  size={14}
+                  color={colors.text.icon}
+                />
+                <Text style={styles.reasonText}>{suggestionReason(s.reason)}</Text>
               </View>
             </View>
           </Pressable>

@@ -1,12 +1,13 @@
 import type { UserCard } from '@/api/types';
 
 /**
- * S44 추천 친구 한 명(명세 `GET /me/follow-suggestions`).
- * reason은 서버가 만든 공개 가능한 이유 한 줄(예: "공개 취향이 같아요")을 그대로 보여 준다
+ * S44 추천 친구 한 명(명세 `GET /me/follow-suggestions`의 FollowSuggestion).
+ * reason은 공개해도 되는 이유만 온다. 글자는 앱이 붙인다(people-rules의 suggestionReason).
+ * CO_TRAVELER: 같은 여행을 함께한 사람(count = 함께한 여행 수) / FOLLOWS_YOU: 나를 팔로우하는데 내가 팔로우하지 않은 사람
  */
 export type FriendSuggestion = {
   user: UserCard;
-  reason: string;
+  reason: { kind: 'CO_TRAVELER'; count?: number } | { kind: 'FOLLOWS_YOU' };
 };
 
 /**

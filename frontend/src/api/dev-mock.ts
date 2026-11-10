@@ -827,7 +827,11 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
   }
   // S44 추천 친구·숨기기
   if (method === 'get' && url === '/me/follow-suggestions') {
-    const reasons = ['공개 취향이 같아요', '공개 취향이 같아요', '공개 여행 4개를 올렸어요'];
+    const reasons = [
+      { kind: 'CO_TRAVELER', count: 2 },
+      { kind: 'CO_TRAVELER', count: 1 },
+      { kind: 'FOLLOWS_YOU' },
+    ];
     return ok(
       config,
       page(
