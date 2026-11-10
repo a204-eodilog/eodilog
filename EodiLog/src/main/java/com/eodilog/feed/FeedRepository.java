@@ -93,15 +93,23 @@ public class FeedRepository {
                 rs->{ result.put(rs.getObject(1,UUID.class),new Likes(rs.getLong(2),rs.getBoolean(3))); });
         return result;
     }
-    /** Share-locks the live feed and its trip so a concurrent tombstone or trip delete waits; absent means FEED_NOT_FOUND. */
+    /**
+     * Locks the live feed row (FOR NO KEY UPDATE, so concurrent likes/unlikes of the same feed queue here before touching
+     * feed_likes or like_count and cannot deadlock) and share-locks its trip so a concurrent tombstone or trip delete waits;
+     * absent means FEED_NOT_FOUND.
+     */
     public void lockLive(UUID id) {
-        if(jdbc.query("select 1"+LIVE+"and f.id=? for share",(rs,n)->1,id).isEmpty()) throw new BusinessException(FeedErrorCode.FEED_NOT_FOUND);
+        if(jdbc.query("select 1"+LIVE+"and f.id=? for no key update of f for share of t",(rs,n)->1,id).isEmpty()) throw new BusinessException(FeedErrorCode.FEED_NOT_FOUND);
     }
+    /** Inserts the like and bumps feeds.like_count only when a row was actually inserted (repeats are no-ops). */
     public void like(UUID feed, UUID user, Instant now) {
-        jdbc.update("insert into feed_likes(feed_id,user_id,created_at) values(?,?,?) on conflict(feed_id,user_id) do nothing",feed,user,Timestamp.from(now));
+        if(jdbc.update("insert into feed_likes(feed_id,user_id,created_at) values(?,?,?) on conflict(feed_id,user_id) do nothing",feed,user,Timestamp.from(now))==1)
+            jdbc.update("update feeds set like_count=like_count+1 where id=?",feed);
     }
+    /** Deletes the like and lowers feeds.like_count (never below 0) only when a row was actually deleted. */
     public void unlike(UUID feed, UUID user) {
-        jdbc.update("delete from feed_likes where feed_id=? and user_id=?",feed,user);
+        if(jdbc.update("delete from feed_likes where feed_id=? and user_id=?",feed,user)==1)
+            jdbc.update("update feeds set like_count=greatest(like_count-1,0) where id=?",feed);
     }
     public boolean activeMember(UUID trip, UUID user) {
         return !jdbc.queryForList("select 1 from trip_members where trip_id=? and user_id=? and status='ACTIVE'",Integer.class,trip,user).isEmpty();

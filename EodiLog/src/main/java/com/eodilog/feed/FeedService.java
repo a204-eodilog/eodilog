@@ -57,7 +57,7 @@ public class FeedService {
     }
     @Transactional
     public void unlike(UUID user,UUID id) {
-        repository.require(id);
+        repository.lockLive(id);
         repository.unlike(id,user);
     }
     /**

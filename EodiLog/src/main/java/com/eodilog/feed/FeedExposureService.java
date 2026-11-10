@@ -125,18 +125,22 @@ public class FeedExposureService {
         var rows=members.isEmpty()?List.<FeedRepository.Row>of():exposure.page(viewer,members,regionId,after,limit+1);
         boolean next=rows.size()>limit;
         var page=next?rows.subList(0,limit):rows;
+        var items=toCards(viewer,page);
+        String nextCursor=next?new CreatedAtCursor(page.getLast().snapshot().publishedAt(),page.getLast().id()).encode():null;
+        return PageResponse.of(items,nextCursor,next);
+    }
+    /** Cards in the given order with live cover, snapshot regions/dates and batched like counts relative to the viewer. */
+    List<FeedCard> toCards(UUID viewer,List<FeedRepository.Row> page) {
         var ids=page.stream().map(FeedRepository.Row::id).toList();
         var photos=repository.livePhotoIds(ids);
         var likes=repository.likes(ids,viewer);
-        var items=page.stream().map(r->{
+        return page.stream().map(r->{
             var f=r.snapshot();
             var like=likes.get(r.id());
             UUID cover=f.coverPhotoId()!=null && photos.getOrDefault(r.id(),Set.of()).contains(f.coverPhotoId())?f.coverPhotoId():null;
             return new FeedCard(r.id(),r.tripId(),r.title(),cover,f.regions(),f.startDate(),f.endDate(),f.publishedAt(),
                     like!=null && like.likedByMe(),like==null?0:like.count());
         }).toList();
-        String nextCursor=next?new CreatedAtCursor(page.getLast().snapshot().publishedAt(),page.getLast().id()).encode():null;
-        return PageResponse.of(items,nextCursor,next);
     }
     private MapResult map(UUID viewer,Set<UUID> members,Bounds box,LocalDate from,LocalDate to) {
         var markers=members.isEmpty()?List.<FeedExposureRepository.Marker>of():exposure.map(viewer,members,box.toBox(),from,to);
