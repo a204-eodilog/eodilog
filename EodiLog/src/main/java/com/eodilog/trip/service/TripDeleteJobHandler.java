@@ -91,6 +91,11 @@ public class TripDeleteJobHandler implements JobHandler {
 		jdbcTemplate.update("delete from feed_regions where feed_id in (select id from feeds where trip_id=?)", tripId);
 		jdbcTemplate.update("delete from feed_places where feed_id in (select id from feeds where trip_id=?)", tripId);
 		jdbcTemplate.update("delete from feeds where trip_id=?", tripId);
+		// 방문 후보는 사진·방문·멤버십을 가리키므로 먼저 지운다. 다른 여행 후보가 옮겨 온 사진을 근거로 둔 링크도 함께 지운다
+		jdbcTemplate.update("""
+				delete from visit_candidate_photos where candidate_id in (select id from visit_candidates where trip_id = ?)
+				or photo_id in (select id from photos where trip_id = ?)""", tripId, tripId);
+		jdbcTemplate.update("delete from visit_candidates where trip_id = ?", tripId);
 		jdbcTemplate.update("delete from photos where trip_id = ?", tripId);
 		jdbcTemplate.update("delete from photo_groups where trip_id = ?", tripId);
 		// A presigned PUT cannot be revoked. Keep deletion tombstones/keys throughout the grace period
