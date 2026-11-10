@@ -1,7 +1,7 @@
 import type { UserCard } from '@/api/types';
 import { findMapRegion } from '@/lib/korea-map';
 
-import type { FollowButtonState, FriendSuggestion, PublicProfile, UserFeedCard } from './types';
+import type { FollowButtonState, PublicProfile, UserFeedCard } from './types';
 
 /** 내가 그 사람을 팔로우한 상태 → 버튼 */
 export function followButtonState(user: Pick<UserCard, 'followingStatus'>): FollowButtonState {
@@ -16,13 +16,6 @@ export function afterFollow(user: UserCard): UserCard {
     ...user,
     followingStatus: user.accountVisibility === 'PRIVATE' ? 'REQUESTED' : 'ACCEPTED',
   };
-}
-
-/** "공개 취향이 같아요" / "공개 여행 4개를 올렸어요" */
-export function suggestionReason(s: FriendSuggestion): string {
-  return s.reason.kind === 'taste'
-    ? '공개 취향이 같아요'
-    : `공개 여행 ${s.reason.count}개를 올렸어요`;
 }
 
 /** N9 한 줄. "공동 피드 3개 · 팔로워 12 · 팔로잉 9", 비공개는 앞에 "비공개 계정". 모르는 수는 뺀다 */

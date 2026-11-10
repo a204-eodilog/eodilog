@@ -14,7 +14,7 @@ import type { UserCard } from '@/api/types';
 import { Avatar, EmptyState, ErrorState, Header, Icon } from '@/components/ui';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
-import { followButtonState, suggestionReason } from '../people-rules';
+import { followButtonState } from '../people-rules';
 import type { FriendSuggestion } from '../types';
 
 import { FollowButton } from './follow-button';
@@ -101,25 +101,14 @@ function Suggestions(props: FindFriendsViewProps) {
             onPress={() => props.onPerson(s.user)}
             style={styles.cardHead}
             accessibilityRole="button"
-            accessibilityLabel={`${s.user.nickname}, ${suggestionReason(s)}`}
+            accessibilityLabel={`${s.user.nickname}, ${s.reason}`}
           >
             <Avatar name={s.user.nickname} imageUrl={s.user.profileImageUrl} size={44} />
             <View style={styles.cardText}>
               <Text style={styles.name}>{s.user.nickname}</Text>
               <View style={styles.reason}>
-                <Icon
-                  name={s.reason.kind === 'taste' ? 'heart' : 'image'}
-                  size={14}
-                  color={colors.text.icon}
-                />
-                <Text style={styles.reasonText}>{suggestionReason(s)}</Text>
-                {s.reason.kind === 'taste'
-                  ? s.reason.tags.slice(0, 3).map((t) => (
-                      <View key={t} style={styles.tag}>
-                        <Text style={styles.tagText}>{t}</Text>
-                      </View>
-                    ))
-                  : null}
+                <Icon name="heart" size={14} color={colors.text.icon} />
+                <Text style={styles.reasonText}>{s.reason}</Text>
               </View>
             </View>
           </Pressable>
@@ -250,13 +239,6 @@ const styles = StyleSheet.create({
   name: { ...typography.bodyBold, color: colors.text.default },
   reason: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing[6] },
   reasonText: { ...typography.caption, color: colors.text.sub },
-  tag: {
-    paddingHorizontal: spacing[8],
-    paddingVertical: 2,
-    borderRadius: radius.sm,
-    backgroundColor: colors.surface.white,
-  },
-  tagText: { ...typography.caption, color: colors.text.strong },
   actions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',

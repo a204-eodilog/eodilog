@@ -825,13 +825,9 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
     follows = follows.filter((f) => f.id !== found.id);
     return ok(config, undefined, 204);
   }
-  // S44 추천 친구(명세에 아직 없는 제안 경로)·숨기기
-  if (method === 'get' && url === '/me/friend-recommendations') {
-    const reasons = [
-      { kind: 'taste', tags: ['바다', '카페'] },
-      { kind: 'taste', tags: ['맛집'] },
-      { kind: 'trips', count: 4 },
-    ];
+  // S44 추천 친구·숨기기
+  if (method === 'get' && url === '/me/follow-suggestions') {
+    const reasons = ['공개 취향이 같아요', '공개 취향이 같아요', '공개 여행 4개를 올렸어요'];
     return ok(
       config,
       page(
@@ -841,8 +837,8 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
       ),
     );
   }
-  const hideMatch = /^\/me\/friend-recommendations\/([^/]+)\/hide$/.exec(url);
-  if (method === 'post' && hideMatch) {
+  const hideMatch = /^\/me\/follow-suggestion-dismissals\/([^/]+)$/.exec(url);
+  if (method === 'put' && hideMatch) {
     hiddenSuggestions = [...hiddenSuggestions, decodeURIComponent(hideMatch[1])];
     return ok(config, undefined, 204);
   }

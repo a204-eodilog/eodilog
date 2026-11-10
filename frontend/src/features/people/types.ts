@@ -1,12 +1,12 @@
 import type { UserCard } from '@/api/types';
 
 /**
- * S44 추천 친구 한 명. 명세에 추천 API가 아직 없어(백엔드 요청) 테스트 모드 값으로 그린다.
- * reason은 공개 가능한 이유만: 공개 취향이 같음(겹치는 낱말) / 공개 여행 수
+ * S44 추천 친구 한 명(명세 `GET /me/follow-suggestions`).
+ * reason은 서버가 만든 공개 가능한 이유 한 줄(예: "공개 취향이 같아요")을 그대로 보여 준다
  */
 export type FriendSuggestion = {
   user: UserCard;
-  reason: { kind: 'taste'; tags: string[] } | { kind: 'trips'; count: number };
+  reason: string;
 };
 
 /**

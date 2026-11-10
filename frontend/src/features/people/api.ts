@@ -12,13 +12,11 @@ export async function searchUsers(query: string): Promise<UserCard[]> {
 }
 
 /**
- * 추천 친구. 명세에 아직 없는 제안 경로(`GET /me/friend-recommendations`). 서버에 없으면(404) 빈 목록으로 본다
+ * 추천 친구 `GET /me/follow-suggestions`. 서버에 아직 없으면(404) 빈 목록으로 본다
  */
 export async function getSuggestions(): Promise<FriendSuggestion[]> {
   try {
-    const { data } = await apiClient.get<PageResponse<FriendSuggestion>>(
-      '/me/friend-recommendations',
-    );
+    const { data } = await apiClient.get<PageResponse<FriendSuggestion>>('/me/follow-suggestions');
     return data.data;
   } catch (e) {
     if ((e as { response?: { status?: number } }).response?.status === 404) return [];
@@ -26,9 +24,9 @@ export async function getSuggestions(): Promise<FriendSuggestion[]> {
   }
 }
 
-/** 추천에서 숨기기(다시 추천 안 함). 제안 경로 `POST /me/friend-recommendations/{userId}/hide` */
+/** 추천에서 숨기기(다시 추천 안 함, 만료 없음) `PUT /me/follow-suggestion-dismissals/{userId}` */
 export async function hideSuggestion(userId: string): Promise<void> {
-  await apiClient.post(`/me/friend-recommendations/${encodeURIComponent(userId)}/hide`);
+  await apiClient.put(`/me/follow-suggestion-dismissals/${encodeURIComponent(userId)}`);
 }
 
 /** POST /users/{userId}/follow. 공개 계정이면 ACCEPTED, 비공개면 REQUESTED */

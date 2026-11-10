@@ -129,11 +129,11 @@ const person = (id: string, nickname: string, extra: Partial<UserCard> = {}): Us
 
 /** Figma S44: 취향이 같은 두 명, 공개 여행을 올린 한 명 */
 const SUGGESTIONS: FriendSuggestion[] = [
-  { user: person('s1', '도윤'), reason: { kind: 'taste', tags: ['바다', '카페'] } },
-  { user: person('s2', '하린'), reason: { kind: 'taste', tags: ['맛집'] } },
+  { user: person('s1', '도윤'), reason: '공개 취향이 같아요' },
+  { user: person('s2', '하린'), reason: '공개 취향이 같아요' },
   {
     user: person('s3', '서준', { accountVisibility: 'PRIVATE' }),
-    reason: { kind: 'trips', count: 4 },
+    reason: '공개 여행 4개를 올렸어요',
   },
 ];
 
