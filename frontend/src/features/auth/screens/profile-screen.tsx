@@ -106,7 +106,7 @@ export function ProfileScreen() {
     onSuccess: async ({ photoMessage }) => {
       if (photoMessage) toast.show(photoMessage);
       // 내 닉네임·사진은 마이페이지, 여행 동행, 채팅방 참여자, 친구 목록에도 들어 있어 모두 새로 받는다.
-      // 처음 가입도 마찬가지다: 탭 화면이 미리 만들어져 마이페이지가 가입 전(닉네임 빈) 정보를 들고 있다.
+      // 처음 가입도 마찬가지다: 가입 전에 받아 둔 내 정보(닉네임 빈 me)가 캐시에 남아 있어 마이페이지가 그걸 보여 준다.
       // 채팅 메시지는 이어 받기 규칙이 따로 있어 뺀다(보낸 사람 얼굴은 채팅방 참여자에서 온다)
       const refresh = queryClient.invalidateQueries({
         predicate: (query) => query.queryKey[2] !== 'chat-messages',
