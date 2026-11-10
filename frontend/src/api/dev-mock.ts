@@ -10,8 +10,11 @@ import { sampleFeed } from '@/features/feed/preview-data';
 import { addDays, seoulToday } from '@/lib/seoul-date';
 
 import { createChatMock } from './dev-mock-chat';
+import { createChecklistMock } from './dev-mock-checklist';
 import { createCourseMock } from './dev-mock-course';
 import { createGroupMock } from './dev-mock-group';
+import { createNotificationMock } from './dev-mock-notification';
+import { createPollMock } from './dev-mock-poll';
 import { createRecommendMock } from './dev-mock-recommend';
 import { mockMyTimeline, mockTripSummary, mockTripTimeline } from './dev-mock-timeline';
 import { createWeatherMock } from './dev-mock-weather';
@@ -502,6 +505,14 @@ const weatherMock = createWeatherMock({
   ok,
   fail,
 });
+/** 준비물 가짜 서버. 추천 설정이 OFF면 제안을 막는다 */
+const checklistMock = createChecklistMock({
+  getTrips: () => trips,
+  me: ME,
+  getAiChecklistMode: () => settings.ai.checklist,
+  ok,
+  fail,
+});
 /** 추천 결과 가짜 서버. 백엔드에 추천 API가 없다(Q-9-1) */
 const recommendMock = createRecommendMock({ getTrips: () => trips, ok, fail });
 /** 그룹 즐겨찾기 가짜 서버. 담는 장소는 개인 즐겨찾기나 추천 결과에서 찾는다 */
@@ -512,6 +523,11 @@ const groupMock = createGroupMock({
   ok,
   fail,
 });
+
+/** 알림 가짜 서버. 홈 종 숫자(notification-summary)도 여기서 센다 */
+const notificationMock = createNotificationMock({ ok, fail });
+/** 투표 가짜 서버. 장소 조회와 그룹 즐겨찾기 목록도 함께 답한다 */
+const pollMock = createPollMock({ getTrips: () => trips, ok, fail });
 
 /**
  * 웹 테스트 모드 콘솔에서 다른 동행의 변경을 흉내 낸다(동행 명세 research R15).
@@ -525,6 +541,12 @@ export const devMockControls = {
   course: courseMock.controls,
   /** 날씨: globalThis.__devMock.weather.failNext(), noAlternativesNext() */
   weather: weatherMock.controls,
+  /** 알림: globalThis.__devMock.notification.push('POLL_OPENED'), failNext() */
+  notification: notificationMock.controls,
+  /** 준비물: globalThis.__devMock.checklist.editByOther('trip-1'), failNextSuggestion() 등(준비물 quickstart) */
+  checklist: checklistMock.controls,
+  /** 투표: globalThis.__devMock.poll.addCandidateByOther(), closeNow('tie') 등(투표 quickstart) */
+  poll: pollMock.controls,
   /** 그룹 즐겨찾기: globalThis.__devMock.group.saveByOther('trip-1'), reset() */
   group: groupMock.controls,
   /** 추천: globalThis.__devMock.recommend.failNext(), insufficientNext() */
@@ -895,6 +917,13 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
   // 코스 가짜 서버가 모르는 작업(/jobs)은 날씨 쪽으로 넘어온다
   const weatherRes = weatherMock.handle(config, method, url, params);
   if (weatherRes) return weatherRes;
+  const notification = notificationMock.handle(config, method, url, params);
+  if (notification) return notification;
+  const checklist = checklistMock.handle(config, method, url);
+  if (checklist) return checklist;
+  const poll = pollMock.handle(config, method, url);
+  if (poll) return poll;
+
   const recommend = recommendMock.handle(config, method, url);
   if (recommend) return recommend;
   const photo = handlePhotos(config, method, url);
@@ -1751,9 +1780,6 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
         place('rec-4', '안목 바다뷰 카페', '강원 강릉시 견소동'),
       ]),
     );
-  }
-  if (method === 'get' && url === '/me/notification-summary') {
-    return ok(config, { data: { unreadCount: 2, asOf: new Date().toISOString() } });
   }
 
   const regionMatch = /^\/regions\/([^/]+)$/.exec(url);
