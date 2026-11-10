@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { errorLook } from '@/api/error-look';
 import { API_ERROR, toApiError } from '@/api/errors';
 import { AvatarGroup, ConfirmSheet, ErrorState, Header, Icon, toast } from '@/components/ui';
 import { pickPlace } from '@/features/place/place-picker';
@@ -564,14 +565,21 @@ export function CourseEditScreen() {
   if (notFound) {
     body = (
       <ErrorState
-        title="여행을 찾을 수 없어요"
-        description="나갔거나 지워진 여행일 수 있어요"
+        icon="lock"
+        title="볼 수 없어요"
+        description={null}
         retryLabel="돌아가기"
         onRetry={() => router.back()}
       />
     );
   } else if (itinerary.isError && !itinerary.data) {
-    body = <ErrorState title="코스를 불러오지 못했어요" onRetry={() => void itinerary.refetch()} />;
+    body = (
+      <ErrorState
+        {...errorLook(itinerary.error)}
+        description={null}
+        onRetry={() => void itinerary.refetch()}
+      />
+    );
   } else if (!itinerary.data || !trip.data) {
     body = <ActivityIndicator style={styles.loading} color={colors.brand.primary} />;
   } else if (mode === 'setup') {

@@ -231,8 +231,9 @@ describe('S26 날씨 대안', () => {
   it('날씨를 새로 받지 못해도 마지막 날씨와 대안은 남는다', async () => {
     mockWeather.mockRejectedValue(new Error('503'));
     await renderScreen();
-    expect(await screen.findByText('날씨를 새로 불러오지 못했어요')).toBeTruthy();
-    expect(await screen.findByText('마지막 조회 11.14(토) 09:40')).toBeTruthy();
+    expect(
+      await screen.findByLabelText('날씨를 새로 불러오지 못했어요. 마지막 조회 11.14(토) 09:40'),
+    ).toBeTruthy();
     expect(screen.getByText('해운대 실내 수족관')).toBeTruthy();
     expect(screen.getByText('다시 시도')).toBeTruthy();
   });
@@ -240,7 +241,7 @@ describe('S26 날씨 대안', () => {
   it('대안을 만들지 못하면 다시 시도로 다시 만든다', async () => {
     mockJob.mockResolvedValueOnce(job('FAILED'));
     await renderScreen();
-    expect(await screen.findByText('날씨 대안을 만들지 못했어요')).toBeTruthy();
+    expect(await screen.findByLabelText('날씨 대안을 만들지 못했어요')).toBeTruthy();
     await fireEvent.press(screen.getByText('다시 시도'));
     expect(await screen.findByText('해운대 실내 수족관')).toBeTruthy();
     expect(mockRequest).toHaveBeenCalledTimes(2);
@@ -257,7 +258,7 @@ describe('S26 날씨 대안', () => {
   it('코스를 받지 못하면 계속 기다리지 않고 다시 시도로 다시 받는다', async () => {
     mockItinerary.mockRejectedValueOnce(new Error('500')).mockRejectedValueOnce(new Error('500'));
     await renderScreen();
-    expect(await screen.findByText('코스를 불러오지 못했어요', {}, { timeout: 5000 })).toBeTruthy();
+    expect(await screen.findByText('불러오지 못했어요', {}, { timeout: 5000 })).toBeTruthy();
     await fireEvent.press(screen.getByText('다시 시도'));
     expect(await screen.findByText('해운대 실내 수족관')).toBeTruthy();
     expect(mockRequest).toHaveBeenCalledTimes(1);

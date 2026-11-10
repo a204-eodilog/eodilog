@@ -14,9 +14,21 @@ import {
 import type { Weather } from '../types';
 
 /** 흰 동그라미 안 날씨 아이콘 */
-function WeatherBadge({ name }: { name: 'sun' | 'cloud' | 'cloud-rain' | 'cloud-off' }) {
+function WeatherBadge({
+  name,
+  label,
+}: {
+  name: 'sun' | 'cloud' | 'cloud-rain' | 'cloud-off';
+  /** 글 없이 아이콘만 보일 때 화면 읽기 프로그램이 읽을 설명 */
+  label?: string;
+}) {
   return (
-    <View style={styles.badge}>
+    <View
+      style={styles.badge}
+      accessible={label !== undefined}
+      accessibilityRole={label !== undefined ? 'alert' : undefined}
+      accessibilityLabel={label}
+    >
       <Icon name={name} size={22} color={colors.text.icon} />
     </View>
   );
@@ -73,19 +85,12 @@ export function WeatherCard(props: CardProps) {
   }
   if (props.failed || !w) {
     return (
-      <View style={styles.card}>
-        <View style={styles.row}>
-          <WeatherBadge name="cloud-off" />
-          <View style={styles.flex}>
-            <Text style={[typography.bodyBold, styles.title]}>날씨를 새로 불러오지 못했어요</Text>
-            {w ? (
-              <Text style={[typography.caption, styles.sub]}>
-                {`${clock(w.queriedAt)} 기준 · ${weatherHeadline(w)}`}
-              </Text>
-            ) : null}
-          </View>
-        </View>
-        <View style={styles.retryRow}>
+      <View style={[styles.card, styles.row]}>
+        <WeatherBadge
+          name="cloud-off"
+          label={`날씨를 새로 불러오지 못했어요${w ? `. ${clock(w.queriedAt)} 기준` : ''}`}
+        />
+        <View style={[styles.flex, styles.failRetry]}>
           <RetryPill onPress={props.onRefresh} busy={props.refreshing} />
         </View>
       </View>
@@ -153,21 +158,12 @@ export function WeatherSummary(props: {
   if (props.failed || !w) {
     return (
       <View style={styles.row}>
-        <WeatherBadge name="cloud-off" />
-        <View style={styles.flex}>
-          <Text style={[typography.bodyBold, styles.title]}>날씨를 새로 불러오지 못했어요</Text>
-          <Text style={[typography.caption, styles.sub]}>마지막 날씨 기준이에요</Text>
-          {w ? (
-            <View style={styles.line}>
-              <Icon name="clock" size={16} color={colors.text.sub} />
-              <Text style={[typography.caption, styles.queried]}>
-                {`마지막 조회 ${dateClock(w.queriedAt)}`}
-              </Text>
-            </View>
-          ) : null}
-          <View style={styles.retryRow}>
-            <RetryPill onPress={props.onRefresh} busy={props.refreshing} />
-          </View>
+        <WeatherBadge
+          name="cloud-off"
+          label={`날씨를 새로 불러오지 못했어요${w ? `. 마지막 조회 ${dateClock(w.queriedAt)}` : ''}`}
+        />
+        <View style={[styles.flex, styles.failRetry]}>
+          <RetryPill onPress={props.onRefresh} busy={props.refreshing} />
         </View>
       </View>
     );
@@ -222,7 +218,7 @@ const styles = StyleSheet.create({
   affectedText: { flex: 1, color: colors.text.default },
   link: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
   linkText: { color: colors.brand.primaryDark },
-  retryRow: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: spacing[8] },
+  failRetry: { flexDirection: 'row', justifyContent: 'flex-end' },
   retry: {
     flexDirection: 'row',
     alignItems: 'center',

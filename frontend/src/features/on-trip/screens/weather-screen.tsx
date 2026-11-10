@@ -4,7 +4,8 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AvatarGroup, Button, Header, Icon, toast } from '@/components/ui';
+import { errorLook } from '@/api/error-look';
+import { AvatarGroup, Button, Header, Icon, toast, type IconName } from '@/components/ui';
 import { dayCount, toDraft, type DraftItem } from '@/features/course/course-rules';
 import { useItinerary } from '@/features/course/hooks/use-itinerary';
 import { tripKey, useTrip } from '@/features/trip/hooks/use-trip';
@@ -51,7 +52,8 @@ export type WeatherViewProps = {
    * 대안을 찾을 수 없는 까닭. 볼 장소가 없거나 코스를 받지 못했으면 기다림 표시 대신 이것을 보인다.
    * onRetry가 있으면 다시 시도
    */
-  blocked?: { title: string; onRetry?: () => void } | null;
+  /** 대안을 찾을 수 없는 까닭. 아이콘과 짧은 제목만 보인다 */
+  blocked?: { icon: IconName; title: string; onRetry?: () => void } | null;
 };
 
 /** S26 날씨 대안 표시만. 미리보기와 테스트가 서버 없이 그린다 */
@@ -60,9 +62,12 @@ export function WeatherView(props: WeatherViewProps) {
   const empty = props.phase === 'done' && props.alternatives.length === 0;
   let list: ReactNode;
   if (props.blocked) {
-    const { title, onRetry } = props.blocked;
+    const { icon, title, onRetry } = props.blocked;
     list = (
       <View style={styles.center}>
+        <View style={styles.failBadge}>
+          <Icon name={icon} size={24} color={colors.text.icon} />
+        </View>
         <Text style={[typography.bodyBold, styles.title]}>{title}</Text>
         {onRetry ? <Button label="다시 시도" variant="secondary" onPress={onRetry} /> : null}
       </View>
@@ -77,7 +82,14 @@ export function WeatherView(props: WeatherViewProps) {
   } else if (props.phase === 'failed') {
     list = (
       <View style={styles.center}>
-        <Text style={[typography.bodyBold, styles.title]}>날씨 대안을 만들지 못했어요</Text>
+        <View
+          style={styles.failBadge}
+          accessible
+          accessibilityRole="alert"
+          accessibilityLabel="날씨 대안을 만들지 못했어요"
+        >
+          <Icon name="alert" size={24} color={colors.text.icon} />
+        </View>
         <Button label="다시 시도" variant="secondary" onPress={props.onRetryAlternatives} />
       </View>
     );
@@ -256,9 +268,9 @@ export function WeatherScreen() {
       phase={alts.phase}
       blocked={
         !date || !placeId
-          ? { title: '날씨 대안을 찾을 장소가 없어요' }
+          ? { icon: 'map-pin', title: '날씨 대안을 찾을 장소가 없어요' }
           : itinerary.isError && !itinerary.data
-            ? { title: '코스를 불러오지 못했어요', onRetry: () => void itinerary.refetch() }
+            ? { ...errorLook(itinerary.error), onRetry: () => void itinerary.refetch() }
             : null
       }
       alternatives={alts.result?.alternatives ?? []}
@@ -305,6 +317,14 @@ const styles = StyleSheet.create({
   title: { color: colors.text.default },
   sub: { color: colors.text.icon },
   center: { alignItems: 'center', gap: spacing[12], paddingVertical: spacing[32] },
+  failBadge: {
+    width: 56,
+    height: 56,
+    borderRadius: radius.full,
+    backgroundColor: colors.surface.default,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   bottom: {
     flexDirection: 'row',
     justifyContent: 'flex-end',

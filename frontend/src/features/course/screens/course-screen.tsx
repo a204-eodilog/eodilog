@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { errorLook } from '@/api/error-look';
 import { toApiError } from '@/api/errors';
 import { AvatarGroup, ErrorState, Header, Icon, toast } from '@/components/ui';
 import { useUndo } from '@/features/proposal/hooks/use-undo';
@@ -53,6 +54,8 @@ export type CourseViewProps = {
   applied?: boolean;
   onEdit(): void;
   onRetry(): void;
+  /** 불러오기 실패의 원인. 아이콘과 짧은 제목을 고른다 */
+  error?: unknown;
   /** 미리보기용 처음 일차 */
   initialDay?: number;
 };
@@ -70,14 +73,15 @@ export function CourseView(props: CourseViewProps) {
   } else if (props.status === 'notFound') {
     body = (
       <ErrorState
-        title="여행을 찾을 수 없어요"
-        description="나갔거나 지워진 여행일 수 있어요"
+        icon="lock"
+        title="볼 수 없어요"
+        description={null}
         retryLabel="돌아가기"
         onRetry={() => router.back()}
       />
     );
   } else if (props.status === 'error' || !draft) {
-    body = <ErrorState title="코스를 불러오지 못했어요" onRetry={props.onRetry} />;
+    body = <ErrorState {...errorLook(props.error)} description={null} onRetry={props.onRetry} />;
   } else {
     const items = draft.days[selected] ?? [];
     const legs = dayLegs(draft, selected);
@@ -260,6 +264,7 @@ export function CourseScreen() {
       applied={appliedJob !== null}
       onEdit={() => router.push({ pathname: '/trips/[tripId]/course/edit', params: { tripId } })}
       onRetry={() => void itinerary.refetch()}
+      error={itinerary.error ?? trip.error}
     />
   );
 }
