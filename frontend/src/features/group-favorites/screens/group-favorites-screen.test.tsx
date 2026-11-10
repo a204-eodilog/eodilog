@@ -296,6 +296,26 @@ describe('담기와 빼기', () => {
     await waitFor(() => expect(mockPut).toHaveBeenCalledWith('trip-1', 'p-haeundae'));
   });
 
+  it('필터나 첫 쪽 때문에 목록에 없어도 내가 이미 담은 장소는 다시 보내지 않아 메모를 지킨다', async () => {
+    // 화면 목록에는 서면이 없지만, 내가 담은 장소를 물으면 서면이 있다
+    mockList.mockImplementation(async (_tripId, query) =>
+      query.memberId
+        ? page(sampleSaved())
+        : page(sampleSaved().filter((i) => i.place.id !== 'p-seomyeon')),
+    );
+    mockBookmarks.mockResolvedValue([bookmark(place('p-seomyeon', '서면 돼지국밥집'))]);
+    await renderScreen();
+    await fireEvent.press(await screen.findByLabelText('장소 추가'));
+    await fireEvent.press(screen.getByText('내 개인 즐겨찾기에서'));
+    await fireEvent.press(await screen.findByRole('checkbox', { name: '서면 돼지국밥집' }));
+    await fireEvent.press(screen.getByText('1곳 담기'));
+    await waitFor(() =>
+      expect(mockList).toHaveBeenCalledWith('trip-1', { filter: 'ALL', memberId: 'm-me' }, null),
+    );
+    await waitFor(() => expect(toast.show).toHaveBeenCalledWith('이미 담은 장소예요'));
+    expect(mockPut).not.toHaveBeenCalled();
+  });
+
   it('안 담은 장소는 나도 담기를 두 번 눌러도 한 번 담는다', async () => {
     let resolve: () => void = () => {};
     mockPut.mockReturnValue(
