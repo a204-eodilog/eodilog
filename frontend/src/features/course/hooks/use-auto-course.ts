@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
-import { toApiError } from '@/api/errors';
+import { API_ERROR, toApiError } from '@/api/errors';
 import { createIdempotencyKeyStore } from '@/api/idempotency';
 
 import { getAutoCourse, requestAutoCourse } from '../api';
@@ -25,6 +25,11 @@ export const AUTO_MIN_REQUEST_MS = 400;
  */
 export function useAutoCourse(tripId: string) {
   const [status, setStatus] = useState<'idle' | 'requesting' | 'running' | 'failed'>('idle');
+  /**
+   * 실패 까닭. noPlaces: 모은 장소나 기간이 없어 서버가 거절(422 INSUFFICIENT_DATA), 다시 해도 같다.
+   * conflict: 그 사이 코스가 바뀌어 409, 최신 코스로 다시 하면 된다. failed: 그 밖
+   */
+  const [failure, setFailure] = useState<'noPlaces' | 'conflict' | 'failed' | null>(null);
   const running = useRef(false);
   const controller = useRef<AbortController | null>(null);
   const keys = useRef(createIdempotencyKeyStore()).current;
@@ -44,6 +49,7 @@ export function useAutoCourse(tripId: string) {
     const abort = new AbortController();
     controller.current = abort;
     setStatus('requesting');
+    setFailure(null);
     const startedAt = Date.now();
     let accepted = false;
     try {
@@ -71,18 +77,38 @@ export function useAutoCourse(tripId: string) {
         proposal.proposed.items.length > 0
           ? proposal.proposed
           : null;
-      if (!abort.signal.aborted) setStatus(content ? 'idle' : 'failed');
+      if (!abort.signal.aborted) {
+        setStatus(content ? 'idle' : 'failed');
+        if (!content) setFailure('failed');
+      }
       return content;
     } catch (e) {
       if (e instanceof JobStopped || abort.signal.aborted) return null;
+      const { code } = toApiError(e);
       const left = AUTO_MIN_REQUEST_MS - (Date.now() - startedAt);
       if (!accepted && left > 0) await new Promise((r) => setTimeout(r, left));
-      if (!abort.signal.aborted) setStatus('failed');
+      if (!abort.signal.aborted) {
+        setStatus('failed');
+        setFailure(
+          code === 'INSUFFICIENT_DATA'
+            ? 'noPlaces'
+            : code === API_ERROR.VERSION_CONFLICT
+              ? 'conflict'
+              : 'failed',
+        );
+      }
       return null;
     } finally {
       running.current = false;
     }
   }
 
-  return { start, status, reset: () => setStatus('idle') };
+  return {
+    start,
+    status,
+    failure,
+    /** 지금 요청을 보내거나 기다리는 중인지. 같은 순간의 두 번째 누름을 막는다 */
+    isBusy: () => running.current,
+    reset: () => setStatus('idle'),
+  };
 }
