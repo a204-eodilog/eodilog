@@ -60,7 +60,13 @@ export function useNotifications() {
     getNextPageParam: (last) => (last.page.hasNext ? last.page.nextCursor : undefined),
   });
   // 못 받으면 나간 여행 표시만 빠진다
-  const trips = useQuery({ queryKey: MY_ALL_TRIPS_KEY, queryFn: getAllMyTrips, retry: false });
+  // 나간 여행 표시는 내 여행 목록이 새것이어야 맞다. 새 여행에 막 참여했는데 옛 목록이면 멀쩡한 알림에 붙는다
+  const trips = useQuery({
+    queryKey: MY_ALL_TRIPS_KEY,
+    queryFn: getAllMyTrips,
+    retry: false,
+    refetchOnMount: 'always',
+  });
 
   const items = useMemo(() => query.data?.pages.flatMap((p) => p.data) ?? [], [query.data]);
   const myTripIds = useMemo(

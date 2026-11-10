@@ -112,7 +112,8 @@ export function NotificationsScreen() {
       onReadAll={() => void list.readAll()}
       onOpen={(line) => {
         const n = list.items.find((x) => x.id === line.id);
-        if (n) void open(n, { leftTrip: line.leftTrip });
+        // 나간 여행 표시가 있어도 여행을 받아 보고 정한다. 표시는 내 여행 목록으로 짐작한 것이다
+        if (n) void open(n);
       }}
       onRetry={list.retry}
       onEndReached={list.loadMore}

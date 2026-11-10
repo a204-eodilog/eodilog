@@ -85,12 +85,18 @@ describe('알림 열기', () => {
     });
   });
 
-  it('나간 여행으로 보이면 확인 없이 볼 수 없음', async () => {
+  it('여행이 403이어도 볼 수 없음으로 간다', async () => {
+    mockTrip.mockRejectedValue(
+      Object.assign(new Error('403'), {
+        isAxiosError: true,
+        response: { status: 403, data: { code: 'FORBIDDEN' } },
+      }),
+    );
     const { open } = await setup();
     await act(async () => {
-      await open(pollOpened, { leftTrip: true });
+      await open(pollOpened);
     });
-    expect(mockTrip).not.toHaveBeenCalled();
+    expect(mockTrip).toHaveBeenCalledWith('trip-1');
     expect(mockRouter.push).toHaveBeenCalledWith({
       pathname: '/notifications/gone',
       params: { id: 'n-1' },

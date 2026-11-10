@@ -160,7 +160,15 @@ describe('S49 알림 목록', () => {
     ).toBeTruthy();
   });
 
-  it('나간 여행 알림은 바로 볼 수 없음으로 간다', async () => {
+  it('나간 여행 표시가 있어도 여행을 받아 보고, 볼 수 없으면 볼 수 없음으로 간다', async () => {
+    mockTrip.mockImplementation(async (id) => {
+      if (id === 'trip-gone')
+        throw Object.assign(new Error('404'), {
+          isAxiosError: true,
+          response: { status: 404, data: { code: 'TRIP_NOT_FOUND' } },
+        });
+      return { id } as Awaited<ReturnType<typeof getTrip>>;
+    });
     await renderScreen();
     await screen.findByText('나간 여행');
     await fireEvent.press(screen.getByText('가을 소풍 투표가 시작됐어요'));
@@ -170,7 +178,7 @@ describe('S49 알림 목록', () => {
         params: { id: 'n-9' },
       }),
     );
-    expect(mockTrip).not.toHaveBeenCalled();
+    expect(mockTrip).toHaveBeenCalledWith('trip-gone');
   });
 
   it('끝까지 내리면 다음 쪽을 이어 받는다', async () => {

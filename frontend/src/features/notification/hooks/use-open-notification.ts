@@ -19,7 +19,7 @@ const SETTLE_MS = 800;
 
 /**
  * 알림 열기. 읽음으로 바꾸고, 여행이 있는 대상이면 그 여행을 받아 본 뒤 대상 화면으로 간다.
- * 여행이 404·403이거나 이미 나간 여행으로 보이면 볼 수 없음 화면(Q-12-5). 읽음 요청이 실패해도 이동한다.
+ * 여행이 404·403이면 볼 수 없음 화면(Q-12-5). 나간 여행 표시만으로 정하지 않고 늘 여행을 받아 본다. 읽음 요청이 실패해도 이동한다.
  * 빠르게 두 번 눌러도 이동은 한 번
  */
 export function useOpenNotification() {
@@ -27,7 +27,7 @@ export function useOpenNotification() {
   const busy = useRef(false);
 
   return useCallback(
-    async (n: NotificationView, opts: { leftTrip?: boolean } = {}): Promise<OpenResult> => {
+    async (n: NotificationView): Promise<OpenResult> => {
       if (busy.current) return 'busy';
       busy.current = true;
       const release = () =>
@@ -48,7 +48,6 @@ export function useOpenNotification() {
         };
         const dest = destinationOf(n);
         if (!dest) return 'none';
-        if (opts.leftTrip) return goGone();
         if (dest.tripId) {
           const tripId = dest.tripId;
           try {
