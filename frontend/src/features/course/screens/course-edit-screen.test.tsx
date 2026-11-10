@@ -400,6 +400,36 @@ describe('직접 만들기', () => {
     ]);
   });
 
+  it('빈 코스에서 열려 저장 없이 뒤로 가면 코스 화면이 아니라 여행 상세로 돌아간다', async () => {
+    mockParams.entry = 'empty';
+    await renderScreen();
+    await screen.findByText('이 내용으로 짜요');
+    await fireEvent.press(screen.getByLabelText('뒤로'));
+    await waitFor(() => expect(mockRouter.back).toHaveBeenCalled());
+    // 코스 화면으로 가면 빈 코스라 곧바로 다시 코스 짜기가 열려 오가기만 한다
+    expect(mockRouter.replace).not.toHaveBeenCalled();
+  });
+
+  it('빈 코스에서 직접 만들다 버리고 나가도 여행 상세로 돌아간다', async () => {
+    mockParams.entry = 'empty';
+    await openManual();
+    await fireEvent.press(await screen.findByLabelText('해운대 해변, 1일차에 놓기'));
+    await fireEvent.press(screen.getByLabelText('뒤로'));
+    await fireEvent.press(await screen.findByText('버리고 나가기'));
+    await waitFor(() => expect(mockRouter.back).toHaveBeenCalled());
+    expect(mockRouter.replace).not.toHaveBeenCalled();
+  });
+
+  it('빈 코스에서 직접 만든 코스를 저장하면 코스 화면으로 바꿔 간다', async () => {
+    mockParams.entry = 'empty';
+    mockPut.mockResolvedValue(sampleCourse(true));
+    await openManual();
+    await fireEvent.press(await screen.findByLabelText('해운대 해변, 1일차에 놓기'));
+    await fireEvent.press(screen.getByText('코스 만들기'));
+    await fireEvent.press(await screen.findByText('완료'));
+    await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith('/trips/trip-1/course'));
+  });
+
   it('날짜를 고르고 칩을 누르면 그 날 끝에 놓이고 코스 만들기로 초안이 된다', async () => {
     await openManual();
     expect(await screen.findByText('날짜를 고르고 그룹 즐겨찾기 장소를 눌러 놓아요')).toBeTruthy();
