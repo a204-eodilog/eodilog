@@ -3,6 +3,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useState, type ReactNode } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { errorLook } from '@/api/error-look';
 import { toApiError } from '@/api/errors';
 import { ErrorState, Header, Icon, toast } from '@/components/ui';
 import { pickPlace } from '@/features/place/place-picker';
@@ -55,6 +56,8 @@ export type GroupFavoritesViewProps = {
   onCancelSelect(): void;
   onConfirmSelect(): void;
   onRetry(): void;
+  /** 불러오기 실패의 원인. 아이콘과 짧은 제목을 고른다 */
+  error?: unknown;
   /** 비었을 때 보일 화면. 다음 단계에서 넘긴다 */
   empty?: ReactNode;
   /** 시트들 */
@@ -102,14 +105,15 @@ export function GroupFavoritesView(props: GroupFavoritesViewProps) {
   } else if (props.status === 'notFound') {
     body = (
       <ErrorState
-        title="여행을 찾을 수 없어요"
-        description="나갔거나 지워진 여행일 수 있어요"
+        icon="lock"
+        title="볼 수 없어요"
+        description={null}
         retryLabel="돌아가기"
         onRetry={() => router.back()}
       />
     );
   } else if (props.status === 'error') {
-    body = <ErrorState title="그룹 즐겨찾기를 불러오지 못했어요" onRetry={props.onRetry} />;
+    body = <ErrorState {...errorLook(props.error)} description={null} onRetry={props.onRetry} />;
   } else if (items.length === 0 && props.empty) {
     body = props.empty;
   } else if (items.length === 0) {
@@ -270,6 +274,7 @@ export function GroupFavoritesScreen() {
       tripTitle={trip.data?.title}
       people={people}
       status={status}
+      error={list.error ?? trip.error}
       view={view}
       onToggleView={setView}
       filter={filter}
