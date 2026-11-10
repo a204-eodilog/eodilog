@@ -125,14 +125,16 @@ public class AssetService {
     public Download download(UUID user, UUID id, UUID feedId) {
         var asset = repository.find(id, false);
         if (feedId != null) {
-            feedAccess.require(feedId, id, asset.tripId());
-            asset = repository.find(id, true);
+            UUID locked = asset.tripId();
+            feedAccess.require(feedId, id, locked);
+            asset = sameTrip(repository.find(id, true), locked);
         } else if (asset.tripId() == null) {
             if (!asset.purpose().equals("PROFILE") && !asset.ownerId().equals(user)) throw new BusinessException(AssetErrorCode.ASSET_NOT_FOUND);
         } else {
             // Trip lock serializes the admission of a new stream with photo/trip deletion approval.
-            requireDownloadAccess(asset.tripId(), user, true);
-            asset = repository.find(id, true);
+            UUID locked = asset.tripId();
+            requireDownloadAccess(locked, user, true);
+            asset = sameTrip(repository.find(id, true), locked);
             if (asset.batchId() != null && jdbc.queryForObject("select count(*) from photos where asset_id=? and trip_id=? and deleted_at is null",
                     Long.class, id, asset.tripId()) == 0) throw new BusinessException(AssetErrorCode.ASSET_NOT_FOUND);
         }
@@ -181,7 +183,13 @@ public class AssetService {
         if (!observed.ownerId().equals(user)) throw new BusinessException(AssetErrorCode.ASSET_NOT_FOUND);
         // Always lock trip before asset, matching registration, leave, deletion and cleanup ordering.
         if (observed.tripId() != null) access.requireActiveMemberForUpdate(observed.tripId(), user);
-        return repository.find(id, true);
+        return sameTrip(repository.find(id, true), observed.tripId());
+    }
+
+    // A photo move may commit while we wait for the observed trip's lock; the checked trip must still own the asset.
+    private static AssetRecordRepository.Asset sameTrip(AssetRecordRepository.Asset asset, UUID locked) {
+        if (!java.util.Objects.equals(asset.tripId(), locked)) throw new BusinessException(AssetErrorCode.ASSET_NOT_FOUND);
+        return asset;
     }
 
     private BusinessException invalid(String field) {
