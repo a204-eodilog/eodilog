@@ -1,5 +1,4 @@
 import { apiClient } from '@/api/client';
-import { emptyIfMissing } from '@/api/missing';
 import type { DataResponse, PageResponse } from '@/api/types';
 
 import type { DiscoveryItem, FeedCard, MapResult } from './types';
@@ -22,14 +21,16 @@ export async function getRegionFeeds(regionId: string): Promise<FeedCard[]> {
   return data.data;
 }
 
-/** 좋아요 기반 추천(첫 페이지만). 서버에 아직 없으면 추천 없음으로 본다 */
-export function getDiscovery(): Promise<DiscoveryItem[]> {
-  return emptyIfMissing(
-    apiClient
-      .get<PageResponse<DiscoveryItem>>('/me/discovery-recommendations', { params: { limit: 10 } })
-      .then(({ data }) => data.data),
-    [],
+/**
+ * 홈 추천 시트(첫 페이지만). 내가 볼 수 있는 최근 30일 게시 피드를 좋아요 순으로, 장소는 그 피드에 많이 나온 순으로
+ * 피드·장소를 번갈아 준다. 내가 동행인 여행은 빠진다
+ */
+export async function getDiscovery(): Promise<DiscoveryItem[]> {
+  const { data } = await apiClient.get<PageResponse<DiscoveryItem>>(
+    '/me/discovery-recommendations',
+    { params: { limit: 10 } },
   );
+  return data.data;
 }
 
 /** 안 읽은 알림 수 (백엔드 있음) */
