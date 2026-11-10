@@ -78,6 +78,12 @@ public class TripDeleteJobHandler implements JobHandler {
 		}
 		// FK 순서: 자식 → 부모. 멤버십은 마지막, 여행 행은 남긴다
 		jdbcTemplate.update("delete from photo_topics where photo_id in (select id from photos where trip_id=?)", tripId);
+		jdbcTemplate.update("delete from feed_photos where feed_id in (select id from feeds where trip_id=?)", tripId);
+		jdbcTemplate.update("delete from feed_visibilities where feed_id in (select id from feeds where trip_id=?)", tripId);
+		jdbcTemplate.update("delete from feed_likes where feed_id in (select id from feeds where trip_id=?)", tripId);
+		jdbcTemplate.update("delete from feed_regions where feed_id in (select id from feeds where trip_id=?)", tripId);
+		jdbcTemplate.update("delete from feed_places where feed_id in (select id from feeds where trip_id=?)", tripId);
+		jdbcTemplate.update("delete from feeds where trip_id=?", tripId);
 		jdbcTemplate.update("delete from photos where trip_id = ?", tripId);
 		jdbcTemplate.update("delete from photo_groups where trip_id = ?", tripId);
 		// A presigned PUT cannot be revoked. Keep deletion tombstones/keys throughout the grace period

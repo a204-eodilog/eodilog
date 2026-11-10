@@ -12,6 +12,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Supplier;
 import lombok.RequiredArgsConstructor;
@@ -87,6 +88,29 @@ public class IdempotencyService {
 			throw new BusinessException(IdempotencyErrorCode.IDEMPOTENCY_KEY_REUSED);
 		}
 		return jsonMapper.readValue(record.responseJson(), responseType);
+	}
+
+	// 같은 키로 이미 끝난 요청이 있으면 처음 결과를 돌려주고, 본문이 다르면 409 IDEMPOTENCY_KEY_REUSED다.
+	// 기록이 없거나 진행 중이면 비어 있고 판정은 execute가 한다.
+	// execute 앞에서 외부 호출(날씨 조회 등)을 하는 요청이 재요청 때 그 호출과 사전 검사를 건너뛰도록 쓴다
+	@Transactional(readOnly = true)
+	public <T> Optional<T> findCompleted(UUID userId, String requestScope, String idempotencyKey, Object request,
+			Class<T> responseType) {
+		validateKey(idempotencyKey);
+		List<StoredRecord> records = jdbcTemplate.query("""
+				select status, request_hash, response_json::text as response_json
+				from idempotency_records
+				where user_id = ? and request_scope = ? and idempotency_key = ? and status = 'COMPLETED' and expires_at > ?
+				""", (rs, rowNum) -> new StoredRecord(rs.getString("status"), rs.getString("request_hash"),
+				rs.getString("response_json")), userId, requestScope, idempotencyKey, Timestamp.from(clock.instant()));
+		if (records.isEmpty()) {
+			return Optional.empty();
+		}
+		StoredRecord record = records.getFirst();
+		if (!record.requestHash().equals(hash(request))) {
+			throw new BusinessException(IdempotencyErrorCode.IDEMPOTENCY_KEY_REUSED);
+		}
+		return Optional.of(jsonMapper.readValue(record.responseJson(), responseType));
 	}
 
 	// execute 안에서도 검사한다. 호출 측이 권한 검사보다 먼저 키 형식 400을 내야 할 때 따로 부른다(명세 §2 입력 오류 우선)

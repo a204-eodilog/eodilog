@@ -103,7 +103,7 @@ public class ReviewService {
 		}
 		CreatedAtCursor after = cursor == null || cursor.isBlank() ? null : CreatedAtCursor.decode(cursor);
 
-		// 평가가 있는 방문은 해제할 수 없으므로(REVIEW_EXISTS) 지운 방문의 평가는 없다. 그래도 지운 방문은 뺀다
+		// 평가가 있는 방문은 해제할 수 없다(REVIEW_EXISTS). 단 피드 '내 기록까지 삭제'는 방문을 먼저 숨기고 정리 작업이 평가를 지우므로, 지운 방문의 평가가 잠시(작업 실패 시 계속) 남을 수 있다. 반드시 지운 방문은 뺀다
 		String jpql = "select r, v from Review r join Visit v on v.id = r.visitId"
 				+ " where v.tripId = :tripId and v.deletedAt is null"
 				+ (memberId == null ? "" : " and v.memberId = :memberId")
