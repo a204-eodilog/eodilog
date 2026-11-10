@@ -2,6 +2,7 @@ package com.eodilog.job;
 
 /** Only these server-owned values can be persisted or returned as failures. */
 public enum JobFailure {
+    INSUFFICIENT_DATA("취향을 추론할 저장 장소가 부족합니다.", false),
     TEMPORARY_FAILURE("일시적인 오류가 발생했습니다.", true),
     TIMEOUT("작업 시간이 초과되었습니다.", true),
     EXECUTION_FAILED("작업을 처리하지 못했습니다.", false),

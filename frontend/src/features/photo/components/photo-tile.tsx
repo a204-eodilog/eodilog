@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.line.default,
   },
   pressed: { opacity: 0.85 },
-  dim: { ...StyleSheet.absoluteFill, backgroundColor: colors.text.default, opacity: 0.35 },
+  dim: { ...StyleSheet.absoluteFill, backgroundColor: colors.text.default, opacity: 0.38 },
   pickMark: {
     position: 'absolute',
     top: spacing[6],

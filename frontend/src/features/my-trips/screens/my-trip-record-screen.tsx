@@ -3,29 +3,40 @@ import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { CenterNotice, Header, toast } from '@/components/ui';
+import { DeleteFeedSheet } from '@/features/feed';
 import { formatTripNights } from '@/lib/format-date';
 import { colors } from '@/theme';
 
 import { DeleteRecordSheet } from '../components/delete-record-sheet';
 import { PublishSheet } from '../components/publish-sheet';
 import { TripRecordView } from '../components/trip-record-view';
+import { useRecordFeed } from '../hooks/use-record-feed';
 import { useTripRecord } from '../hooks/use-trip-record';
 import { companionNames, formatPeriod } from '../my-trip-rules';
-import { companionLine, courseSummary, expenseSummary, reviewSummary } from '../record-rules';
+import { photoCardInfo } from '../photo-card-rules';
+import {
+  companionLine,
+  courseSummary,
+  expenseSummary,
+  recordFeed,
+  reviewSummary,
+} from '../record-rules';
 
 const notReady = () => toast.show('준비 중이에요');
 
 /**
  * S38 내 여행 기록. N4 여행 줄에서 연다.
- * 코스·평가·경비 요약은 지금 있는 API로 채운다. 공동 피드(게시·노출 설정·삭제), 사진, 기록 삭제,
- * 지도 핀 API가 아직 없어서 늘 "게시 전"으로 그리고 그 버튼들은 준비 중 안내를 띄운다.
- * 게시 확인·기록 삭제 확인(S50) 시트는 열 수 있지만 [게시]·[지우기]도 준비 중 안내다
+ * 사진·코스·평가·경비 요약은 지금 있는 API로 채운다. 공동 피드는 명세 §8대로 게시 전/게시됨을 그리고
+ * [게시] → 게시 API, [내 노출 설정] → S39, [공동 피드 삭제] → S39 삭제 확인 시트로 잇는다.
+ * 기록 삭제, 지도 핀 API가 아직 없어 그 버튼들은 준비 중 안내를 띄운다
  */
 export function MyTripRecordScreen() {
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
   const record = useTripRecord(tripId);
   const [confirming, setConfirming] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [feedDeleteOpen, setFeedDeleteOpen] = useState(false);
+  const feed = useRecordFeed(tripId, record.trip?.title);
 
   if (record.isLoading || record.error || !record.trip) {
     return (
@@ -52,6 +63,9 @@ export function MyTripRecordScreen() {
   const { trip } = record;
   const period = formatPeriod(trip.startDate, trip.endDate);
   const nights = formatTripNights(trip.startDate, trip.endDate);
+  const others = trip.members
+    .filter((m) => m.user.id !== record.myUserId)
+    .map((m) => m.user.nickname);
 
   return (
     <>
@@ -59,12 +73,13 @@ export function MyTripRecordScreen() {
         tripTitle={trip.title}
         period={period && nights ? `${period} · ${nights}` : period}
         companions={companionLine(companionNames(trip, record.myUserId))}
-        feed={{ status: 'draft' }}
+        feed={recordFeed(feed.feed, feed.nameById, others)}
+        photos={photoCardInfo(record.photos)}
         course={courseSummary(record.items, record.visits)}
         review={reviewSummary(record.items, record.visits)}
         expense={expenseSummary(record.expenses, record.settlement)}
-        // S31 사진 목록, S24 코스 화면은 아직 없다
-        onPhotos={notReady}
+        onPhotos={() => router.push(`/trips/${tripId}/photos`)}
+        // S24 코스 화면은 아직 없다
         onCourse={notReady}
         onReview={() => router.push(`/trips/${tripId}/visits`)}
         onExpense={() => router.push(`/trips/${tripId}/expenses`)}
@@ -72,20 +87,28 @@ export function MyTripRecordScreen() {
         onMovePin={notReady}
         onDelete={() => setDeleteOpen(true)}
         onPublish={() => setConfirming(true)}
-        onVisibility={notReady}
-        onDeleteFeed={notReady}
+        onVisibility={() =>
+          feed.feed &&
+          router.push({ pathname: '/feeds/[feedId]/visibility', params: { feedId: feed.feed.id } })
+        }
+        onDeleteFeed={() => setFeedDeleteOpen(true)}
       />
       <PublishSheet
         visible={confirming}
         tripTitle={trip.title}
         memberCount={trip.members.length}
+        publishing={feed.publishing}
         onClose={() => setConfirming(false)}
-        // S40 미리 보기(A)와 공동 피드 게시 API는 아직 없다
-        onPreview={notReady}
-        onPublish={() => {
-          setConfirming(false);
-          notReady();
-        }}
+        onPreview={() => router.push('/visible-to')}
+        onPublish={() => feed.publish(() => setConfirming(false))}
+      />
+      <DeleteFeedSheet
+        visible={feedDeleteOpen}
+        tripTitle={trip.title}
+        loading={feed.deleting}
+        onClose={() => setFeedDeleteOpen(false)}
+        // record: 기록까지 삭제(POST /feeds/{feedId}/delete-own-records). 여행은 나가지 않아 이 화면에 남는다
+        onConfirm={(choice) => feed.remove(choice === 'record', () => setFeedDeleteOpen(false))}
       />
       <DeleteRecordSheet
         visible={deleteOpen}

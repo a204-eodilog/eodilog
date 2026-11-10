@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useRef } from 'react';
 
 import { toast } from '@/components/ui';
 
@@ -13,6 +14,8 @@ export function useFeed(feedId: string) {
   const queryClient = useQueryClient();
   const key = feedKey(feedId);
   const feed = useQuery({ queryKey: key, queryFn: () => getFeed(feedId) });
+  // 빠르게 두 번 누르면 다시 그리기 전이라 isPending이 아직 false라서 ref로 첫 누름에서 막는다
+  const liking = useRef(false);
 
   const like = useMutation({
     mutationFn: async (next: boolean): Promise<{ liked: boolean; count: number } | null> => {
@@ -54,8 +57,13 @@ export function useFeed(feedId: string) {
     detail: feed.data ? toFeedDetail(feed.data) : undefined,
     retry: () => void feed.refetch(),
     toggleLike: () => {
-      if (!feed.data || like.isPending) return;
-      like.mutate(!feed.data.likedByMe);
+      if (!feed.data || like.isPending || liking.current) return;
+      liking.current = true;
+      like.mutate(!feed.data.likedByMe, {
+        onSettled: () => {
+          liking.current = false;
+        },
+      });
     },
   };
 }

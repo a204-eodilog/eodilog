@@ -40,6 +40,8 @@ public class PhotoDeleteJobHandler implements JobHandler {
         // Serialize with trip deletion, which removes the same children in FK order.
         jdbc.query("select id from trips where id=? for update", (rs, row) -> rs.getObject(1), c.submission().tripId());
         jdbc.update("delete from photo_topics where photo_id=?", photo);
+        // Candidates were invalidated at approval; only the evidence link to the purged photo goes.
+        jdbc.update("delete from visit_candidate_photos where photo_id=?", photo);
         jdbc.update("delete from photos where id=? and trip_id=? and asset_id=? and deleted_at is not null", photo,
                 c.submission().tripId(), UUID.fromString(c.submission().input().path("assetId").asString()));
         jdbc.update("update assets set objects_deleted=true where id=? and status='DELETING'",

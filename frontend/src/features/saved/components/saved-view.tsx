@@ -71,7 +71,9 @@ export function SavedView({
 
       {offlineSince ? (
         <View style={styles.offline} accessibilityLiveRegion="polite">
-          <Icon name="wifi-off" size={20} color={colors.text.icon} />
+          <View style={styles.boxIcon}>
+            <Icon name="wifi-off" size={22} color={colors.text.icon} />
+          </View>
           <View style={styles.flex}>
             <Text style={[typography.bodyBold, styles.text]}>인터넷에 연결되지 않았어요</Text>
             <Text style={[typography.caption, styles.sub]}>{offlineSince}</Text>
@@ -241,16 +243,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // README 안내 상자(회색): 둥글기 20, 안쪽 20, 간격 14
   offline: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing[16],
+    gap: spacing[14],
     marginHorizontal: layout.screenPaddingX,
     marginBottom: spacing[12],
-    paddingVertical: spacing[16],
-    paddingHorizontal: spacing[18],
-    borderRadius: radius.md,
+    padding: spacing[20],
+    borderRadius: radius.xl,
     backgroundColor: colors.surface.subtle,
+  },
+  // README 안내 상자(회색): 흰 동그라미 44 안에 아이콘 22
+  boxIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.full,
+    backgroundColor: colors.surface.white,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   list: {
     paddingHorizontal: layout.screenPaddingX,
