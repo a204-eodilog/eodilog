@@ -78,6 +78,20 @@ describe('S49 볼 수 없음', () => {
     expect(toast.show).toHaveBeenCalledWith('알림을 지웠어요');
   });
 
+  it('서버가 이미 볼 수 없는 알림이라 404면 지운 것으로 보고 목록으로 간다', async () => {
+    mockDismiss.mockRejectedValue(
+      Object.assign(new Error('404'), {
+        isAxiosError: true,
+        response: { status: 404, data: { error: { code: 'NOTIFICATION_NOT_FOUND' } } },
+      }),
+    );
+    await renderScreen();
+    await fireEvent.press(screen.getByText('이 알림 지우기'));
+    await waitFor(() => expect(mockRouter.dismissTo).toHaveBeenCalledWith('/notifications'));
+    expect(toast.show).toHaveBeenCalledWith('알림을 지웠어요');
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
   it('지우지 못하면 알리고 그대로 있는다', async () => {
     mockDismiss.mockRejectedValue(new Error('500'));
     await renderScreen();

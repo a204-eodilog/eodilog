@@ -7,6 +7,7 @@ import {
 } from '@tanstack/react-query';
 import { useCallback, useMemo, useRef } from 'react';
 
+import { toApiError } from '@/api/errors';
 import type { PageResponse } from '@/api/types';
 import { toast } from '@/components/ui';
 import { getAllMyTrips } from '@/features/my-trips/api';
@@ -123,7 +124,13 @@ export function useDismissNotification() {
         patchListed(queryClient, id, null);
         toast.show('알림을 지웠어요');
         return true;
-      } catch {
+      } catch (e) {
+        // 나간 여행이나 지워진 여행의 알림은 서버가 찾지 못해 404로 답한다. 목록에서도 이미 보이지 않으니 지운 것으로 본다
+        if (toApiError(e).status === 404) {
+          patchListed(queryClient, id, null);
+          toast.show('알림을 지웠어요');
+          return true;
+        }
         toast.error('알림을 지우지 못했어요. 다시 시도해 주세요');
         return false;
       } finally {
