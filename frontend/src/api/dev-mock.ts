@@ -790,6 +790,32 @@ function handlePhotos(
       },
     });
   }
+  // S31 여러 장 장소 연결. 테스트 모드는 UPDATE만 받는다. 한 장이라도 안 맞으면 아무것도 바꾸지 않는다
+  const editBatchMatch = /^\/trips\/([^/]+)\/photos\/batch$/.exec(url);
+  if (method === 'post' && editBatchMatch) {
+    const targets = (body.photos ?? []) as { photoId: string; expectedVersion: number }[];
+    if (body.action !== 'UPDATE' || targets.length === 0 || targets.length > 50) {
+      throw fail(config, 400, 'VALIDATION_ERROR', '요청 값을 확인해 주세요.');
+    }
+    const found = targets.map((t) => ({
+      t,
+      photo: tripPhotos.find((p) => p.id === t.photoId && p.tripId === editBatchMatch[1]),
+    }));
+    if (found.some((f) => !f.photo)) {
+      throw fail(config, 404, 'PHOTO_NOT_FOUND', '사진을 찾을 수 없습니다.');
+    }
+    if (found.some((f) => f.photo?.version !== f.t.expectedVersion)) {
+      throw fail(config, 409, 'VERSION_CONFLICT', '다른 곳에서 바뀌었어요');
+    }
+    const changed = found.map(({ photo }) => {
+      const p = photo as (typeof tripPhotos)[number];
+      if ('placeId' in body) p.placeId = (body.placeId as string | null) ?? null;
+      if (Array.isArray(body.topics)) p.topics = body.topics as string[];
+      p.version += 1;
+      return { ...p, topics: [...p.topics] };
+    });
+    return ok(config, { data: { photos: changed, deletedPhotoIds: [] } });
+  }
   const photoMatch = /^\/trips\/([^/]+)\/photos\/([^/]+)$/.exec(url);
   if (method === 'delete' && photoMatch) {
     const i = tripPhotos.findIndex((p) => p.id === photoMatch[2] && p.tripId === photoMatch[1]);
