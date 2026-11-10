@@ -4,6 +4,35 @@ import { Button, Icon } from '@/components/ui';
 import { colors, radius, spacing, typography } from '@/theme';
 
 /**
+ * 서버가 장소 빼기 변경안을 아직 받지 않을 때. 다시 시도해도 같으므로 코스 편집에서 직접 빼도록 안내한다
+ * (가정 — 사용자 확인 필요, Q-11-6)
+ */
+export function ProposalUnsupported({ onEdit, onCourse }: { onEdit(): void; onCourse(): void }) {
+  return (
+    <View style={styles.center}>
+      <View style={styles.badge}>
+        <Icon name="info" size={28} color={colors.text.icon} />
+      </View>
+      <Text style={[typography.title2, styles.title]}>아직 AI로 장소를 뺄 수 없어요</Text>
+      <Text style={[typography.body, styles.body]}>
+        {'코스 편집에서 직접 뺄 수 있어요\n지금 코스는 그대로예요'}
+      </Text>
+      <Button
+        label="코스 편집"
+        weight="medium"
+        leading={<Icon name="pencil" size={18} color={colors.text.inverse} />}
+        onPress={onEdit}
+        style={styles.retry}
+      />
+      <Pressable style={styles.course} onPress={onCourse} accessibilityRole="button">
+        <Icon name="route" size={18} color={colors.text.icon} />
+        <Text style={[typography.bodyMedium, styles.body]}>코스 보기</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+/**
  * S29 재계산 실패(Figma 201-16329). 변경안 작업이 실패하거나 2분을 넘겼다.
  * 지금 코스는 그대로라고 알리고 [다시 시도], [코스 보기].
  */

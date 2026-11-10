@@ -10,7 +10,7 @@ import { useMe } from '@/hooks/use-me';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 import { ProposalCompare } from '../components/proposal-compare';
-import { ProposalFail } from '../components/proposal-fail';
+import { ProposalFail, ProposalUnsupported } from '../components/proposal-fail';
 import { useProposal, type ProposalSource } from '../hooks/use-proposal';
 import {
   basisLine,
@@ -24,11 +24,13 @@ import {
 export type ProposalViewProps = {
   tripTitle?: string;
   people: { name: string; imageUrl?: string | null; me?: boolean }[];
-  state: 'loading' | 'compare' | 'failed';
+  state: 'loading' | 'compare' | 'failed' | 'unsupported';
   /** 비교 화면 */
   compare?: ReactNode;
   onRetry(): void;
   onCourse(): void;
+  /** 장소 빼기를 서버가 아직 받지 않을 때 코스 편집으로 */
+  onEdit?(): void;
 };
 
 /** S29 AI 변경안 표시만. 미리보기와 테스트가 서버 없이 그린다 */
@@ -43,6 +45,10 @@ export function ProposalView(props: ProposalViewProps) {
     );
   } else if (props.state === 'failed') {
     body = <ProposalFail onRetry={props.onRetry} onCourse={props.onCourse} />;
+  } else if (props.state === 'unsupported') {
+    body = (
+      <ProposalUnsupported onEdit={props.onEdit ?? props.onCourse} onCourse={props.onCourse} />
+    );
   } else {
     body = props.compare;
   }
@@ -167,7 +173,11 @@ export function ProposalScreen() {
   }
 
   const state =
-    p.phase === 'failed' ? 'failed' : p.phase === 'done' && compare ? 'compare' : 'loading';
+    p.phase === 'failed' || p.phase === 'unsupported'
+      ? p.phase
+      : p.phase === 'done' && compare
+        ? 'compare'
+        : 'loading';
 
   return (
     <ProposalView
@@ -177,6 +187,7 @@ export function ProposalScreen() {
       compare={compare}
       onRetry={() => void begin()}
       onCourse={toCourse}
+      onEdit={() => router.replace(`/trips/${tripId}/course/edit` as Href)}
     />
   );
 }

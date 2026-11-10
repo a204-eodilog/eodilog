@@ -34,6 +34,7 @@ const EXAMPLES = [
   { state: 'compare', label: '비교 201-16028' },
   { state: 'applied', label: '적용 후 201-16198' },
   { state: 'failed', label: '재계산 실패 201-16329' },
+  { state: 'unsupported', label: '장소 빼기 아직 안 됨' },
 ];
 
 export default function DevProposal() {
@@ -72,9 +73,12 @@ function DevScreen({ state }: { state: string }) {
     <ProposalView
       tripTitle="겨울 여행"
       people={PEOPLE}
-      state={state === 'failed' ? 'failed' : state === 'loading' ? 'loading' : 'compare'}
+      state={
+        state === 'failed' || state === 'unsupported' || state === 'loading' ? state : 'compare'
+      }
       onRetry={noop}
       onCourse={noop}
+      onEdit={() => toast.show('코스 편집으로 가요')}
       compare={
         <ProposalCompare
           summary={summary(current, proposed, null)}

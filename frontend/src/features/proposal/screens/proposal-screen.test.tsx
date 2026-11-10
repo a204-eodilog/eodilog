@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { AxiosError, AxiosHeaders, type InternalAxiosRequestConfig } from 'axios';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -69,6 +70,25 @@ const mockGet = jest.mocked(getAutoCourse);
 const mockItinerary = jest.mocked(getItinerary);
 const mockRemove = jest.mocked(requestRemoval);
 const mockApply = jest.mocked(applyProposal);
+
+/** 지금 백엔드가 장소 빼기를 거절하는 응답(400 VALIDATION_ERROR, reason 칸) */
+function reasonRejected(): AxiosError {
+  const config = { headers: new AxiosHeaders() } as InternalAxiosRequestConfig;
+  return new AxiosError('VALIDATION_ERROR', 'ERR_BAD_REQUEST', config, null, {
+    status: 400,
+    statusText: 'VALIDATION_ERROR',
+    headers: {},
+    config,
+    data: {
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: '입력값을 확인해 주세요.',
+        fields: [{ field: 'reason', message: '아직 지원하지 않는 사유입니다.' }],
+        traceId: null,
+      },
+    },
+  });
+}
 
 function renderScreen() {
   const client = new QueryClient({
@@ -169,6 +189,15 @@ describe('실패와 충돌', () => {
     await fireEvent.press(screen.getByText('다시 시도'));
     expect(await screen.findByText('광안리 바다뷰 카페를 빼요')).toBeTruthy();
     expect(mockRemove).toHaveBeenCalledTimes(2);
+  });
+
+  it('서버가 장소 빼기를 아직 받지 않으면 다시 시도 대신 코스 편집으로 안내한다', async () => {
+    mockRemove.mockRejectedValueOnce(reasonRejected());
+    await renderScreen();
+    expect(await screen.findByText('아직 AI로 장소를 뺄 수 없어요')).toBeTruthy();
+    expect(screen.queryByText('다시 시도')).toBeNull();
+    await fireEvent.press(screen.getByText('코스 편집'));
+    expect(mockRouter.replace).toHaveBeenCalledWith('/trips/trip-1/course/edit');
   });
 
   it('재계산 실패의 코스 보기는 코스로', async () => {
