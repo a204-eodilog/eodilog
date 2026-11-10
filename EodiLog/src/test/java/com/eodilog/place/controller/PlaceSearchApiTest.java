@@ -32,7 +32,7 @@ class PlaceSearchApiTest {
 
 	UUID me;
 	String query;
-	UUID exactSeoul, shortPrefix, longPrefix, containsBusan;
+	UUID exactSeoul, shortPrefix, longPrefix, containsBusan, containsHaeundae;
 
 	@BeforeEach
 	void setUp() {
@@ -45,25 +45,36 @@ class PlaceSearchApiTest {
 		shortPrefix = place(query + "점", 36.3504, 127.3845);       // 앞부분 일치, 대전
 		longPrefix = place(query + " 김밥", 37.4563, 126.7052);     // 앞부분 일치, 인천
 		containsBusan = place("부산 " + query + " 맛집", 35.1150, 129.0420); // 포함, 부산 바로 옆
+		containsHaeundae = place("해운대 " + query, 35.1631, 129.1635);    // 포함, 부산에서 12km
+	}
+
+	// near: 완전 일치 → 30km 안 가까운 순 → 30km 밖 id 순
+	private List<UUID> nearOrder() {
+		return concat(List.of(exactSeoul, containsBusan, containsHaeundae), byId(shortPrefix, longPrefix));
+	}
+
+	// near 없음: 완전 일치 → 앞부분 일치 이름순(C 정렬이라 공백이 '점'보다 앞) → 그 밖의 포함 id 순
+	private List<UUID> plainOrder() {
+		return concat(List.of(exactSeoul, longPrefix, shortPrefix), byId(containsBusan, containsHaeundae));
 	}
 
 	@Test
-	void nearPutsExactNameFirstThenNearest() throws Exception {
+	void nearPutsExactNameFirstThenNearestInsideRadiusThenTheRest() throws Exception {
 		assertThat(ids(search(query.toLowerCase(Locale.ROOT)).param("near", BUSAN).param("limit", "20")))
-				.containsExactly(exactSeoul, containsBusan, shortPrefix, longPrefix);
+				.containsExactlyElementsOf(nearOrder());
 		// 쉼표 앞뒤 공백도 받는다
 		assertThat(ids(search(query).param("near", "35.1151 , 129.0423"))).first().isEqualTo(exactSeoul);
 	}
 
 	@Test
-	void withoutNearRanksExactThenPrefixThenContainsAndShorterName() throws Exception {
-		assertThat(ids(search("  " + query + " "))).containsExactly(exactSeoul, shortPrefix, longPrefix, containsBusan);
+	void withoutNearRanksExactThenPrefixByNameThenContains() throws Exception {
+		assertThat(ids(search("  " + query + " "))).containsExactlyElementsOf(plainOrder());
 	}
 
 	@Test
 	void cursorWalksSameOrderOnePageAtATime() throws Exception {
-		assertThat(walk(Map.of("near", BUSAN))).containsExactly(exactSeoul, containsBusan, shortPrefix, longPrefix);
-		assertThat(walk(Map.of())).containsExactly(exactSeoul, shortPrefix, longPrefix, containsBusan);
+		assertThat(walk(Map.of("near", BUSAN))).containsExactlyElementsOf(nearOrder());
+		assertThat(walk(Map.of())).containsExactlyElementsOf(plainOrder());
 	}
 
 	@Test
@@ -111,6 +122,16 @@ class PlaceSearchApiTest {
 			cursor = body.at("/page/hasNext").asBoolean() ? body.at("/page/nextCursor").asText() : null;
 		} while (cursor != null && seen.size() < 10);
 		return seen;
+	}
+
+	private static List<UUID> byId(UUID... ids) {
+		return Arrays.stream(ids).sorted(Comparator.comparing(UUID::toString)).toList(); // PostgreSQL uuid 순서
+	}
+
+	private static List<UUID> concat(List<UUID> head, List<UUID> tail) {
+		List<UUID> all = new ArrayList<>(head);
+		all.addAll(tail);
+		return all;
 	}
 
 	private MockHttpServletRequestBuilder search(String q) {
