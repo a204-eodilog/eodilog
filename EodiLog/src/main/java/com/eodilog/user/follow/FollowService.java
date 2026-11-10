@@ -5,6 +5,7 @@ import com.eodilog.global.common.error.CommonErrorCode;
 import com.eodilog.global.common.response.CreatedAtCursor;
 import com.eodilog.global.common.response.PageResponse;
 import com.eodilog.global.id.UuidV7;
+import com.eodilog.user.UserErrorCode;
 import com.eodilog.user.dto.AccountVisibility;
 import com.eodilog.user.dto.FollowStatus;
 import com.eodilog.user.dto.UserCard;
@@ -81,7 +82,7 @@ public class FollowService {
 		List<String> visibility = jdbc.queryForList(
 				"SELECT account_visibility FROM users u WHERE u.id=? AND " + USABLE_USER + " FOR SHARE",
 				String.class, targetId);
-		if (visibility.isEmpty()) throw new BusinessException(FollowErrorCode.USER_NOT_FOUND);
+		if (visibility.isEmpty()) throw new BusinessException(UserErrorCode.USER_NOT_FOUND);
 		Optional<FollowRow> existing = findPair(me, targetId);
 		if (existing.isPresent()) return toResponse(me, existing.get());
 		boolean open = AccountVisibility.valueOf(visibility.getFirst()) == AccountVisibility.PUBLIC;
