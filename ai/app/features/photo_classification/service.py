@@ -4,6 +4,7 @@ import asyncio
 import logging
 import uuid
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Literal
 
 import numpy as np
@@ -18,6 +19,8 @@ log = logging.getLogger("ai")
 
 # 모델 입력보다 크게 유지할 이유가 없고, 디코딩한 원본을 50장 들고 있으면 메모리가 부족하다
 MAX_SIDE = 448
+# SigLIP2 벡터 위에 학습한 주제 분류기 (spec AS-19). 모델을 바꾸면 다시 학습해야 한다
+TOPIC_HEAD_PATH = Path(__file__).with_name("topic_head.npz")
 MAX_PHOTO_BYTES = 15 * 1024 * 1024
 
 # 주제 문장 (AS-7). 평가 사진 60장으로 고르고 실내 문장을 더했다 (verification.md)
@@ -79,10 +82,45 @@ class PhotoUpload:
     data: bytes
 
 
+@dataclass(frozen=True)
+class TopicHead:
+    """사진 벡터에서 주제를 고르는 학습된 선형 분류기. 행 순서는 TOPICS와 같다."""
+
+    weight: np.ndarray
+    bias: np.ndarray
+
+    def best(self, vectors: np.ndarray) -> np.ndarray:
+        return (vectors @ self.weight.T + self.bias).argmax(axis=1)
+
+
+def load_topic_head(path: Path) -> TopicHead | None:
+    """파일이 없거나 지금 주제·모양과 맞지 않으면 None. 그때는 주제 문장 비교로 고른다."""
+    try:
+        with np.load(path) as saved:
+            names = [str(name) for name in saved["names"]]
+            weight, bias = saved["weight"], saved["bias"]
+    except (OSError, KeyError, ValueError):
+        return None
+    if names != list(TOPICS) or weight.ndim != 2 or weight.shape[0] != len(names):
+        log.warning("photo_topic_head_rejected")
+        return None
+    if bias.shape != (len(names),):
+        log.warning("photo_topic_head_rejected")
+        return None
+    return TopicHead(weight=weight, bias=bias)
+
+
 class PhotoClassifier:
-    def __init__(self, *, embedder: PhotoEmbedder, similarity_threshold: float):
+    def __init__(
+        self,
+        *,
+        embedder: PhotoEmbedder,
+        similarity_threshold: float,
+        topic_head: TopicHead | None = None,
+    ):
         self._embedder = embedder
         self._threshold = similarity_threshold
+        self._head = topic_head
         self._topic_vectors: np.ndarray | None = None
 
     async def preload(self) -> None:
@@ -118,7 +156,10 @@ class PhotoClassifier:
         vectors = self._embedder.embed_images(images)
         # 점수는 sigmoid(scale·유사도 + bias)이고 주제마다 scale·bias가 같다.
         # 순서가 유사도와 같으므로 가장 높은 점수의 주제는 유사도만으로 고를 수 있다
-        best = (vectors @ self._topics().T).argmax(axis=1)
+        if self._head is not None:
+            best = self._head.best(vectors)
+        else:
+            best = (vectors @ self._topics().T).argmax(axis=1)
         names = list(TOPICS)
         groups = group_similar(vectors, self._threshold)
         return [(names[index], group) for index, group in zip(best, groups, strict=True)]

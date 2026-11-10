@@ -19,7 +19,11 @@ from app.features.itinerary_proposal.router import router as itinerary_proposal_
 from app.features.itinerary_proposal.service import ItineraryProposer
 from app.features.photo_classification.embedder import SiglipEmbedder
 from app.features.photo_classification.router import router as photo_classification_router
-from app.features.photo_classification.service import PhotoClassifier
+from app.features.photo_classification.service import (
+    TOPIC_HEAD_PATH,
+    PhotoClassifier,
+    load_topic_head,
+)
 from app.features.place_extraction.router import router as place_extraction_router
 from app.features.place_extraction.service import PlaceExtractor
 from app.features.preference_inference.router import router as preference_inference_router
@@ -111,6 +115,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             pretrained=app.state.settings.clip_pretrained,
         ),
         similarity_threshold=app.state.settings.photo_similarity_threshold,
+        topic_head=load_topic_head(TOPIC_HEAD_PATH),
     )
 
     # 뒤에 등록한 미들웨어가 바깥을 감싼다. 예산 초과 503에도 trace가 추적 ID를 붙인다
