@@ -260,11 +260,11 @@ describe('추천할 수 없을 때', () => {
     expect(mockRequest).toHaveBeenCalledTimes(2);
   });
 
-  it('실패하면 모은 장소는 그대로라고 알리고 다시 시도는 새 작업', async () => {
+  it('실패하면 설명 없이 제목과 다시 시도를 보이고 다시 시도는 새 작업', async () => {
     mockGet.mockResolvedValueOnce(result({ status: 'FAILED' }));
     await renderScreen();
     expect(await screen.findByText('추천을 만들지 못했어요')).toBeTruthy();
-    expect(screen.getByText('모은 장소는 그대로예요')).toBeTruthy();
+    expect(screen.queryByText('모은 장소는 그대로예요')).toBeNull();
     await fireEvent.press(screen.getByText('다시 시도'));
     expect(await screen.findByText('여행지 2')).toBeTruthy();
     expect(mockRequest).toHaveBeenCalledTimes(2);

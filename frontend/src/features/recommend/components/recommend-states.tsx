@@ -54,13 +54,12 @@ export function InsufficientView(props: {
   );
 }
 
-/** S21 생성 실패(Figma 201-10530). 모은 장소는 그대로라고 알리고 [다시 시도] */
+/** S21 생성 실패(Figma 201-10530). 설명 없이 경고 아이콘과 제목, [다시 시도] */
 export function RecommendFailView({ onRetry }: { onRetry(): void }) {
   return (
     <View style={styles.center}>
       <Badge icon="alert" />
       <Text style={[typography.title2, styles.title]}>추천을 만들지 못했어요</Text>
-      <Text style={[typography.body, styles.body]}>모은 장소는 그대로예요</Text>
       <PrimaryPill icon="refresh" label="다시 시도" onPress={onRetry} />
     </View>
   );
