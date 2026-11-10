@@ -10,24 +10,20 @@ type Props = {
   busy: boolean;
 };
 
-/** S24 이동 시간 갱신 실패 카드(Figma 201-29705). 0분이나 직선거리로 채우지 않고 지난 기준을 보인다 */
+/**
+ * S24 이동 시간 갱신 실패 카드(Figma 201-29705). 0분이나 직선거리로 채우지 않는다.
+ * 글 대신 시계 아이콘과 [다시 계산]만 보이고, 설명은 화면 읽기 프로그램에만 준다
+ */
 export function RouteFailCard({ basis, onRecalculate, busy }: Props) {
   return (
-    <View style={styles.card} accessibilityRole="alert">
-      <View style={styles.top}>
-        <View style={styles.badge}>
-          <Icon name="clock" size={22} color={colors.text.icon} />
-        </View>
-        <View style={styles.texts}>
-          <Text style={[typography.bodyBold, styles.title]}>이동 시간을 새로 구하지 못했어요</Text>
-          <Text style={[typography.caption, styles.body]}>지난번 계산 기준이에요</Text>
-          {basis ? (
-            <View style={styles.basis}>
-              <Icon name="clock" size={14} color={colors.text.icon} />
-              <Text style={[typography.caption, styles.body]}>{basis}</Text>
-            </View>
-          ) : null}
-        </View>
+    <View style={styles.card}>
+      <View
+        style={styles.badge}
+        accessible
+        accessibilityRole="alert"
+        accessibilityLabel={`이동 시간을 새로 구하지 못했어요${basis ? `. ${basis}` : ''}`}
+      >
+        <Icon name="clock" size={22} color={colors.text.icon} />
       </View>
       <View style={styles.actionRow}>
         <Pressable
@@ -53,12 +49,13 @@ export function RouteFailCard({ basis, onRecalculate, busy }: Props) {
 
 const styles = StyleSheet.create({
   card: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: colors.surface.default,
     borderRadius: radius.xl,
-    padding: spacing[18],
+    padding: spacing[14],
     gap: spacing[10],
   },
-  top: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing[14] },
   badge: {
     width: 44,
     height: 44,
@@ -67,11 +64,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  texts: { flex: 1, gap: spacing[2] },
-  title: { color: colors.text.default },
-  body: { color: colors.text.icon },
-  basis: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
-  actionRow: { flexDirection: 'row', justifyContent: 'flex-end' },
+  actionRow: { flex: 1, flexDirection: 'row', justifyContent: 'flex-end' },
   action: {
     flexDirection: 'row',
     alignItems: 'center',
