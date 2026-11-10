@@ -86,7 +86,10 @@ export function toDraft(itinerary: Itinerary, days: number | null): CourseDraft 
   return { baseVersion: itinerary.version, days: result, modes, legs };
 }
 
-/** 자동 추천 결과 → 초안. 저장된 항목이 아니므로 id 없이 새 key를 붙인다 */
+/**
+ * 자동 추천 결과 → 초안. 기존 코스에 있던 항목은 그 id를 이어 쓰고 새 항목은 새 key를 붙인다.
+ * AI가 준 구간 이동 시간도 함께 담아 "계산 전"이 아니라 시간을 보인다. 수단을 바꾸면 dayLegs가 버린다
+ */
 export function proposalToDraft(
   content: CourseContent,
   baseVersion: number,
@@ -99,8 +102,8 @@ export function proposalToDraft(
   const sorted = [...content.items].sort((a, b) => a.day - b.day || a.order - b.order);
   for (const i of sorted) {
     const d: DraftItem = {
-      key: makeKey(),
-      id: null,
+      key: i.id ?? makeKey(),
+      id: i.id ?? null,
       place: i.place,
       startTime: i.startTime,
       stayMinutes: i.stayMinutes,
@@ -109,12 +112,27 @@ export function proposalToDraft(
     byPos.set(`${i.day}:${i.order}`, d);
   }
   const modes: Record<string, TransportMode> = {};
+  const legs: Record<string, RouteLeg> = {};
   for (const l of content.legs) {
     const from = byPos.get(`${l.day}:${l.fromOrder}`);
     const to = byPos.get(`${l.day}:${l.toOrder}`);
-    if (from && to) modes[legKey(from, to)] = l.transportMode;
+    if (!from || !to) continue;
+    const key = legKey(from, to);
+    modes[key] = l.transportMode;
+    if (l.status) {
+      legs[key] = {
+        fromItemId: from.key,
+        toItemId: to.key,
+        transportMode: l.transportMode,
+        durationSeconds: l.durationSeconds ?? null,
+        distanceMeters: l.distanceMeters ?? null,
+        geometry: l.geometry ?? null,
+        status: l.status,
+        queriedAt: l.queriedAt ?? '',
+      };
+    }
   }
-  return { baseVersion, days: result, modes, legs: {} };
+  return { baseVersion, days: result, modes, legs };
 }
 
 /** 빈 초안. 직접 만들기의 시작 */

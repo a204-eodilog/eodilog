@@ -4,6 +4,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Button, Icon } from '@/components/ui';
 import { colors, radius, spacing, typography } from '@/theme';
 
+import type { AutoFailure } from '../hooks/use-auto-course';
+
 import { CheckLine } from './setup-views';
 
 /** 보이는 단계를 넘기는 시각(ms). 서버가 단계를 알려 주지 않아 흐른 시간으로 보인다 */
@@ -37,6 +39,26 @@ export function AutoLoadingView({ savedCount }: { savedCount: number }) {
   );
 }
 
+const FAIL_TITLE: Record<AutoFailure, string> = {
+  noDates: '여행 기간이 없어요',
+  noPlaces: '모은 장소가 없어요',
+  tooMany: '모은 장소가 너무 많아요',
+  conflict: '코스를 만들지 못했어요',
+  revoked: '추천을 받을 수 없어요',
+  failed: '코스를 만들지 못했어요',
+};
+
+const FAIL_BODY: Partial<Record<AutoFailure, string>> = {
+  noDates: '날짜를 먼저 정해 주세요. 직접 만들 수도 있어요',
+  noPlaces: '그룹 즐겨찾기에 장소를 모은 뒤 추천받거나 직접 만들어 보세요',
+  tooMany: '200곳까지 추천할 수 있어요. 직접 만들어 보세요',
+  conflict: '그 사이 동행이 코스를 바꿨어요. 다시 시도하면 바뀐 코스로 짜요',
+  revoked: '이 여행에서 나가 코스를 추천받을 수 없어요',
+};
+
+/** 다시 해도 같은 실패. 다시 시도를 두지 않는다 */
+const FINAL: ReadonlySet<AutoFailure> = new Set(['noDates', 'noPlaces', 'tooMany', 'revoked']);
+
 /** S23 자동 추천 실패(Figma 201-12684) */
 export function AutoFailView({
   onRetry,
@@ -49,8 +71,11 @@ export function AutoFailView({
   onManual(): void;
   /** 다시 시도 요청을 보내는 중. 화면은 그대로 두고 버튼만 도는 표시 */
   retrying?: boolean;
-  /** noPlaces면 다시 해도 같으므로 다시 시도 없이 까닭을 알린다. conflict면 최신 코스로 다시 짠다고 알린다 */
-  reason?: 'noPlaces' | 'conflict' | 'failed';
+  /**
+   * 실패 까닭. noDates·noPlaces·tooMany·revoked는 다시 해도 같아 다시 시도 없이 까닭을 알린다.
+   * conflict면 최신 코스로 다시 짠다고 알린다
+   */
+  reason?: AutoFailure;
   /** 초안의 재추천이 실패했으면 직접 만들기 대신 고치던 코스로 돌아간다 */
   backToDraft?: boolean;
 }) {
@@ -59,19 +84,14 @@ export function AutoFailView({
       <View style={styles.badge}>
         <Icon name="alert" size={28} color={colors.text.icon} />
       </View>
-      <Text style={[typography.title1, styles.title]}>
-        {reason === 'noPlaces' ? '모은 장소가 없어요' : '코스를 만들지 못했어요'}
-      </Text>
+      <Text style={[typography.title1, styles.title]}>{FAIL_TITLE[reason]}</Text>
       <Text style={[typography.body, styles.body]}>
-        {reason === 'noPlaces'
-          ? '그룹 즐겨찾기에 장소를 모은 뒤 추천받거나 직접 만들어 보세요'
-          : reason === 'conflict'
-            ? '그 사이 동행이 코스를 바꿨어요. 다시 시도하면 바뀐 코스로 짜요'
-            : backToDraft
-              ? '다시 시도하거나 고치던 코스로 돌아가요'
-              : '다시 시도하거나 직접 만들어 보세요'}
+        {FAIL_BODY[reason] ??
+          (backToDraft
+            ? '다시 시도하거나 고치던 코스로 돌아가요'
+            : '다시 시도하거나 직접 만들어 보세요')}
       </Text>
-      {reason === 'noPlaces' ? null : (
+      {FINAL.has(reason) ? null : (
         <Button
           label="다시 시도"
           size="lg"
