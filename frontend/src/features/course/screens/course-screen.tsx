@@ -168,7 +168,8 @@ export function CourseScreen() {
     }));
 
   const data = itinerary.data;
-  const empty = data !== undefined && data.items.length === 0;
+  // 화면을 열 때 다시 받는 중이면 받아 둔 옛 코스로 빈 코스라고 정하지 않는다. 그 사이 동행이 만들었을 수 있다
+  const empty = data !== undefined && data.items.length === 0 && !itinerary.isFetching;
   useEffect(() => {
     // 빈 코스면 코스 짜기로 바꿔 연다. 저장하면 S17이 아니라 S24로 돌아오도록 entry를 붙인다
     if (empty)

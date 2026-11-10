@@ -88,6 +88,8 @@ export type DraftViewProps = {
   onRemove(): void;
   onRecalculate(): void;
   onRedo(): void;
+  /** 재추천 요청을 보내는 중. 다시 누를 수 없다 */
+  redoBusy?: boolean;
   onDone(): void;
   saving: boolean;
   /** 일차 탭 아래 날짜별 지역 줄 같은 덧붙임 */
@@ -174,8 +176,10 @@ export function DraftView(props: DraftViewProps) {
       </ScrollView>
       <View style={[styles.bottom, { paddingBottom: Math.max(insets.bottom, spacing[16]) }]}>
         <Pressable
-          style={[styles.pill, styles.redo]}
+          style={[styles.pill, styles.redo, props.redoBusy && styles.busy]}
           onPress={props.onRedo}
+          disabled={props.redoBusy}
+          accessibilityState={{ disabled: props.redoBusy, busy: props.redoBusy }}
           accessibilityRole="button"
         >
           <Icon name="refresh" size={18} color={colors.text.default} />
@@ -465,7 +469,10 @@ export function CourseEditScreen() {
    * 서버가 요청을 받기 전까지는 지금 화면을 두고 누른 버튼만 돌게 한다. 바로 실패하면 생성 중 화면 없이 실패 화면
    */
   const runAuto = async () => {
-    const base = itinerary.data;
+    // 같은 순간 두 번 눌렀으면 두 번째는 아무것도 하지 않는다(실패 화면으로 바꾸지 않는다)
+    if (auto.isBusy()) return;
+    // 그 사이 코스가 바뀌어 실패했으면 최신 코스 version으로 다시 짠다
+    const base = auto.failure === 'conflict' ? (await itinerary.refetch()).data : itinerary.data;
     if (!base) return;
     // 초안에서 재추천했으면 실패했을 때 그 초안으로 돌아갈 수 있게 기억한다. 실패 화면의 다시 시도는 그대로 둔다
     if (mode !== 'auto') setAutoFromDraft(mode === 'draft' && draft !== null);
@@ -575,6 +582,7 @@ export function CourseEditScreen() {
           onAuto={() => void runAuto()}
           onManual={startManual}
           autoBusy={auto.status === 'requesting'}
+          autoUnavailable={saved.isSuccess && saved.data.length === 0}
         />
       );
     }
@@ -586,6 +594,7 @@ export function CourseEditScreen() {
           onManual={autoFromDraft ? () => setMode('draft') : startManual}
           backToDraft={autoFromDraft}
           retrying={auto.status === 'requesting'}
+          reason={auto.failure ?? 'failed'}
         />
       ) : (
         <AutoLoadingView savedCount={saved.data?.length ?? 0} />
@@ -653,6 +662,7 @@ export function CourseEditScreen() {
           void recalc.start(itinerary.data.version);
         }}
         onRedo={() => void runAuto()}
+        redoBusy={auto.status === 'requesting'}
         onDone={() => void done()}
         saving={saver.saving}
       />
