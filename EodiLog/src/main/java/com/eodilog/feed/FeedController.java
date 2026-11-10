@@ -4,6 +4,7 @@ import com.eodilog.feed.FeedDtos.*;
 import com.eodilog.feed.FeedRequests.*;
 import com.eodilog.global.common.response.*;
 import com.eodilog.global.security.AuthUser;
+import com.eodilog.job.JobRef;
 import com.eodilog.trip.controller.CurrentUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -61,6 +62,18 @@ public class FeedController {
     public ResponseEntity<Void> delete(@Parameter(hidden=true) @AuthenticationPrincipal AuthUser user,@PathVariable UUID feedId,@RequestParam @Min(1) long expectedVersion) {
         service.delete(CurrentUser.requireUserId(user),feedId,expectedVersion);
         return ResponseEntity.noContent().build();
+    }
+    @PostMapping("/feeds/{feedId}/delete-own-records")
+    @Operation(summary="공동 피드 내리기와 내 기록 삭제",description="""
+            현재 게시된 피드 여행의 ACTIVE 멤버 본인만 요청한다. expectedVersion이 다르면 409이고 아무것도 바꾸지 않는다.
+            접수 즉시 피드를 일반 삭제와 같이 내리고 동행에게 알린 뒤, 요청 시점의 본인 사진·방문·평가를 숨기고 ID로 고정해 정리 작업을 등록한다.
+            작업은 고정한 본인 기록만 지운다(평가 → 방문 → 사진·파일). 동행의 기록, 공동 경비·정산, 여행과 멤버십은 유지하며 여행 나가기·여행 삭제가 아니다.
+            접수 뒤 새로 만든 기록과 새로 게시한 피드는 건드리지 않고, 이후 여행을 나가도 고정한 범위는 끝까지 지운다.
+            진행은 GET /api/v1/jobs/{jobId}로 요청자만 조회한다. 피드가 내려간 뒤 다시 요청하면 현재 피드가 아니므로 404 FEED_NOT_FOUND다.
+            없는 피드·비멤버·이탈 멤버도 같은 404 FEED_NOT_FOUND다. Idempotency-Key는 받지 않는다.""")
+    @ApiResponse(responseCode="202",description="접수됨. 정리 작업 참조") @ApiResponse(responseCode="409",description="VERSION_CONFLICT: 피드 버전이 다름")
+    public ResponseEntity<DataResponse<JobRef>> deleteOwnRecords(@Parameter(hidden=true) @AuthenticationPrincipal AuthUser user,@PathVariable UUID feedId,@Valid @RequestBody OwnRecordsDelete request) {
+        return ResponseEntity.accepted().body(DataResponse.of(service.deleteOwnRecords(CurrentUser.requireUserId(user),feedId,request.expectedVersion())));
     }
     @PutMapping("/feeds/{feedId}/visibility/me")
     @Operation(summary="본인 피드 노출 설정 교체",description="현재 ACTIVE 멤버의 본인 경로 숨길 회원 목록만 전체 교체한다. 독립 설정 expectedVersion을 검사하며 직접 피드·파일 링크는 막지 않는다.")

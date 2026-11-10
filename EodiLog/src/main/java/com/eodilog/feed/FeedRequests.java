@@ -14,6 +14,9 @@ public final class FeedRequests {
     public record VisibilityWrite(
         @NotNull @Schema(description="본인 경로에서 숨길 회원 전체 목록", requiredMode=Schema.RequiredMode.REQUIRED) List<@NotNull UUID> hiddenViewerUserIds,
         @NotNull @Min(1) @Schema(description="조회한 개인 설정 버전", example="1", requiredMode=Schema.RequiredMode.REQUIRED) Long expectedVersion) { }
+    @Schema(description="공동 피드 내리기와 내 기록 삭제 요청")
+    public record OwnRecordsDelete(
+        @NotNull @Min(1) @Schema(description="조회한 공동 피드 버전", example="1", requiredMode=Schema.RequiredMode.REQUIRED) Long expectedVersion) { }
     public static class FeedPatch {
         @NotNull @Min(1) @Schema(description="조회한 공동 피드 버전", example="1", requiredMode=Schema.RequiredMode.REQUIRED) private Long expectedVersion;
         @Schema(description="변경할 제목. 생략하면 유지") private String title;

@@ -5,15 +5,21 @@ import com.eodilog.feed.FeedRequests.*;
 import com.eodilog.global.common.error.*;
 import com.eodilog.global.common.response.*;
 import com.eodilog.global.id.UuidV7;
+import com.eodilog.job.*;
 import com.eodilog.notification.NotificationEventRegistrar;
+import com.eodilog.trip.exception.TripErrorCode;
+import com.eodilog.trip.service.TripAccess;
 import com.eodilog.trip.service.TripAccessChecker;
+import java.sql.Timestamp;
 import java.time.Clock;
+import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.*;
+import tools.jackson.databind.json.JsonMapper;
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +30,8 @@ public class FeedService {
     private final NotificationEventRegistrar events;
     private final JdbcTemplate jdbc;
     private final Clock clock;
+    private final JobService jobs;
+    private final JsonMapper json;
     public record Publication(OwnFeed feed,boolean created) { }
 
     @Transactional(readOnly=true,isolation=Isolation.REPEATABLE_READ)
@@ -67,13 +75,63 @@ public class FeedService {
     public void delete(UUID user,UUID id,long expectedVersion) {
         var row=managed(user,id);
         version(row.version(),expectedVersion);
-        repository.delete(row,clock.instant());
+        takeDown(user,row,clock.instant());
+    }
+    /**
+     * Same trip-first lock order as delete. Any non-current feed or non-ACTIVE requester is FEED_NOT_FOUND, so a repeat
+     * after the tombstone is 404. Tombstones the feed (with the deletion notice) and the requester's own photos (asset
+     * DELETING, like the photo delete API) and visits, then freezes those IDs and their reviews into one cleanup job.
+     */
+    @Transactional
+    public JobRef deleteOwnRecords(UUID user,UUID id,long expectedVersion) {
+        var observed=repository.require(id);
+        TripAccess tripAccess;
+        try { tripAccess=access.requireActiveMemberForUpdate(observed.tripId(),user); }
+        catch(BusinessException e) {
+            if(e.getErrorCode()==TripErrorCode.TRIP_NOT_FOUND) throw new BusinessException(FeedErrorCode.FEED_NOT_FOUND);
+            throw e;
+        }
+        var row=repository.require(id);
+        version(row.version(),expectedVersion);
+        var now=clock.instant();
+        takeDown(user,row,now);
+        UUID trip=row.tripId(), member=tripAccess.member().getId();
+        record OwnPhoto(UUID id,UUID asset) { }
+        var photos=jdbc.query("select id,asset_id from photos where trip_id=? and uploader_member_id=? and deleted_at is null order by id for update",
+                (rs,n)->new OwnPhoto(rs.getObject(1,UUID.class),rs.getObject(2,UUID.class)),trip,member);
+        var visits=jdbc.query("select id from visits where trip_id=? and member_id=? and deleted_at is null order by id for update",
+                (rs,n)->rs.getObject(1,UUID.class),trip,member);
+        var reviews=jdbc.query("select r.id from reviews r join visits v on v.id=r.visit_id where v.trip_id=? and v.member_id=? and v.deleted_at is null order by r.id",
+                (rs,n)->rs.getObject(1,UUID.class),trip,member);
+        var at=Timestamp.from(now);
+        tombstone("update photos set deleted_at=?,version=version+1 where id=any(?)",at,photos.stream().map(OwnPhoto::id).toList());
+        tombstone("update assets set status='DELETING',deleted_at=? where id=any(?)",at,photos.stream().map(OwnPhoto::asset).toList());
+        tombstone("update visits set deleted_at=? where id=any(?)",at,visits);
+        var input=json.createObjectNode().put("feedId",id.toString());
+        var assetIds=input.putArray("assetIds"); var visitIds=input.putArray("visitIds"); var reviewIds=input.putArray("reviewIds");
+        photos.forEach(p->assetIds.add(p.asset().toString()));
+        visits.forEach(v->visitIds.add(v.toString()));
+        reviews.forEach(r->reviewIds.add(r.toString()));
+        return jobs.submit(new JobSubmission(user,JobKind.OWN_RECORDS_DELETE,trip,input,null,
+                new CleanupScope(photos.stream().map(OwnPhoto::id).toList(),List.of(),now)));
+    }
+    private void tombstone(String sql,Timestamp at,List<UUID> ids) {
+        if(ids.isEmpty()) return;
+        jdbc.update(con->{
+            var statement=con.prepareStatement(sql);
+            statement.setTimestamp(1,at);
+            statement.setArray(2,con.createArrayOf("uuid",ids.toArray()));
+            return statement;
+        });
+    }
+    private void takeDown(UUID user,FeedRepository.Row row,Instant now) {
+        repository.delete(row,now);
         var recipients=jdbc.query("""
                 select m.user_id from trip_members m left join user_settings s on s.user_id=m.user_id
                 where m.trip_id=? and m.status='ACTIVE' and m.user_id<>? and coalesce(s.trip_changes_enabled,true)
                 """,(rs,n)->rs.getObject(1,UUID.class),row.tripId(),user);
         events.register(new NotificationEventRegistrar.EventCommand("FEED_DELETED",row.tripId(),user,"TRIP",row.tripId(),
-                "공동 피드가 삭제되었습니다.","FEED_DELETED:"+id),recipients);
+                "공동 피드가 삭제되었습니다.","FEED_DELETED:"+row.id()),recipients);
     }
     @Transactional
     public FeedVisibility visibility(UUID user,UUID id,VisibilityWrite request) {
