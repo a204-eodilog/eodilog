@@ -2,7 +2,8 @@ import { router, useLocalSearchParams, type Href } from 'expo-router';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
-import { AvatarGroup, Button, Header, toast } from '@/components/ui';
+import { errorLook } from '@/api/error-look';
+import { AvatarGroup, Button, Header, Icon, toast } from '@/components/ui';
 import { dayCount, dayLegs, toDraft } from '@/features/course/course-rules';
 import { useItinerary } from '@/features/course/hooks/use-itinerary';
 import { useTrip } from '@/features/trip/hooks/use-trip';
@@ -29,6 +30,8 @@ export type ProposalViewProps = {
   compare?: ReactNode;
   onRetry(): void;
   onCourse(): void;
+  /** 지금 코스를 받지 못한 원인. 아이콘과 짧은 제목을 고른다 */
+  error?: unknown;
   /** 장소 빼기를 서버가 아직 받지 않을 때 코스 편집으로 */
   onEdit?(): void;
 };
@@ -47,12 +50,7 @@ export function ProposalView(props: ProposalViewProps) {
     body = <ProposalFail onRetry={props.onRetry} onCourse={props.onCourse} />;
   } else if (props.state === 'courseFailed') {
     body = (
-      <ProposalFail
-        onRetry={props.onRetry}
-        onCourse={props.onCourse}
-        title="지금 코스를 불러오지 못했어요"
-        body="비교하려면 지금 코스가 필요해요"
-      />
+      <ProposalFail onRetry={props.onRetry} onCourse={props.onCourse} {...errorLook(props.error)} />
     );
   } else if (props.state === 'unsupported') {
     body = (
@@ -81,10 +79,15 @@ export function ConflictNotice(props: {
   onCourse(): void;
 }) {
   return (
-    <View style={styles.notice} accessibilityRole="alert">
-      <Text style={[typography.bodyMedium, styles.noticeText]}>
-        그 사이 코스가 바뀌어 적용하지 못했어요
-      </Text>
+    <View style={styles.notice}>
+      <View
+        style={styles.noticeIcon}
+        accessible
+        accessibilityRole="alert"
+        accessibilityLabel="그 사이 코스가 바뀌어 적용하지 못했어요"
+      >
+        <Icon name="people" size={20} color={colors.status.danger} />
+      </View>
       <Button
         size="sm"
         variant="secondary"
@@ -206,6 +209,7 @@ export function ProposalScreen() {
       tripTitle={trip.data?.title}
       people={people}
       state={state}
+      error={itinerary.error}
       compare={compare}
       onRetry={() => {
         if (courseFailed) void itinerary.refetch();
@@ -230,5 +234,5 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     backgroundColor: colors.status.dangerBg,
   },
-  noticeText: { flex: 1, color: colors.status.danger },
+  noticeIcon: { flex: 1 },
 });

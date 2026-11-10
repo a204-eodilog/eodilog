@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Button, Icon } from '@/components/ui';
+import { Button, Icon, type IconName } from '@/components/ui';
 import { colors, radius, spacing, typography } from '@/theme';
 
 /**
@@ -14,9 +14,6 @@ export function ProposalUnsupported({ onEdit, onCourse }: { onEdit(): void; onCo
         <Icon name="info" size={28} color={colors.text.icon} />
       </View>
       <Text style={[typography.title2, styles.title]}>아직 AI로 장소를 뺄 수 없어요</Text>
-      <Text style={[typography.body, styles.body]}>
-        {'코스 편집에서 직접 뺄 수 있어요\n지금 코스는 그대로예요'}
-      </Text>
       <Button
         label="코스 편집"
         weight="medium"
@@ -34,27 +31,26 @@ export function ProposalUnsupported({ onEdit, onCourse }: { onEdit(): void; onCo
 
 /**
  * S29 재계산 실패(Figma 201-16329). 변경안 작업이 실패하거나 4분을 넘겼다.
- * 지금 코스는 그대로라고 알리고 [다시 시도], [코스 보기].
+ * 설명 없이 아이콘과 짧은 제목, [다시 시도], [코스 보기].
  */
 export function ProposalFail({
   onRetry,
   onCourse,
   title = '동선을 다시 짜지 못했어요',
-  body = '이동 시간을 구하지 못했어요\n지금 코스는 그대로예요',
+  icon = 'alert',
 }: {
   onRetry(): void;
   onCourse(): void;
   /** 지금 코스를 받지 못한 경우처럼 까닭이 다르면 바꿔 넘긴다 */
   title?: string;
-  body?: string;
+  icon?: IconName;
 }) {
   return (
     <View style={styles.center}>
       <View style={styles.badge}>
-        <Icon name="cloud-off" size={28} color={colors.text.icon} />
+        <Icon name={icon} size={28} color={colors.text.icon} />
       </View>
       <Text style={[typography.title2, styles.title]}>{title}</Text>
-      <Text style={[typography.body, styles.body]}>{body}</Text>
       <Button
         label="다시 시도"
         weight="medium"

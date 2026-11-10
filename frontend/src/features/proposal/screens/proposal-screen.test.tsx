@@ -206,9 +206,7 @@ describe('실패와 충돌', () => {
     mockParams.jobId = 'job-p';
     mockItinerary.mockRejectedValue(new Error('500'));
     await renderScreen();
-    expect(
-      await screen.findByText('지금 코스를 불러오지 못했어요', {}, { timeout: 5000 }),
-    ).toBeTruthy();
+    expect(await screen.findByText('불러오지 못했어요', {}, { timeout: 5000 })).toBeTruthy();
     mockItinerary.mockResolvedValue(sampleCourse(true));
     await fireEvent.press(screen.getByText('다시 시도'));
     expect(await screen.findByText('적용')).toBeTruthy();
@@ -233,7 +231,7 @@ describe('실패와 충돌', () => {
     mockApply.mockRejectedValueOnce(httpError(409, 'VERSION_CONFLICT'));
     await renderScreen();
     await fireEvent.press(await screen.findByText('적용'));
-    expect(await screen.findByText('그 사이 코스가 바뀌어 적용하지 못했어요')).toBeTruthy();
+    expect(await screen.findByLabelText('그 사이 코스가 바뀌어 적용하지 못했어요')).toBeTruthy();
     await fireEvent.press(screen.getByText('다시 만들기'));
     await waitFor(() => expect(mockRemove).toHaveBeenCalledTimes(2));
   });
