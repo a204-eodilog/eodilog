@@ -1,4 +1,4 @@
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 
 import { toApiError } from '@/api/errors';
 
@@ -18,6 +18,8 @@ export function useGroupFavorites(tripId: string, query: ListQuery) {
     initialPageParam: null as string | null,
     getNextPageParam: (last) => (last.page.hasNext ? last.page.nextCursor : null),
     refetchOnMount: 'always',
+    // 필터를 바꿔 새로 받는 동안 이전 목록과 필터 줄을 그대로 둔다. 비우면 화면이 통째로 받는 중으로 바뀐다
+    placeholderData: keepPreviousData,
     retry: (count, e) => {
       const { status } = toApiError(e);
       return status !== 404 && status !== 400 && count < 1;

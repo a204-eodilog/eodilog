@@ -159,6 +159,8 @@ export function GroupFavoritesView(props: GroupFavoritesViewProps) {
   }
 
   const ready = props.status === 'ready';
+  // 필터를 바꿔 받다가 실패해도 다른 필터로 돌아갈 수 있게 필터 줄은 남긴다
+  const showFilters = ready || props.status === 'error';
   // 장소가 하나도 없으면 빈 화면이 버튼을 갖고 있어 아래 줄을 숨긴다(Figma 201-9686)
   const showBottom = ready && !(items.length === 0 && props.empty);
   return (
@@ -169,7 +171,7 @@ export function GroupFavoritesView(props: GroupFavoritesViewProps) {
         subtitleIcon="trip"
         right={<ViewToggle view={props.view} onChange={props.onToggleView} />}
       />
-      {ready ? (
+      {showFilters ? (
         <FilterBar
           filter={props.filter}
           onFilter={props.onFilter}

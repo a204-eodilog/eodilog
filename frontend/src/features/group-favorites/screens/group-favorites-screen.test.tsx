@@ -352,6 +352,21 @@ describe('담기와 빼기', () => {
     expect(toast.show).toHaveBeenCalledWith('내 저장을 뺐어요');
   });
 
+  it('필터를 바꿔 받다가 실패해도 필터 줄이 남아 전체로 돌아갈 수 있다', async () => {
+    mockList.mockImplementation(async (_tripId, query) => {
+      if (query.filter === 'OVERLAP') throw new Error('503');
+      return page(sampleSaved());
+    });
+    await renderScreen();
+    await screen.findByLabelText('해운대 해변');
+    await fireEvent.press(screen.getByText(/^겹친 곳/));
+    expect(
+      await screen.findByText('그룹 즐겨찾기를 불러오지 못했어요', {}, { timeout: 4000 }),
+    ).toBeTruthy();
+    await fireEvent.press(screen.getByText(/^전체/));
+    expect(await screen.findByLabelText('해운대 해변')).toBeTruthy();
+  });
+
   it('코스에 있는 장소를 빼면 확인을 띄우고 그래도 빼기로 뺀다', async () => {
     mockList.mockResolvedValue(
       page([saved(place('p-haeundae', '해운대 해변'), ['m-seeun', 'm-me'])]),
