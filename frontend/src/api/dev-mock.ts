@@ -11,6 +11,8 @@ import { addDays, seoulToday } from '@/lib/seoul-date';
 
 import { createChatMock } from './dev-mock-chat';
 import { createCourseMock } from './dev-mock-course';
+import { createGroupMock } from './dev-mock-group';
+import { createRecommendMock } from './dev-mock-recommend';
 import { mockMyTimeline, mockTripSummary, mockTripTimeline } from './dev-mock-timeline';
 import { createWeatherMock } from './dev-mock-weather';
 
@@ -507,6 +509,16 @@ const weatherMock = createWeatherMock({
   ok,
   fail,
 });
+/** 추천 결과 가짜 서버. 백엔드에 추천 API가 없다(Q-9-1) */
+const recommendMock = createRecommendMock({ getTrips: () => trips, ok, fail });
+/** 그룹 즐겨찾기 가짜 서버. 담는 장소는 개인 즐겨찾기나 추천 결과에서 찾는다 */
+const groupMock = createGroupMock({
+  getTrips: () => trips,
+  meId: ME.id,
+  findPlace: (id) => bookmarks.find((b) => b.place.id === id)?.place ?? recommendMock.findPlace(id),
+  ok,
+  fail,
+});
 
 /**
  * 웹 테스트 모드 콘솔에서 다른 동행의 변경을 흉내 낸다(동행 명세 research R15).
@@ -520,6 +532,10 @@ export const devMockControls = {
   course: courseMock.controls,
   /** 날씨: globalThis.__devMock.weather.failNext(), noAlternativesNext() */
   weather: weatherMock.controls,
+  /** 그룹 즐겨찾기: globalThis.__devMock.group.saveByOther('trip-1'), reset() */
+  group: groupMock.controls,
+  /** 추천: globalThis.__devMock.recommend.failNext(), insufficientNext() */
+  recommend: recommendMock.controls,
   /**
    * 다른 기기에서 내가 내보내졌거나 여행이 삭제된 것을 흉내 낸다. 그 여행과 대화방이 모두 404가 된다.
    * globalThis.__devMock.kickMe('trip-1') 뒤 S47에서 보내기·새로고침을 하면 차단 화면이 나온다(채팅 quickstart 4-1)
@@ -878,11 +894,16 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
 
   const chat = chatMock.handle(config, method, url, params);
   if (chat) return chat;
+  // 그룹 즐겨찾기 GET /trips/{id}/saved-places는 그룹 가짜 서버가 먼저 답한다. 다른 가짜 서버의 같은 주소 처리보다 앞선다
+  const group = groupMock.handle(config, method, url, params);
+  if (group) return group;
   const course = courseMock.handle(config, method, url);
   if (course) return course;
   // 코스 가짜 서버가 모르는 작업(/jobs)은 날씨 쪽으로 넘어온다
   const weatherRes = weatherMock.handle(config, method, url, params);
   if (weatherRes) return weatherRes;
+  const recommend = recommendMock.handle(config, method, url);
+  if (recommend) return recommend;
   const photo = handlePhotos(config, method, url);
   if (photo) return photo;
 

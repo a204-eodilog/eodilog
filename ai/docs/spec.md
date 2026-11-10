@@ -28,6 +28,7 @@ sources:
 | `PLACE_EXTRACTION` | `POST /ai/v1/place-extractions` | `{resultStatus, candidates}` |
 | `TRIP_RECOMMENDATION` | `POST /ai/v1/trip-recommendations` | `{items, basis, insufficientData}` |
 | `ITINERARY_PROPOSAL` | `POST /ai/v1/itinerary-proposals` | `{baseVersion, reason, proposed, diff, appliedAt, canUndo}` |
+| `ROUTE_RECALCULATION` | `POST /ai/v1/route-legs` | `{legs}` |
 | `WEATHER_ALTERNATIVES` | `POST /ai/v1/weather-alternatives` | `{alternatives, weather, baseVersion}` |
 | `CHECKLIST_SUGGESTIONS` | `POST /ai/v1/checklist-suggestions` | `{items}` |
 | `PHOTO_CLASSIFICATION` | `POST /ai/v1/photo-classifications` | `{photos}` |
@@ -260,6 +261,33 @@ sources:
 
 **검증:** T-04-1 1박 2일 5곳 → 2일 배분, 각 1회 / T-04-2 기간 없음 422 / T-04-3 구간 실패 → `null`·`UNAVAILABLE` / T-04-4 당일 8곳 → 5곳, 설명에 3곳 / T-04-5 식당 점심 / T-04-6 근거리 대중교통 없음 → 그 구간 `WALK` / T-04-7 `PLACE_REMOVED` → 제외 장소 없음·남은 순서 유지·`removedPlaceIds` / T-04-8 `WEATHER` `TIME_SHIFT` → 같은 장소 시각 이동, `PLACE_SWAP` → 장소 교체 / T-04-9 `INFO` → 422 / T-04-10 요청 `places` 밖 장소 없음
 
+### 5.1 `POST /ai/v1/route-legs` — ROUTE_RECALCULATION (S23·S24)
+
+사용자가 코스를 직접 고친 뒤, 백엔드가 바뀐 코스의 구간 이동 시간을 다시 구할 때 부른다. 코스 제안(§5)과 같은 길찾기 공급자·규칙을 쓴다. 백엔드가 이 방식에 동의했다(2026-11-10, AS-18).
+
+**요청**
+
+```json
+{
+  "legs": [{
+    "day": 1, "fromOrder": 1, "toOrder": 2, "transportMode": "TRANSIT",
+    "from": { "latitude": 35.1587, "longitude": 129.1604 },
+    "to": { "latitude": 35.0966, "longitude": 129.0306 }
+  }]
+}
+```
+
+**응답 `data`**: `{ "legs": [{ "day": 1, "fromOrder": 1, "toOrder": 2, "transportMode": "TRANSIT", "durationSeconds": 1320, "distanceMeters": 18870, "status": "AVAILABLE", "queriedAt": "2026-11-10T04:49:09Z" }] }`
+
+- 응답은 요청과 같은 순서이고 `day`·`fromOrder`·`toOrder`를 그대로 돌려준다.
+- `distanceMeters`는 공급자가 준 실제 거리(비음수 정수)이고, 없거나 읽을 수 없으면 `null`이다. 거리가 없어도 이동 시간은 `AVAILABLE`로 돌려준다. 지도선(`geometry`)은 주지 않는다.
+- 못 구한 구간은 `durationSeconds: null`, `status: UNAVAILABLE`이다. 0초나 직선거리로 채우지 않는다. 호출 한도를 넘어도 응답은 200이고 해당 구간만 `UNAVAILABLE`이다.
+- 근거리(1km 이내) 대중교통 경로가 없으면 그 구간은 `WALK`로 구해 `transportMode: WALK`로 돌려준다. 백엔드는 응답의 수단을 저장해야 한다.
+- 구간은 동시에 부르고 `queriedAt`은 요청마다 한 번 정한다. 카카오 키가 없으면 호출 없이 모든 구간이 `UNAVAILABLE`이다.
+- 구간은 최대 200개다. 넘으면 400 `VALIDATION_ERROR`다. 알 수 없는 수단, 범위 밖 좌표, 0 이하의 `fromOrder`도 400이다. 빈 목록은 빈 목록으로 답한다.
+
+**검증:** T-04-11 구간별 시간·위치 유지 / T-04-12 한 구간 실패 → 그 구간만 `UNAVAILABLE` / T-04-13 근거리 대중교통 없음 → `WALK` / T-04-14 키 없음 → 호출 없이 전부 `UNAVAILABLE` / T-04-15 `queriedAt` 하나 / T-04-16 200개 초과 400 / T-04-17 `distanceMeters`는 공급자 값, 없으면 `null`
+
 ## 6. `POST /ai/v1/weather-alternatives` — WEATHER_ALTERNATIVES (S26)
 
 **요청**
@@ -374,6 +402,8 @@ sources:
 
 ### 9.1 `POST /ai/v1/discovery-recommendations` — 좋아요한 여행과 비슷해요 (S05·N7)
 
+백엔드 연결 예정(2026-11-10 회신). 좋아요 이력이 없거나 AI 호출이 실패하면 백엔드가 인기·최근 기록 추천으로 대체한다.
+
 **요청**: `{ "liked": [{"type": "FEED|PLACE", "id": "uuid", "regionName": "강원 강릉", "tags": [], "placeCategories": []}], "candidates": [같은 모양], "limit": 10 }`
 
 **응답 `data`**: `{ "items": [{ "type": "PLACE", "feedId": null, "placeId": "uuid", "reason": "좋아요한 여행과 비슷해요" }] }` → 백엔드가 `DiscoveryItem`(`feed`/`place` 객체)으로 채운다.
@@ -382,6 +412,8 @@ sources:
 - 좋아요 전체의 태그·시·도(`regionName` 첫 단어)·분류와 비교한다. 태그는 겹친 수만큼, 분류는 하나라도 겹치면 1점. 이미 좋아요한 항목과 0점 후보는 뺀다. 동점은 입력 순서.
 
 ### 9.2 `POST /ai/v1/follow-suggestions` — 친구 추천 (S44)
+
+현재 백엔드 미사용. 친구 추천은 백엔드 자체 규칙을 쓴다(2026-11-10 회신). API는 유지한다.
 
 **요청**: `{ "userId": "uuid", "myPublicTastes": [], "candidates": [{"userId": "uuid", "publicTastes": [], "publicTripCount": 0}], "limit": 10 }` — 팔로우 중·숨김(`suggestion_dismissals`)·차단은 백엔드가 뺀다.
 
@@ -396,7 +428,7 @@ sources:
 | --- | --- | --- |
 | GMS `gpt-5.6-luna` | 장소 언급·캡처 읽기, 추천 문장, 준비물 추가 | 추출 503, 나머지는 규칙 결과 |
 | 네이버 지역 검색(NAVER API HUB) | 장소 추출의 장소 검색 | `place: null` |
-| 카카오 길찾기(자동차·도보·대중교통) | 코스 변경안의 구간 시간, 날씨 대안 이동 시간 | 구간 `UNAVAILABLE` |
+| 카카오 길찾기(자동차·도보·대중교통) | 코스 변경안의 구간 시간, 날씨 대안 이동 시간, 직접 편집 뒤 구간 재계산 | 구간 `UNAVAILABLE` |
 | SigLIP2 `ViT-B-32-SigLIP2-256`, `webli` 가중치 (로컬) | 사진 분류·묶음 | 503 |
 
 ## 11. 백엔드에 요청할 것
@@ -435,7 +467,8 @@ sources:
 | AS-14 | 준비물: 걷는 장소는 분류·이름에 공원·둘레길·산책·해변·해수욕장·해안·마을·시장·관광·명소가 있는 곳, 바다는 해수욕장·해변·해안. 시각을 모르는 날은 8시간 판단에서 뺀다. LLM에는 기간·날씨·장소 이름과 분류, 규칙 제안, 기존·삭제 항목 이름(각 최대 50개)을 보내고, 그 항목과 같은 뜻의 물건은 제안하지 말라고 지시한다. 같은 이름만 거르면 `선크림`을 지워도 `자외선 차단제`가 다시 나와서다(실제 GMS 평가 2/2회). 보내는 것은 준비물 이름뿐이라 이미 보내던 장소 이름과 같은 종류의 자료이고, 주소·좌표·ID는 보내지 않는다. 응답은 같음·포함 비교와 §7의 작은 동의어 묶음으로 다시 거른다. 시간별 비 예보의 오전·오후는 한국 시각 |
 | AS-15 | 날씨 대안(§6): 대상은 `dayItems`에서 `place.id`가 `placeId`인 일정(여럿이면 `order`가 가장 앞선 것), 없으면 422 `INSUFFICIENT_DATA`(`fields`에 `placeId`). 시작 시각이 없거나 실내·실외를 모르면 `[]`. 비 판단은 시작 시각만이 아니라 머무는 동안(`stayMinutes`, 없으면 60분)과 겹치는 시간을 본다. 시간별 예보는 한국 시각으로 바꿔 그날 것만 쓰고, 예보가 없거나 확률이 `null`인 시간은 마른 시간으로 보지 않는다. `TIME_SHIFT`는 원래 시각보다 뒤이고 머무는 동안이 모두 마르고 다른 일정(시작 시각 있는 것만)과 겹치지 않으며 21:00 안에 끝나는 첫 시각. 실내 판단은 §1.1 그대로다(실내 시설 낱말이 `명소`보다 앞서므로 `여행,명소>아쿠아리움` 같은 실내 수족관도 `PLACE_SWAP` 후보가 된다). `PLACE_SWAP` 후보는 실내·`CLOSED` 아님·그날 코스에 없는 장소, 직선거리 가까운 순 3곳. 직선 1.2km 이내는 도보, 그보다 멀면 `defaultTransportMode`로 이동 시간을 구하고, 못 구하면 대안은 두고 `reason`에 "이동 시간 확인 못 함". 영업 문구는 `OPEN`이면 "영업 중(HH:MM 확인)"(한국 시각), 그 외 "영업 정보 없음". `INFO`는 `TIME_SHIFT`와 `PLACE_SWAP`이 모두 없을 때 하나 |
 | AS-16 | 코스(§5): LLM 없이 규칙으로 짠다. 넘치는 장소는 받은 순서의 뒤쪽부터 뺀다. 방문 순서는 식사 시각과의 차이, 그다음 직선 이동 거리가 가장 작은 순서다. 앞 일정이 늦게 끝나면 식사는 도착 시각에 시작한다. 21:00 안에 끝나지 않는 일정은 넣지 못한 장소로 센다. 지역을 모르는 장소는 가장 가까운 지역 묶음에 넣고, 여행지가 일수보다 많으면 뒤쪽 여행지를 마지막 날에 합친다. `INITIAL`은 `current`에 같은 장소가 있으면 그 `id`를 쓴다. `PLACE_REMOVED`는 장소가 빠진 날만 그날 남은 첫 일정의 시각부터 다시 잇고, 식당은 원래 시각에 가까운 끼니를 지킨다. `TIME_SHIFT`는 시각순으로 순서를 다시 매기고 다른 일정의 시각은 두며, `PLACE_SWAP`은 새 항목(`id: null`)으로 같은 시작 시각에 넣고 겹치는 뒤 일정만 늦춘다. `current`·`excludedPlaceIds`·`selectedAlternative`와 그 안의 값이 없으면 422 `INSUFFICIENT_DATA` |
-| AS-17 | 방문 후보(§8.2): 300m는 S45 기준 합의 전 잠정값이다(경계 포함). 촬영 시각이 없는 사진은 쓰지 않는다. 날짜는 한국 시간으로 판단하고, 시간대 없는 값은 한국 시각으로 본다. `evidencePhotoIds`와 후보 순서는 촬영 시각 순이다. 같은 장소가 여러 날에 있어도 업로더·장소별 후보는 하나다 |
+| AS-17 | 방문 후보(§8.2): 반경 300m는 백엔드와 확정했다(2026-11-10, 경계 포함). 촬영 시각이 없는 사진은 쓰지 않는다. 날짜는 한국 시간으로 판단하고, 시간대 없는 값은 한국 시각으로 본다. `evidencePhotoIds`와 후보 순서는 촬영 시각 순이다. 같은 장소가 여러 날에 있어도 업로더·장소별 후보는 하나다 |
+| AS-18 | 구간 재계산(§5.1): 코스 직접 편집 뒤 시간은 AI 서버가 한 곳에서 구한다(백엔드 `ROUTE_RECALCULATION`이 이 엔드포인트를 부른다). 백엔드가 2026-11-10 이 방식에 동의했다. 한 번에 구간 최대 200개를 동시에 부르며 카카오 호출 한도에 걸린 구간은 `UNAVAILABLE`이다 |
 
 ## 13. 변경 이력
 

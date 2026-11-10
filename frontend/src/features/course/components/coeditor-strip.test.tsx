@@ -3,6 +3,11 @@ import { render, screen } from '@testing-library/react-native';
 
 import { CoeditorStrip, coeditorLabel } from './coeditor-strip';
 
+// 얼굴 부품이 사진 주소를 만들려고 세션과 환경 변수를 불러온다. 테스트에는 .env가 없다
+jest.mock('@/config/env', () => ({
+  env: { appEnv: 'local', apiBaseUrl: 'http://test', kakaoRedirectUri: null, devMock: false },
+}));
+
 // 공통 부품 입구는 아래 시트 라이브러리까지 불러 테스트에서 쓰는 두 개만 꺼낸다
 jest.mock('@/components/ui', () => ({
   Avatar:
