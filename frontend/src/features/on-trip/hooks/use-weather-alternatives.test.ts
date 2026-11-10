@@ -67,11 +67,11 @@ it('날씨 대안 작업이 끝나면 결과를 두고, 고른 대안으로 변�
     await jest.advanceTimersByTimeAsync(0);
   });
   expect(result.current.phase).toBe('running');
-  expect(mockRequest).toHaveBeenCalledWith('trip-1', {
-    date: '2026-11-14',
-    placeId: 'p-haeundae',
-    expectedVersion: 3,
-  });
+  expect(mockRequest).toHaveBeenCalledWith(
+    'trip-1',
+    { date: '2026-11-14', placeId: 'p-haeundae', expectedVersion: 3 },
+    expect.stringMatching(/^key-/),
+  );
   await act(() => jest.advanceTimersByTimeAsync(1500));
   expect(result.current.phase).toBe('done');
   expect(result.current.result?.alternatives).toHaveLength(4);
@@ -156,4 +156,41 @@ it('변경안 요청이 응답 없이 끊기면 같은 키로, 서버가 답했�
   const keys = mockPropose.mock.calls.map((c) => c[2]);
   expect(keys[1]).toBe(keys[0]);
   expect(keys[2]).not.toBe(keys[1]);
+});
+
+it('날씨 대안 요청이 응답 없이 끊기면 같은 키로, 서버가 답했으면 새 키로 다시 보낸다', async () => {
+  mockRequest.mockRejectedValueOnce(new Error('Network Error')).mockRejectedValueOnce(
+    Object.assign(new Error('503'), {
+      isAxiosError: true,
+      response: { status: 503, data: {}, headers: {} },
+    }),
+  );
+  mockJob.mockResolvedValue(job('SUCCEEDED', alternativesResult()));
+  const { result } = await renderHook(() => useWeatherAlternatives('trip-1'));
+  for (let i = 0; i < 3; i += 1) {
+    await act(async () => {
+      await result.current.start('2026-11-14', 'p-haeundae', 3);
+    });
+  }
+  const keys = mockRequest.mock.calls.map((c) => c[2]);
+  expect(keys[0]).toMatch(/^key-/);
+  expect(keys[1]).toBe(keys[0]);
+  expect(keys[2]).not.toBe(keys[1]);
+  expect(result.current.phase).toBe('done');
+});
+
+it('변경안 작업은 3분 동안 QUEUED여도 실패로 보지 않는다', async () => {
+  mockJob.mockResolvedValueOnce(job('SUCCEEDED', alternativesResult()));
+  mockProposal.mockResolvedValue(proposalOf('QUEUED'));
+  const { result } = await renderHook(() => useWeatherAlternatives('trip-1'));
+  await act(async () => {
+    await result.current.start('2026-11-14', 'p-haeundae', 3);
+  });
+  await act(async () => {
+    void result.current.makeProposal('alt-2');
+    await jest.advanceTimersByTimeAsync(3 * 60_000);
+  });
+  expect(result.current.proposal.phase).toBe('running');
+  await act(() => jest.advanceTimersByTimeAsync(60_000 + 1500));
+  expect(result.current.proposal.phase).toBe('failed');
 });

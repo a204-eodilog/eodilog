@@ -168,11 +168,11 @@ describe('S26 날씨 대안', () => {
     expect(screen.getByText('비 오는 시간 일정이에요')).toBeTruthy();
     expect(screen.getByText('해운대 해변 근처')).toBeTruthy();
     expect(screen.getByText('해운대 해변을 오후로 옮기기')).toBeTruthy();
-    expect(mockRequest).toHaveBeenCalledWith('trip-1', {
-      date: '2026-11-14',
-      placeId: 'p-haeundae',
-      expectedVersion: 3,
-    });
+    expect(mockRequest).toHaveBeenCalledWith(
+      'trip-1',
+      { date: '2026-11-14', placeId: 'p-haeundae', expectedVersion: 3 },
+      expect.any(String),
+    );
     const make = screen.getByRole('button', { name: '변경안 만들기' });
     expect(make.props.accessibilityState).toMatchObject({ disabled: true });
     await fireEvent.press(screen.getByRole('radio', { name: '해운대 실내 수족관' }));
