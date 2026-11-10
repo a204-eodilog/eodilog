@@ -44,8 +44,13 @@ export function useSaveItinerary(tripId: string) {
       return { kind: 'saved', itinerary: result };
     } catch (e) {
       if (toApiError(e).code === API_ERROR.VERSION_CONFLICT) {
+        // 앱 기본 staleTime(30초) 안이면 fetchQuery가 받아 둔 옛 코스를 그대로 준다. 충돌 뒤에는 늘 서버에서 받는다
         const latest = await queryClient
-          .fetchQuery({ queryKey: itineraryKey(tripId), queryFn: () => getItinerary(tripId) })
+          .fetchQuery({
+            queryKey: itineraryKey(tripId),
+            queryFn: () => getItinerary(tripId),
+            staleTime: 0,
+          })
           .catch(() => null);
         toast.show('다른 동행이 먼저 코스를 고쳤어요. 최신 코스를 불러왔어요');
         return { kind: 'conflict', latest };
