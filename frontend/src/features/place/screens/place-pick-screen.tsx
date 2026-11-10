@@ -27,6 +27,7 @@ import {
   QUERY_MAX_LENGTH,
   distanceLabel,
   distanceMeters,
+  nearParam,
   normalizePlaceName,
   normalizeQuery,
   rankNear,
@@ -42,6 +43,8 @@ const DEBOUNCE_MS = 300;
 /** 고른 결과에서 이만큼 넘게 지도를 옮기면 그 장소 주소를 지운다(다른 위치가 됐으므로) */
 const MOVED_METERS = 40;
 const SEARCH_HEIGHT = 48;
+/** 시작 좌표 없이 연 지도를 이만큼 넘게 옮겼으면 지도 가운데를 가까운 순 기준으로 보낸다 */
+const NEAR_MOVED_METERS = 1_000;
 
 /**
  * S13 장소 직접 검색·지정 · 지도에서 고르기. 지도를 움직여 가운데 핀에 위치를 맞추고 이름을 적는다.
@@ -50,8 +53,9 @@ const SEARCH_HEIGHT = 48;
  * 그 뒤 지도를 옮기면 직접 고르는 위치가 되어 자동으로 채운 이름·주소를 지우고 [이 위치로] → POST /places(수동 장소).
  * 검색에 안 나오는 곳(골목 가게 등)을 위한 화면이라, 검색은 근처로 데려다 주고 마지막 위치는 가운데 핀으로 정한다.
  *
- * 서버가 가까운 순(near)과 장소 종류를 아직 주지 않아, 받은 결과 안에서만 가까운 순으로 줄 세우고
- * 종류 아이콘 대신 위치 아이콘을 쓴다. 위도·경도 숫자는 사람이 읽을 값이 아니라서 보이지 않는다
+ * 검색할 때 지도 가운데를 near로 보내 서버가 가까운 순으로 준다(시작 좌표가 없고 지도를 옮기지 않았으면
+ * 보내지 않는다. 나라 한가운데 기준은 뜻이 없다). 받은 뒤 지도를 옮기면 화면에서 다시 가까운 순으로 줄 세운다.
+ * 서버가 장소 종류를 아직 주지 않아 종류 아이콘 대신 위치 아이콘을 쓴다. 위도·경도 숫자는 사람이 읽을 값이 아니라서 보이지 않는다
  */
 export function PlacePickScreen() {
   const params = useLocalSearchParams<{ regionId?: string; lat?: string; lng?: string }>();
@@ -65,6 +69,11 @@ export function PlacePickScreen() {
           longitude: KOREA_REGION.longitude + KOREA_REGION.longitudeDelta / 2,
         };
   const [center, setCenter] = useState(start);
+  /** 타이머 안에서 가장 최근 지도 가운데를 읽으려고 따로 둔다(지도가 멈출 때마다 같이 바꾼다) */
+  const centerRef = useRef(start);
+  const hasStart = !!(params.lat && params.lng);
+  /** 검색어가 정해진 순간의 지도 가운데. 지도를 옮길 때마다 다시 검색하지 않게 따로 둔다 */
+  const [near, setNear] = useState<typeof start | null>(hasStart ? start : null);
   const [name, setName] = useState('');
   const [touched, setTouched] = useState(false);
   const valid = normalizePlaceName(name);
@@ -83,16 +92,24 @@ export function PlacePickScreen() {
 
   useEffect(() => cancelPickOnLeave, []);
   useEffect(() => {
-    const timer = setTimeout(() => setQuery(normalizeQuery(text)), DEBOUNCE_MS);
+    const timer = setTimeout(() => {
+      setQuery(normalizeQuery(text));
+      // 시작 좌표가 있거나 지도를 눈에 띄게 옮겼을 때만 그 자리를 기준으로 삼는다
+      const here = centerRef.current;
+      setNear(hasStart || distanceMeters(start, here) > NEAR_MOVED_METERS ? here : null);
+    }, DEBOUNCE_MS);
     return () => clearTimeout(timer);
+    // start는 주소 값에서 매번 새로 만들어져 넣으면 지도를 옮길 때마다 타이머가 다시 돈다
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [text]);
 
   const search = useQuery({
-    queryKey: ['places', 'search', query],
+    queryKey: ['places', 'search', query, params.regionId ?? null, near ? nearParam(near) : null],
     // 부른 화면이 지역을 줬으면 같이 보낸다(흔한 이름이 다른 지역 20곳으로 채워지지 않게, !165 리뷰)
     queryFn: ({ signal }) =>
       searchPlaces(query ?? '', {
         signal,
+        near,
         ...(params.regionId ? { regionId: params.regionId } : {}),
       }),
     enabled: query !== null,
@@ -171,6 +188,7 @@ export function PlacePickScreen() {
           onCameraIdle={({ latitude, longitude }) => {
             const next = { latitude, longitude };
             setCenter(next);
+            centerRef.current = next;
             if (arriving.current) {
               arriving.current = false;
               return;

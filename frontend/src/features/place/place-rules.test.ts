@@ -9,6 +9,7 @@ import {
   formatCoord,
   normalizePlaceName,
   normalizeQuery,
+  nearParam,
   rankNear,
   searchFailure,
   shortAddress,
@@ -74,5 +75,11 @@ describe('지도에서 고르기 검색', () => {
       '서울역 카페',
     ]);
     expect(distanceMeters(center, center)).toBe(0);
+  });
+});
+
+describe('nearParam', () => {
+  it('서버 near 값은 "위도,경도" 소수 6자리', () => {
+    expect(nearParam({ latitude: 37.5547, longitude: 126.97071234 })).toBe('37.554700,126.970712');
   });
 });
