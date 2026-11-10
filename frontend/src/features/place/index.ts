@@ -4,3 +4,6 @@ export type { PlaceInfoSheetViewProps } from './components/place-info-sheet';
 export { usePlaceSave } from './use-place-save';
 export { toPlaceInfo } from './info';
 export type { PlaceInfo } from './info';
+export { pickPlace } from './place-picker';
+export type { PickPlaceOptions } from './place-picker';
+export type { Place } from './types';

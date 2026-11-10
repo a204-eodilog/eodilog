@@ -190,7 +190,7 @@ export function PhotoUploadView(props: PhotoUploadViewProps) {
           />
         </View>
       ) : (
-        <View style={[styles.bottom, bottomPad]}>
+        <View style={[styles.bottom, styles.bottomStart, bottomPad]}>
           <TextButton label="올리기 취소" onPress={props.onCancel} />
         </View>
       )}
@@ -243,6 +243,8 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.line.default,
   },
+  // 업로드 중 [올리기 취소]는 왼쪽(S30 값 문서)
+  bottomStart: { alignItems: 'flex-start' },
   bottomSplit: { flexDirection: 'row', justifyContent: 'space-between' },
   bottomEnd: { flexDirection: 'row', justifyContent: 'flex-end', gap: spacing[10] },
   textButton: { height: 48, paddingHorizontal: spacing[16], justifyContent: 'center' },

@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Button, ErrorState, Header, Icon } from '@/components/ui';
+import { AvatarGroup, Button, ErrorState, Header, Icon } from '@/components/ui';
 import { colors, layout, spacing, typography } from '@/theme';
 
 import type { TripPhoto } from '../types';
@@ -28,18 +28,23 @@ export type UnplacedPhotosViewProps = {
   days: CourseDay[];
   courseState: 'loading' | 'error' | 'ready';
   placeId: string | null;
+  /** S13에서 고른 코스 밖 장소 */
+  searched: { id: string; name: string } | null;
   saving: boolean;
   memberName: (memberId: string) => string;
   myMemberId: string | null;
+  /** 상단 바 오른쪽 동행 얼굴 묶음 24(참여 순) */
+  members: { name: string; imageUrl: string | null; me: boolean }[];
   onBack: () => void;
   onToggle: (photoId: string) => void;
   onPlace: (placeId: string) => void;
+  onSearch: () => void;
   onConnect: () => void;
 };
 
 /**
  * S31 장소 미지정 묶음(별도 화면). 연결할 사진을 고르고(기본 모두, 내 사진만) 코스 장소 하나를 골라 [연결하기].
- * 장소 검색 줄(S13)은 장소 기능(A)의 공개 파일이 dev에 들어오면 붙인다
+ * 코스에 없는 곳은 아래 장소 검색 줄(S13)로 찾아 고른다
  */
 export function UnplacedPhotosView(props: UnplacedPhotosViewProps) {
   const insets = useSafeAreaInsets();
@@ -50,7 +55,12 @@ export function UnplacedPhotosView(props: UnplacedPhotosViewProps) {
   const othersCount = props.photos.filter((p) => p.uploaderMemberId !== props.myMemberId).length;
   const canConnect = props.selected.size > 0 && !!props.placeId && !props.saving;
   const header = (
-    <Header title="장소 미지정" subtitle={props.tripTitle ?? undefined} onBack={props.onBack} />
+    <Header
+      title="장소 미지정"
+      subtitle={props.tripTitle ?? undefined}
+      onBack={props.onBack}
+      right={props.members.length > 0 ? <AvatarGroup people={props.members} /> : undefined}
+    />
   );
 
   if (props.state !== 'ready') {
@@ -111,6 +121,8 @@ export function UnplacedPhotosView(props: UnplacedPhotosViewProps) {
             state={props.courseState}
             placeId={props.placeId}
             onPlace={props.onPlace}
+            picked={props.searched}
+            onSearch={props.onSearch}
           />
         </View>
       </ScrollView>
@@ -139,7 +151,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: layout.screenPaddingX,
     paddingTop: spacing[16],
     paddingBottom: spacing[24],
-    gap: spacing[24],
+    gap: spacing[14],
   },
   block: { gap: spacing[12] },
   head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
