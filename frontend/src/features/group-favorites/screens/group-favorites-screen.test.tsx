@@ -241,9 +241,7 @@ describe('모은 장소 보기', () => {
   it('목록을 받지 못하면 오류를 보인다', async () => {
     mockList.mockRejectedValue(new Error('network'));
     await renderScreen();
-    expect(
-      await screen.findByText('그룹 즐겨찾기를 불러오지 못했어요', {}, { timeout: 4000 }),
-    ).toBeTruthy();
+    expect(await screen.findByText('불러오지 못했어요', {}, { timeout: 4000 })).toBeTruthy();
   });
 });
 
@@ -360,9 +358,7 @@ describe('담기와 빼기', () => {
     await renderScreen();
     await screen.findByLabelText('해운대 해변');
     await fireEvent.press(screen.getByText(/^겹친 곳/));
-    expect(
-      await screen.findByText('그룹 즐겨찾기를 불러오지 못했어요', {}, { timeout: 4000 }),
-    ).toBeTruthy();
+    expect(await screen.findByText('불러오지 못했어요', {}, { timeout: 4000 })).toBeTruthy();
     await fireEvent.press(screen.getByText(/^전체/));
     expect(await screen.findByLabelText('해운대 해변')).toBeTruthy();
   });
