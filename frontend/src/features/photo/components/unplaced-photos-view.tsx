@@ -1,6 +1,5 @@
 import {
   ActivityIndicator,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -9,10 +8,11 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Button, ErrorState, Header, Icon } from '@/components/ui';
-import { colors, layout, radius, spacing, typography } from '@/theme';
+import { AvatarGroup, Button, ErrorState, Header, Icon } from '@/components/ui';
+import { colors, layout, spacing, typography } from '@/theme';
 
-import type { CoursePlace, TripPhoto } from '../types';
+import type { TripPhoto } from '../types';
+import { type CourseDay, CoursePlaceList } from './course-place-list';
 import { TripPhotoTile } from './trip-photo-tile';
 
 const COLUMNS = 4;
@@ -25,21 +25,26 @@ export type UnplacedPhotosViewProps = {
   photos: TripPhoto[];
   /** 고른 사진 id. 내 사진만 고를 수 있다 */
   selected: ReadonlySet<string>;
-  days: { day: number; label: string; stops: CoursePlace[] }[];
+  days: CourseDay[];
   courseState: 'loading' | 'error' | 'ready';
   placeId: string | null;
+  /** S13에서 고른 코스 밖 장소 */
+  searched: { id: string; name: string } | null;
   saving: boolean;
   memberName: (memberId: string) => string;
   myMemberId: string | null;
+  /** 상단 바 오른쪽 동행 얼굴 묶음 24(참여 순) */
+  members: { name: string; imageUrl: string | null; me: boolean }[];
   onBack: () => void;
   onToggle: (photoId: string) => void;
   onPlace: (placeId: string) => void;
+  onSearch: () => void;
   onConnect: () => void;
 };
 
 /**
  * S31 장소 미지정 묶음(별도 화면). 연결할 사진을 고르고(기본 모두, 내 사진만) 코스 장소 하나를 골라 [연결하기].
- * 장소 검색 줄(S13)은 장소 기능(A)의 공개 파일이 dev에 들어오면 붙인다
+ * 코스에 없는 곳은 아래 장소 검색 줄(S13)로 찾아 고른다
  */
 export function UnplacedPhotosView(props: UnplacedPhotosViewProps) {
   const insets = useSafeAreaInsets();
@@ -50,7 +55,12 @@ export function UnplacedPhotosView(props: UnplacedPhotosViewProps) {
   const othersCount = props.photos.filter((p) => p.uploaderMemberId !== props.myMemberId).length;
   const canConnect = props.selected.size > 0 && !!props.placeId && !props.saving;
   const header = (
-    <Header title="장소 미지정" subtitle={props.tripTitle ?? undefined} onBack={props.onBack} />
+    <Header
+      title="장소 미지정"
+      subtitle={props.tripTitle ?? undefined}
+      onBack={props.onBack}
+      right={props.members.length > 0 ? <AvatarGroup people={props.members} /> : undefined}
+    />
   );
 
   if (props.state !== 'ready') {
@@ -106,52 +116,14 @@ export function UnplacedPhotosView(props: UnplacedPhotosViewProps) {
             <Text style={[typography.title3, styles.text]}>어디서 찍었나요?</Text>
             <Text style={[typography.caption, styles.sub]}>코스 장소</Text>
           </View>
-          {props.courseState === 'loading' ? (
-            <ActivityIndicator color={colors.brand.primary} />
-          ) : props.days.length === 0 ? (
-            <Text style={[typography.body, styles.sub]}>
-              {props.courseState === 'error'
-                ? '코스를 불러오지 못했어요'
-                : '코스에 장소가 없어요. 코스에 장소를 넣은 뒤 연결해요'}
-            </Text>
-          ) : (
-            <View style={styles.list}>
-              {props.days.map((day) => (
-                <View key={day.day} style={styles.list}>
-                  <Text style={[typography.captionMedium, styles.sub, styles.dayHead]}>
-                    {day.label}
-                  </Text>
-                  {day.stops.map((stop, i) => {
-                    const on = stop.place.id === props.placeId;
-                    return (
-                      <Pressable
-                        key={stop.id}
-                        accessibilityRole="radio"
-                        accessibilityState={{ checked: on }}
-                        accessibilityLabel={stop.place.name}
-                        onPress={() => props.onPlace(stop.place.id)}
-                        style={({ pressed }) => [
-                          styles.row,
-                          on && styles.rowOn,
-                          pressed && styles.pressed,
-                        ]}
-                      >
-                        <View style={[styles.num, on && styles.numOn]}>
-                          <Text style={[typography.captionBold, styles.numText]}>{i + 1}</Text>
-                        </View>
-                        <Text style={[typography.body, styles.text, styles.flex]} numberOfLines={1}>
-                          {stop.place.name}
-                        </Text>
-                        <View style={[styles.radio, on && styles.radioOn]}>
-                          {on ? <Icon name="check" size={14} color={colors.text.inverse} /> : null}
-                        </View>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              ))}
-            </View>
-          )}
+          <CoursePlaceList
+            days={props.days}
+            state={props.courseState}
+            placeId={props.placeId}
+            onPlace={props.onPlace}
+            picked={props.searched}
+            onSearch={props.onSearch}
+          />
         </View>
       </ScrollView>
       <View style={[styles.bottom, { paddingBottom: Math.max(insets.bottom + spacing[12], 34) }]}>
@@ -179,42 +151,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: layout.screenPaddingX,
     paddingTop: spacing[16],
     paddingBottom: spacing[24],
-    gap: spacing[24],
+    gap: spacing[14],
   },
   block: { gap: spacing[12] },
   head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: GAP },
-  list: { gap: spacing[2] },
-  dayHead: { marginTop: spacing[4], marginBottom: spacing[4] },
-  row: {
-    height: 48,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[14],
-    paddingHorizontal: spacing[12],
-    borderRadius: 14,
-  },
-  rowOn: { backgroundColor: colors.brand.primaryBg },
-  num: {
-    width: 28,
-    height: 28,
-    borderRadius: radius.full,
-    backgroundColor: colors.text.muted,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  numOn: { backgroundColor: colors.brand.primary },
-  numText: { color: colors.text.inverse },
-  radio: {
-    width: 24,
-    height: 24,
-    borderRadius: radius.full,
-    borderWidth: 2,
-    borderColor: colors.line.default,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  radioOn: { backgroundColor: colors.brand.primary, borderColor: colors.brand.primary },
   bottom: {
     flexDirection: 'row',
     justifyContent: 'flex-end',

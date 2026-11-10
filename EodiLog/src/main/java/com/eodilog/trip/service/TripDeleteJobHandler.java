@@ -24,6 +24,9 @@ public class TripDeleteJobHandler implements JobHandler {
 	private static final Set<String> REASONS = Set.of(TripDeletionService.REASON_OWNER_DELETE,
 			TripDeletionService.REASON_LAST_MEMBER_LEAVE);
 
+	private static final String UNREFERENCED_BATCH =
+			" and not exists (select 1 from photos p where p.batch_id = photo_upload_batches.id)"
+			+ " and not exists (select 1 from assets a where a.upload_batch_id = photo_upload_batches.id)";
 	private final JdbcTemplate jdbcTemplate;
 	private final JsonMapper jsonMapper;
 	private final ObjectStorage objectStorage;
@@ -77,12 +80,35 @@ public class TripDeleteJobHandler implements JobHandler {
 			throw new IllegalStateException("Trip is not marked deleted");
 		}
 		// FK 순서: 자식 → 부모. 멤버십은 마지막, 여행 행은 남긴다
+		// 다른 여행에서 옮겨 온 사진은 원래 업로드 배치를 그대로 가리킨다. 그 여행이 먼저 삭제됐으면 아래에서 함께 정리한다
+		var movedInBatches = jdbcTemplate.queryForList("""
+				select distinct p.batch_id from photos p join photo_upload_batches b on b.id = p.batch_id
+				where p.trip_id = ? and b.trip_id <> ?""", UUID.class, tripId, tripId);
 		jdbcTemplate.update("delete from photo_topics where photo_id in (select id from photos where trip_id=?)", tripId);
+		jdbcTemplate.update("delete from feed_photos where feed_id in (select id from feeds where trip_id=?)", tripId);
+		jdbcTemplate.update("delete from feed_visibilities where feed_id in (select id from feeds where trip_id=?)", tripId);
+		jdbcTemplate.update("delete from feed_likes where feed_id in (select id from feeds where trip_id=?)", tripId);
+		jdbcTemplate.update("delete from feed_regions where feed_id in (select id from feeds where trip_id=?)", tripId);
+		jdbcTemplate.update("delete from feed_places where feed_id in (select id from feeds where trip_id=?)", tripId);
+		jdbcTemplate.update("delete from feeds where trip_id=?", tripId);
+		// 방문 후보는 사진·방문·멤버십을 가리키므로 먼저 지운다. 다른 여행 후보가 옮겨 온 사진을 근거로 둔 링크도 함께 지운다
+		jdbcTemplate.update("""
+				delete from visit_candidate_photos where candidate_id in (select id from visit_candidates where trip_id = ?)
+				or photo_id in (select id from photos where trip_id = ?)""", tripId, tripId);
+		jdbcTemplate.update("delete from visit_candidates where trip_id = ?", tripId);
 		jdbcTemplate.update("delete from photos where trip_id = ?", tripId);
+		jdbcTemplate.update("delete from photo_groups where trip_id = ?", tripId);
 		// A presigned PUT cannot be revoked. Keep deletion tombstones/keys throughout the grace period
 		// so cleanup can remove late uploads after this job completes and members disappear.
 		jdbcTemplate.update("update assets set status='DELETING', upload_batch_id=null where trip_id = ?", tripId);
-		jdbcTemplate.update("delete from photo_upload_batches where trip_id = ?", tripId);
+		// 다른 여행으로 옮긴 사진·파일이 아직 가리키는 배치는 출처로 남기고, 지울 멤버십 참조만 비운다
+		jdbcTemplate.update("delete from photo_upload_batches where trip_id = ?" + UNREFERENCED_BATCH, tripId);
+		jdbcTemplate.update("update photo_upload_batches set created_by_member_id = null where trip_id = ?", tripId);
+		for (UUID batch : movedInBatches) {
+			jdbcTemplate.update("""
+					delete from photo_upload_batches where id = ? and created_by_member_id is null
+					and trip_id in (select id from trips where deleted_at is not null)""" + UNREFERENCED_BATCH, batch);
+		}
 		jdbcTemplate.update("delete from settlement_transfers where settlement_id in (select id from settlements where trip_id = ?)", tripId);
 		jdbcTemplate.update("delete from settlement_members where settlement_id in (select id from settlements where trip_id = ?)", tripId);
 		jdbcTemplate.update("delete from settlements where trip_id = ?", tripId);
@@ -93,6 +119,8 @@ public class TripDeleteJobHandler implements JobHandler {
 		jdbcTemplate.update("delete from poll_votes where candidate_id in (select c.id from poll_candidates c join polls p on p.id = c.poll_id where p.trip_id = ?)", tripId);
 		jdbcTemplate.update("delete from poll_candidates where poll_id in (select id from polls where trip_id = ?)", tripId);
 		jdbcTemplate.update("delete from polls where trip_id = ?", tripId);
+		// 직전 AI 적용 보관 행은 코스·멤버십을 가리키므로 코스보다 먼저 지운다(EODI-231)
+		jdbcTemplate.update("delete from itinerary_undo_states where itinerary_id in (select id from itineraries where trip_id = ?)", tripId);
 		jdbcTemplate.update("delete from route_legs where itinerary_id in (select id from itineraries where trip_id = ?)", tripId);
 		jdbcTemplate.update("delete from itinerary_items where itinerary_id in (select id from itineraries where trip_id = ?)", tripId);
 		jdbcTemplate.update("delete from itineraries where trip_id = ?", tripId);

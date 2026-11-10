@@ -36,7 +36,11 @@ export function useVisibility(feedId: string) {
   const hidden = draft ?? new Set(saved);
 
   const save = useMutation({
-    mutationFn: () => saveVisibility(feedId, [...hidden], feed?.visibility.version ?? 0),
+    mutationFn: () => {
+      // 서버는 버전 1부터 받는다. 피드를 아직 못 읽었으면 보내지 않는다
+      if (!feed) throw new Error('피드를 아직 불러오지 못했어요');
+      return saveVisibility(feedId, [...hidden], feed.visibility.version);
+    },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['me', 'feeds'] });
       toast.show('노출 설정을 저장했어요');
@@ -53,8 +57,14 @@ export function useVisibility(feedId: string) {
     },
   });
 
-  const failed = me.isError || feeds.isError || followers.isError || (feeds.isSuccess && !feed);
-  const ready = me.data && feed && followers.data && (companions.data || companions.isError);
+  // 동행을 못 받으면 동행이 일반 친구로 보여 숨길 수 있게 되므로 오류로 본다(!145 리뷰)
+  const failed =
+    me.isError ||
+    feeds.isError ||
+    followers.isError ||
+    companions.isError ||
+    (feeds.isSuccess && !feed);
+  const ready = me.data && feed && followers.data && companions.data;
   return {
     state: failed ? ('error' as const) : ready ? ('ready' as const) : ('loading' as const),
     tripTitle: feed?.title ?? null,
@@ -76,8 +86,10 @@ export function useVisibility(feedId: string) {
     },
     save: () => save.mutate(),
     retry: () => {
+      void me.refetch();
       void feeds.refetch();
       void followers.refetch();
+      void companions.refetch();
     },
   };
 }

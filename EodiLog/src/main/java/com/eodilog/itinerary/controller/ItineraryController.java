@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "코스", description = "여행의 단일 공동 코스 조회·전체 교체")
+@Tag(name = "코스", description = "여행의 단일 공동 코스 조회·전체 교체·AI 제안 적용·되돌리기")
 @RestController
 @RequestMapping("/api/v1/trips/{tripId}/itinerary")
 @RequiredArgsConstructor

@@ -27,6 +27,7 @@ from app.features.preference_inference.service import PreferenceInferrer
 from app.features.recommendations.router import router as recommendations_router
 from app.features.trip_recommendation.router import router as trip_recommendation_router
 from app.features.trip_recommendation.service import TripRecommender
+from app.features.visit_detection.router import router as visit_detection_router
 from app.features.weather_alternatives.router import router as weather_alternatives_router
 from app.features.weather_alternatives.service import WeatherAlternativeSuggester
 
@@ -142,6 +143,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(itinerary_proposal_router)
     app.include_router(photo_classification_router)
     app.include_router(recommendations_router)
+    app.include_router(visit_detection_router)
 
     return app
 

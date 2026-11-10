@@ -23,6 +23,29 @@ class PublicPlaceImportTest {
                 && rows.getLast().name().equals("두 줄\n카페")));
     }
 
+    // 업종 대>중>소분류를 날씨 대안 실내 판단용 category로 남긴다. 분류 열이 없는 파일은 null
+    @Test void csvKeepsBusinessCategory() throws Exception {
+        var writer = mock(PublicPlaceWriter.class);
+        when(writer.upsert(anyList())).thenAnswer(call -> ((java.util.List<?>) call.getArgument(0)).size());
+        String input = "상가업소번호,상호명,상권업종대분류명,상권업종중분류명,상권업종소분류명,도로명주소,위도,경도,법정동코드\n"
+                + "1,바다 카페,음식,커피점/카페,카페,부산,35.1000,129.1000,2611000000\n"
+                + "2,이름만,,,,부산,35.1000,129.1000,2611000000\n";
+        new SbdcPlaceImporter(writer).importCsv(new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8)), StandardCharsets.UTF_8);
+        verify(writer).upsert(argThat(rows -> rows.size() == 2
+                && "음식>커피점/카페>카페".equals(rows.getFirst().category()) && rows.getLast().category() == null));
+    }
+
+    @Test void ktoKeepsContentTypeAsCategory() {
+        var importer = new KtoPlaceImporter(mock(PublicPlaceWriter.class), JsonMapper.builder().build(), mock(RestClient.class));
+        var page = importer.parsePage("""
+                {"response":{"header":{"resultCode":"0000"},"body":{"totalCount":2,"items":{"item":[
+                {"contentid":"1","contenttypeid":"14","title":"박물관","addr1":"부산","mapx":"129.1","mapy":"35.1"},
+                {"contentid":"2","contenttypeid":"99","title":"모름","addr1":"부산","mapx":"129.1","mapy":"35.1"}
+                ]}}}}
+                """);
+        assertThat(page.rows()).extracting(PublicPlaceRow::category).containsExactly("문화시설", null);
+    }
+
     @Test void ktoParsesNationwidePageAndRejectsApiErrors() {
         var importer = new KtoPlaceImporter(mock(PublicPlaceWriter.class), JsonMapper.builder().build(), mock(RestClient.class));
         String json = """

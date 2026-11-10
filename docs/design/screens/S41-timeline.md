@@ -4,6 +4,12 @@
 
 화면 규칙은 [화면 목록](../../flow/screen-list.md) S41 줄: 여행 시작일 최신순, 날짜 없는 여행은 맨 아래, 계획 중 / 실제 방문 구분.
 
+> **구현(2026-11-09, EODI-234, `features/timeline`, `/timeline`)** — 백엔드 `GET /me/timeline`·`GET /trips/{tripId}/timeline`이 아직 없어 [API 명세](../../api-spec.md)(TimelineItem·PlaceTimelineItem) 모양대로 짜고 테스트 모드 값으로 확인했다. 서버가 나오면 응답 모양을 다시 맞춘다.
+> - TimelineItem에 여행 이름·기간이 없어 `/me/trips`와 여행 ID로 합치고, 여행마다 `/trips/{id}/timeline`을 불러 장소 줄을 그린다. 셋 중 하나라도 못 받으면 "불러오기 실패"
+> - 태그: 계획 중(PLANNING) > 게시됨(feedId 있음) > 비공개. 날짜 없는 여행은 기간 자리에 "날짜 미정"
+> - 장소 줄: 날짜·시각은 `visitedAt ?? plannedAt`(서울 기준). 다녀온 여행(COMPLETED)에서 PLANNED인 곳만 "· 가지 않았어요" + "계획만". 사진이 있으면 "· 사진 N장"
+> - **다르게 한 것**: "개인 즐겨찾기에서 담음"은 PlaceTimelineItem에 담은 경로 값이 없어 "시간 미정"으로 쓴다. 장소가 없는 여행은 "아직 담은 장소가 없어요"(문서에 없음)
+
 ## 상태
 
 | 상태 | 피그마 | 달라지는 점 |

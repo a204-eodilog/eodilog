@@ -3,6 +3,7 @@ import { describe, expect, it } from '@jest/globals';
 import {
   addPickedPhotos,
   exifCapturedAt,
+  inBatches,
   isBusy,
   MAX_PHOTO_BYTES,
   MAX_PHOTOS,
@@ -121,5 +122,16 @@ describe('uploadCounts / isBusy', () => {
     expect(isBusy(429)).toBe(true);
     expect(isBusy(500)).toBe(false);
     expect(isBusy(null)).toBe(false);
+  });
+});
+
+describe('일괄 변경 나누기', () => {
+  it('50장씩 나누고 마지막 묶음은 남은 만큼', () => {
+    const ids = Array.from({ length: 101 }, (_, i) => i);
+    expect(inBatches(ids).map((b) => b.length)).toEqual([50, 50, 1]);
+    expect(inBatches(ids)[1][0]).toBe(50);
+  });
+  it('비어 있으면 빈 목록', () => {
+    expect(inBatches([])).toEqual([]);
   });
 });
