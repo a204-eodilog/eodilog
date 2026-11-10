@@ -878,11 +878,12 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
 
   const chat = chatMock.handle(config, method, url, params);
   if (chat) return chat;
+  // 그룹 즐겨찾기 GET /trips/{id}/saved-places는 그룹 가짜 서버가 먼저 답한다. 다른 가짜 서버의 같은 주소 처리보다 앞선다
+  const group = groupMock.handle(config, method, url, params);
+  if (group) return group;
   const poll = pollMock.handle(config, method, url);
   if (poll) return poll;
 
-  const group = groupMock.handle(config, method, url, params);
-  if (group) return group;
   const recommend = recommendMock.handle(config, method, url);
   if (recommend) return recommend;
   const photo = handlePhotos(config, method, url);
