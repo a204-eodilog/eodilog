@@ -23,6 +23,7 @@ import {
   editedLine,
   hasUnavailable,
   latestQueriedAt,
+  noTimeDefault,
   toDraft,
   type CourseDraft,
   type DraftItem,
@@ -217,7 +218,8 @@ export function CourseScreen() {
   const days = dayCount(trip.data?.startDate ?? null, trip.data?.endDate ?? null);
   const draft = data && trip.data ? toDraft(data, days) : null;
   const editor = members.find((m) => m.id === data?.updatedByMemberId)?.user.nickname ?? '동행';
-  const failed = data ? hasUnavailable(data) : false;
+  // 경로 계산이 생기기 전에는 시간 없는 구간이 실패가 아니라 계산 전이라 실패 안내를 띄우지 않는다(Q-6-6)
+  const failed = noTimeDefault() === 'failed' && data ? hasUnavailable(data) : false;
   const queried = data ? latestQueriedAt(data) : null;
 
   const notFound =

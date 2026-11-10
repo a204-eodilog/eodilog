@@ -36,10 +36,13 @@ export async function requestWeatherAlternatives(
 export async function requestWeatherProposal(
   tripId: string,
   body: { expectedVersion: number; sourceWeatherJobId: string; selectedAlternativeId: string },
+  /** 서버 필수. 같은 키와 같은 본문이면 처음 받은 작업을 그대로 돌려준다 */
+  idempotencyKey: string,
 ): Promise<JobRef> {
   const { data } = await apiClient.post<DataResponse<JobRef>>(
     `/trips/${tripId}/itinerary/proposals`,
     { reason: 'WEATHER', ...body },
+    { headers: { 'Idempotency-Key': idempotencyKey } },
   );
   return data.data;
 }

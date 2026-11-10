@@ -21,6 +21,7 @@ import { WeatherScreen } from './weather-screen';
 
 const mockParams = { tripId: 'trip-1', date: '2026-11-14', placeId: 'p-haeundae' };
 
+jest.mock('expo-crypto', () => ({ randomUUID: () => 'key-1' }));
 jest.mock('@/config/env', () => ({
   env: { appEnv: 'local', apiBaseUrl: 'http://test', kakaoRedirectUri: null, devMock: false },
 }));
@@ -182,11 +183,11 @@ describe('S26 날씨 대안', () => {
     await fireEvent.press(screen.getByRole('radio', { name: '해운대 실내 수족관' }));
     await fireEvent.press(screen.getByText('변경안 만들기'));
     expect(await screen.findByText('변경안을 만들었어요')).toBeTruthy();
-    expect(mockPropose).toHaveBeenCalledWith('trip-1', {
-      expectedVersion: 3,
-      sourceWeatherJobId: 'job-w',
-      selectedAlternativeId: 'alt-2',
-    });
+    expect(mockPropose).toHaveBeenCalledWith(
+      'trip-1',
+      { expectedVersion: 3, sourceWeatherJobId: 'job-w', selectedAlternativeId: 'alt-2' },
+      expect.any(String),
+    );
     expect(screen.getByText('1일차 오전 일정')).toBeTruthy();
     expect(screen.getAllByText('해운대 실내 수족관').length).toBeGreaterThan(1);
     expect(screen.getByText('적용 전까지 지금 코스는 그대로예요')).toBeTruthy();

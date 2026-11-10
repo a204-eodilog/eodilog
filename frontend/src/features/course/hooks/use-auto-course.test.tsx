@@ -5,13 +5,20 @@ import { getAutoCourse, requestAutoCourse } from '../api';
 import { place } from '../testing';
 import type { ItineraryProposal, JobStatus } from '../types';
 
-import { AUTO_POLL_MS, AUTO_TIMEOUT_MS, useAutoCourse } from './use-auto-course';
+import {
+  AUTO_MIN_REQUEST_MS,
+  AUTO_POLL_MS,
+  AUTO_TIMEOUT_MS,
+  useAutoCourse,
+} from './use-auto-course';
 
 jest.mock('@/config/env', () => ({
   env: { appEnv: 'local', apiBaseUrl: 'http://test', kakaoRedirectUri: null, devMock: false },
 }));
 
 jest.mock('../api', () => ({ requestAutoCourse: jest.fn(), getAutoCourse: jest.fn() }));
+let mockKeySeq = 0;
+jest.mock('expo-crypto', () => ({ randomUUID: () => `key-${++mockKeySeq}` }));
 
 const mockRequest = jest.mocked(requestAutoCourse);
 const mockGet = jest.mocked(getAutoCourse);
@@ -63,12 +70,14 @@ describe('자동 추천', () => {
     mockGet.mockResolvedValueOnce(proposal('RUNNING')).mockResolvedValueOnce(proposal('SUCCEEDED'));
     const { result } = await renderHook(() => useAutoCourse('trip-1'));
     let content: unknown = 'pending';
+    const accepted = jest.fn();
     await act(async () => {
-      void result.current.start(3).then((c) => (content = c));
+      void result.current.start(3, accepted).then((c) => (content = c));
     });
     expect(result.current.status).toBe('running');
+    expect(accepted).toHaveBeenCalledTimes(1);
     await flush(AUTO_POLL_MS);
-    expect(mockRequest).toHaveBeenCalledWith('trip-1', 3);
+    expect(mockRequest).toHaveBeenCalledWith('trip-1', 3, expect.stringMatching(/^key-/));
     expect(content).toEqual(CONTENT);
     expect(result.current.status).toBe('idle');
   });
@@ -93,13 +102,18 @@ describe('자동 추천', () => {
     expect(result.current.status).toBe('failed');
   });
 
-  it('요청이 실패하면 실패, 실서버에 아직 없는 API', async () => {
+  it('요청이 바로 실패하면 작업 시작을 알리지 않고, 잠깐 요청 중으로 둔 뒤 실패', async () => {
     mockRequest.mockRejectedValue(new Error('404'));
     const { result } = await renderHook(() => useAutoCourse('trip-1'));
+    const accepted = jest.fn();
     await act(async () => {
-      await result.current.start(1);
+      void result.current.start(1, accepted);
     });
+    // 생성 중 화면으로 넘어가지 않고 누른 버튼만 돈다
+    expect(result.current.status).toBe('requesting');
+    await flush(AUTO_MIN_REQUEST_MS);
     expect(result.current.status).toBe('failed');
+    expect(accepted).not.toHaveBeenCalled();
   });
 
   it('1분이 넘으면 실패', async () => {
@@ -120,5 +134,48 @@ describe('자동 추천', () => {
       void result.current.start(1);
     });
     expect(mockRequest).toHaveBeenCalledTimes(1);
+  });
+
+  describe('Idempotency-Key', () => {
+    const keyOf = (call: number) => mockRequest.mock.calls[call][2];
+    const serverError = (status: number) =>
+      Object.assign(new Error(String(status)), {
+        isAxiosError: true,
+        response: { status, data: {}, headers: {} },
+      });
+    async function runOnce(result: { current: ReturnType<typeof useAutoCourse> }) {
+      await act(async () => {
+        void result.current.start(1);
+      });
+      await flush(AUTO_MIN_REQUEST_MS + AUTO_POLL_MS);
+    }
+
+    it('응답을 못 받고 다시 보내면 같은 키를 쓴다', async () => {
+      mockRequest.mockRejectedValueOnce(new Error('Network Error'));
+      mockGet.mockResolvedValue(proposal('FAILED'));
+      const { result } = await renderHook(() => useAutoCourse('trip-1'));
+      await runOnce(result);
+      await runOnce(result);
+      expect(mockRequest).toHaveBeenCalledTimes(2);
+      expect(keyOf(1)).toBe(keyOf(0));
+    });
+
+    it('서버가 거절했으면 다음에는 새 키를 쓴다', async () => {
+      mockRequest.mockRejectedValueOnce(serverError(400));
+      mockGet.mockResolvedValue(proposal('FAILED'));
+      const { result } = await renderHook(() => useAutoCourse('trip-1'));
+      await runOnce(result);
+      await runOnce(result);
+      expect(keyOf(1)).not.toBe(keyOf(0));
+    });
+
+    it('작업을 받은 뒤 실패해 다시 시도하면 새 키라 새 작업이 생긴다', async () => {
+      mockGet.mockResolvedValue(proposal('FAILED'));
+      const { result } = await renderHook(() => useAutoCourse('trip-1'));
+      await runOnce(result);
+      expect(result.current.status).toBe('failed');
+      await runOnce(result);
+      expect(keyOf(1)).not.toBe(keyOf(0));
+    });
   });
 });

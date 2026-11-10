@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { toApiError } from '@/api/errors';
+import { createIdempotencyKeyStore } from '@/api/idempotency';
 import { getAutoCourse, getJob } from '@/features/course/api';
 import { JobStopped, waitForJob } from '@/features/course/wait-job';
 
@@ -13,6 +15,7 @@ type Phase = 'idle' | 'running' | 'done' | 'failed';
 /**
  * 날씨 대안 작업과 고른 대안으로 만드는 WEATHER 변경안 작업.
  * 둘 다 1.5초마다 확인하고 2분이 넘으면 실패, 화면을 나가면 멈춘다.
+ * 변경안 요청의 Idempotency-Key는 응답 없이 끊겼을 때만 다시 쓰고, 서버가 답했으면 버린다.
  */
 export function useWeatherAlternatives(tripId: string) {
   const [phase, setPhase] = useState<Phase>('idle');
@@ -24,6 +27,7 @@ export function useWeatherAlternatives(tripId: string) {
   });
   const controller = useRef<AbortController | null>(null);
   const proposalController = useRef<AbortController | null>(null);
+  const proposalKeys = useRef(createIdempotencyKeyStore()).current;
   useEffect(
     () => () => {
       controller.current?.abort();
@@ -70,11 +74,19 @@ export function useWeatherAlternatives(tripId: string) {
       proposalController.current = ctrl;
       setProposal({ phase: 'running', jobId: null });
       try {
-        const ref = await requestWeatherProposal(tripId, {
+        const body = {
           expectedVersion: result.baseVersion,
           sourceWeatherJobId: jobId,
           selectedAlternativeId,
-        });
+        };
+        let ref;
+        try {
+          ref = await requestWeatherProposal(tripId, body, proposalKeys.keyFor(body));
+          proposalKeys.clear();
+        } catch (e) {
+          if (toApiError(e).status !== null) proposalKeys.clear();
+          throw e;
+        }
         const done = await waitForJob(
           (signal) => getAutoCourse(tripId, ref.jobId, signal),
           (p) => p.job.status,
@@ -89,7 +101,7 @@ export function useWeatherAlternatives(tripId: string) {
         return false;
       }
     },
-    [tripId, jobId, result],
+    [tripId, jobId, result, proposalKeys],
   );
 
   /** 변경안 시트를 닫는다 */
