@@ -256,7 +256,7 @@ export function SettingsView({
                 description={
                   profile.accountVisibility === 'PUBLIC'
                     ? '누구나 내 공개 기록을 볼 수 있어요'
-                    : '승인한 팔로워만 내 기록을 볼 수 있어요'
+                    : '승인한 팔로워만 내 기록을 볼 수 있어요. 공개로 바꾸면 받은 팔로우 요청이 모두 수락돼요'
                 }
                 trailing={
                   <SettingsToggle

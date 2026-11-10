@@ -987,6 +987,7 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
       nickname?: string;
       ageBand?: string | null;
       accountVisibility?: MyProfile['accountVisibility'];
+      profileImageAssetId?: string | null;
     };
     if (body.nickname) {
       ME.nickname = body.nickname;
@@ -994,6 +995,11 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
     }
     if ('ageBand' in body) ME.ageBand = body.ageBand ?? null;
     if (body.accountVisibility) ME.accountVisibility = body.accountVisibility;
+    if ('profileImageAssetId' in body) {
+      ME.profileImageUrl = body.profileImageAssetId
+        ? `/assets/${body.profileImageAssetId}/download`
+        : null;
+    }
     return ok(config, { data: ME });
   }
   if (method === 'get' && url === '/me/preferences') {

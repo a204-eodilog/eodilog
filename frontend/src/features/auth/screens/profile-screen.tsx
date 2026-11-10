@@ -1,4 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import {
@@ -14,23 +16,28 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, Card, Chip, Header, Icon, Tag, TextField, toast } from '@/components/ui';
 import { inviteHref } from '@/features/invitation/invite-rules';
+import { assetSource } from '@/lib/asset-image';
 import { useSessionStore } from '@/stores/session-store';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 import { getMe, updateProfile } from '../api';
 import { signOut } from '../logout';
+import { ProfilePhotoError, uploadProfilePhoto } from '../profile-photo';
 import {
   AGE_BANDS,
   type AgeBand,
   NICKNAME_MAX_LENGTH,
   normalizeNickname,
+  photoContentType,
+  type PickedPhoto,
   toAgeBand,
 } from '../profile-rules';
 
 /**
  * S02 프로필·연령 입력. 닉네임을 넣어 가입을 마친다.
  * 상태: 기본 / 필수 항목 누락 / 저장 실패. 연령대는 닉네임과 함께 저장한다(고르지 않으면 보내지 않음).
- * 프로필 사진은 아직 연결하지 않았다.
+ * 프로필 사진은 고르면 미리 보이고 [다음]/[저장]을 눌러야 올라간다. 가입 대기 토큰으로는 올릴 수 없어
+ * 닉네임 저장 → 사진 올리기 → 사진 저장 순서다. 사진만 실패하면 알리고 다음 화면으로 넘어간다(닉네임은 저장됨).
  * 저장 뒤에는 S03 취향 입력으로, 초대 링크로 왔으면 S04 초대 참여 확인으로 간다.
  * 주소는 (auth) 묶음 밖에 둔다. 가입을 마쳐 signedIn이 되는 순간 (auth) 레이아웃이 홈으로 보내 S03 이동과 겹치기 때문이다.
  * 피그마에는 없지만 가입 대기 중 다른 계정으로 바꿀 길이 없어 상단 오른쪽에 [로그아웃]을 둔다.
@@ -50,21 +57,57 @@ export function ProfileScreen() {
   const [ageEdited, setAgeEdited] = useState<AgeBand | null | undefined>(undefined);
   const age = ageEdited !== undefined ? ageEdited : toAgeBand(me.data?.ageBand);
   const [touched, setTouched] = useState(false);
+  // 새로 고른 사진. 저장을 눌러야 올라간다. 없으면 서버에 저장된 사진을 보여 준다
+  const [photo, setPhoto] = useState<PickedPhoto | null>(null);
+  const photoSource = assetSource(photo?.uri ?? me.data?.profileImageUrl);
 
   const valid = normalizeNickname(nickname);
   const missing = touched && !valid;
 
+  const pickPhoto = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+      const picked = result.canceled ? null : result.assets[0];
+      if (!picked) return;
+      setPhoto({ uri: picked.uri, contentType: photoContentType(picked.uri, picked.mimeType) });
+    } catch {
+      toast.show('사진을 불러오지 못했어요');
+    }
+  };
+
   const save = useMutation({
-    mutationFn: (value: string) =>
-      updateProfile({
+    mutationFn: async (value: string) => {
+      // 가입 대기 토큰으로는 사진을 올릴 수 없어 닉네임(+연령대)을 먼저 저장한다
+      await updateProfile({
         nickname: value,
         // 손댄 경우에만 보낸다. null은 골랐던 연령대를 지운다
         ...(ageEdited !== undefined ? { ageBand: ageEdited } : {}),
-      }),
-    onSuccess: async () => {
+      });
+      if (!photo) return { photoMessage: null };
+      try {
+        const assetId = await uploadProfilePhoto(photo);
+        await updateProfile({ profileImageAssetId: assetId });
+        return { photoMessage: null };
+      } catch (e) {
+        // 닉네임은 이미 저장됐다. 사진만 실패했다고 알리고 다음으로 넘어간다
+        return {
+          photoMessage:
+            e instanceof ProfilePhotoError
+              ? e.message
+              : '프로필 사진은 저장하지 못했어요. 프로필 수정에서 다시 넣어 주세요',
+        };
+      }
+    },
+    onSuccess: async ({ photoMessage }) => {
+      if (photoMessage) toast.show(photoMessage);
       if (editing) {
         await queryClient.invalidateQueries({ queryKey: ['me'] });
-        toast.show('저장했어요');
+        if (!photoMessage) toast.show('저장했어요');
         if (router.canGoBack()) router.back();
         else router.replace('/settings');
         return;
@@ -121,13 +164,23 @@ export function ProfileScreen() {
 
           <View style={styles.photoBlock}>
             <View>
-              <View style={styles.photo}>
-                <Icon name="person" size={40} color={colors.text.sub} />
-              </View>
+              {photoSource ? (
+                <Image
+                  source={photoSource}
+                  style={styles.photo}
+                  contentFit="cover"
+                  accessibilityLabel="프로필 사진"
+                />
+              ) : (
+                <View style={styles.photo}>
+                  <Icon name="person" size={40} color={colors.text.sub} />
+                </View>
+              )}
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="프로필 사진 추가"
-                onPress={() => toast.show('프로필 사진은 곧 넣을 수 있어요')}
+                accessibilityLabel={photoSource ? '프로필 사진 바꾸기' : '프로필 사진 추가'}
+                onPress={pickPhoto}
+                disabled={save.isPending}
                 style={styles.photoButton}
               >
                 <Icon name="camera" size={20} color={colors.text.inverse} />

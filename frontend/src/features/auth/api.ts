@@ -30,10 +30,12 @@ export async function getMe(): Promise<MyProfile> {
   return data.data;
 }
 
-/** PATCH /me 본문. 보낸 칸만 바뀐다. ageBand의 null은 연령대 지우기 */
+/** PATCH /me 본문. 보낸 칸만 바뀐다. ageBand·profileImageAssetId의 null은 지우기 */
 export type ProfilePatch = {
   nickname?: string;
   ageBand?: string | null;
+  /** 내가 올려 완료 확인까지 끝낸 PROFILE 파일 ID. 아니면 400 INVALID_PROFILE_IMAGE */
+  profileImageAssetId?: string | null;
   accountVisibility?: 'PUBLIC' | 'PRIVATE';
 };
 
