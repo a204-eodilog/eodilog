@@ -42,6 +42,8 @@ import {
   setLegMode,
   toDraft,
   type CourseDraft,
+  noTimeDefault,
+  type NoTime,
 } from '../course-rules';
 import { useAutoCourse } from '../hooks/use-auto-course';
 import { useItinerary } from '../hooks/use-itinerary';
@@ -85,6 +87,8 @@ export type DraftViewProps = {
   saving: boolean;
   /** 일차 탭 아래 날짜별 지역 줄 같은 덧붙임 */
   extra?: ReactNode;
+  /** 시간이 없는 구간을 계산 전으로 볼지 실패로 볼지. 미리보기의 계산 불가 상태만 failed를 넘긴다 */
+  noTime?: NoTime;
 };
 
 /** S23 코스 초안 모습(Figma 201-12879, 201-13071). 데이터는 화면이나 미리보기가 넘긴다 */
@@ -96,7 +100,8 @@ export function DraftView(props: DraftViewProps) {
   const selected = legs.find((l) => l.key === props.selectedLeg) ?? legs[0] ?? null;
   const editing = props.dirty || props.sheetIndex !== null;
   // 경로를 못 구한 구간은 0분이나 직선거리로 채우지 않고 그렇게 알린다(Figma 201-13272)
-  const noRoute = legs.some((l) => legLabel(l) === null);
+  const noTime = props.noTime ?? noTimeDefault();
+  const noRoute = noTime === 'failed' && legs.some((l) => legLabel(l) === null);
   const warning: MapBadge[] = noRoute
     ? [{ label: '두 곳 사이 경로를 찾지 못했어요', tone: 'warning' }]
     : [];
@@ -151,6 +156,7 @@ export function DraftView(props: DraftViewProps) {
               selectedLeg={selected?.key ?? null}
               onSelectLeg={props.onSelectLeg}
               onRecalculate={props.onRecalculate}
+              noTime={noTime}
             />
           )}
           {noRoute ? (

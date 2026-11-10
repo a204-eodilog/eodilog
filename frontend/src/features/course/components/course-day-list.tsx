@@ -3,7 +3,14 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Icon, type IconName } from '@/components/ui';
 import { colors, radius, spacing, typography } from '@/theme';
 
-import { legLabel, MODE_LABEL, type DayLeg, type DraftItem } from '../course-rules';
+import {
+  legLabel,
+  MODE_LABEL,
+  noTimeDefault,
+  type DayLeg,
+  type DraftItem,
+  type NoTime,
+} from '../course-rules';
 import type { TransportMode } from '../types';
 
 export const MODE_ICON: Record<TransportMode, IconName> = {
@@ -29,6 +36,8 @@ type Props = {
   onSelectLeg?(key: string): void;
   /** 이동 시간을 못 구한 구간의 [다시 계산] */
   onRecalculate?(): void;
+  /** 시간이 없는 구간을 계산 전으로 볼지 실패로 볼지. 기본은 noTimeDefault() */
+  noTime?: NoTime;
 };
 
 /** 고른 날의 장소 줄과 장소 사이 구간 칩(Figma 201-12879 목록, 201-13969 목록, 201-13272 구간) */
@@ -80,10 +89,17 @@ export function CourseDayList(props: Props) {
   );
 }
 
-function LegRow({ leg, mode, selectedLeg, onSelectLeg, onRecalculate }: Props & { leg: DayLeg }) {
+function LegRow({
+  leg,
+  mode,
+  selectedLeg,
+  onSelectLeg,
+  onRecalculate,
+  noTime = noTimeDefault(),
+}: Props & { leg: DayLeg }) {
   const label = legLabel(leg);
   const selected = mode === 'edit' && selectedLeg === leg.key;
-  if (label === null && mode === 'edit') {
+  if (label === null && mode === 'edit' && noTime === 'failed') {
     // 경로를 못 구했으면 0분이나 직선거리로 채우지 않고 그렇게 알린다(Figma 201-13272)
     return (
       <View style={styles.leg}>
@@ -119,7 +135,7 @@ function LegRow({ leg, mode, selectedLeg, onSelectLeg, onRecalculate }: Props & 
       >
         <Icon name={MODE_ICON[leg.mode]} size={14} color={colors.text.icon} />
         <Text style={[typography.captionMedium, styles.legText]}>
-          {label ?? `${MODE_LABEL[leg.mode]} · 시간 모름`}
+          {label ?? `${MODE_LABEL[leg.mode]} · ${noTime === 'pending' ? '계산 전' : '시간 모름'}`}
         </Text>
       </Pressable>
     </View>

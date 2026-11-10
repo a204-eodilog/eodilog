@@ -250,6 +250,18 @@ export function legLabel(leg: DayLeg): string | null {
   return `${MODE_LABEL[leg.mode]} ${Math.max(1, Math.round(seconds / 60))}분`;
 }
 
+/**
+ * 시간이 없는 구간을 어떻게 보일지. pending은 "계산 전", failed는 "못 구했어요"와 다시 계산.
+ * 백엔드에는 아직 경로 계산이 없어 저장한 구간이 모두 UNAVAILABLE이다. 이 값은 '조회 실패'와 '아직 조회 안 함'을
+ * 함께 뜻해서 구분할 수 없다. 그래서 경로 계산이 생기기 전까지는 계산 전으로 보이고, 실패 화면은 미리보기에서만 쓴다
+ * (가정 — 사용자 확인 필요, Q-6-6)
+ */
+export type NoTime = 'pending' | 'failed';
+
+export function noTimeDefault(): NoTime {
+  return 'pending';
+}
+
 /** 저장된 구간 중 시간을 구하지 못한 것이 있는지(S24 이동 시간 갱신 실패, S23 계산 불가) */
 export function hasUnavailable(itinerary: Itinerary): boolean {
   return itinerary.legs.some((l) => l.status !== 'AVAILABLE' || l.durationSeconds === null);

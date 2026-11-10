@@ -31,6 +31,15 @@ const mockRouter = {
   canGoBack: jest.fn(() => true),
 };
 
+// 경로 계산이 생긴 뒤의 실패 화면도 확인할 수 있게 시간 없는 구간을 보이는 방식을 바꿔 끼운다
+let mockNoTime: 'pending' | 'failed' = 'pending';
+jest.mock('../course-rules', () => {
+  const actual = jest.requireActual<Record<string, unknown>>('../course-rules');
+  return {
+    ...actual,
+    noTimeDefault: () => mockNoTime,
+  };
+});
 jest.mock('expo-crypto', () => ({ randomUUID: () => 'key-1' }));
 jest.mock('@/config/env', () => ({
   env: { appEnv: 'local', apiBaseUrl: 'http://test', kakaoRedirectUri: null, devMock: false },
@@ -229,6 +238,7 @@ const lastBody = () => mockPut.mock.calls.at(-1)?.[1] as ItineraryWrite;
 const day1 = (b: ItineraryWrite) => b.items.filter((i) => i.day === 1).map((i) => i.placeId);
 
 beforeEach(() => {
+  mockNoTime = 'pending';
   jest.clearAllMocks();
   mockParams.entry = undefined;
   mockParams.split = undefined;
@@ -632,8 +642,20 @@ describe('구성 방식과 준비 상태', () => {
   });
 });
 
+describe('경로 계산 전', () => {
+  it('구간 시간이 없으면 실패 경고 없이 계산 전으로 보인다', async () => {
+    mockGet.mockResolvedValue(sampleCourse(false));
+    await renderScreen();
+    expect(await screen.findAllByText('대중교통 · 계산 전')).toHaveLength(2);
+    expect(screen.queryByText('두 곳 사이 경로를 찾지 못했어요')).toBeNull();
+    expect(screen.queryByText('이동 시간을 못 구했어요')).toBeNull();
+    expect(screen.queryByText(/0분/)).toBeNull();
+  });
+});
+
 describe('이동 시간 계산 불가', () => {
   beforeEach(() => {
+    mockNoTime = 'failed';
     mockGet.mockResolvedValue(sampleCourse(false));
   });
 

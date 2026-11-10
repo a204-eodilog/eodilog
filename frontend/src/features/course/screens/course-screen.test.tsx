@@ -14,6 +14,15 @@ import { CourseScreen } from './course-screen';
 const mockParams = { tripId: 'trip-1' };
 const mockRouter = { replace: jest.fn(), back: jest.fn(), push: jest.fn() };
 
+// 경로 계산이 생긴 뒤의 실패 화면도 확인할 수 있게 시간 없는 구간을 보이는 방식을 바꿔 끼운다
+let mockNoTime: 'pending' | 'failed' = 'pending';
+jest.mock('../course-rules', () => {
+  const actual = jest.requireActual<Record<string, unknown>>('../course-rules');
+  return {
+    ...actual,
+    noTimeDefault: () => mockNoTime,
+  };
+});
 jest.mock('@/config/env', () => ({
   env: { appEnv: 'local', apiBaseUrl: 'http://test', kakaoRedirectUri: null, devMock: false },
 }));
@@ -114,6 +123,7 @@ function renderScreen() {
 }
 
 beforeEach(() => {
+  mockNoTime = 'pending';
   jest.clearAllMocks();
   mockGet.mockResolvedValue(sampleCourse(true));
 });
@@ -147,7 +157,16 @@ describe('S24 코스', () => {
     });
   });
 
+  it('경로 계산 전이면 실패 카드 없이 구간마다 계산 전으로 보인다', async () => {
+    mockGet.mockResolvedValue(sampleCourse(false));
+    await renderScreen();
+    expect(await screen.findAllByText('대중교통 · 계산 전')).toHaveLength(2);
+    expect(screen.queryByText('이동 시간을 새로 구하지 못했어요')).toBeNull();
+    expect(screen.queryByText('다시 계산')).toBeNull();
+  });
+
   it('구간 시간을 못 구했으면 카드를 보이고 다시 계산하면 코스를 다시 받는다', async () => {
+    mockNoTime = 'failed';
     mockGet.mockResolvedValueOnce(sampleCourse(false));
     mockRecalc.mockResolvedValue({ jobId: 'job-1', status: 'QUEUED', statusUrl: '' });
     mockJob.mockResolvedValue({
@@ -170,6 +189,7 @@ describe('S24 코스', () => {
   });
 
   it('다시 계산 작업이 실패하면 안내한다', async () => {
+    mockNoTime = 'failed';
     mockGet.mockResolvedValue(sampleCourse(false));
     mockRecalc.mockRejectedValue(new Error('network'));
     await renderScreen();
