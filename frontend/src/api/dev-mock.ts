@@ -87,12 +87,55 @@ const PEOPLE = [
 ];
 let hiddenSuggestions: string[] = [];
 
-/** S39 내 노출 설정(테스트 모드 메모리). 처음엔 아무도 숨기지 않음 */
-let feedVisibility = {
-  hiddenViewerUserIds: [] as string[],
-  version: 1,
-  updatedAt: '2026-11-01T00:00:00Z',
+/**
+ * 내가 게시한 공동 피드(테스트 모드 메모리, 여행 ID → 피드). S37·S38·S39·S40이 같이 본다.
+ * 처음에는 예시 여행 "남도 맛집 여행"을 경주로 게시해 둔다. visibility는 S39 내 노출 설정(처음엔 아무도 숨기지 않음)
+ */
+type MockOwnFeed = {
+  id: string;
+  tripId: string;
+  title: string;
+  body: string;
+  regions: { id: string; code: string; name: string }[];
+  startDate: string | null;
+  endDate: string | null;
+  publishedAt: string;
+  version: number;
+  visibility: {
+    feedId: string;
+    hiddenViewerUserIds: string[];
+    version: number;
+    updatedAt: string;
+  };
 };
+const ownFeeds = new Map<string, MockOwnFeed>();
+// 응답은 복사해서 준다. 메모리의 객체를 그대로 주면 화면 캐시가 같은 객체를 들고 있다가 바뀐 줄 모른다
+const copyFeed = (f: MockOwnFeed): MockOwnFeed => JSON.parse(JSON.stringify(f)) as MockOwnFeed;
+function publishMockFeed(
+  trip: { id: string; title: string; startDate: string | null; endDate: string | null },
+  write: { title: string; body: string; regions?: MockOwnFeed['regions'] },
+): MockOwnFeed {
+  const id = `feed-${trip.id}`;
+  const feed: MockOwnFeed = {
+    id,
+    tripId: trip.id,
+    title: write.title,
+    body: write.body,
+    regions: write.regions ?? [],
+    startDate: trip.startDate,
+    endDate: trip.endDate,
+    publishedAt: new Date().toISOString(),
+    version: 1,
+    visibility: {
+      feedId: id,
+      hiddenViewerUserIds: [],
+      version: 1,
+      updatedAt: '2026-11-01T00:00:00Z',
+    },
+  };
+  ownFeeds.set(trip.id, feed);
+  return feed;
+}
 
 /** S07 공동 피드 좋아요(테스트 모드 메모리) */
 const feedLikes = new Map<string, { liked: boolean; count: number }>();
@@ -422,6 +465,17 @@ const SAMPLE_TRIPS: Trip[] = [
 ];
 // 신규 가입자 모드는 여행 없이 시작해 첫 방문 홈을 본다
 let trips: Trip[] = env.devMockNewUser ? [] : SAMPLE_TRIPS;
+
+{
+  const posted = trips.find((t) => t.title === '남도 맛집 여행');
+  if (posted) {
+    publishMockFeed(posted, {
+      title: '봄 경주',
+      body: '',
+      regions: [{ id: 'region-gyeongju', code: '4713000000', name: '경상북도 경주시' }],
+    });
+  }
+}
 
 /** 이 여행에서 지금 쓸 수 있는 초대 링크의 토큰. 새로 만들거나 취소하면 바뀐다 */
 const inviteTokens = new Map<string, string>();
@@ -1070,29 +1124,49 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
     return ok(config, { data: null });
   }
   if (method === 'get' && url === '/me/trips') return ok(config, page(trips));
-  // S37 내가 게시한 공동 피드: 예시 여행 중 "남도 맛집 여행"을 경주로 게시한 것으로 본다
+  // S37·S39·S40 내가 게시한 공동 피드(나간 여행은 빠진다). 최근 게시한 것부터
   if (method === 'get' && url === '/me/feeds') {
-    const posted = trips.find((t) => t.title === '남도 맛집 여행');
-    return ok(
-      config,
-      page(
-        remember(
-          posted
-            ? [
-                {
-                  id: `feed-${posted.id}`,
-                  tripId: posted.id,
-                  title: '봄 경주',
-                  regions: [{ id: 'region-gyeongju', code: '4713000000', name: '경상북도 경주시' }],
-                  startDate: posted.startDate,
-                  endDate: posted.endDate,
-                  visibility: { feedId: `feed-${posted.id}`, ...feedVisibility },
-                },
-              ]
-            : [],
-        ),
-      ),
-    );
+    const mine = [...ownFeeds.values()]
+      .filter((f) => trips.some((t) => t.id === f.tripId))
+      .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
+    return ok(config, page(remember(mine.map(copyFeed))));
+  }
+  // S38 이 여행의 공동 피드. 게시 전이면 null, 게시하면 여행당 하나(이미 있으면 그대로 200)
+  // S38이 함께 읽는 코스·방문·지출·정산. 테스트 모드에서는 모두 비어 있다(요약 카드가 "없음"으로 보임)
+  const recordPartMatch = /^\/trips\/([^/]+)\/(itinerary|visits|expenses|settlement)$/.exec(url);
+  if (method === 'get' && recordPartMatch && trips.some((t) => t.id === recordPartMatch[1])) {
+    const part = recordPartMatch[2];
+    if (part === 'itinerary') return ok(config, { data: { items: [] } });
+    if (part === 'settlement') {
+      return ok(config, {
+        data: { current: null, currentExpenseVersion: 0, recalculationRequired: false },
+      });
+    }
+    return ok(config, page([]));
+  }
+  const tripFeedMatch = /^\/trips\/([^/]+)\/feed$/.exec(url);
+  if (tripFeedMatch) {
+    const trip = trips.find((t) => t.id === tripFeedMatch[1]);
+    if (!trip) throw fail(config, 404, 'TRIP_NOT_FOUND', '여행을 찾을 수 없어요');
+    const found = ownFeeds.get(trip.id);
+    const existing = found ? copyFeed(found) : null;
+    if (method === 'get') return ok(config, { data: existing });
+    if (method === 'post') {
+      if (existing) return ok(config, { data: existing });
+      // 실패 화면을 보려면 제목에 "fail"을 넣은 여행에서 게시한다
+      if (trip.title.includes('fail'))
+        throw fail(config, 500, 'INTERNAL_ERROR', '게시하지 못했어요');
+      const body = JSON.parse(String(config.data ?? '{}')) as { title?: string; body?: string };
+      return ok(
+        config,
+        {
+          data: copyFeed(
+            publishMockFeed(trip, { title: body.title ?? trip.title, body: body.body ?? '' }),
+          ),
+        },
+        201,
+      );
+    }
   }
 
   if (method === 'post' && url === '/trips') {
@@ -1165,15 +1239,46 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
       hiddenViewerUserIds: string[];
       expectedVersion: number;
     };
-    if (body.expectedVersion !== feedVisibility.version) {
+    const feed = [...ownFeeds.values()].find((f) => f.id === visibilityMatch[1]);
+    if (!feed) throw fail(config, 404, 'FEED_NOT_FOUND', '공동 피드를 찾을 수 없어요');
+    if (body.expectedVersion !== feed.visibility.version) {
       throw fail(config, 409, 'VERSION_CONFLICT', '다른 곳에서 바뀌었어요');
     }
-    feedVisibility = {
+    feed.visibility = {
+      feedId: feed.id,
       hiddenViewerUserIds: body.hiddenViewerUserIds,
-      version: feedVisibility.version + 1,
+      version: feed.visibility.version + 1,
       updatedAt: new Date().toISOString(),
     };
-    return ok(config, { data: { feedId: visibilityMatch[1], ...feedVisibility } });
+    return ok(config, { data: { ...feed.visibility } });
+  }
+  // S38 공동 피드 삭제(S39 삭제 확인). 버전이 다르면 409, 이미 지웠으면 404
+  const deleteFeedMatch = /^\/feeds\/([^/]+)$/.exec(url);
+  if (method === 'delete' && deleteFeedMatch) {
+    const feed = [...ownFeeds.values()].find((f) => f.id === deleteFeedMatch[1]);
+    if (!feed) throw fail(config, 404, 'FEED_NOT_FOUND', '공동 피드를 찾을 수 없어요');
+    if (Number(config.params?.expectedVersion) !== feed.version) {
+      throw fail(config, 409, 'VERSION_CONFLICT', '다른 곳에서 바뀌었어요');
+    }
+    ownFeeds.delete(feed.tripId);
+    return ok(config, undefined, 204);
+  }
+  // S39 기록까지 삭제. 피드를 내리고 정리 작업을 접수한다(테스트 모드는 피드만 내림). 피드가 없으면 404
+  const ownRecordsMatch = /^\/feeds\/([^/]+)\/delete-own-records$/.exec(url);
+  if (method === 'post' && ownRecordsMatch) {
+    const feed = [...ownFeeds.values()].find((f) => f.id === ownRecordsMatch[1]);
+    if (!feed) throw fail(config, 404, 'FEED_NOT_FOUND', '공동 피드를 찾을 수 없어요');
+    const { expectedVersion } = parseBody<{ expectedVersion?: number }>(config);
+    if (expectedVersion !== feed.version) {
+      throw fail(config, 409, 'VERSION_CONFLICT', '다른 곳에서 바뀌었어요');
+    }
+    ownFeeds.delete(feed.tripId);
+    const jobId = `job-own-records-${feed.id}`;
+    return ok(
+      config,
+      { data: { jobId, status: 'QUEUED', statusUrl: `/api/v1/jobs/${jobId}` } },
+      202,
+    );
   }
   // S09 최근 트렌드 여행지: 예시 지역 다섯 곳
   if (method === 'get' && url === '/trends/regions') {

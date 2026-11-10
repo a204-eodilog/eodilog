@@ -3,6 +3,9 @@ import type { ItineraryItem, Visit } from '@/features/visit';
 import { formatTotalShort } from '@/lib/format-number';
 import { withWa } from '@/lib/korean';
 
+import type { RecordFeed } from './components/trip-record-view';
+import type { TripFeed } from './types';
+
 /** S38 요약 카드 한 장의 값과 보조 줄. "4곳 다녀옴" / "계획 5곳" */
 export type RecordSummary = { value: string; sub: string };
 
@@ -68,4 +71,49 @@ export function expenseSummary(
 /** 게시됨 태그 옆 줄. "전체 공개" / "전체 공개 · 하늘에게 숨김" */
 export function publishedVisibility(hiddenNames: string[]): string {
   return hiddenNames.length > 0 ? `전체 공개 · ${hiddenNames.join(', ')}에게 숨김` : '전체 공개';
+}
+
+/**
+ * 숨긴 친구 글자. "하늘" / "하늘 외 2명". 이름을 모르는 사람(팔로워 목록에 없거나 아직 못 읽음)만 있으면 "2명".
+ * 아무도 숨기지 않았으면 null
+ */
+export function hiddenLabel(
+  hiddenIds: readonly string[],
+  nameById: ReadonlyMap<string, string>,
+  /** 이름 뒤에 붙일 말("님") */
+  suffix = '',
+): string | null {
+  if (hiddenIds.length === 0) return null;
+  const first = hiddenIds.map((id) => nameById.get(id)).find((n): n is string => !!n);
+  if (!first) return `${hiddenIds.length}명`;
+  return hiddenIds.length === 1
+    ? `${first}${suffix}`
+    : `${first}${suffix} 외 ${hiddenIds.length - 1}명`;
+}
+
+/**
+ * S38 공동 피드 상태. 게시 전(null)이면 draft.
+ * 게시됨이면 "전체 공개 · 하늘에게 숨김"과, 숨긴 친구가 있고 다른 동행이 있으면
+ * "하늘님은 서연님 피드에서는 볼 수 있어요"(동행이 여럿이면 "다른 동행 피드")
+ */
+export function recordFeed(
+  feed: TripFeed | null | undefined,
+  nameById: ReadonlyMap<string, string>,
+  otherCompanions: readonly string[],
+): RecordFeed {
+  if (!feed) return { status: 'draft' };
+  const hidden = feed.visibility.hiddenViewerUserIds;
+  const label = hiddenLabel(hidden, nameById);
+  const who = hiddenLabel(hidden, nameById, '님');
+  const where =
+    otherCompanions.length === 0
+      ? null
+      : otherCompanions.length === 1
+        ? `${otherCompanions[0]}님 피드`
+        : '다른 동행 피드';
+  return {
+    status: 'published',
+    visibility: publishedVisibility(label ? [label] : []),
+    hiddenNote: who && where ? `${who}은 ${where}에서는 볼 수 있어요` : null,
+  };
 }
