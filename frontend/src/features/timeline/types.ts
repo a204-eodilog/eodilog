@@ -2,7 +2,7 @@ import type { TripStatus } from '@/api/types';
 
 /**
  * GET /me/timeline 한 줄(docs/api-spec.md TimelineItem). 여행 이름·기간은 없어 /me/trips와 합친다.
- * 서버가 아직 이 API를 만들지 않아 명세 그대로 받는다고 보고 짰다(EODI-234)
+ * 서버 TimelineDtos와 같은 모양(dev c7c0ef0에서 대조)
  */
 export type TimelineItem = {
   tripId: string;

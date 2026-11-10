@@ -4,7 +4,7 @@ import type { Trip } from './types';
 
 /**
  * S41 타임라인·S42 여행 요약 테스트 모드 값(GET /me/timeline, /trips/{id}/timeline, /trips/{id}/summary).
- * 서버에 아직 없는 API라 docs/api-spec.md 명세 모양 그대로 만든다.
+ * 서버 TimelineDtos와 같은 모양으로 만든다.
  * 예시 여행 이름으로 장소를 붙인다: 부산 바다 여행(다녀오는 중), 남도 맛집 여행(다녀옴, 가지 않은 곳 1곳·경비 있음),
  * 제주 한 달 살기(날짜 미정, 시간 없는 계획). 나머지는 장소가 없다
  */
