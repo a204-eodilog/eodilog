@@ -97,3 +97,29 @@ describe('테스트 모드 기록까지 삭제', () => {
     ).rejects.toMatchObject({ response: { status: 404 } });
   });
 });
+
+describe('테스트 모드 사진 일괄 변경', () => {
+  it('버전이 다르면 아무것도 바꾸지 않고, 맞으면 모두 장소를 연결한다', async () => {
+    const photos = { 'photo-seed-8': 1, 'photo-seed-9': 1 };
+    const targets = Object.entries(photos).map(([photoId, v]) => ({ photoId, expectedVersion: v }));
+    await expect(
+      send('post', '/trips/trip-1/photos/batch', {
+        action: 'UPDATE',
+        photos: [targets[0], { ...targets[1], expectedVersion: 9 }],
+        placeId: 'place-seomyeon',
+      }),
+    ).rejects.toMatchObject({ response: { status: 409 } });
+
+    const res = await send('post', '/trips/trip-1/photos/batch', {
+      action: 'UPDATE',
+      photos: targets,
+      placeId: 'place-seomyeon',
+    });
+    const changed = (res.data as { data: { photos: { placeId: string; version: number }[] } }).data
+      .photos;
+    expect(changed.map((p) => [p.placeId, p.version])).toEqual([
+      ['place-seomyeon', 2],
+      ['place-seomyeon', 2],
+    ]);
+  });
+});
