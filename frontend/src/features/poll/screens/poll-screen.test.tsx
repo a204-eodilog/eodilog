@@ -292,8 +292,11 @@ describe('진행 중 투표', () => {
     await screen.findByText('부산에 투표했어요');
     mockGetPoll.mockResolvedValue({ ...OPEN, version: 2 });
     await fireEvent.press(screen.getByLabelText('강릉시 1표'));
-    expect(await screen.findByText('강릉시로 바꾸지 못했어요.')).toBeTruthy();
-    expect(screen.getByText('부산 투표는 그대로예요')).toBeTruthy();
+    // 안내 글은 보이지 않고 아이콘의 설명으로만 남는다
+    expect(
+      await screen.findByLabelText('강릉시로 바꾸지 못했어요. 부산 투표는 그대로예요'),
+    ).toBeTruthy();
+    expect(screen.queryByText('부산 투표는 그대로예요')).toBeNull();
     expect(screen.getByText('후보를 눌러 투표해요')).toBeTruthy();
     expect(screen.getByText('부산에 투표했어요')).toBeTruthy();
 

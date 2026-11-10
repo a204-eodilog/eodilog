@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { BottomSheet, Button, Chip } from '@/components/ui';
+import { BottomSheet, Button, Chip, Icon } from '@/components/ui';
 import { useTrip } from '@/features/trip/hooks/use-trip';
 import { colors, spacing, typography } from '@/theme';
 
@@ -141,9 +141,21 @@ export function OpenPollSheet({
       {loading ? (
         <ActivityIndicator style={styles.loading} color={colors.brand.primary} />
       ) : saved.isError && !previewOptions ? (
-        <Text style={styles.notice}>
-          그룹 즐겨찾기를 불러오지 못했어요. 시트를 닫았다 다시 열어 주세요
-        </Text>
+        <View style={styles.failed}>
+          <View
+            accessible
+            accessibilityRole="alert"
+            accessibilityLabel="그룹 즐겨찾기를 불러오지 못했어요"
+          >
+            <Icon name="alert" size={24} color={colors.text.icon} />
+          </View>
+          <Button
+            label="다시 시도"
+            variant="secondary"
+            size="sm"
+            onPress={() => void saved.refetch()}
+          />
+        </View>
       ) : options.length === 0 ? (
         <Text style={styles.notice}>그룹 즐겨찾기에 장소가 없어요</Text>
       ) : (
@@ -194,6 +206,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingVertical: spacing[24],
   },
+  failed: { alignItems: 'center', gap: spacing[12], paddingVertical: spacing[24] },
   // 후보가 많으면 시트가 화면을 넘지 않게 목록만 스크롤한다
   list: { maxHeight: 280, marginTop: spacing[16] },
   listContent: { gap: spacing[16] },

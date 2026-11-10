@@ -139,11 +139,14 @@ export function PollOpenView({
         />
       </ScrollView>
       {failLines ? (
-        <View style={[styles.failBar, { bottom }]} accessibilityRole="alert">
-          <Icon name="info" size={20} color={colors.brand.primarySoft} />
-          <View style={styles.failTexts}>
-            <Text style={styles.failText}>{failLines[0]}</Text>
-            <Text style={styles.failText}>{failLines[1]}</Text>
+        <View style={[styles.failBar, { bottom }]}>
+          <View
+            style={styles.failTexts}
+            accessible
+            accessibilityRole="alert"
+            accessibilityLabel={`${failLines[0]} ${failLines[1]}`}
+          >
+            <Icon name="info" size={20} color={colors.brand.primarySoft} />
           </View>
           <Pressable accessibilityRole="button" onPress={onRetry} style={styles.retryButton}>
             <Text style={styles.retry}>다시 시도</Text>
@@ -192,7 +195,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.text.default,
   },
   failTexts: { flex: 1 },
-  failText: { ...typography.sub, color: colors.text.inverse },
   retry: { ...typography.subBold, color: colors.brand.primarySoft },
   // 누르는 자리 44 이상
   retryButton: {
@@ -427,7 +429,6 @@ export function PollNotFoundView({ onBack }: { onBack: () => void }) {
       <Text style={styles.zeroTitle} accessibilityRole="header" lineBreakStrategyIOS="hangul-word">
         볼 수 없는 투표예요
       </Text>
-      <Text style={styles.zeroBody}>투표가 지워졌거나 지금 함께하는 여행이 아니에요</Text>
       <Pressable
         accessibilityRole="button"
         onPress={onBack}

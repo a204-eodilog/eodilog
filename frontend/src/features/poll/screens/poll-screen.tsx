@@ -2,6 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
+import { errorLook } from '@/api/error-look';
 import { AvatarGroup, ErrorState, Header, toast } from '@/components/ui';
 import { useTrip } from '@/features/trip/hooks/use-trip';
 import { colors, spacing } from '@/theme';
@@ -80,6 +81,8 @@ export function PollScreen() {
   } else if (!poll && (list.isError || detail.isError)) {
     body = (
       <ErrorState
+        {...errorLook(list.error ?? detail.error)}
+        description={null}
         onRetry={() => {
           void list.refetch();
           void detail.refetch();
