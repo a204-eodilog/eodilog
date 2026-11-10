@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { AxiosError } from 'axios';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -140,7 +141,7 @@ describe('S24 코스', () => {
     expect(screen.getByText('10.26(월) 세은님이 마지막으로 고쳤어요')).toBeTruthy();
     expect(screen.getByText('대중교통 22분')).toBeTruthy();
     expect(screen.getByText('10:00')).toBeTruthy();
-    expect(screen.queryByText('이동 시간을 새로 구하지 못했어요')).toBeNull();
+    expect(screen.queryByLabelText(/이동 시간을 새로 구하지 못했어요/)).toBeNull();
   });
 
   it('다른 일차를 누르면 그 날 장소로 바뀐다', async () => {
@@ -163,7 +164,7 @@ describe('S24 코스', () => {
     mockGet.mockResolvedValue(sampleCourse(false));
     await renderScreen();
     expect(await screen.findAllByText('대중교통 · 계산 전')).toHaveLength(2);
-    expect(screen.queryByText('이동 시간을 새로 구하지 못했어요')).toBeNull();
+    expect(screen.queryByLabelText(/이동 시간을 새로 구하지 못했어요/)).toBeNull();
     expect(screen.queryByText('다시 계산')).toBeNull();
   });
 
@@ -182,7 +183,7 @@ describe('S24 코스', () => {
       finishedAt: '',
     });
     await renderScreen();
-    expect(await screen.findByText('이동 시간을 새로 구하지 못했어요')).toBeTruthy();
+    expect(await screen.findByLabelText(/이동 시간을 새로 구하지 못했어요/)).toBeTruthy();
     expect(screen.getAllByText('대중교통 · 시간 모름')).toHaveLength(2);
     await fireEvent.press(screen.getByText('다시 계산'));
     expect(mockRecalc).toHaveBeenCalledWith('trip-1', 3);
@@ -199,7 +200,7 @@ describe('S24 코스', () => {
     await waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith('이동 시간을 다시 구하지 못했어요'),
     );
-    expect(screen.getByText('이동 시간을 새로 구하지 못했어요')).toBeTruthy();
+    expect(screen.getByLabelText(/이동 시간을 새로 구하지 못했어요/)).toBeTruthy();
   });
 
   it('빼기는 아직 준비 중 안내를 띄운다', async () => {
@@ -214,6 +215,17 @@ describe('S24 코스', () => {
     await renderScreen(itinerary({ items: [], legs: [] }));
     expect((await screen.findAllByText('해운대 해변')).length).toBeGreaterThan(0);
     expect(mockRouter.replace).not.toHaveBeenCalled();
+  });
+
+  it('불러오기에 실패하면 설명 없이 까닭 아이콘과 짧은 제목만 보인다', async () => {
+    mockGet.mockRejectedValue(new AxiosError('Network Error', 'ERR_NETWORK'));
+    await renderScreen();
+    // 조회는 한 번 다시 시도한 뒤 실패로 보인다
+    expect(await screen.findByText('연결이 끊겼어요', {}, { timeout: 5000 })).toBeTruthy();
+    expect(screen.queryByText('연결을 확인하고 다시 시도해 주세요')).toBeNull();
+    mockGet.mockResolvedValue(sampleCourse(true));
+    await fireEvent.press(screen.getByText('다시 시도'));
+    expect((await screen.findAllByText('해운대 해변')).length).toBeGreaterThan(0);
   });
 
   it('코스가 비어 있으면 코스 짜기로 바꿔 연다', async () => {
