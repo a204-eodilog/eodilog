@@ -23,16 +23,22 @@ export function useUndo(tripId: string) {
       if (sending.current) return 'busy';
       sending.current = true;
       try {
+        // 앱 기본 staleTime 안이면 받아 둔 옛 version을 보내게 된다. 늘 서버에서 받는다
         const current = await queryClient.fetchQuery({
           queryKey: itineraryKey(tripId),
           queryFn: () => getItinerary(tripId),
+          staleTime: 0,
         });
         const restored = await undoApply(tripId, current.version, appliedJobId);
         queryClient.setQueryData(itineraryKey(tripId), restored);
         toast.success('되돌렸어요');
         return 'undone';
       } catch (e) {
-        if (toApiError(e).code === API_ERROR.UNDO_UNAVAILABLE) {
+        // 실패하면 화면의 코스가 서버와 다를 수 있어 다시 받는다
+        void queryClient.invalidateQueries({ queryKey: itineraryKey(tripId) });
+        const { code } = toApiError(e);
+        // 서버는 version을 먼저 본다. 그 사이 동행이 코스를 바꿨으면 VERSION_CONFLICT로 답한다
+        if (code === API_ERROR.UNDO_UNAVAILABLE || code === API_ERROR.VERSION_CONFLICT) {
           toast.show('그 사이 코스가 바뀌어 되돌릴 수 없어요');
           return 'unavailable';
         }
