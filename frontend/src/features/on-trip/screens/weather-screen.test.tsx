@@ -20,6 +20,7 @@ import { alternativesResult, weather } from '../testing';
 import { WeatherScreen } from './weather-screen';
 
 const mockParams = { tripId: 'trip-1', date: '2026-11-14', placeId: 'p-haeundae' };
+const PARAMS = { ...mockParams };
 
 jest.mock('expo-crypto', () => ({ randomUUID: () => 'key-1' }));
 jest.mock('@/config/env', () => ({
@@ -146,6 +147,7 @@ function renderScreen() {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  Object.assign(mockParams, PARAMS);
   mockItinerary.mockResolvedValue(sampleCourse(true));
   mockWeather.mockReset();
   mockWeather.mockResolvedValue(weather());
@@ -225,6 +227,23 @@ describe('S26 날씨 대안', () => {
     await fireEvent.press(screen.getByText('다시 시도'));
     expect(await screen.findByText('해운대 실내 수족관')).toBeTruthy();
     expect(mockRequest).toHaveBeenCalledTimes(2);
+  });
+
+  it('볼 장소 없이 열리면 계속 기다리지 않고 장소가 없다고 알린다', async () => {
+    mockParams.placeId = '';
+    await renderScreen();
+    expect(await screen.findByText('날씨 대안을 찾을 장소가 없어요')).toBeTruthy();
+    expect(screen.queryByText('날씨 대안을 찾고 있어요')).toBeNull();
+    expect(mockRequest).not.toHaveBeenCalled();
+  });
+
+  it('코스를 받지 못하면 계속 기다리지 않고 다시 시도로 다시 받는다', async () => {
+    mockItinerary.mockRejectedValueOnce(new Error('500')).mockRejectedValueOnce(new Error('500'));
+    await renderScreen();
+    expect(await screen.findByText('코스를 불러오지 못했어요', {}, { timeout: 5000 })).toBeTruthy();
+    await fireEvent.press(screen.getByText('다시 시도'));
+    expect(await screen.findByText('해운대 실내 수족관')).toBeTruthy();
+    expect(mockRequest).toHaveBeenCalledTimes(1);
   });
 
   it('변경안을 만들지 못하면 알리고 시트는 뜨지 않는다', async () => {
