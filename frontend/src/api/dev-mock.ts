@@ -10,6 +10,8 @@ import { sampleFeed } from '@/features/feed/preview-data';
 import { addDays, seoulToday } from '@/lib/seoul-date';
 
 import { createChatMock } from './dev-mock-chat';
+import { createGroupMock } from './dev-mock-group';
+import { createRecommendMock } from './dev-mock-recommend';
 import { mockMyTimeline, mockTripSummary, mockTripTimeline } from './dev-mock-timeline';
 
 import type { Follow, MyProfile, Session, UserCard } from './types';
@@ -489,6 +491,16 @@ function bump(trip: Trip) {
 
 /** 채팅 가짜 서버. 여행 목록(trips)에 없는 여행의 방은 404다 */
 const chatMock = createChatMock({ getTrips: () => trips, me: ME, ok, fail });
+/** 추천 결과 가짜 서버. 백엔드에 추천 API가 없다(Q-9-1) */
+const recommendMock = createRecommendMock({ getTrips: () => trips, ok, fail });
+/** 그룹 즐겨찾기 가짜 서버. 담는 장소는 개인 즐겨찾기나 추천 결과에서 찾는다 */
+const groupMock = createGroupMock({
+  getTrips: () => trips,
+  meId: ME.id,
+  findPlace: (id) => bookmarks.find((b) => b.place.id === id)?.place ?? recommendMock.findPlace(id),
+  ok,
+  fail,
+});
 
 /**
  * 웹 테스트 모드 콘솔에서 다른 동행의 변경을 흉내 낸다(동행 명세 research R15).
@@ -498,6 +510,10 @@ const chatMock = createChatMock({ getTrips: () => trips, me: ME, ok, fail });
 export const devMockControls = {
   /** 채팅: globalThis.__devMock.chat.incoming('trip-1', '안녕') 등(contracts/realtime.md "테스트 모드") */
   chat: chatMock.controls,
+  /** 그룹 즐겨찾기: globalThis.__devMock.group.saveByOther('trip-1'), reset() */
+  group: groupMock.controls,
+  /** 추천: globalThis.__devMock.recommend.failNext(), insufficientNext() */
+  recommend: recommendMock.controls,
   /**
    * 다른 기기에서 내가 내보내졌거나 여행이 삭제된 것을 흉내 낸다. 그 여행과 대화방이 모두 404가 된다.
    * globalThis.__devMock.kickMe('trip-1') 뒤 S47에서 보내기·새로고침을 하면 차단 화면이 나온다(채팅 quickstart 4-1)
@@ -856,6 +872,10 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
 
   const chat = chatMock.handle(config, method, url, params);
   if (chat) return chat;
+  const group = groupMock.handle(config, method, url, params);
+  if (group) return group;
+  const recommend = recommendMock.handle(config, method, url);
+  if (recommend) return recommend;
   const photo = handlePhotos(config, method, url);
   if (photo) return photo;
 

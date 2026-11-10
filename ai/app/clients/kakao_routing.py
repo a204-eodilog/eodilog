@@ -37,9 +37,16 @@ class Coordinate:
     longitude: float
 
 
+@dataclass(frozen=True)
+class _Measured:
+    seconds: int
+    meters: int | None
+
+
 class RouteLeg(CamelModel):
     transport_mode: TransportMode
     duration_seconds: int | None
+    distance_meters: int | None = None
     status: Literal["AVAILABLE", "UNAVAILABLE"]
 
 
@@ -56,23 +63,23 @@ class KakaoRoutingClient:
             record_provider_failure()
             return _leg(mode, None)
         try:
-            seconds = await self._seconds(origin, destination, mode)
+            measured = await self._measured(origin, destination, mode)
             if (
-                seconds is None
+                measured is None
                 and mode is TransportMode.TRANSIT
                 and straight_line_meters(origin, destination) <= NEAR_ENOUGH_TO_WALK_METERS
             ):
                 mode = TransportMode.WALK
-                seconds = await self._seconds(origin, destination, mode)
+                measured = await self._measured(origin, destination, mode)
         except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError, AttributeError) as e:
             record_provider_failure()
             log.warning("route_failed mode=%s error=%s", mode.value, type(e).__name__)
             return _leg(mode, None)
-        return _leg(mode, seconds)
+        return _leg(mode, measured)
 
-    async def _seconds(
+    async def _measured(
         self, origin: Coordinate, destination: Coordinate, mode: TransportMode
-    ) -> int | None:
+    ) -> _Measured | None:
         """경로 없음은 None, 장애와 형식 오류는 예외로 구분한다."""
         if mode is TransportMode.CAR:
             return await self._car(origin, destination)
@@ -89,11 +96,11 @@ class KakaoRoutingClient:
         if body.get("status") != "OK":
             return None
         if mode is TransportMode.WALK:
-            return int(body["route"]["properties"]["totalTime"])
+            return _from_properties(body["route"]["properties"])
         routes = body.get("routes")
-        return int(routes[0]["properties"]["totalTime"]) if routes else None
+        return _from_properties(routes[0]["properties"]) if routes else None
 
-    async def _car(self, origin: Coordinate, destination: Coordinate) -> int | None:
+    async def _car(self, origin: Coordinate, destination: Coordinate) -> _Measured | None:
         body = await self._get(
             CAR_URL,
             {
@@ -104,7 +111,8 @@ class KakaoRoutingClient:
         route = body["routes"][0]
         if route.get("result_code") != 0:
             return None
-        return int(route["summary"]["duration"])
+        summary = route["summary"]
+        return _Measured(int(summary["duration"]), _meters(summary.get("distance")))
 
     async def _get(self, url: str, params: dict) -> dict:
         response = await self._http.get(
@@ -117,11 +125,27 @@ class KakaoRoutingClient:
         return response.json()
 
 
-def _leg(mode: TransportMode, seconds: int | None) -> RouteLeg:
+def _from_properties(properties: dict) -> _Measured:
+    return _Measured(int(properties["totalTime"]), _meters(properties.get("totalDistance")))
+
+
+def _meters(raw: object) -> int | None:
+    """거리를 못 읽어도 이동 시간은 버리지 않는다."""
+    try:
+        meters = int(raw)
+    except (TypeError, ValueError):
+        return None
+    return meters if meters >= 0 else None
+
+
+def _leg(mode: TransportMode, measured: _Measured | None) -> RouteLeg:
+    if measured is None:
+        return RouteLeg(transport_mode=mode, duration_seconds=None, status="UNAVAILABLE")
     return RouteLeg(
         transport_mode=mode,
-        duration_seconds=seconds,
-        status="UNAVAILABLE" if seconds is None else "AVAILABLE",
+        duration_seconds=measured.seconds,
+        distance_meters=measured.meters,
+        status="AVAILABLE",
     )
 
 

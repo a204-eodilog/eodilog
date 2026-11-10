@@ -15,7 +15,7 @@ plan: "./plan.md"
 
 | # | 작업 | 완료 조건 | 상태 |
 | --- | --- | --- | --- |
-| 0 | 백엔드 연동 계약 합의(EODI-76): DTO, 응답 처리, 시간 예산(B-4·B-5). 스텁·연동 구현보다 먼저 | 합의 결과를 이 문서와 spec에 기록 | 할 일 |
+| 0 | 백엔드 연동 계약 합의(EODI-76): DTO, 응답 처리, 시간 예산(B-4·B-5). 스텁·연동 구현보다 먼저 | 합의 결과를 이 문서와 spec에 기록 | 진행 중. 2026-11-10 백엔드 회신을 backend-contract-check.md에 기록함. 백엔드 연결 구현 대기 |
 | 1 | 프로젝트 뼈대: pyproject(uv), 설정, `{data}`·`{error}` 공통 계약, camelCase 모델, 내부 토큰, `X-Trace-Id`, `/ai/v1/health` | 공통 계약 테스트(오류 형식·traceId·401) | 완료 |
 | 2 | 입력 모델과 전 엔드포인트 계약 스텁(명세대로 고정 예시 응답) | 스텁 응답이 spec 모양과 일치 | 불필요(모든 엔드포인트를 실제로 구현함) |
 | 3 | 외부 연동: GMS(`gpt-5.6-luna`, temperature 미전송), 네이버 지역 검색(`naver_local.py`), 카카오 길찾기(자동차·도보·대중교통, 근거리 도보 대체). 요청 45초 예산 적용 | respx 기반 단위 테스트, 예산 초과 시 503 | 완료 |
@@ -31,9 +31,9 @@ plan: "./plan.md"
 | 13 | 사진 평가 스크립트, 실제 여행 사진으로 정확도 측정·임계값 재조정 | 주제 분류 정확도 90% 이상(제안). 측정값·실패 사례를 verification.md에 기록 | 할 일 |
 | 14 | 배포: Docker, EC2 c6g(ARM에서 모델 실행 확인 포함), 백엔드 연결 | 백엔드 → AI 실제 호출 성공. 사진 50장(긴 변 4000px 안팎 JPEG), 동시 요청 2건, 모델을 미리 올린 상태에서 요청당 45초 이내. 모델 로딩 시간은 따로 기록 | Docker 진행 중 |
 | 15 | 운영 지표: 기능별 지연·토큰·실패율 로그 | 지표 기록 | 완료(요청마다 `request_metrics` 한 줄) |
-| 16 | `POST /visit-detections` (VISIT_DETECTION). S45 판정 기준 합의 후 | T-08-7 ~ T-08-10 | 구현 완료(spec 기준). S45 판정 기준 합의 대기, 반경 300m는 잠정값(AS-17) |
-| 17 | `POST /discovery-recommendations`, `POST /follow-suggestions` | spec §9 사례 | 완료 |
-| 18 | `POST /route-legs` (ROUTE_RECALCULATION, 직접 편집 뒤 구간 시간). 길찾기 호출을 AI 서버 한 곳에 둔다(백엔드 합의 전 초안) | T-04-11 ~ T-04-16 | 구현 완료. 요청·응답 형식 백엔드 합의 대기 |
+| 16 | `POST /visit-detections` (VISIT_DETECTION). S45 판정 기준 합의 후 | T-08-7 ~ T-08-10 | 완료. 반경 300m 확정(2026-11-10 백엔드 회신) |
+| 17 | `POST /discovery-recommendations`, `POST /follow-suggestions` | spec §9 사례 | 완료. discovery는 백엔드 연결 예정, follow는 백엔드 자체 규칙으로 현재 미사용 |
+| 18 | `POST /route-legs` (ROUTE_RECALCULATION, 직접 편집 뒤 구간 시간). 길찾기 호출을 AI 서버 한 곳에 둔다(백엔드 동의, 2026-11-10) | T-04-11 ~ T-04-17 | 완료. 백엔드 연결 진행 중 |
 
 ## 백엔드와 맞출 것 (spec §11)
 
