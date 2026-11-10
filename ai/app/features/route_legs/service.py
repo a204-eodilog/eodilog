@@ -39,6 +39,7 @@ class LegResult(CamelModel):
     to_order: int
     transport_mode: TransportMode
     duration_seconds: int | None
+    distance_meters: int | None
     status: Literal["AVAILABLE", "UNAVAILABLE"]
     queried_at: datetime
 
@@ -69,6 +70,7 @@ class RouteLegCalculator:
                     to_order=leg.to_order,
                     transport_mode=route.transport_mode,
                     duration_seconds=route.duration_seconds,
+                    distance_meters=route.distance_meters,
                     status=route.status,
                     queried_at=queried_at,
                 )
