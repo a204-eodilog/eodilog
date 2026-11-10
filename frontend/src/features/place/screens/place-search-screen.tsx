@@ -44,9 +44,21 @@ export function PlaceSearchScreen() {
   // 화면을 닫으면(뒤로·고르기) 부른 화면의 약속을 끝낸다. 지도로 넘길 때는 이어 간다
   useEffect(() => cancelPickOnLeave, []);
 
+  // 부른 화면이 근처 좌표를 줬으면 서버가 그곳에서 가까운 순으로 준다
+  const near =
+    params.lat && params.lng
+      ? { latitude: Number(params.lat), longitude: Number(params.lng) }
+      : null;
   const search = useQuery({
-    queryKey: ['places', 'search', query, params.regionId ?? null],
-    queryFn: ({ signal }) => searchPlaces(query!, { regionId: params.regionId, signal }),
+    queryKey: [
+      'places',
+      'search',
+      query,
+      params.regionId ?? null,
+      params.lat ?? null,
+      params.lng ?? null,
+    ],
+    queryFn: ({ signal }) => searchPlaces(query!, { regionId: params.regionId, near, signal }),
     enabled: query !== null,
     retry: false,
     staleTime: 60_000,

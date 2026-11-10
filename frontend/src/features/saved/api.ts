@@ -57,22 +57,24 @@ export type CaptureFile = { uri: string; contentType: string; byteSize: number }
 /**
  * 캡처 한 장 올리기: 업로드 준비 → 받은 주소로 파일 PUT → 완료 확인. 완료된 자료 id를 돌려준다.
  * 받은 주소(저장소)에는 API 인증 헤더를 보내지 않아 apiClient가 아닌 fetch로 올린다.
- * 개발용 테스트 모드는 저장소가 없어 파일 PUT을 건너뛴다
+ * 개발용 테스트 모드는 저장소가 없어 파일을 읽지도 PUT하지도 않는다.
+ * 파일은 Blob이 아니라 ArrayBuffer로 보낸다: 안드로이드에서 Blob을 바디로 넘기면 바이트가 그대로 가지 않아
+ * 서명(content-type·content-length 포함)이 맞지 않고 저장소가 403으로 거부한다(!196 실기기 확인).
+ * 크기는 실제로 읽은 바이트 수로 알리고, content-length는 런타임이 바디 크기로 정하게 뺀다(S30 putPhoto와 같음)
  */
 export async function uploadCapture(file: CaptureFile): Promise<string> {
+  const bytes = env.devMock ? null : await (await fetch(file.uri)).arrayBuffer();
   const { data } = await apiClient.post<DataResponse<UploadIntent>>('/assets/upload-intents', {
     purpose: 'CAPTURE',
     contentType: file.contentType,
-    byteSize: file.byteSize,
+    byteSize: bytes?.byteLength || file.byteSize,
   });
   const intent = data.data;
-  if (!env.devMock) {
-    const blob = await (await fetch(file.uri)).blob();
-    const res = await fetch(intent.uploadUrl, {
-      method: intent.method,
-      headers: intent.headers,
-      body: blob,
-    });
+  if (bytes) {
+    const headers = Object.fromEntries(
+      Object.entries(intent.headers).filter(([name]) => name.toLowerCase() !== 'content-length'),
+    );
+    const res = await fetch(intent.uploadUrl, { method: intent.method, headers, body: bytes });
     if (!res.ok) throw new Error(`upload failed: ${res.status}`);
   }
   await apiClient.post(`/assets/${intent.assetId}/complete`);
