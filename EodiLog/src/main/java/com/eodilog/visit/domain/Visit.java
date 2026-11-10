@@ -49,6 +49,13 @@ public class Visit {
 		return visit;
 	}
 
+	// 사진 방문 후보를 본인이 확정해 만든 방문
+	public static Visit photo(UUID tripId, UUID memberId, UUID placeId, Instant visitedAt, Instant now) {
+		Visit visit = manual(tripId, memberId, placeId, visitedAt, now);
+		visit.evidenceType = VisitEvidenceType.PHOTO;
+		return visit;
+	}
+
 	public void delete(Instant now) {
 		this.deletedAt = now;
 	}

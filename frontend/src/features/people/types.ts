@@ -1,12 +1,13 @@
 import type { UserCard } from '@/api/types';
 
 /**
- * S44 추천 친구 한 명. 명세에 추천 API가 아직 없어(백엔드 요청) 테스트 모드 값으로 그린다.
- * reason은 공개 가능한 이유만: 공개 취향이 같음(겹치는 낱말) / 공개 여행 수
+ * S44 추천 친구 한 명(명세 `GET /me/follow-suggestions`의 FollowSuggestion).
+ * reason은 공개해도 되는 이유만 온다. 글자는 앱이 붙인다(people-rules의 suggestionReason).
+ * CO_TRAVELER: 같은 여행을 함께한 사람(count = 함께한 여행 수) / FOLLOWS_YOU: 나를 팔로우하는데 내가 팔로우하지 않은 사람
  */
 export type FriendSuggestion = {
   user: UserCard;
-  reason: { kind: 'taste'; tags: string[] } | { kind: 'trips'; count: number };
+  reason: { kind: 'CO_TRAVELER'; count?: number } | { kind: 'FOLLOWS_YOU' };
 };
 
 /**

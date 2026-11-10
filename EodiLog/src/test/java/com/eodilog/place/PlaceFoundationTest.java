@@ -37,7 +37,7 @@ class PlaceFoundationTest {
 
 	ProviderPlace place(String providerPlaceId, String name) {
 		return new ProviderPlace(providerPlaceId, name, "제주 서귀포시", new BigDecimal("33.4580000"),
-				new BigDecimal("126.9420000"), regionCode);
+				new BigDecimal("126.9420000"), regionCode, "  여행,명소>해수욕장 ");
 	}
 
 	String newProviderId() {
@@ -60,20 +60,23 @@ class PlaceFoundationTest {
 		String id = newProviderId();
 		PlaceView first = resolver.resolve("KAKAO", place(id, "옛 이름"));
 		PlaceView second = resolver.resolve("KAKAO", new ProviderPlace(id, "새 이름", null,
-				new BigDecimal("33.0000000"), new BigDecimal("126.0000000"), "UNKNOWN-CODE"));
+				new BigDecimal("33.0000000"), new BigDecimal("126.0000000"), "UNKNOWN-CODE", null));
 
 		assertThat(second.id()).isEqualTo(first.id());
 		assertThat(second.name()).isEqualTo("새 이름");
 		assertThat(second.address()).isNull();
 		assertThat(second.regionId()).as("모르는 지역 코드면 기존 지역 유지").isEqualTo(regionId);
 		assertThat(jdbc.queryForObject("SELECT count(*) FROM places WHERE provider_place_id=?", Integer.class, id)).isOne();
+		assertThat(jdbc.queryForObject("SELECT category FROM places WHERE id=?", String.class, first.id()))
+				.as("분류를 다듬어 저장하고, 분류 없는 재조회는 기존 분류를 유지").isEqualTo("여행,명소>해수욕장");
 	}
 
 	@Test
 	void unknownRegionCodeLeavesNewPlaceWithoutRegion() {
 		PlaceView saved = resolver.resolve("KAKAO", new ProviderPlace(newProviderId(), "지역 모름", null,
-				new BigDecimal("33.0000000"), new BigDecimal("126.0000000"), null));
+				new BigDecimal("33.0000000"), new BigDecimal("126.0000000"), null, " "));
 		assertThat(saved.regionId()).isNull();
+		assertThat(jdbc.queryForObject("SELECT category FROM places WHERE id=?", String.class, saved.id())).isNull();
 	}
 
 	@Test

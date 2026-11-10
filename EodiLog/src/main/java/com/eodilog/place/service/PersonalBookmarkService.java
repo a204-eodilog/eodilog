@@ -23,8 +23,11 @@ public class PersonalBookmarkService {
     private final JdbcTemplate jdbc;
     private final PlaceReader places;
     private final Clock clock;
+    private final com.eodilog.user.preference.PreferenceService preferences;
 
-    public PersonalBookmarkService(JdbcTemplate jdbc, PlaceReader places, Clock clock) {
+    public PersonalBookmarkService(JdbcTemplate jdbc, PlaceReader places, Clock clock,
+            com.eodilog.user.preference.PreferenceService preferences) {
+        this.preferences = preferences;
         this.jdbc = jdbc;
         this.places = places;
         this.clock = clock;
@@ -60,12 +63,14 @@ public class PersonalBookmarkService {
         // 피드 저장은 피드·열람권한 API가 생긴 뒤 연결한다. 제공된 ID를 무시하고 저장하지 않는다.
         if (sourceFeedId != null) throw invalid();
         PlaceView place = places.find(placeId).orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
+        preferences.lockSavedPlaces(userId);
         Instant now = clock.instant();
         jdbc.update("INSERT INTO personal_bookmarks(user_id,place_id,memo,retained_place_name,retained_latitude,"
                 + "retained_longitude,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?) "
                 + "ON CONFLICT(user_id,place_id) DO UPDATE SET memo=excluded.memo,updated_at=excluded.updated_at",
                 userId, placeId, memo, place.name(), place.latitude(), place.longitude(),
                 Timestamp.from(now), Timestamp.from(now));
+        preferences.savedPlacesChanged(userId);
         return get(userId, placeId);
     }
 
@@ -80,7 +85,9 @@ public class PersonalBookmarkService {
 
     @Transactional
     public void delete(UUID userId, UUID placeId) {
+        preferences.lockSavedPlaces(userId);
         jdbc.update("DELETE FROM personal_bookmarks WHERE user_id=? AND place_id=?", userId, placeId);
+        preferences.savedPlacesChanged(userId);
     }
 
     private BookmarkView get(UUID userId, UUID placeId) {

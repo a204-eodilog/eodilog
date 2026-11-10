@@ -8,7 +8,7 @@
 Project eodilogue {
   Note: '''
   여행은 그룹 경계. trips.owner_user_id가 방장 기준이며 이탈 시 가입 순서로 양도한다.
-  단방향 follows: PUBLIC 즉시 ACCEPTED, PRIVATE 요청 수락 후 ACCEPTED. 반대 방향 독립.
+  단방향 follows: PUBLIC 즉시 ACCEPTED, PRIVATE 요청 수락 후 ACCEPTED. 반대 방향 독립. 공개 전환 시 대기 요청 자동 수락(Q-2, 2026-11-10).
   공동 피드는 명시적 게시 때 여행당 하나 생성, 멤버 누구나 삭제. 특정 친구 본인 경로 숨김은 별도 저장한다.
   게시 후 기본 전체 공개, 직접 공동 피드 경로는 특정 친구 숨김으로 차단하지 않는다. 비공개 계정 결합 Q-3.
   개인별 피드·사진 공개 동의·코스 승인·정산 완료·1:1 채팅은 제거한다.
@@ -24,9 +24,9 @@ Table users {
   id uuid [pk]
   nickname varchar(50) [not null]
   profile_completed boolean [not null, default: false, note: 'false이면 nickname은 빈 문자열. 유효 카카오 닉네임 또는 PATCH /me로 완료. 재로그인은 이름 유지']
-  account_visibility varchar(16) [not null, default: 'PRIVATE', note: 'PUBLIC/PRIVATE, 기본값 제안 Q-2·3']
-  profile_asset_id uuid
-  age_band varchar(32) [note: '형태·필수 여부 Q-1, 공개 프로필 직렬화 금지']
+  account_visibility varchar(16) [not null, default: 'PRIVATE', note: 'PUBLIC/PRIVATE. PRIVATE→PUBLIC 전환 시 받은 REQUESTED를 모두 ACCEPTED(알림 없음), PUBLIC→PRIVATE는 기존 관계 유지(Q-2 2026-11-10). 기본값 PRIVATE']
+  profile_asset_id uuid [ref: > assets.id, note: '본인 소유 READY PROFILE 파일만 지정(PATCH /me). FK NOT VALID. 응답 URL은 /assets/{id}/download']
+  age_band varchar(32) [note: 'TEENS/TWENTIES/THIRTIES/FORTIES/FIFTIES/SIXTIES_PLUS 또는 NULL(CHECK, Q-1 2026-11-10). 선택 항목, 본인 응답에만']
   age_use_consent boolean [not null, default: false]
   inference_consent boolean [not null, default: false]
   preference_sharing_scope varchar(32) [not null, default: 'NONE', note: 'EXPLICIT_ONLY/EXPLICIT_AND_INFERRED/NONE. D-17 전역 기본']
@@ -34,6 +34,7 @@ Table users {
   created_at timestamp [not null]
   updated_at timestamp [not null]
   deactivated_at timestamp
+  Note: '닉네임 검색은 lower(nickname) gin_trgm_ops 부분 인덱스(status=ACTIVE AND profile_completed)'
 }
 
 Table oauth_accounts {
@@ -80,8 +81,11 @@ Table follows {
   status varchar(16) [not null, note: 'REQUESTED/ACCEPTED']
   requested_at timestamp [not null]
   accepted_at timestamp
-  indexes { (follower_user_id, followee_user_id) [unique] }
-  Note: '자기 자신 금지. 대상 PUBLIC이면 즉시 ACCEPTED, PRIVATE면 REQUESTED 후 대상자 수락. 반대 방향 독립. 언팔로우/취소/거절은 해당 방향만 제거. 계정 공개 범위 변경의 대기 요청 처리 Q-2.'
+  indexes {
+    (follower_user_id, followee_user_id) [unique]
+    (followee_user_id, status)
+  }
+  Note: '자기 자신 금지(CHECK). status=ACCEPTED일 때만 accepted_at(CHECK). 대상 PUBLIC이면 즉시 ACCEPTED, PRIVATE면 REQUESTED 후 대상자 수락. 반대 방향 독립. 언팔로우/취소/거절/팔로워 제거는 해당 방향만 제거. 공개 전환 시 대기 요청 자동 수락, 비공개 전환은 유지(Q-2 2026-11-10).'
 }
 
 Table suggestion_dismissals {
@@ -89,7 +93,7 @@ Table suggestion_dismissals {
   candidate_user_id uuid [not null, ref: > users.id]
   created_at timestamp [not null]
   indexes { (user_id, candidate_user_id) [pk] }
-  Note: '추천 숨김은 영구 유지하며 다시 추천하지 않음. 검색/팔로우 자체 차단과 별개.'
+  Note: '추천 숨김은 영구 유지하며 다시 추천하지 않음. 자기 자신 금지(CHECK). 검색/팔로우 자체 차단과 별개.'
 }
 
 Table user_preferences {
@@ -169,13 +173,15 @@ Table places {
   provider varchar(32)
   provider_place_id varchar(255)
   source varchar(16) [not null, note: 'PROVIDER/MANUAL']
+  category varchar(200) [note: '공급자 분류 이름을 >로 이은 값(SBDC 업종 대>중>소, KTO 관광 타입). 날씨 대안 실내 판단용 AI 입력에만 쓰고 공개 Place에는 없음. 모르면 null(EODI-247)']
   created_at timestamp [not null]
   updated_at timestamp [not null]
   indexes {
     (provider, provider_place_id) [unique]
     region_id
+    (longitude, latitude) [name: 'idx_places_location', note: 'GiST geography 식 인덱스. 날씨 대안 후보 반경 검색']
   }
-  Note: 'provider 두 필드는 함께 NULL 또는 함께 NOT NULL. 공급자 검색/추출에서 local UUID를 반환하기 전에 공급자 키로 upsert하고 동시 충돌은 기존 행 재조회. 공급자 ID가 없으면 자동 중복 병합하지 않음(D-6). 수동 장소 수정은 저장 메모 변경과 구분.'
+  Note: 'provider 두 필드는 함께 NULL 또는 함께 NOT NULL. 공급자 검색/추출에서 local UUID를 반환하기 전에 공급자 키로 upsert하고 동시 충돌은 기존 행 재조회. 공급자 ID가 없으면 자동 중복 병합하지 않음(D-6). 수동 장소 수정은 저장 메모 변경과 구분. 지역 코드를 주지 않는 공급자(NAVER) 장소는 주소의 "시·도 시·군·구" 전체 이름(줄임말·옛 이름 대응 포함)이 regions.name과 정확히 같을 때만 region_id를 채움(DB 함수 region_code_for_address, -246). 전체 이름은 지역마다 하나뿐이고, 시·군·구 이름만으로는 맞추지 않음.'
 }
 
 Table trip_destinations {
@@ -354,7 +360,7 @@ Table itinerary_undo_states {
   before_content_json json [not null]
   applied_by_member_id uuid [not null, ref: > trip_members.id]
   created_at timestamp [not null]
-  Note: '직전 AI 적용 이전 코스 한 개만 보관하는 제안. 적용/스냅샷/버전 증가 원자 처리. 다른 코스 쓰기·undo 후 토큰 제거/무효화, 복원도 새 version. 임의 과거 revision이나 승인 모델 아님. 직후 시간/동시 경합 Q-15.'
+  Note: '직전 AI 적용 이전 코스 한 개만 보관하는 제안. 적용/스냅샷/버전 증가 원자 처리. 다른 코스 쓰기·undo 후 토큰 제거/무효화, 복원도 새 version. 임의 과거 revision이나 승인 모델 아님. 직후 시간/동시 경합 Q-15. 2026-11-09 구현(EODI-231): before_content_json={items:[{id,placeId,day,order,startTime,stayMinutes}],legs:[{fromItemId,toItemId,transportMode,durationSeconds,distanceMeters,geometryJson,status,queriedAt}]}, 현재 version=applied_version이고 applied_job_id가 일치할 때만 되돌림. 실제로 바꾼 PUT·undo 때 행 삭제, 여행 삭제는 코스보다 먼저 삭제. 시간 제한 없음.'
 }
 
 Table itinerary_items {
@@ -378,7 +384,7 @@ Table route_legs {
   duration_seconds integer
   distance_meters integer
   geometry_json json [note: '지도 경로 LineString 제안, 좌표 경도·위도 순서. 공급자 저장/재사용 조건 Q-12. 경로 공급자 연동 전에는 항상 NULL(엔티티 미매핑)']
-  status varchar(16) [not null, note: 'AVAILABLE/UNAVAILABLE. AVAILABLE이면 시간·거리 필수, UNAVAILABLE이면 시간·거리·지도선 모두 NULL']
+  status varchar(16) [not null, note: 'AVAILABLE/UNAVAILABLE. AVAILABLE이면 시간 필수(AI 코스 제안 적용 구간은 거리·지도선 NULL 가능, 2026-11-09), UNAVAILABLE이면 시간·거리·지도선 모두 NULL']
   queried_at timestamp [not null, note: '조회 전이면 저장 시각']
   indexes { (itinerary_id, from_item_id, to_item_id) [unique] }
   Note: 'transport_mode는 WALK/CAR/TRANSIT. 두 지점이 같은 itinerary에 속하고 동일 날짜 인접 순서인지 서비스가 검증(아니면 422 INVALID_ROUTE_LEGS). 전체 교체 때 구간은 모두 지우고 다시 만든다. 실패값 NULL. 계획 거리이며 실제 이동거리로 집계하지 않음.'
@@ -424,9 +430,17 @@ Table visits {
 Table photo_groups {
   id uuid [pk]
   trip_id uuid [not null, ref: > trips.id]
-  source_job_id uuid [ref: > jobs.id]
+  source_job_id uuid [not null, ref: > jobs.id]
   created_at timestamp [not null]
-  Note: '유사 사진 묶음. 대표 사진은 보관 사진 중 결정적 순서로 선택하는 제안. AI로 원본 자동 삭제하지 않음.'
+  indexes { (id, trip_id) [unique] }
+  Note: 'PHOTO_CLASSIFICATION의 명시적 apply가 만든 유사 사진 묶음. AI UUID는 다른 작업/여행 충돌 검사 후 사용. photos(group_id,trip_id) 복합 FK로 같은 여행만 연결. 적용 대상 성공 사진 2장 이상일 때 생성. 이후 삭제로 한 장만 남아도 유지하고 빈 그룹은 요약에서 제외. 대표 자동 선정·원본 자동 삭제 없음.'
+}
+
+Table photo_classification_applies {
+  job_id uuid [pk, ref: > jobs.id]
+  request_json json [not null, note: '최초 apply 사진 ID·expected version 본문']
+  response_json json [not null, note: '최초 적용 Photo 응답. 재요청에도 현재 권한·사진 생존·version 검사 후 반환']
+  Note: '작업당 한 번 원자 apply. 같은 본문은 version/그룹 중복 증가 없이 최초 결과, 다른 본문은409. 사진/멤버 FK 없이 작업에 귀속. 사진 삭제가 과거 응답을 다시 노출시키지 않도록 서비스에서 현재 상태 재검사.'
 }
 
 Table photo_upload_batches {

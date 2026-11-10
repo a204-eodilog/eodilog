@@ -1,9 +1,13 @@
+import { Image } from 'expo-image';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, Card, Header, Icon, Tag } from '@/components/ui';
+import { photoPath } from '@/features/photo';
+import { assetSource } from '@/lib/asset-image';
 import { colors, layout, spacing, typography } from '@/theme';
 
+import { type PhotoCardInfo, PHOTO_CARD_THUMBS } from '../photo-card-rules';
 import type { RecordSummary } from '../record-rules';
 
 import { OutlinePillButton } from './outline-pill-button';
@@ -20,6 +24,7 @@ export type TripRecordViewProps = {
   /** "서연, 민준과 함께". 혼자면 null */
   companions: string | null;
   feed: RecordFeed;
+  photos: PhotoCardInfo;
   course: RecordSummary;
   review: RecordSummary;
   expense: RecordSummary;
@@ -44,6 +49,7 @@ export function TripRecordView({
   period,
   companions,
   feed,
+  photos,
   course,
   review,
   expense,
@@ -104,16 +110,30 @@ export function TripRecordView({
           ) : null}
         </View>
 
-        {/* 사진 API가 아직 없어 장수·올린 사람·썸네일 없이 머리 줄만 그린다 */}
-        <Card onPress={onPhotos} accessibilityLabel="사진" style={styles.photoCard}>
+        <Card
+          onPress={onPhotos}
+          accessibilityLabel={[photos.title, photos.sub].filter(Boolean).join(', ')}
+          style={styles.photoCard}
+        >
           <View style={styles.photoHead}>
             <Icon name="image" size={20} color={colors.text.default} />
-            <Text style={[typography.bodyBold, styles.text]}>사진</Text>
-            <Text style={[typography.caption, styles.sub, styles.grow]}>
-              사진 기능을 준비 중이에요
+            <Text style={[typography.bodyBold, styles.text]}>{photos.title}</Text>
+            <Text style={[typography.caption, styles.sub, styles.grow]} numberOfLines={1}>
+              {photos.sub ?? ''}
             </Text>
             <Icon name="chevron-right" size={16} color={colors.text.icon} />
           </View>
+          {photos.thumbAssetIds.length > 0 ? (
+            <View style={styles.thumbs}>
+              {photos.thumbAssetIds.map((assetId) => (
+                <PhotoThumb key={assetId} assetId={assetId} />
+              ))}
+              {/* 4장보다 적어도 칸 크기를 같게 둔다 */}
+              {Array.from({ length: PHOTO_CARD_THUMBS - photos.thumbAssetIds.length }, (_, i) => (
+                <View key={`empty-${i}`} style={styles.thumbSlot} />
+              ))}
+            </View>
+          ) : null}
         </Card>
 
         <View style={styles.summaries}>
@@ -160,6 +180,16 @@ export function TripRecordView({
   );
 }
 
+/** 사진 카드 썸네일 한 칸. 이미지를 못 받으면(테스트 모드 등) 회색 칸 */
+function PhotoThumb({ assetId }: { assetId: string }) {
+  const source = assetSource(photoPath(assetId));
+  return (
+    <View style={[styles.thumbSlot, styles.thumb]}>
+      {source ? <Image source={source} style={styles.thumbImage} contentFit="cover" /> : null}
+    </View>
+  );
+}
+
 /** 아래 버튼 밑 여백(Figma 34). 기기 아래 안전 영역이 더 크면 그만큼 */
 const BOTTOM_GAP = 34;
 
@@ -180,6 +210,11 @@ const styles = StyleSheet.create({
   grow: { flex: 1 },
   photoCard: { gap: spacing[16] },
   photoHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[6] },
+  // 값 문서: 썸네일 4개 73x52, 둥글기 10. 기기 폭에 맞춰 넷이 나눠 서고 높이는 52
+  thumbs: { flexDirection: 'row', gap: spacing[4] },
+  thumbSlot: { flex: 1, height: 52 },
+  thumb: { borderRadius: 10, overflow: 'hidden', backgroundColor: colors.surface.default },
+  thumbImage: { width: '100%', height: '100%' },
   summaries: { flexDirection: 'row', gap: spacing[8] },
   manage: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[10] },
   bottom: {
