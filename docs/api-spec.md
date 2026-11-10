@@ -140,7 +140,7 @@
 
 | Method | URL | 권한 | 요청 | 성공 data / 상태 | 주요 규칙 |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/places` | 로그인 | `query:string,regionId?:id` + 페이지 | `Place[]` / 200 | 공급자 결과를 provider/공급자 ID로 로컬 upsert한 뒤 로컬 UUID만 반환 |
+| GET | `/places` | 로그인 | `query:string`(strip 후 1~200자),`near?:string`(`위도,경도`),`regionId?:id` + 페이지 | `Place[]` / 200 | 공급자 결과를 provider/공급자 ID로 로컬 upsert한 뒤 로컬 UUID만 반환. 이름 부분 일치, 정렬·커서는 아래 「장소 검색 정렬」 |
 | GET | `/places/{placeId}` | 로그인 | 없음 | `Place` / 200 | 일반 장소 정보, 원본 비공개 자료 제외 |
 | POST | `/places` | 로그인 | `{name:string,address?:string,latitude:number,longitude:number,regionId?:id}` | `Place` / 201 | 수동 보정 장소, 공급자 장소로 임의 확정하지 않음 |
 | GET | `/regions` | 로그인·가입 완료 | `query:string` 필수(strip 후1~200자), `cursor`, `limit` 기본20/1~100 | `Region[]` + page / 200 | 전체 지역명 문자 그대로 부분 검색(%/_ 포함). code ASC,id ASC 전용 Base64URL 커서(query 바인딩); 잘못된 입력/커서400 VALIDATION_ERROR |
@@ -163,6 +163,8 @@
 | DELETE | `/feeds/{feedId}/like` | 본인 반응 | 없음 | 204 | 방문/평가로 집계하지 않음 |
 
 장소 ID 계약: `/places`와 추출 결과의 `place.id`는 모두 `places.id`다. 공급자 ID를 UUID 대신 반환하지 않는다. 동시에 같은 공급자 결과를 저장하면 unique 충돌 후 기존 행을 재조회한다. 추출 후보를 실제 장소에 연결할 때도 같은 resolver를 사용한다. 수동 POST는 별도 MANUAL 장소이며 공급자 결과를 수동 장소로 우회 복제하지 않는다. 공급자 자료 저장 가능 범위는 Q-12 확인 후 적용한다.
+
+장소 검색 정렬(2026-11-10, EODI-264): 검색어는 앞뒤 공백을 빼고 대소문자를 무시해 이름에 포함된 장소를 찾는다(`%`·`_`도 글자 그대로). `near`는 `위도,경도` 문자열이다(예: `near=37.5547,126.9707`, 쉼표 앞뒤 공백 허용, 위도 -90~90·경도 -180~180, 소수 10자리까지). 형식이 틀리면 400 `VALIDATION_ERROR`(`near`)다. `near`가 있으면 이름 완전 일치 → `near`에서 가까운 순(직선 거리) → id 순이다. 없으면 이름 완전 일치 → 앞부분 일치 → 그 밖의 포함 → 이름 짧은 순 → 이름순 → id 순이다. 완전·앞부분 일치는 이름의 앞뒤 공백을 무시한다. 거리 반경 제한은 없고 거리는 응답에 싣지 않는다(`Place` 모양은 그대로다). 커서는 정렬 키와 query·near·regionId에 묶인 Base64URL 문자열이다. 조건이 다르거나 예전 UUID 커서를 보내면 400 `VALIDATION_ERROR`(`cursor`)다.
 
 | Method | URL | 권한 | 요청 | 성공 data / 상태 | 주요 규칙 |
 | --- | --- | --- | --- | --- | --- |
