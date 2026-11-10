@@ -58,7 +58,7 @@ record StoredProposal(long baseVersion, ProposalReason reason, List<Item> items,
 			}
 			long baseVersion = input.get("expectedVersion").asLong();
 			if (!isLong(data.get("baseVersion")) || data.get("baseVersion").asLong() != baseVersion
-					|| !"INITIAL".equals(text(data.get("reason")))) {
+					|| !input.get("reason").asString().equals(text(data.get("reason")))) {
 				return Optional.empty();
 			}
 			Map<UUID, PlaceView> places = new HashMap<>();
@@ -120,7 +120,8 @@ record StoredProposal(long baseVersion, ProposalReason reason, List<Item> items,
 			if (description.length() > DESCRIPTION_MAX_LENGTH) {
 				description = description.substring(0, DESCRIPTION_MAX_LENGTH - 1) + "…";
 			}
-			return structured(baseVersion, ProposalReason.INITIAL, items, legs, null, description, currentPlaceIds);
+			return structured(baseVersion, ProposalReason.valueOf(input.get("reason").asString()), items, legs, null,
+					description, currentPlaceIds);
 		} catch (RuntimeException ex) {
 			return Optional.empty();
 		}
