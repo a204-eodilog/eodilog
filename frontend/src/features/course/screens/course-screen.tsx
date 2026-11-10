@@ -21,9 +21,9 @@ import {
   editedLine,
   hasUnavailable,
   latestQueriedAt,
+  noTimeDefault,
   toDraft,
   type CourseDraft,
-  noTimeDefault,
 } from '../course-rules';
 import { useItinerary } from '../hooks/use-itinerary';
 import { useRecalculate } from '../hooks/use-recalculate';
