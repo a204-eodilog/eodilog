@@ -1,10 +1,11 @@
 import { apiClient } from '@/api/client';
+import { emptyIfMissing } from '@/api/missing';
 import type { DataResponse, PageResponse } from '@/api/types';
 
 import type { DiscoveryItem, FeedCard, MapResult } from './types';
 
 /**
- * 홈 지도. 2026-11-05 기준 백엔드에 컨트롤러가 없어 실패하면 화면은 '지도 로드 실패'로 보인다.
+ * 홈 지도. 팔로우한 사람이 동행인 게시 피드를 지역별로 묶어 준다.
  * bbox는 지도 SDK 기준 명세라, SVG 지도는 처음부터 전국이 보여 전국 범위를 보낸다
  */
 export async function getHomeMap(bbox: string): Promise<MapResult> {
@@ -21,13 +22,14 @@ export async function getRegionFeeds(regionId: string): Promise<FeedCard[]> {
   return data.data;
 }
 
-/** 좋아요 기반 추천(첫 페이지만). 백엔드 컨트롤러 없음 */
-export async function getDiscovery(): Promise<DiscoveryItem[]> {
-  const { data } = await apiClient.get<PageResponse<DiscoveryItem>>(
-    '/me/discovery-recommendations',
-    { params: { limit: 10 } },
+/** 좋아요 기반 추천(첫 페이지만). 서버에 아직 없으면 추천 없음으로 본다 */
+export function getDiscovery(): Promise<DiscoveryItem[]> {
+  return emptyIfMissing(
+    apiClient
+      .get<PageResponse<DiscoveryItem>>('/me/discovery-recommendations', { params: { limit: 10 } })
+      .then(({ data }) => data.data),
+    [],
   );
-  return data.data;
 }
 
 /** 안 읽은 알림 수 (백엔드 있음) */
@@ -46,7 +48,7 @@ export async function hasAnyTrip(): Promise<boolean> {
   return data.data.length > 0;
 }
 
-/** 팔로우한 사람이 있는지. 백엔드 컨트롤러 없음(실패하면 모름으로 둔다) */
+/** 팔로우한 사람이 있는지. 실패하면 화면은 모름으로 둔다 */
 export async function hasAnyFollowing(): Promise<boolean> {
   const { data } = await apiClient.get<PageResponse<unknown>>('/me/following', {
     params: { limit: 1 },

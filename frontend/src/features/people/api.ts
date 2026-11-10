@@ -11,24 +11,17 @@ export async function searchUsers(query: string): Promise<UserCard[]> {
   return data.data;
 }
 
-/**
- * 추천 친구. 명세에 아직 없는 제안 경로(`GET /me/friend-recommendations`). 서버에 없으면(404) 빈 목록으로 본다
- */
+/** 추천 친구 `GET /me/follow-suggestions` 첫 쪽(서버 최대 50) */
 export async function getSuggestions(): Promise<FriendSuggestion[]> {
-  try {
-    const { data } = await apiClient.get<PageResponse<FriendSuggestion>>(
-      '/me/friend-recommendations',
-    );
-    return data.data;
-  } catch (e) {
-    if ((e as { response?: { status?: number } }).response?.status === 404) return [];
-    throw e;
-  }
+  const { data } = await apiClient.get<PageResponse<FriendSuggestion>>('/me/follow-suggestions', {
+    params: { limit: 50 },
+  });
+  return data.data;
 }
 
-/** 추천에서 숨기기(다시 추천 안 함). 제안 경로 `POST /me/friend-recommendations/{userId}/hide` */
+/** 추천에서 숨기기(다시 추천 안 함, 만료 없음) `PUT /me/follow-suggestion-dismissals/{userId}` */
 export async function hideSuggestion(userId: string): Promise<void> {
-  await apiClient.post(`/me/friend-recommendations/${encodeURIComponent(userId)}/hide`);
+  await apiClient.put(`/me/follow-suggestion-dismissals/${encodeURIComponent(userId)}`);
 }
 
 /** POST /users/{userId}/follow. 공개 계정이면 ACCEPTED, 비공개면 REQUESTED */
@@ -52,7 +45,7 @@ export async function getUser(userId: string): Promise<PublicProfile> {
   return data.data;
 }
 
-/** GET /users/{userId}/feeds. 비공개 계정을 팔로우하지 않았으면 서버가 막는다(403) */
+/** GET /users/{userId}/feeds. 계정 공개 범위와 숨김 설정으로 걸러진 목록이 온다 */
 export async function getUserFeeds(userId: string): Promise<UserFeedCard[]> {
   const { data } = await apiClient.get<PageResponse<UserFeedCard>>(
     `/users/${encodeURIComponent(userId)}/feeds`,

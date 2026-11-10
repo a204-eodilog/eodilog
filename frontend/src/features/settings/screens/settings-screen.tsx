@@ -39,6 +39,8 @@ type ViewProps = {
     failureMessage: string,
     retry?: boolean,
   ) => void;
+  /** 계정 공개/비공개 저장(PATCH /me). 미리보기에서는 없고 change로 화면 값만 바꾼다 */
+  onAccountVisibility?: (next: 'PUBLIC' | 'PRIVATE') => void;
   /** /dev/settings 미리보기. 예시 값, 편집안 화면, 개발용 문구를 쓴다 */
   preview?: boolean;
   initialDetail?: 'preferences' | 'profile' | 'ai' | null;
@@ -61,7 +63,14 @@ export function SettingsScreen() {
       </SafeAreaView>
     );
   }
-  return <SettingsView data={server.data} pending={server.pending} change={server.change} />;
+  return (
+    <SettingsView
+      data={server.data}
+      pending={server.pending}
+      change={server.change}
+      onAccountVisibility={server.changeAccountVisibility}
+    />
+  );
 }
 
 /** S45 화면 그리기. 값과 저장은 받은 data·change로만 다룬다. */
@@ -69,6 +78,7 @@ export function SettingsView({
   data,
   pending,
   change,
+  onAccountVisibility,
   initialDetail = null,
   simulateFailure = false,
   preview = false,
@@ -254,9 +264,9 @@ export function SettingsView({
                     value={profile.accountVisibility === 'PUBLIC'}
                     disabled={pending}
                     onChange={(value) => {
-                      // 공개 범위를 바꾸는 API가 아직 없어 실제 화면에서는 바꾸지 않는다
-                      if (!preview) {
-                        toast.show('공개 설정은 곧 바꿀 수 있어요');
+                      // 실제 화면은 PATCH /me로 저장한다. 설정(/me/settings)과 따로 저장된다
+                      if (onAccountVisibility) {
+                        onAccountVisibility(value ? 'PUBLIC' : 'PRIVATE');
                         return;
                       }
                       change(

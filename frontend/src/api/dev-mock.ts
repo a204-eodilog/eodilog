@@ -896,12 +896,12 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
     follows = follows.filter((f) => f.id !== found.id);
     return ok(config, undefined, 204);
   }
-  // S44 추천 친구(명세에 아직 없는 제안 경로)·숨기기
-  if (method === 'get' && url === '/me/friend-recommendations') {
+  // S44 추천 친구·숨기기
+  if (method === 'get' && url === '/me/follow-suggestions') {
     const reasons = [
-      { kind: 'taste', tags: ['바다', '카페'] },
-      { kind: 'taste', tags: ['맛집'] },
-      { kind: 'trips', count: 4 },
+      { kind: 'CO_TRAVELER', count: 2 },
+      { kind: 'CO_TRAVELER', count: 1 },
+      { kind: 'FOLLOWS_YOU' },
     ];
     return ok(
       config,
@@ -912,8 +912,8 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
       ),
     );
   }
-  const hideMatch = /^\/me\/friend-recommendations\/([^/]+)\/hide$/.exec(url);
-  if (method === 'post' && hideMatch) {
+  const hideMatch = /^\/me\/follow-suggestion-dismissals\/([^/]+)$/.exec(url);
+  if (method === 'put' && hideMatch) {
     hiddenSuggestions = [...hiddenSuggestions, decodeURIComponent(hideMatch[1])];
     return ok(config, undefined, 204);
   }
@@ -983,9 +983,17 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
 
   if (method === 'get' && url === '/me') return ok(config, { data: ME });
   if (method === 'patch' && url === '/me') {
-    const body = JSON.parse(String(config.data ?? '{}')) as { nickname?: string };
-    if (body.nickname) ME.nickname = body.nickname;
-    ME.profileCompleted = true;
+    const body = JSON.parse(String(config.data ?? '{}')) as {
+      nickname?: string;
+      ageBand?: string | null;
+      accountVisibility?: MyProfile['accountVisibility'];
+    };
+    if (body.nickname) {
+      ME.nickname = body.nickname;
+      ME.profileCompleted = true;
+    }
+    if ('ageBand' in body) ME.ageBand = body.ageBand ?? null;
+    if (body.accountVisibility) ME.accountVisibility = body.accountVisibility;
     return ok(config, { data: ME });
   }
   if (method === 'get' && url === '/me/preferences') {

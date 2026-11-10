@@ -30,12 +30,20 @@ export async function getMe(): Promise<MyProfile> {
   return data.data;
 }
 
+/** PATCH /me 본문. 보낸 칸만 바뀐다. ageBand의 null은 연령대 지우기 */
+export type ProfilePatch = {
+  nickname?: string;
+  ageBand?: string | null;
+  accountVisibility?: 'PUBLIC' | 'PRIVATE';
+};
+
 /**
- * 닉네임으로 가입을 마친다. 서버 규칙: 앞뒤 공백을 뺀 1~50자. 다른 필드는 아직 받지 않는다.
+ * 내 프로필을 고친다. 닉네임(앞뒤 공백을 뺀 1~50자)을 보내면 가입 대기 사용자는 가입이 끝난다.
  * 가입 대기 토큰으로도 부를 수 있고, 성공하면 같은 토큰으로 바로 서비스를 쓸 수 있다.
+ * 빈 본문과 서버가 모르는 칸은 400이다
  */
-export async function updateNickname(nickname: string): Promise<MyProfile> {
-  const { data } = await apiClient.patch<DataResponse<MyProfile>>('/me', { nickname });
+export async function updateProfile(patch: ProfilePatch): Promise<MyProfile> {
+  const { data } = await apiClient.patch<DataResponse<MyProfile>>('/me', patch);
   return data.data;
 }
 

@@ -17,13 +17,20 @@ import { inviteHref } from '@/features/invitation/invite-rules';
 import { useSessionStore } from '@/stores/session-store';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
-import { getMe, updateNickname } from '../api';
+import { getMe, updateProfile } from '../api';
 import { signOut } from '../logout';
-import { AGE_BANDS, type AgeBand, NICKNAME_MAX_LENGTH, normalizeNickname } from '../profile-rules';
+import {
+  AGE_BANDS,
+  type AgeBand,
+  NICKNAME_MAX_LENGTH,
+  normalizeNickname,
+  toAgeBand,
+} from '../profile-rules';
 
 /**
  * S02 프로필·연령 입력. 닉네임을 넣어 가입을 마친다.
- * 상태: 기본 / 필수 항목 누락 / 저장 실패. 프로필 사진·연령대는 저장 API가 아직 없어 화면에서만 고른다.
+ * 상태: 기본 / 필수 항목 누락 / 저장 실패. 연령대는 닉네임과 함께 저장한다(고르지 않으면 보내지 않음).
+ * 프로필 사진은 아직 연결하지 않았다.
  * 저장 뒤에는 S03 취향 입력으로, 초대 링크로 왔으면 S04 초대 참여 확인으로 간다.
  * 주소는 (auth) 묶음 밖에 둔다. 가입을 마쳐 signedIn이 되는 순간 (auth) 레이아웃이 홈으로 보내 S03 이동과 겹치기 때문이다.
  * 피그마에는 없지만 가입 대기 중 다른 계정으로 바꿀 길이 없어 상단 오른쪽에 [로그아웃]을 둔다.
@@ -39,14 +46,21 @@ export function ProfileScreen() {
   // null이면 아직 손대지 않은 것. 카카오에서 받은 닉네임이 있으면 그걸 보여 준다
   const [edited, setEdited] = useState<string | null>(null);
   const nickname = edited ?? me.data?.nickname ?? '';
-  const [age, setAge] = useState<AgeBand | null>(null);
+  // undefined면 아직 손대지 않은 것. 서버에 저장된 연령대를 보여 준다
+  const [ageEdited, setAgeEdited] = useState<AgeBand | null | undefined>(undefined);
+  const age = ageEdited !== undefined ? ageEdited : toAgeBand(me.data?.ageBand);
   const [touched, setTouched] = useState(false);
 
   const valid = normalizeNickname(nickname);
   const missing = touched && !valid;
 
   const save = useMutation({
-    mutationFn: (value: string) => updateNickname(value),
+    mutationFn: (value: string) =>
+      updateProfile({
+        nickname: value,
+        // 손댄 경우에만 보낸다. null은 골랐던 연령대를 지운다
+        ...(ageEdited !== undefined ? { ageBand: ageEdited } : {}),
+      }),
     onSuccess: async () => {
       if (editing) {
         await queryClient.invalidateQueries({ queryKey: ['me'] });
@@ -151,11 +165,11 @@ export function ProfileScreen() {
             <View style={styles.chips}>
               {AGE_BANDS.map((band) => (
                 <Chip
-                  key={band}
-                  label={band}
+                  key={band.code}
+                  label={band.label}
                   size="md"
-                  selected={age === band}
-                  onPress={() => setAge((prev) => (prev === band ? null : band))}
+                  selected={age === band.code}
+                  onPress={() => setAgeEdited(age === band.code ? null : band.code)}
                 />
               ))}
             </View>
