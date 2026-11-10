@@ -138,7 +138,8 @@ describe('S49 알림 목록', () => {
   it('불러오지 못하면 실패 안내와 다시 시도', async () => {
     mockList.mockRejectedValueOnce(new Error('503'));
     await renderScreen();
-    expect(await screen.findByText('알림을 불러오지 못했어요')).toBeTruthy();
+    expect(await screen.findByText('불러오지 못했어요')).toBeTruthy();
+    expect(screen.queryByText('다시 시도해 주세요')).toBeNull();
     await fireEvent.press(screen.getByText('다시 시도'));
     expect(await screen.findByText('겨울 여행 투표가 시작됐어요')).toBeTruthy();
   });

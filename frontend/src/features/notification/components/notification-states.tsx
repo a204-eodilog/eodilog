@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { errorLook } from '@/api/error-look';
 import { Button, Icon, type IconName } from '@/components/ui';
 import { colors, layout, spacing, typography } from '@/theme';
 
@@ -8,7 +9,8 @@ type Action = { label: string; icon: IconName; onPress: () => void };
 type NoticeProps = {
   icon: IconName;
   title: string;
-  description: string;
+  /** 없으면 아이콘과 제목만 보인다. 오류 안내는 설명을 두지 않는다 */
+  description?: string;
   primary?: Action;
   secondary?: Action;
 };
@@ -21,7 +23,9 @@ function Notice({ icon, title, description, primary, secondary }: NoticeProps) {
         <Icon name={icon} size={24} color={colors.text.icon} />
       </View>
       <Text style={[typography.title2, styles.title]}>{title}</Text>
-      <Text style={[typography.bodySmall, styles.description]}>{description}</Text>
+      {description ? (
+        <Text style={[typography.bodySmall, styles.description]}>{description}</Text>
+      ) : null}
       {primary ? (
         <Button
           label={primary.label}
@@ -57,13 +61,11 @@ export function NotificationsEmpty() {
   );
 }
 
-/** S49 불러오기 실패 201-32709 */
-export function NotificationsError({ onRetry }: { onRetry: () => void }) {
+/** S49 불러오기 실패 201-32709. 설명 없이 까닭 아이콘과 짧은 제목 */
+export function NotificationsError({ onRetry, error }: { onRetry: () => void; error?: unknown }) {
   return (
     <Notice
-      icon="alert"
-      title="알림을 불러오지 못했어요"
-      description="다시 시도해 주세요"
+      {...errorLook(error)}
       primary={{ label: '다시 시도', icon: 'refresh', onPress: onRetry }}
     />
   );
@@ -81,7 +83,6 @@ export function NotificationGone({
     <Notice
       icon="eye-off"
       title="볼 수 없는 알림이에요"
-      description="나간 여행이거나 지워진 기록이라 열 수 없어요"
       primary={{ label: '알림 목록으로', icon: 'bell', onPress: onList }}
       secondary={
         onDismiss ? { label: '이 알림 지우기', icon: 'trash', onPress: onDismiss } : undefined

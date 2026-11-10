@@ -14,6 +14,8 @@ import { toSections, type NotificationLine, type Section } from '../notification
 
 export type NotificationsViewProps = {
   status: 'loading' | 'error' | 'ready';
+  /** 불러오기 실패의 원인 */
+  error?: unknown;
   sections: Section[];
   canReadAll: boolean;
   loadingMore?: boolean;
@@ -50,7 +52,7 @@ export function NotificationsView(props: NotificationsViewProps) {
       {status === 'loading' ? (
         <ActivityIndicator style={styles.loading} color={colors.brand.primary} />
       ) : status === 'error' ? (
-        <NotificationsError onRetry={props.onRetry} />
+        <NotificationsError onRetry={props.onRetry} error={props.error} />
       ) : sections.length === 0 ? (
         <NotificationsEmpty />
       ) : (
@@ -105,6 +107,7 @@ export function NotificationsScreen() {
   return (
     <NotificationsView
       status={list.isPending ? 'loading' : list.isError ? 'error' : 'ready'}
+      error={list.error}
       sections={sections}
       canReadAll={list.hasUnread}
       loadingMore={list.isFetchingNextPage}

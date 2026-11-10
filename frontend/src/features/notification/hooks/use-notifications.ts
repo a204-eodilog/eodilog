@@ -110,6 +110,8 @@ export function useNotifications() {
     hasUnread,
     isPending: query.isPending,
     isError: query.isError && !query.data,
+    /** 불러오기 실패의 원인. 오류 화면이 아이콘과 짧은 제목을 고른다 */
+    error: query.error,
     hasNextPage: query.hasNextPage,
     isFetchingNextPage: query.isFetchingNextPage,
     loadMore: () => {

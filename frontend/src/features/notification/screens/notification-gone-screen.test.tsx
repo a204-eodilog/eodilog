@@ -64,7 +64,7 @@ describe('S49 볼 수 없음', () => {
   it('안내와 알림 목록으로. 팝업에서 왔어도 목록으로 간다', async () => {
     await renderScreen();
     expect(screen.getByText('볼 수 없는 알림이에요')).toBeTruthy();
-    expect(screen.getByText('나간 여행이거나 지워진 기록이라 열 수 없어요')).toBeTruthy();
+    expect(screen.queryByText('나간 여행이거나 지워진 기록이라 열 수 없어요')).toBeNull();
     await fireEvent.press(screen.getByText('알림 목록으로'));
     expect(mockRouter.dismissTo).toHaveBeenCalledWith('/notifications');
     expect(mockRouter.back).not.toHaveBeenCalled();
