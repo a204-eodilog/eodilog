@@ -24,7 +24,10 @@ export type ApplyResult = 'applied' | 'conflict' | 'unschedulable' | 'failed' | 
  */
 export function useProposal(tripId: string, source: ProposalSource) {
   const queryClient = useQueryClient();
-  const [phase, setPhase] = useState<'idle' | 'running' | 'done' | 'failed'>('idle');
+  /** unsupported: 서버가 장소 빼기 변경안을 아직 받지 않는다. 다시 시도해도 같다 */
+  const [phase, setPhase] = useState<'idle' | 'running' | 'done' | 'failed' | 'unsupported'>(
+    'idle',
+  );
   const [proposal, setProposal] = useState<ItineraryProposal | null>(null);
   const [jobId, setJobId] = useState<string | null>('jobId' in source ? source.jobId : null);
   const [applying, setApplying] = useState(false);
@@ -75,7 +78,14 @@ export function useProposal(tripId: string, source: ProposalSource) {
       setProposal(done);
       setPhase('done');
     } catch (e) {
-      if (!(e instanceof JobStopped)) setPhase('failed');
+      if (e instanceof JobStopped) return;
+      // 지금 백엔드는 reason INITIAL만 받아 장소 빼기를 400 VALIDATION_ERROR reason 칸으로 거절한다
+      const error = toApiError(e);
+      const rejected =
+        removePlaceId !== null &&
+        error.status === 400 &&
+        (error.fields.reason !== undefined || error.fields.excludedPlaceIds !== undefined);
+      setPhase(rejected ? 'unsupported' : 'failed');
     }
   }, [queryClient, tripId, givenJobId, removePlaceId, removalKeys]);
 

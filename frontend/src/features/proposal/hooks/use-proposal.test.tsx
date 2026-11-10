@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, expect, it, jest } from '@jest/globals';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { AxiosError, AxiosHeaders, type InternalAxiosRequestConfig } from 'axios';
 import { act, renderHook } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
 
@@ -23,6 +24,25 @@ const mockGet = jest.mocked(getAutoCourse);
 const mockItinerary = jest.mocked(getItinerary);
 const mockRemove = jest.mocked(requestRemoval);
 const mockApply = jest.mocked(applyProposal);
+
+/** 지금 백엔드가 장소 빼기를 거절하는 응답(400 VALIDATION_ERROR, reason 칸) */
+function reasonRejected(): AxiosError {
+  const config = { headers: new AxiosHeaders() } as InternalAxiosRequestConfig;
+  return new AxiosError('VALIDATION_ERROR', 'ERR_BAD_REQUEST', config, null, {
+    status: 400,
+    statusText: 'VALIDATION_ERROR',
+    headers: {},
+    config,
+    data: {
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: '입력값을 확인해 주세요.',
+        fields: [{ field: 'reason', message: '아직 지원하지 않는 사유입니다.' }],
+        traceId: null,
+      },
+    },
+  });
+}
 
 let client: QueryClient;
 function render(source: ProposalSource) {
@@ -73,6 +93,16 @@ it('날씨 작업 번호로 열면 작업을 만들지 않고 기다린다', asy
   expect(mockGet).toHaveBeenCalledWith('trip-1', 'job-w', expect.anything());
   expect(result.current.phase).toBe('done');
   expect(result.current.canRecreate).toBe(false);
+});
+
+it('서버가 장소 빼기를 아직 받지 않으면 unsupported, 다시 시도하지 않게', async () => {
+  mockRemove.mockRejectedValueOnce(reasonRejected());
+  const { result } = await render({ removePlaceId: 'p-gwangalli' });
+  await act(async () => {
+    await result.current.start();
+  });
+  expect(result.current.phase).toBe('unsupported');
+  expect(mockGet).not.toHaveBeenCalled();
 });
 
 it('작업이 실패하면 failed', async () => {
