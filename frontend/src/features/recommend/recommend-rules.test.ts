@@ -6,6 +6,7 @@ import {
   loadingStep,
   loadingSteps,
   peopleWord,
+  regionCardText,
   splitItems,
   viewState,
 } from './recommend-rules';
@@ -80,5 +81,21 @@ describe('문구', () => {
     const empty = basisCells({ sharedPlaceCount: 2, usedMemberCount: 1 }, 0, null, null);
     expect(empty[0].extra).toBeUndefined();
     expect(empty[2]).toEqual({ value: '여행지 미정', label: '기간 미정' });
+  });
+});
+
+describe('여행지 추천 카드 글자', () => {
+  it('시·도로 시작하면 나머지를 제목, 시·도를 위치로 쓴다', () => {
+    expect(regionCardText('강원특별자치도 강릉시')).toEqual({ title: '강릉시', location: '강원' });
+    expect(regionCardText('전라남도 여수시')).toEqual({ title: '여수시', location: '전남' });
+    expect(regionCardText('부산광역시 해운대구')).toEqual({ title: '해운대구', location: '부산' });
+  });
+
+  it('시·도로 시작하지 않으면 이름 그대로, 위치 줄 없음', () => {
+    expect(regionCardText('영도 흰여울 일대')).toEqual({
+      title: '영도 흰여울 일대',
+      location: null,
+    });
+    expect(regionCardText('부산광역시')).toEqual({ title: '부산광역시', location: null });
   });
 });

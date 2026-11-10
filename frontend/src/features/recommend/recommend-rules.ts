@@ -1,4 +1,5 @@
 import type { Place } from '@/features/place/types';
+import { shortRegionName } from '@/features/trip/trip-rules';
 import type { Region } from '@/features/trip/types';
 
 import type { RecommendationItem, RecommendationResult } from './types';
@@ -100,4 +101,46 @@ export function basisCells(
     { value: `${basis.usedMemberCount}명`, label: '공개 취향' },
     { value: regionName || '여행지 미정', label: period ?? '기간 미정' },
   ];
+}
+
+/** 시·도 이름. "도"로 끝나는 낱말은 "영도"처럼 시·도가 아닐 수 있어 도는 이름을 모두 적는다 */
+const METRO = /(특별시|광역시|특별자치시|특별자치도)$/;
+const DO_PROVINCES = new Set([
+  '경기도',
+  '강원도',
+  '충청북도',
+  '충청남도',
+  '전라북도',
+  '전라남도',
+  '경상북도',
+  '경상남도',
+]);
+const isProvince = (word: string) => METRO.test(word) || DO_PROVINCES.has(word);
+
+/**
+ * 여행지 추천 카드의 제목과 위치 줄. "강원특별자치도 강릉시" → 제목 "강릉시", 위치 "강원".
+ * 위치는 그 지역이 속한 시·도라 여행의 첫 여행지를 붙이지 않는다.
+ * 첫 낱말이 시·도가 아니면("영도 흰여울 일대") 이름을 그대로 제목으로 쓰고 위치 줄은 없다
+ */
+export function regionCardText(fullName: string): { title: string; location: string | null } {
+  const name = fullName.trim();
+  const [first, ...rest] = name.split(/\s+/);
+  if (rest.length === 0 || !isProvince(first)) return { title: name, location: null };
+  return { title: rest.join(' '), location: provinceShort(first) };
+}
+
+/** 두 글자로 줄여 부르는 도. 나머지는 "특별자치도", "광역시" 같은 꼬리만 뗀다 */
+const PROVINCE_SHORT: Record<string, string> = {
+  전라남도: '전남',
+  전라북도: '전북',
+  전북특별자치도: '전북',
+  경상남도: '경남',
+  경상북도: '경북',
+  충청남도: '충남',
+  충청북도: '충북',
+  전남광주통합특별시: '전남',
+};
+
+function provinceShort(name: string): string {
+  return PROVINCE_SHORT[name] ?? shortRegionName(name);
 }
