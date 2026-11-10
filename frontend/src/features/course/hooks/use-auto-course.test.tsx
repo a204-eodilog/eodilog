@@ -116,6 +116,26 @@ describe('자동 추천', () => {
     expect(accepted).not.toHaveBeenCalled();
   });
 
+  it.each([
+    [422, 'INSUFFICIENT_DATA', 'noPlaces'],
+    [409, 'VERSION_CONFLICT', 'conflict'],
+    [500, 'INTERNAL_ERROR', 'failed'],
+  ] as const)('요청이 %s %s면 실패 까닭은 %s', async (status, code, failure) => {
+    mockRequest.mockRejectedValue(
+      Object.assign(new Error(code), {
+        isAxiosError: true,
+        response: { status, data: { error: { code, message: '' } }, headers: {} },
+      }),
+    );
+    const { result } = await renderHook(() => useAutoCourse('trip-1'));
+    await act(async () => {
+      void result.current.start(1);
+    });
+    await flush(AUTO_MIN_REQUEST_MS);
+    expect(result.current.status).toBe('failed');
+    expect(result.current.failure).toBe(failure);
+  });
+
   it('1분이 넘으면 실패', async () => {
     mockGet.mockResolvedValue(proposal('RUNNING'));
     const { result } = await renderHook(() => useAutoCourse('trip-1'));
