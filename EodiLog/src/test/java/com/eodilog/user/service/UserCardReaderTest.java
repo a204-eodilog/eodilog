@@ -106,6 +106,12 @@ class UserCardReaderTest {
 		assertThat(cards.get(active).accountVisibility()).isEqualTo(AccountVisibility.PUBLIC);
 		assertThat(cards.get(active).nickname()).isEqualTo("reader");
 		assertThat(cards.get(inactive).accountVisibility()).isEqualTo(AccountVisibility.PRIVATE);
+		assertThat(cards.get(active).profileImageUrl()).isNull();
+		UUID asset = UUID.randomUUID();
+		jdbc.update("UPDATE users SET profile_asset_id=? WHERE id IN (?,?)", asset, active, inactive);
+		cards = reader.findCards(active, List.of(active, inactive));
+		assertThat(cards.get(active).profileImageUrl()).isEqualTo("/assets/" + asset + "/download");
+		// 탈퇴 회원은 사진도 숨긴다
 		assertThat(cards.get(inactive)).isEqualTo(new UserCard(inactive, "탈퇴한 사용자", null,
 				AccountVisibility.PRIVATE, FollowStatus.NONE, FollowStatus.NONE));
 		assertThat(jdbc.queryForObject("SELECT nickname FROM users WHERE id=?", String.class, inactive)).isEqualTo("reader");

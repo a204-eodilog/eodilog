@@ -240,7 +240,7 @@ class FollowApiTest {
 
 		UUID me = user("PRIVATE");
 		for (String body : List.of("{}", "{\"nickname\":null}", "{\"accountVisibility\":null}",
-				"{\"accountVisibility\":\"FRIENDS\"}", "{\"nickname\":\" \"}", "{\"ageBand\":\"TWENTIES\"}"))
+				"{\"accountVisibility\":\"FRIENDS\"}", "{\"nickname\":\" \"}", "{\"email\":\"a@b.c\"}"))
 			patchMe(me, body).andExpect(status().isBadRequest()).andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
 		assertThat(jdbc.queryForObject("SELECT account_visibility FROM users WHERE id=?", String.class, me)).isEqualTo("PRIVATE");
 		patchMe(me, "{\"nickname\":\"새 이름\"}").andExpect(status().isOk())
