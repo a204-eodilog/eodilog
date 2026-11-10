@@ -199,10 +199,9 @@ export function OnTripScreen() {
   const date = dayIndex >= 0 && 'date' in phase ? phase.date : null;
   const placeId = items[0]?.place.id ?? null;
   const weather = useWeather(tripId, date, placeId);
-  // 오늘이면 이미 지난 일정은 비 영향 안내에서 뺀다
-  const affected = weather.data
-    ? affectedIndex(items, weather.data, phase.kind === 'during' ? now : undefined)
-    : null;
+  // 오늘이면 이미 지난 일정은 비 영향 안내에서 뺀다. 여행이 끝났으면 비 안내를 하지 않는다
+  const affected =
+    weather.data && phase.kind === 'during' ? affectedIndex(items, weather.data, now) : null;
   const queried = itinerary.data ? latestQueriedAt(itinerary.data) : null;
   // 시작 전에는 날짜마다 그 날 코스 첫 장소의 예보를 받는다(Q-10-4)
   const forecastDays =
@@ -222,12 +221,9 @@ export function OnTripScreen() {
       imageUrl: m.user.profileImageUrl,
       me: m.user.id === me.data?.id,
     }));
+  // 코스를 받지 못했으면 코스가 없다고 하지 않고 다시 시도를 보인다
   const status =
-    trip.data && (itinerary.data || itinerary.isError)
-      ? 'ready'
-      : trip.isError
-        ? 'error'
-        : 'loading';
+    trip.data && itinerary.data ? 'ready' : trip.isError || itinerary.isError ? 'error' : 'loading';
 
   return (
     <OnTripView
@@ -253,15 +249,17 @@ export function OnTripScreen() {
       checklist={checklist.data ?? null}
       items={items}
       legs={legs}
-      next={nextIndex(items, now)}
+      // 다음 일정은 오늘 여행 중일 때만. 끝난 여행의 마지막 날에 지금 시각으로 붙이지 않는다
+      next={phase.kind === 'during' ? nextIndex(items, now) : null}
       computedAt={queried ? clock(queried) : null}
-      // 날씨 대안은 그 날과 첫 장소로 연다
-      onWeather={() =>
-        router.push({
-          pathname: '/trips/[tripId]/weather',
-          params: { tripId, date: date ?? '', placeId: placeId ?? '' },
-        })
-      }
+      // 날씨 대안은 그 날과 첫 장소로 연다. 볼 장소가 없으면 열지 않고 알린다
+      onWeather={() => {
+        if (!date || !placeId) {
+          toast.show('오늘 코스에 장소가 없어 날씨 대안을 찾을 수 없어요');
+          return;
+        }
+        router.push({ pathname: '/trips/[tripId]/weather', params: { tripId, date, placeId } });
+      }}
       // 준비물 화면은 준비물 작업 브랜치에 있어 합치면 열린다(Q-10-5)
       onChecklist={() => router.push(`/trips/${tripId}/checklist` as Href)}
       onAmenities={() => toast.show('준비 중이에요')}

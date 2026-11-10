@@ -47,6 +47,11 @@ export type WeatherViewProps = {
   onAddChecklist(): void;
   /** 변경안 결과 시트 */
   sheet?: ReactNode;
+  /**
+   * 대안을 찾을 수 없는 까닭. 볼 장소가 없거나 코스를 받지 못했으면 기다림 표시 대신 이것을 보인다.
+   * onRetry가 있으면 다시 시도
+   */
+  blocked?: { title: string; onRetry?: () => void } | null;
 };
 
 /** S26 날씨 대안 표시만. 미리보기와 테스트가 서버 없이 그린다 */
@@ -54,7 +59,15 @@ export function WeatherView(props: WeatherViewProps) {
   const insets = useSafeAreaInsets();
   const empty = props.phase === 'done' && props.alternatives.length === 0;
   let list: ReactNode;
-  if (props.phase === 'running' || props.phase === 'idle') {
+  if (props.blocked) {
+    const { title, onRetry } = props.blocked;
+    list = (
+      <View style={styles.center}>
+        <Text style={[typography.bodyBold, styles.title]}>{title}</Text>
+        {onRetry ? <Button label="다시 시도" variant="secondary" onPress={onRetry} /> : null}
+      </View>
+    );
+  } else if (props.phase === 'running' || props.phase === 'idle') {
     list = (
       <View style={styles.center}>
         <ActivityIndicator color={colors.brand.primary} />
@@ -241,6 +254,13 @@ export function WeatherScreen() {
           : null
       }
       phase={alts.phase}
+      blocked={
+        !date || !placeId
+          ? { title: '날씨 대안을 찾을 장소가 없어요' }
+          : itinerary.isError && !itinerary.data
+            ? { title: '코스를 불러오지 못했어요', onRetry: () => void itinerary.refetch() }
+            : null
+      }
       alternatives={alts.result?.alternatives ?? []}
       onRetryAlternatives={() => {
         if (version !== null && date && placeId) void begin(date, placeId, version);

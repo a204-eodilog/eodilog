@@ -19,11 +19,20 @@ type Props = {
  * 저장이 409로 거절됐거나 연결이 끊겼다 돌아와 바뀐 코스를 알았을 때 뜬다.
  * 닫기 버튼이 없다. 둘 중 하나를 골라야 한다.
  */
+const noop = () => undefined;
+
 export function CoeditConflict({ editor, busy, onOverwrite, onLatest }: Props) {
   // 부르는 말은 늘 받침으로 끝나 '이'를 붙인다
   const title = `${editor ?? ''}이 먼저 코스를 바꿨어요`;
   return (
-    <Modal visible={editor !== null} transparent animationType="fade" onRequestClose={onLatest}>
+    <Modal
+      testID="coedit-conflict"
+      visible={editor !== null}
+      transparent
+      animationType="fade"
+      // 안드로이드 뒤로 가기로 묻지 않고 내 변경을 버리지 않게, 둘 중 하나를 누를 때까지 닫지 않는다
+      onRequestClose={noop}
+    >
       <View style={styles.dim}>
         <View style={styles.box} accessibilityRole="alert">
           <Text style={[typography.title2, styles.title]}>{title}</Text>

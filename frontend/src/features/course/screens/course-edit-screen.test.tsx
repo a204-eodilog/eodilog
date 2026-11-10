@@ -625,6 +625,40 @@ describe('구성 방식과 준비 상태', () => {
     expect(screen.queryByText('코스를 짜고 있어요')).toBeNull();
   });
 
+  it('모은 장소가 없으면 자동 추천을 누를 수 없다', async () => {
+    mockSaved.mockResolvedValue([]);
+    await renderScreen();
+    expect(await screen.findByText('모은 장소가 없어 쓸 수 없어요')).toBeTruthy();
+    await fireEvent.press(screen.getByText('자동 추천'));
+    expect(mockRequestAuto).not.toHaveBeenCalled();
+  });
+
+  it('서버가 모은 장소가 없다고 거절하면 다시 시도 없이 까닭을 알린다', async () => {
+    mockRequestAuto.mockRejectedValue(httpError(422, 'INSUFFICIENT_DATA'));
+    await renderScreen();
+    await fireEvent.press(await screen.findByText('자동 추천'));
+    expect(await screen.findByText('모은 장소가 없어요')).toBeTruthy();
+    expect(screen.queryByText('다시 시도')).toBeNull();
+    expect(screen.getByText('직접 만들기')).toBeTruthy();
+  });
+
+  it('그 사이 코스가 바뀌어 실패했으면 다시 시도는 최신 코스 version으로 보낸다', async () => {
+    mockRequestAuto
+      .mockRejectedValueOnce(httpError(409, 'VERSION_CONFLICT'))
+      .mockResolvedValue({ jobId: 'job-1', status: 'QUEUED', statusUrl: '' });
+    mockGetAuto.mockResolvedValue(proposalOf('SUCCEEDED'));
+    await renderScreen();
+    await fireEvent.press(await screen.findByText('자동 추천'));
+    expect(
+      await screen.findByText('그 사이 동행이 코스를 바꿨어요. 다시 시도하면 바뀐 코스로 짜요'),
+    ).toBeTruthy();
+    mockGet.mockResolvedValue(itinerary({ version: 5, items: [], legs: [] }));
+    await fireEvent.press(screen.getByText('다시 시도'));
+    await waitFor(() =>
+      expect(mockRequestAuto).toHaveBeenLastCalledWith('trip-1', 5, expect.any(String)),
+    );
+  });
+
   it('추천안에서 뒤로 가면 버릴지 묻는다', async () => {
     mockGetAuto.mockResolvedValue(proposalOf('SUCCEEDED'));
     await renderScreen();
@@ -648,6 +682,18 @@ describe('구성 방식과 준비 상태', () => {
     await fireEvent.press(screen.getByText('완료'));
     await waitFor(() => expect(mockPut).toHaveBeenCalled());
     expect(day1(lastBody())).toEqual(['p-gwangalli', 'p-haeundae', 'p-seomyeon']);
+  });
+
+  it('재추천을 두 번 빨리 눌러도 요청은 하나이고 실패 화면이 끼어들지 않는다', async () => {
+    mockGet.mockResolvedValue(sampleCourse(true));
+    mockGetAuto.mockResolvedValue(proposalOf('SUCCEEDED'));
+    await renderScreen();
+    const redo = await screen.findByText('재추천');
+    await fireEvent.press(redo);
+    await fireEvent.press(redo);
+    expect(await screen.findByText('추천 장소 A')).toBeTruthy();
+    expect(mockRequestAuto).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText('코스를 만들지 못했어요')).toBeNull();
   });
 
   it('초안의 재추천은 새 추천안으로 바꾼다', async () => {

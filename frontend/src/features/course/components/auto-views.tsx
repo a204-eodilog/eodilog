@@ -43,11 +43,14 @@ export function AutoFailView({
   onManual,
   backToDraft = false,
   retrying = false,
+  reason = 'failed',
 }: {
   onRetry(): void;
   onManual(): void;
   /** 다시 시도 요청을 보내는 중. 화면은 그대로 두고 버튼만 도는 표시 */
   retrying?: boolean;
+  /** noPlaces면 다시 해도 같으므로 다시 시도 없이 까닭을 알린다. conflict면 최신 코스로 다시 짠다고 알린다 */
+  reason?: 'noPlaces' | 'conflict' | 'failed';
   /** 초안의 재추천이 실패했으면 직접 만들기 대신 고치던 코스로 돌아간다 */
   backToDraft?: boolean;
 }) {
@@ -56,21 +59,29 @@ export function AutoFailView({
       <View style={styles.badge}>
         <Icon name="alert" size={28} color={colors.text.icon} />
       </View>
-      <Text style={[typography.title1, styles.title]}>코스를 만들지 못했어요</Text>
-      <Text style={[typography.body, styles.body]}>
-        {backToDraft
-          ? '다시 시도하거나 고치던 코스로 돌아가요'
-          : '다시 시도하거나 직접 만들어 보세요'}
+      <Text style={[typography.title1, styles.title]}>
+        {reason === 'noPlaces' ? '모은 장소가 없어요' : '코스를 만들지 못했어요'}
       </Text>
-      <Button
-        label="다시 시도"
-        size="lg"
-        weight="medium"
-        leading={<Icon name="refresh" size={20} color={colors.text.inverse} />}
-        onPress={onRetry}
-        loading={retrying}
-        style={styles.button}
-      />
+      <Text style={[typography.body, styles.body]}>
+        {reason === 'noPlaces'
+          ? '그룹 즐겨찾기에 장소를 모은 뒤 추천받거나 직접 만들어 보세요'
+          : reason === 'conflict'
+            ? '그 사이 동행이 코스를 바꿨어요. 다시 시도하면 바뀐 코스로 짜요'
+            : backToDraft
+              ? '다시 시도하거나 고치던 코스로 돌아가요'
+              : '다시 시도하거나 직접 만들어 보세요'}
+      </Text>
+      {reason === 'noPlaces' ? null : (
+        <Button
+          label="다시 시도"
+          size="lg"
+          weight="medium"
+          leading={<Icon name="refresh" size={20} color={colors.text.inverse} />}
+          onPress={onRetry}
+          loading={retrying}
+          style={styles.button}
+        />
+      )}
       <Pressable style={styles.manual} onPress={onManual} accessibilityRole="button">
         <Icon name={backToDraft ? 'back' : 'pencil'} size={18} color={colors.text.icon} />
         <Text style={[typography.bodyMedium, styles.manualText]}>

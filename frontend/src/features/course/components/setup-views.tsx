@@ -52,6 +52,8 @@ type ChooseProps = {
   onManual(): void;
   /** 자동 추천 요청을 보내는 중. 서버가 받으면 생성 중 화면으로 넘어간다 */
   autoBusy?: boolean;
+  /** 모은 장소가 없어 자동 추천을 쓸 수 없다. 서버도 거절한다 */
+  autoUnavailable?: boolean;
 };
 
 /** S23 구성 방식 선택(Figma 201-12269). "어떻게 짤까요?"는 작은 회색 소제목(디자인 결정) */
@@ -62,6 +64,7 @@ export function ChooseView({
   onAuto,
   onManual,
   autoBusy = false,
+  autoUnavailable = false,
 }: ChooseProps) {
   return (
     <ScrollView contentContainerStyle={styles.content}>
@@ -76,10 +79,10 @@ export function ChooseView({
         icon="bulb"
         title="자동 추천"
         tag="추천"
-        body="모은 장소로 동선을 짜요"
+        body={autoUnavailable ? '모은 장소가 없어 쓸 수 없어요' : '모은 장소로 동선을 짜요'}
         onPress={onAuto}
         busy={autoBusy}
-        disabled={autoBusy}
+        disabled={autoBusy || autoUnavailable}
       />
       <Option
         icon="pencil"
@@ -103,7 +106,7 @@ function Option(props: {
 }) {
   return (
     <Pressable
-      style={styles.option}
+      style={[styles.option, props.disabled && !props.busy && styles.optionOff]}
       onPress={props.onPress}
       disabled={props.disabled}
       accessibilityRole="button"
@@ -306,6 +309,7 @@ const styles = StyleSheet.create({
   },
   checkText: { color: colors.text.icon },
   todoText: { color: colors.text.muted },
+  optionOff: { opacity: 0.5 },
   option: {
     flexDirection: 'row',
     alignItems: 'center',

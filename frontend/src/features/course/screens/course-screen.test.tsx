@@ -11,6 +11,7 @@ import { undoApply } from '@/features/proposal/api';
 
 import { getItinerary, getJob, recalculateRoutes } from '../api';
 import { httpError, itinerary, sampleCourse } from '../testing';
+import type { Itinerary } from '../types';
 
 import { CourseScreen } from './course-screen';
 
@@ -109,10 +110,11 @@ const mockGet = jest.mocked(getItinerary);
 const mockRecalc = jest.mocked(recalculateRoutes);
 const mockJob = jest.mocked(getJob);
 
-function renderScreen() {
+function renderScreen(cached?: Itinerary) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: Infinity } },
   });
+  if (cached) client.setQueryData(['trips', 'trip-1', 'itinerary'], cached);
   const metrics = {
     frame: { x: 0, y: 0, width: 375, height: 812 },
     insets: { top: 47, left: 0, right: 0, bottom: 34 },
@@ -212,6 +214,14 @@ describe('S24 코스', () => {
       params: { tripId: 'trip-1', removePlaceId: 'p-haeundae' },
     });
     expect(toast.show).not.toHaveBeenCalled();
+  });
+
+  it('받아 둔 코스가 비었어도 다시 받은 코스가 있으면 코스 짜기로 가지 않는다', async () => {
+    // 지난번에 본 빈 코스가 남아 있고, 그 사이 동행이 코스를 만들었다
+    mockGet.mockResolvedValue(sampleCourse(true));
+    await renderScreen(itinerary({ items: [], legs: [] }));
+    expect((await screen.findAllByText('해운대 해변')).length).toBeGreaterThan(0);
+    expect(mockRouter.replace).not.toHaveBeenCalled();
   });
 
   it('코스가 비어 있으면 코스 짜기로 바꿔 연다', async () => {
