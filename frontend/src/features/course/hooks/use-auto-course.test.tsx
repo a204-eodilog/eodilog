@@ -78,7 +78,7 @@ describe('자동 추천', () => {
     expect(accepted).toHaveBeenCalledTimes(1);
     await flush(AUTO_POLL_MS);
     expect(mockRequest).toHaveBeenCalledWith('trip-1', 3, expect.stringMatching(/^key-/));
-    expect(content).toEqual(CONTENT);
+    expect(content).toEqual({ content: CONTENT, jobId: 'job-1' });
     expect(result.current.status).toBe('idle');
   });
 
@@ -136,7 +136,29 @@ describe('자동 추천', () => {
     expect(result.current.failure).toBe(failure);
   });
 
-  it('1분이 넘으면 실패', async () => {
+  it('AI 일시 실패로 백엔드가 다시 시도하는 3분 동안은 실패로 끝내지 않는다', async () => {
+    mockGet.mockResolvedValue(proposal('QUEUED'));
+    const { result } = await renderHook(() => useAutoCourse('trip-1'));
+    await act(async () => {
+      void result.current.start(1);
+    });
+    await flush(3 * 60_000);
+    expect(result.current.status).toBe('running');
+  });
+
+  it('요청한 사람이 여행을 나가 작업이 취소되면 revoked', async () => {
+    mockGet.mockResolvedValue({
+      ...proposal('CANCELLED'),
+      job: { ...proposal('CANCELLED').job, error: { code: 'POLICY_REVOKED', message: '' } },
+    });
+    const { result } = await renderHook(() => useAutoCourse('trip-1'));
+    await act(async () => {
+      await result.current.start(1);
+    });
+    expect(result.current.failure).toBe('revoked');
+  });
+
+  it('기다리는 시간을 넘기면 실패', async () => {
     mockGet.mockResolvedValue(proposal('RUNNING'));
     const { result } = await renderHook(() => useAutoCourse('trip-1'));
     await act(async () => {
