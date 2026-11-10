@@ -17,6 +17,7 @@ import { createNotificationMock } from './dev-mock-notification';
 import { createPollMock } from './dev-mock-poll';
 import { createRecommendMock } from './dev-mock-recommend';
 import { mockMyTimeline, mockTripSummary, mockTripTimeline } from './dev-mock-timeline';
+import { createWeatherMock } from './dev-mock-weather';
 
 import type { Follow, MyProfile, Session, UserCard } from './types';
 
@@ -497,6 +498,13 @@ function bump(trip: Trip) {
 const chatMock = createChatMock({ getTrips: () => trips, me: ME, ok, fail });
 /** 코스 가짜 서버. 자동 추천·다시 계산·그룹 즐겨찾기 조회도 답한다 */
 const courseMock = createCourseMock({ getTrips: () => trips, meId: ME.id, ok, fail });
+/** 여행 중 날씨와 날씨 대안 가짜 서버. 앱용 날씨 API가 없다(Q-10-1) */
+const weatherMock = createWeatherMock({
+  getTrips: () => trips,
+  itemOf: (tripId, placeId) => courseMock.itemOf(tripId, placeId),
+  ok,
+  fail,
+});
 /** 준비물 가짜 서버. 추천 설정이 OFF면 제안을 막는다 */
 const checklistMock = createChecklistMock({
   getTrips: () => trips,
@@ -531,6 +539,8 @@ export const devMockControls = {
   chat: chatMock.controls,
   /** 코스: globalThis.__devMock.course.editByOther('trip-1'), failNextProposal() 등(코스 quickstart) */
   course: courseMock.controls,
+  /** 날씨: globalThis.__devMock.weather.failNext(), noAlternativesNext() */
+  weather: weatherMock.controls,
   /** 알림: globalThis.__devMock.notification.push('POLL_OPENED'), failNext() */
   notification: notificationMock.controls,
   /** 준비물: globalThis.__devMock.checklist.editByOther('trip-1'), failNextSuggestion() 등(준비물 quickstart) */
@@ -904,6 +914,9 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
   if (group) return group;
   const course = courseMock.handle(config, method, url);
   if (course) return course;
+  // 코스 가짜 서버가 모르는 작업(/jobs)은 날씨 쪽으로 넘어온다
+  const weatherRes = weatherMock.handle(config, method, url, params);
+  if (weatherRes) return weatherRes;
   const notification = notificationMock.handle(config, method, url, params);
   if (notification) return notification;
   const checklist = checklistMock.handle(config, method, url);

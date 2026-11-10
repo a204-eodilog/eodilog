@@ -23,11 +23,12 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
-it('여행 중 메뉴는 준비물 화면을 연다', async () => {
+// S25 여행 중 화면이 생겨 준비물로 바로 가던 임시 길을 S25로 바꿨다. 준비물은 S25 안에서 연다
+it('여행 중 메뉴는 S25 여행 중 화면을 연다', async () => {
   await render(<TripMenuGrid tripId="trip-1" />);
   await fireEvent.press(screen.getByLabelText('여행 중'));
   expect(mockRouter.push).toHaveBeenCalledWith({
-    pathname: '/trips/[tripId]/checklist',
+    pathname: '/trips/[tripId]/today',
     params: { tripId: 'trip-1' },
   });
   expect(toast.show).not.toHaveBeenCalled();
