@@ -69,10 +69,23 @@ export type Job = {
   finishedAt: string | null;
 };
 
-/** 자동 추천 결과 코스. 저장된 코스와 같은 모양이지만 항목 id는 없을 수 있다 */
+/**
+ * 자동 추천 결과 코스. 저장된 코스와 같은 모양이지만 새 항목은 id가 null이다(기존 항목이면 그 id).
+ * 구간은 day·fromOrder·toOrder로 항목을 찾는다. AI가 준 이동 시간이 있고 거리·지도선은 늘 null이다
+ */
 export type CourseContent = {
   items: (Omit<ItineraryItem, 'id'> & { id?: string | null })[];
-  legs: { day: number; fromOrder: number; toOrder: number; transportMode: TransportMode }[];
+  legs: {
+    day: number;
+    fromOrder: number;
+    toOrder: number;
+    transportMode: TransportMode;
+    durationSeconds?: number | null;
+    distanceMeters?: number | null;
+    geometry?: RouteLeg['geometry'];
+    status?: RouteLeg['status'];
+    queriedAt?: string | null;
+  }[];
 };
 
 /** GET proposals/{jobId} (API 명세 §10 ItineraryProposal) */
