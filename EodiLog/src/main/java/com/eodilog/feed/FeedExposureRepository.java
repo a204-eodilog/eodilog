@@ -23,11 +23,11 @@ public class FeedExposureRepository {
     private final NamedParameterJdbcTemplate jdbc;
     private final FeedRepository feeds;
 
-    private static final String NOT_HIDDEN_BY_MEMBER = """
+    static final String NOT_HIDDEN_BY_MEMBER = """
             (m.user_id=:viewer or not exists (select 1 from feed_visibilities v where v.feed_id=f.id and v.user_id=m.user_id
              and v.hidden_viewer_user_ids @> jsonb_build_array(cast(:viewer as text))))""";
-    private static final String LIVE = " from feeds f join trips t on t.id=f.trip_id where f.deleted_at is null and t.deleted_at is null ";
-    private static final String ROUTE = " and exists (select 1 from trip_members m where m.trip_id=f.trip_id and m.status='ACTIVE'"
+    static final String LIVE = " from feeds f join trips t on t.id=f.trip_id where f.deleted_at is null and t.deleted_at is null ";
+    static final String ROUTE = " and exists (select 1 from trip_members m where m.trip_id=f.trip_id and m.status='ACTIVE'"
             + " and m.user_id=any(:members) and " + NOT_HIDDEN_BY_MEMBER + ") ";
     private static final String BBOX = " (r.latitude is null or r.longitude is null or (r.longitude between :west and :east and r.latitude between :south and :north)) ";
 
