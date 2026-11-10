@@ -55,8 +55,10 @@ export function EmptyState({
 export type ErrorStateProps = {
   /** "불러오지 못했어요" */
   title?: string;
-  /** "연결이 불안정해요. 다시 시도해 주세요" */
-  description?: string;
+  /** "연결이 불안정해요. 다시 시도해 주세요". null이면 설명 줄 없이 아이콘과 제목만 보인다 */
+  description?: string | null;
+  /** 동그라미 안 아이콘. 기본 alert. 연결 끊김 wifi-off, 볼 수 없음 lock처럼 까닭을 아이콘으로 보일 때 */
+  icon?: IconName;
   retryLabel?: string;
   onRetry?: () => void;
 };
@@ -65,16 +67,19 @@ export type ErrorStateProps = {
 export function ErrorState({
   title = '불러오지 못했어요',
   description = '연결을 확인하고 다시 시도해 주세요',
+  icon = 'alert',
   retryLabel = '다시 시도',
   onRetry,
 }: ErrorStateProps) {
   return (
     <View style={styles.wrap}>
       <View style={styles.errorIcon}>
-        <Icon name="alert" size={32} color={colors.status.danger} />
+        <Icon name={icon} size={32} color={colors.status.danger} />
       </View>
       <Text style={[typography.title3, styles.title]}>{title}</Text>
-      <Text style={[typography.body, styles.description]}>{description}</Text>
+      {description ? (
+        <Text style={[typography.body, styles.description]}>{description}</Text>
+      ) : null}
       {onRetry ? (
         <Button label={retryLabel} variant="secondary" onPress={onRetry} style={styles.action} />
       ) : null}
