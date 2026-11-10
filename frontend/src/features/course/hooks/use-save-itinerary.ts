@@ -4,7 +4,7 @@ import { useRef, useState } from 'react';
 import { API_ERROR, toApiError } from '@/api/errors';
 import { toast } from '@/components/ui';
 
-import { getItinerary, replaceItinerary } from '../api';
+import { applyAutoCourse, getItinerary, replaceItinerary } from '../api';
 import { itemCount, MAX_ITEMS, sameContent, toWrite, type CourseDraft } from '../course-rules';
 import type { Itinerary } from '../types';
 
@@ -45,14 +45,8 @@ export function useSaveItinerary(tripId: string) {
       return { kind: 'saved', itinerary: result };
     } catch (e) {
       if (toApiError(e).code === API_ERROR.VERSION_CONFLICT) {
-        // 앱 기본 staleTime(30초) 안이면 fetchQuery가 받아 둔 옛 코스를 그대로 준다. 충돌 뒤에는 늘 서버에서 받는다
-        const latest = await queryClient
-          .fetchQuery({
-            queryKey: itineraryKey(tripId),
-            queryFn: () => getItinerary(tripId),
-            staleTime: 0,
-          })
-          .catch(() => null);
+        // 함께 편집 화면이 합치기 안내를 따로 띄워 여기서는 받지 못했을 때만 알린다
+        const latest = await fetchLatest();
         if (!latest) toast.error('최신 코스를 받지 못했어요. 다시 시도해 주세요');
         return { kind: 'conflict', latest };
       }
@@ -64,5 +58,47 @@ export function useSaveItinerary(tripId: string) {
     }
   }
 
-  return { save, saving };
+  // 앱 기본 staleTime(30초) 안이면 fetchQuery가 받아 둔 옛 코스를 그대로 준다. 충돌 뒤에는 늘 서버에서 받는다
+  function fetchLatest(): Promise<Itinerary | null> {
+    return queryClient
+      .fetchQuery({
+        queryKey: itineraryKey(tripId),
+        queryFn: () => getItinerary(tripId),
+        staleTime: 0,
+      })
+      .catch(() => null);
+  }
+
+  /**
+   * 고치지 않은 자동 추천안을 적용 API로 지금 코스로 바꾼다. PUT으로 저장하면 AI 이동 시간이 계산 불가로 바뀌고
+   * 되돌릴 수도 없어서다(백엔드 안내 2026-11-09). 이미 적용됐으면 최신 코스를 받아 저장된 것으로 본다
+   */
+  async function apply(jobId: string, expectedVersion: number): Promise<SaveResult> {
+    if (sending.current) return { kind: 'failed' };
+    sending.current = true;
+    setSaving(true);
+    try {
+      const result = await applyAutoCourse(tripId, jobId, expectedVersion);
+      queryClient.setQueryData(itineraryKey(tripId), result);
+      return { kind: 'saved', itinerary: result };
+    } catch (e) {
+      const { code } = toApiError(e);
+      if (code === 'ALREADY_APPLIED') {
+        const latest = await fetchLatest();
+        if (latest) return { kind: 'saved', itinerary: latest };
+      } else if (code === API_ERROR.VERSION_CONFLICT) {
+        // 함께 편집 화면이 합치기 안내를 띄운다
+        const latest = await fetchLatest();
+        if (!latest) toast.error('최신 코스를 받지 못했어요. 다시 시도해 주세요');
+        return { kind: 'conflict', latest };
+      }
+      toast.error('추천안을 적용하지 못했어요. 다시 시도해 주세요');
+      return { kind: 'failed' };
+    } finally {
+      sending.current = false;
+      setSaving(false);
+    }
+  }
+
+  return { save, apply, saving };
 }

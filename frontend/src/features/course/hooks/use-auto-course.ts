@@ -8,9 +8,39 @@ import type { CourseContent } from '../types';
 import { JobStopped, waitForJob } from '../wait-job';
 
 export const AUTO_POLL_MS = 1500;
-export const AUTO_TIMEOUT_MS = 60_000;
+/**
+ * 기다리는 최대 시간. AI가 잠깐 실패하면 백엔드가 다시 시도해 1~3분 걸릴 수 있다(백엔드 안내 2026-11-09).
+ * 그 사이 작업은 QUEUED로 남으므로 백엔드보다 먼저 실패로 끝내지 않게 넉넉히 둔다
+ */
+export const AUTO_TIMEOUT_MS = 4 * 60_000;
 /** 요청이 곧바로 실패해도 누른 버튼이 도는 표시를 이만큼은 보인다. 번쩍이고 끝나지 않게 */
 export const AUTO_MIN_REQUEST_MS = 400;
+
+/**
+ * 자동 추천 실패 까닭.
+ * noDates·noPlaces: 422 INSUFFICIENT_DATA. 여행 기간이 없거나 모은 장소가 없다. 다시 해도 같다
+ * tooMany: 422 INPUT_LIMIT_EXCEEDED. 대상 장소가 200곳을 넘는다
+ * conflict: 409 VERSION_CONFLICT. 그 사이 코스가 바뀌었다. 최신 코스로 다시 하면 된다
+ * revoked: 작업 오류 POLICY_REVOKED. 요청한 사람이 여행을 나갔다
+ * failed: 그 밖(AI 거부, 일시 장애, 시간 초과)
+ */
+export type AutoFailure = 'noDates' | 'noPlaces' | 'tooMany' | 'conflict' | 'revoked' | 'failed';
+
+/** 작업을 만들기 전 거절 응답을 실패 까닭으로 */
+export function requestFailure(
+  code: string | null | undefined,
+  fields: Record<string, string>,
+): AutoFailure {
+  if (code === 'INSUFFICIENT_DATA') {
+    // 둘 다 없으면 장소부터 모으게 한다. 기간은 코스 짜기 첫 화면에서 정할 수 있다
+    if (fields.places !== undefined) return 'noPlaces';
+    if (fields['trip.startDate'] !== undefined) return 'noDates';
+    return 'noPlaces';
+  }
+  if (code === 'INPUT_LIMIT_EXCEEDED') return 'tooMany';
+  if (code === API_ERROR.VERSION_CONFLICT) return 'conflict';
+  return 'failed';
+}
 
 /**
  * 첫 코스 자동 추천(POST proposals → GET proposals/{jobId} 기다림).
@@ -29,7 +59,7 @@ export function useAutoCourse(tripId: string) {
    * 실패 까닭. noPlaces: 모은 장소나 기간이 없어 서버가 거절(422 INSUFFICIENT_DATA), 다시 해도 같다.
    * conflict: 그 사이 코스가 바뀌어 409, 최신 코스로 다시 하면 된다. failed: 그 밖
    */
-  const [failure, setFailure] = useState<'noPlaces' | 'conflict' | 'failed' | null>(null);
+  const [failure, setFailure] = useState<AutoFailure | null>(null);
   const running = useRef(false);
   const controller = useRef<AbortController | null>(null);
   const keys = useRef(createIdempotencyKeyStore()).current;
@@ -37,13 +67,13 @@ export function useAutoCourse(tripId: string) {
   useEffect(() => () => controller.current?.abort(), []);
 
   /**
-   * 끝나면 추천 코스, 실패·시간 초과면 null. 이미 기다리는 중이면 null.
-   * onAccepted는 서버가 요청을 받아 작업이 시작됐을 때 한 번 부른다
+   * 끝나면 추천 코스와 작업 번호, 실패·시간 초과면 null. 이미 기다리는 중이면 null.
+   * 작업 번호는 추천안을 그대로 저장할 때 적용 API에 쓴다. onAccepted는 서버가 요청을 받았을 때 한 번 부른다
    */
   async function start(
     expectedVersion: number,
     onAccepted?: () => void,
-  ): Promise<CourseContent | null> {
+  ): Promise<{ content: CourseContent; jobId: string } | null> {
     if (running.current) return null;
     running.current = true;
     const abort = new AbortController();
@@ -79,23 +109,18 @@ export function useAutoCourse(tripId: string) {
           : null;
       if (!abort.signal.aborted) {
         setStatus(content ? 'idle' : 'failed');
-        if (!content) setFailure('failed');
+        if (!content)
+          setFailure(proposal?.job.error?.code === 'POLICY_REVOKED' ? 'revoked' : 'failed');
       }
-      return content;
+      return content ? { content, jobId: ref.jobId } : null;
     } catch (e) {
       if (e instanceof JobStopped || abort.signal.aborted) return null;
-      const { code } = toApiError(e);
+      const { code, fields } = toApiError(e);
       const left = AUTO_MIN_REQUEST_MS - (Date.now() - startedAt);
       if (!accepted && left > 0) await new Promise((r) => setTimeout(r, left));
       if (!abort.signal.aborted) {
         setStatus('failed');
-        setFailure(
-          code === 'INSUFFICIENT_DATA'
-            ? 'noPlaces'
-            : code === API_ERROR.VERSION_CONFLICT
-              ? 'conflict'
-              : 'failed',
-        );
+        setFailure(requestFailure(code, fields));
       }
       return null;
     } finally {

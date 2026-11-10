@@ -96,6 +96,8 @@ export type DraftViewProps = {
   extra?: ReactNode;
   /** 시간이 없는 구간을 계산 전으로 볼지 실패로 볼지. 미리보기의 계산 불가 상태만 failed를 넘긴다 */
   noTime?: NoTime;
+  /** 추천안을 적용하면 이미 있는 코스 전체가 바뀐다. 그렇다고 알린다(백엔드 안내 2026-11-09) */
+  replacesCourse?: boolean;
 };
 
 /** S23 코스 초안 모습(Figma 201-12879, 201-13071). 데이터는 화면이나 미리보기가 넘긴다 */
@@ -118,7 +120,17 @@ export function DraftView(props: DraftViewProps) {
         { label: '저장하기 전까지 지금 코스는 그대로예요', tone: 'editing', icon: 'lock' },
       ]
     : props.origin === 'proposal'
-      ? [{ label: '추천안', tone: 'draft' }]
+      ? [
+          { label: '추천안', tone: 'draft' },
+          ...(props.replacesCourse
+            ? [
+                {
+                  label: '완료하면 지금 코스 전체가 이 추천안으로 바뀌어요',
+                  tone: 'draft',
+                } as const,
+              ]
+            : []),
+        ]
       : [];
   badges.push(...warning);
 
@@ -235,6 +247,8 @@ export function CourseEditScreen() {
 
   const [draft, setDraft] = useState<CourseDraft | null>(null);
   const [origin, setOrigin] = useState<DraftOrigin>('saved');
+  /** 지금 초안이 된 자동 추천 작업. 고치지 않고 완료하면 이 작업을 적용한다 */
+  const [proposalJob, setProposalJob] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
   const [day, setDay] = useState(0);
   const [selectedLeg, setSelectedLeg] = useState<string | null>(null);
@@ -392,12 +406,18 @@ export function CourseEditScreen() {
 
   const done = async () => {
     if (!draft) return;
-    const result = await saver.save(draft, itinerary.data);
+    // 고치지 않은 추천안은 적용 API로 바꿔 AI 이동 시간을 남긴다. 고쳤으면 PUT으로 저장한다
+    const result =
+      origin === 'proposal' && !dirty && proposalJob
+        ? await saver.apply(proposalJob, draft.baseVersion)
+        : await saver.save(draft, itinerary.data);
     if (result.kind === 'saved') {
       setExitTo(exitFor(result.itinerary.items.length > 0));
     } else if (result.kind === 'unchanged') {
       setExitTo(exitFor(savedHasCourse));
     } else if (result.kind === 'conflict' && result.latest) {
+      // 추천안은 옛 코스 기준이라 다시 적용할 수 없다. 합친 뒤에는 코스 전체 저장으로 보낸다
+      setProposalJob(null);
       reconcile(result.latest);
     }
   };
@@ -476,12 +496,13 @@ export function CourseEditScreen() {
     if (!base) return;
     // 초안에서 재추천했으면 실패했을 때 그 초안으로 돌아갈 수 있게 기억한다. 실패 화면의 다시 시도는 그대로 둔다
     if (mode !== 'auto') setAutoFromDraft(mode === 'draft' && draft !== null);
-    const content = await auto.start(base.version, () => setMode('auto'));
-    if (!content) {
+    const result = await auto.start(base.version, () => setMode('auto'));
+    if (!result) {
       setMode('auto');
       return;
     }
-    setDraft(proposalToDraft(content, base.version, days, newKey));
+    setDraft(proposalToDraft(result.content, base.version, days, newKey));
+    setProposalJob(result.jobId);
     setOrigin('proposal');
     setDirty(false);
     setDay(0);
@@ -663,6 +684,7 @@ export function CourseEditScreen() {
         }}
         onRedo={() => void runAuto()}
         redoBusy={auto.status === 'requesting'}
+        replacesCourse={origin === 'proposal' && savedHasCourse}
         onDone={() => void done()}
         saving={saver.saving}
       />
