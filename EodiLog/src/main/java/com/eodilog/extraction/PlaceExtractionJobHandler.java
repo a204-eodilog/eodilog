@@ -18,6 +18,7 @@ import com.eodilog.job.JobSubmission;
 import com.eodilog.place.dto.PlaceView;
 import com.eodilog.place.provider.ProviderPlace;
 import com.eodilog.place.service.PlaceResolver;
+import com.eodilog.region.service.RegionAddressMatcher;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -50,6 +51,7 @@ public class PlaceExtractionJobHandler implements JobHandler {
 	private final ObjectStorage objectStorage;
 	private final ExtractionAccess access;
 	private final PlaceResolver placeResolver;
+	private final RegionAddressMatcher regionAddressMatcher;
 	private final JsonMapper jsonMapper;
 
 	@Override
@@ -125,7 +127,7 @@ public class PlaceExtractionJobHandler implements JobHandler {
 				if (candidate.place() != null) {
 					ProviderPlace providerPlace = candidate.place();
 					place = resolved.computeIfAbsent(providerPlace.providerPlaceId(),
-							key -> placeResolver.resolve(PROVIDER, providerPlace));
+							key -> placeResolver.resolve(PROVIDER, withRegion(providerPlace)));
 					confidence = candidate.confidence();
 				}
 				candidates.add(new Candidate(UuidV7.generate(), candidate.name(), place, candidate.evidence(), confidence));
@@ -140,6 +142,12 @@ public class PlaceExtractionJobHandler implements JobHandler {
 	@Override
 	public void complete(JobContext context, JsonNode result) {
 		// 도메인 반영 없음. 후보는 저장·방문이 아니다. 선택한 후보는 사용자가 기존 저장 API로 저장한다
+	}
+
+	// 네이버 응답에는 지역 코드가 없어 주소로 찾는다. 못 찾으면 null이고, 이미 지역이 있는 장소는 PlaceResolver가 그 지역을 유지한다
+	private ProviderPlace withRegion(ProviderPlace place) {
+		return new ProviderPlace(place.providerPlaceId(), place.name(), place.address(), place.latitude(),
+				place.longitude(), regionAddressMatcher.regionCode(place.address()));
 	}
 
 	static List<UUID> captureIds(JsonNode input) {

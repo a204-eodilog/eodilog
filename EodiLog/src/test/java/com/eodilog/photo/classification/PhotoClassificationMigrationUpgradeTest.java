@@ -56,7 +56,8 @@ class PhotoClassificationMigrationUpgradeTest {
             var legBefore=jdbc.queryForMap("select * from route_legs where id=?",leg);
             assertThat(jdbc.queryForObject("select count(*) from information_schema.columns where table_schema=? and table_name='photos' and column_name='group_id'",Integer.class,schema)).isZero();
 
-            var upgraded=Flyway.configure().dataSource(isolated).schemas(schema).defaultSchema(schema).locations("classpath:db/migration").load();
+            // 이후 마이그레이션이 늘어도 이 회귀는 1200 → 1300 한 단계만 검사한다
+            var upgraded=Flyway.configure().dataSource(isolated).schemas(schema).defaultSchema(schema).locations("classpath:db/migration").target("202611091300").load();
             assertThat(upgraded.migrate().migrationsExecuted).isEqualTo(1);upgraded.validate();
             assertThat(upgraded.info().current().getVersion().getVersion()).isEqualTo("202611091300");
             var photoAfter=jdbc.queryForMap("select p.*,a.display_key,a.object_key,a.status from photos p join assets a on a.id=p.asset_id where p.id=?",photo);

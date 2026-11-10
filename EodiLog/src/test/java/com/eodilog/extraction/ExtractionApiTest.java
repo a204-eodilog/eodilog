@@ -172,7 +172,9 @@ class ExtractionApiTest {
 		assertThat(candidates.get(0).get("place").get("source").asString()).isEqualTo("PROVIDER");
 		assertThat(candidates.get(0).get("place").get("provider").asString()).isEqualTo("NAVER");
 		assertThat(candidates.get(0).get("place").get("name").asString()).isEqualTo("바다 앞 카페 남천점");
-		assertThat(candidates.get(0).get("place").get("regionId").isNull()).isTrue();
+		// 네이버 응답에는 지역 코드가 없어 주소("부산 수영구 …")로 지역을 찾는다
+		assertThat(candidates.get(0).get("place").get("regionId").asString()).isEqualTo(jdbcTemplate.queryForObject(
+				"select id::text from regions where name = '부산광역시 수영구'", String.class));
 		assertThat(candidates.get(0).get("confidence").asDouble()).isEqualTo(1.0);
 		assertThat(candidates.get(1).get("place").get("id").asString()).isEqualTo(placeId(PLACE_ID_PREFIX + "2").toString());
 		assertThat(candidates.get(2).get("place").isNull()).isTrue();
