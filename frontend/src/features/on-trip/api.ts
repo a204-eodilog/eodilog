@@ -4,7 +4,7 @@ import type { DataResponse } from '@/api/types';
 import type { ChecklistSummary, JobRef, Weather } from './types';
 
 // 계약: specs/20261109-145938-on-trip-weather/contracts/routes.md
-// 날씨와 날씨 대안 앱 API는 아직 없다(Q-10-1). 테스트 모드 가짜 서버가 같은 형식으로 답한다
+// 날씨와 날씨 대안 API는 2026-11-10 dev에 들어왔다. 테스트 모드 가짜 서버도 같은 형식으로 답한다
 
 /** GET /trips/{tripId}/weather. 그 날 그 장소의 날씨 */
 export async function getWeather(
@@ -24,10 +24,13 @@ export async function getWeather(
 export async function requestWeatherAlternatives(
   tripId: string,
   body: { date: string; placeId: string; expectedVersion: number },
+  /** 서버 필수. 없으면 400 VALIDATION_ERROR */
+  idempotencyKey: string,
 ): Promise<JobRef> {
   const { data } = await apiClient.post<DataResponse<JobRef>>(
     `/trips/${tripId}/weather-alternatives`,
     body,
+    { headers: { 'Idempotency-Key': idempotencyKey } },
   );
   return data.data;
 }

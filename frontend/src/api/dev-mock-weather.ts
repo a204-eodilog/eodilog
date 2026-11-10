@@ -3,8 +3,8 @@ import type { AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import type { Trip } from '@/features/trip/types';
 
 /**
- * 여행 중·날씨 대안(S25·S26) 테스트 모드 가짜 서버. 앱용 날씨 API가 아직 없어(Q-10-1)
- * API 명세 형식대로 답한다. 날씨는 늘 오전 비 70%, 12시부터 그침(Figma 201-14252).
+ * 여행 중·날씨 대안(S25·S26) 테스트 모드 가짜 서버. 백엔드 날씨 API와 같은 형식으로 답하고,
+ * 날씨 대안 요청은 실서버처럼 Idempotency-Key가 없으면 400, 같은 키면 처음 작업을 준다. 날씨는 늘 오전 비 70%, 12시부터 그침(Figma 201-14252).
  * 날씨 대안은 만든 뒤 3초 동안 RUNNING이고 그 뒤 대안 네 개.
  * 콘솔: globalThis.__devMock.weather.failNext(), noAlternativesNext()
  */
@@ -74,6 +74,8 @@ const place = (id: string, name: string, address: string) => ({
 
 export function createWeatherMock(h: Helpers) {
   const jobs = new Map<string, MockJob>();
+  /** Idempotency-Key → 작업 번호. 같은 키로 다시 오면 처음 작업을 돌려준다 */
+  const jobByKey = new Map<string, string>();
   let seq = 0;
   let failWeather = false;
   let emptyNext = false;
@@ -179,12 +181,23 @@ export function createWeatherMock(h: Helpers) {
       return h.ok(config, { data: weatherOf(params.date, params.placeId) });
     }
     if (m[2] === 'weather-alternatives' && method === 'post') {
+      const key = String(config.headers?.['Idempotency-Key'] ?? '');
+      if (!key) throw h.fail(config, 400, 'VALIDATION_ERROR', 'Idempotency-Key가 필요합니다.');
+      const known = jobs.get(jobByKey.get(key) ?? '');
+      if (known) {
+        return h.ok(
+          config,
+          { data: { jobId: known.id, status: 'QUEUED', statusUrl: `/api/v1/jobs/${known.id}` } },
+          202,
+        );
+      }
       const body = (typeof config.data === 'string' ? JSON.parse(config.data || '{}') : {}) as {
         date?: string;
         placeId?: string;
         expectedVersion?: number;
       };
       seq += 1;
+      jobByKey.set(key, `job-weather-${seq}`);
       const job: MockJob = {
         id: `job-weather-${seq}`,
         tripId: trip.id,
