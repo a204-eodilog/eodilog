@@ -27,7 +27,13 @@ const MENU: MenuItem[] = [
     icon: 'search',
     open: (tripId) => router.push({ pathname: '/trips/[tripId]/recommend', params: { tripId } }),
   },
-  { key: 'poll', label: '투표', icon: 'check' },
+  {
+    key: 'poll',
+    label: '투표',
+    icon: 'check',
+    // S22 지역·장소 투표(투표 명세). 폴더(polls/index.tsx)라 평가 메뉴처럼 실제 주소로 보낸다
+    open: (tripId) => router.push(`/trips/${tripId}/polls`),
+  },
   {
     key: 'course',
     label: '코스',
@@ -35,7 +41,13 @@ const MENU: MenuItem[] = [
     // S24 코스(course/index.tsx). 코스가 비어 있으면 그 화면이 S23 코스 짜기로 바꿔 연다
     open: (tripId) => router.push(`/trips/${tripId}/course`),
   },
-  { key: 'today', label: '여행 중', icon: 'trip' },
+  {
+    key: 'today',
+    label: '여행 중',
+    icon: 'trip',
+    // S25 여행 중 화면이 생길 때까지 S27 준비물을 바로 연다(준비물 명세 가정 Q-5-5)
+    open: (tripId) => router.push({ pathname: '/trips/[tripId]/checklist', params: { tripId } }),
+  },
   {
     key: 'photos',
     label: '사진',
