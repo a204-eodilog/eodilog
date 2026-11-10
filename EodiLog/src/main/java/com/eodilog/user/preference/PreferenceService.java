@@ -36,6 +36,7 @@ public class PreferenceService {
         repository.settings(id,body);
         if(!body.allowInference()) repository.replace(id,"INFERRED",List.of());
         if(changed || old.consent()!=body.allowInference()) repository.bump(id,clock.instant());
+        if(changed || old.consent()!=body.allowInference() || old.scope()!=body.sharingScope()) repository.touch(id,clock.instant());
         if(body.allowInference() && (changed || !old.consent())) submit(id);
         return get(id);
     }
@@ -43,7 +44,7 @@ public class PreferenceService {
     public void delete(UUID id,String key) {
         repository.user(id,true); repository.initialize(id);
         if(!PreferenceInferenceHandler.TAGS.contains(key)) throw invalid();
-        repository.reject(id,key); repository.bump(id,clock.instant());
+        repository.reject(id,key); repository.bump(id,clock.instant()); repository.touch(id,clock.instant());
     }
     /** Called before saved-place writes. Trip callers have already locked their trip. */
     @Transactional(propagation=org.springframework.transaction.annotation.Propagation.MANDATORY)

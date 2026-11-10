@@ -2,6 +2,7 @@ package com.eodilog.user.preference;
 
 import com.eodilog.global.ai.*;
 import com.eodilog.job.*;
+import java.time.Clock;
 import java.util.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -13,6 +14,7 @@ public class PreferenceInferenceHandler implements JobHandler {
     static final Set<String> TAGS=Set.of("바다","맛집","카페","산","도시","사진","산책","야경","휴식","골목");
     private final AiServerClient ai;
     private final PreferenceRepository repository;
+    private final Clock clock;
     @Override public JobKind kind() { return JobKind.PREFERENCE_INFERENCE; }
     @Override public void validate(JobSubmission s) {
         if(s.tripId()!=null || s.baseVersion()==null || s.input().size()!=4
@@ -52,5 +54,6 @@ public class PreferenceInferenceHandler implements JobHandler {
         repository.items(c.submission().requestedByUserId(),"EXPLICIT").forEach(i->protectedKeys.add(PreferenceService.canonical(i.key())));
         if(items.stream().anyMatch(i->protectedKeys.contains(PreferenceService.canonical(i.key())))) throw new IllegalArgumentException("Protected preference");
         repository.replace(c.submission().requestedByUserId(),"INFERRED",items);
+        repository.touch(c.submission().requestedByUserId(),clock.instant());
     }
 }

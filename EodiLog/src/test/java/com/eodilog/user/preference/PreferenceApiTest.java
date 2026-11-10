@@ -258,6 +258,30 @@ class PreferenceApiTest {
 		assertThat(count("select count(*) from user_preference_states where user_id=?", incomplete)).isZero();
 	}
 
+	@Test
+	void updatedAtMovesOnlyWithPreferenceChangesNotProfileEdits() throws Exception {
+		putPreferences(userId, "[]", false, "NONE").andExpect(status().isOk());
+		java.time.Instant old = java.time.Instant.parse("2020-01-01T00:00:00Z");
+		jdbc.update("update user_preference_states set updated_at=? where user_id=?", java.sql.Timestamp.from(old), userId);
+		assertThat(preferencesUpdatedAt(userId)).isEqualTo(old);
+
+		mockMvc.perform(patch("/api/v1/me").with(authUser(userId)).contentType(MediaType.APPLICATION_JSON)
+				.content("{\"nickname\":\"새닉" + userId.toString().substring(0, 6) + "\"}")).andExpect(status().isOk());
+		assertThat(preferencesUpdatedAt(userId)).isEqualTo(old);
+		putPreferences(userId, "[]", false, "NONE").andExpect(status().isOk());
+		assertThat(preferencesUpdatedAt(userId)).as("unchanged PUT").isEqualTo(old);
+
+		putPreferences(userId, "[]", false, "EXPLICIT_ONLY").andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.sharingScope").value("EXPLICIT_ONLY"));
+		assertThat(preferencesUpdatedAt(userId)).as("sharingScope-only PUT").isAfter(old);
+	}
+
+	private java.time.Instant preferencesUpdatedAt(UUID user) throws Exception {
+		String body = mockMvc.perform(get("/api/v1/me/preferences").with(authUser(user))).andExpect(status().isOk())
+				.andReturn().getResponse().getContentAsString();
+		return java.time.Instant.parse(jsonMapper.readTree(body).path("data").path("updatedAt").asString());
+	}
+
 	private ResultActions putPreferences(UUID user, String items, boolean allow, String scope) throws Exception {
 		return mockMvc.perform(put("/api/v1/me/preferences").with(authUser(user)).contentType(MediaType.APPLICATION_JSON)
 				.content("{\"explicitItems\":" + items + ",\"allowInference\":" + allow + ",\"sharingScope\":\"" + scope + "\"}"));

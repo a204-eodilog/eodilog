@@ -29,7 +29,7 @@ public class PlaceSocialController {
 
     @GetMapping("/social-summary")
     @Operation(summary="장소 소셜 요약",description="로그인 사용자. "+ALLOWED
-            +" visitorCount·visitors는 허용된 피드 여행에서 게시 시각까지 기록된 비삭제 방문의 방문자 중 그 피드에서 자신도 허용 경로인 회원(요청자 본인 제외)이며, visitors는 최근 방문 순 최대 20명이다."
+            +" visitorCount·visitors는 허용된 피드 여행에서 게시 시각까지 기록된 비삭제 방문의 방문자 중 그 피드에서 자신도 허용 경로인 회원(요청자 본인 제외)이며, 회원 행이 없는 방문자는 visitorCount와 visitors 모두에서 뺀다. visitors는 최근 방문 순 최대 20명이다."
             +" averageScore·reviewCount는 허용된 게시 평가로만 계산하고 평가가 없으면 averageScore는 null이다. 외부 호출이 없어 partialErrors는 항상 빈 배열이다.")
     @ApiResponse(responseCode="200",description="조회 성공")
     public DataResponse<PlaceSocialSummary> summary(@Parameter(hidden=true) @AuthenticationPrincipal AuthUser user,

@@ -18,15 +18,17 @@ import tools.jackson.databind.json.JsonMapper;
 public class PreferenceRepository {
     private final JdbcTemplate jdbc;
     private final JsonMapper json;
+    /** Preferences.updatedAt: the state row's own timestamp; before any preference write it falls back to the account's. */
+    private static final String UPDATED_AT="COALESCE((SELECT s.updated_at FROM user_preference_states s WHERE s.user_id=u.id),u.updated_at)";
     record User(boolean consent, Preferences.Scope scope, Instant updatedAt) {}
     User user(UUID id, boolean lock) {
-        return jdbc.query("SELECT inference_consent,preference_sharing_scope,updated_at FROM users WHERE id=? AND status='ACTIVE' AND profile_completed=true" + (lock ? " FOR UPDATE" : ""),
+        return jdbc.query("SELECT inference_consent,preference_sharing_scope," + UPDATED_AT + " FROM users u WHERE id=? AND status='ACTIVE' AND profile_completed=true" + (lock ? " FOR UPDATE" : ""),
                 (r,n) -> new User(r.getBoolean(1), Preferences.Scope.valueOf(r.getString(2)), r.getTimestamp(3).toInstant()), id)
                 .stream().findFirst().orElseThrow(() -> new BusinessException(CommonErrorCode.FORBIDDEN));
     }
     /** Saved-place writes must not start failing for users the preference feature does not apply to. */
     Optional<User> lockIfEligible(UUID id) {
-        return jdbc.query("SELECT inference_consent,preference_sharing_scope,updated_at FROM users WHERE id=? AND status='ACTIVE' AND profile_completed=true FOR UPDATE",
+        return jdbc.query("SELECT inference_consent,preference_sharing_scope," + UPDATED_AT + " FROM users u WHERE id=? AND status='ACTIVE' AND profile_completed=true FOR UPDATE",
                 (r,n) -> new User(r.getBoolean(1), Preferences.Scope.valueOf(r.getString(2)), r.getTimestamp(3).toInstant()), id)
                 .stream().findFirst();
     }
@@ -60,13 +62,18 @@ public class PreferenceRepository {
         catch (java.security.NoSuchAlgorithmException e) { throw new IllegalStateException(e); }
     }
     void initialize(UUID id) {
-        jdbc.update("INSERT INTO user_preference_states(user_id,places_fingerprint) VALUES(?,?) ON CONFLICT DO NOTHING",id,fingerprint(places(id)));
+        jdbc.update("INSERT INTO user_preference_states(user_id,places_fingerprint,updated_at) VALUES(?,?,(SELECT updated_at FROM users WHERE id=?)) ON CONFLICT DO NOTHING",
+                id,fingerprint(places(id)),id);
     }
     String fingerprint(UUID id) { return jdbc.queryForObject("SELECT places_fingerprint FROM user_preference_states WHERE user_id=?",String.class,id); }
     long version(UUID id) { return jdbc.queryForObject("SELECT version FROM user_preference_states WHERE user_id=?",Long.class,id); }
     void bump(UUID id, Instant now) {
         jdbc.update("UPDATE user_preference_states SET version=version+1 WHERE user_id=?",id);
         jdbc.update("UPDATE users SET updated_at=? WHERE id=?",Timestamp.from(now),id);
+    }
+    /** Moves Preferences.updatedAt; only for changes visible in Preferences (items, consent, scope). */
+    void touch(UUID id, Instant now) {
+        jdbc.update("UPDATE user_preference_states SET updated_at=? WHERE user_id=?",Timestamp.from(now),id);
     }
     void changePlaces(UUID id, String fingerprint) {
         jdbc.update("UPDATE user_preference_states SET places_fingerprint=? WHERE user_id=?",fingerprint,id);

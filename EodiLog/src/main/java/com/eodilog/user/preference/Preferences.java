@@ -12,7 +12,7 @@ public record Preferences(
         @Schema(description = "추론 목록") List<Item> inferredItems,
         @Schema(description = "추론 허용", example = "false") boolean allowInference,
         @Schema(description = "전역 공유 범위", example = "NONE") Scope sharingScope,
-        @Schema(description = "마지막 변경 시각", example = "2026-11-09T00:00:00Z") Instant updatedAt) {
+        @Schema(description = "취향 마지막 변경 시각. 직접 입력·추론 허용·공유 범위가 실제로 바뀌거나 추론 항목 삭제·추론 결과 저장 때 바뀐다(프로필 수정과 무관). 아직 취향을 저장한 적 없으면 회원 정보의 마지막 변경 시각", example = "2026-11-09T00:00:00Z") Instant updatedAt) {
     @Schema(description = "취향 키와 값. 직접 입력은 공백 정리 후 같은 값인 최대 20자 자유 입력")
     public record Item(@Schema(description = "취향 키", example = "카페") String key,
                        @Schema(description = "취향 값", example = "카페") String value) {}

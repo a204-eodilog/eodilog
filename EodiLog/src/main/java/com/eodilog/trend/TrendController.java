@@ -38,7 +38,7 @@ public class TrendController {
     public PageResponse<TrendRegion> regions(@Parameter(hidden=true) @AuthenticationPrincipal AuthUser user,
             @Parameter(description="집계 시작일",example="2026-10-12",required=true) @RequestParam @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate from,
             @Parameter(description="집계 종료일(포함)",example="2026-11-10",required=true) @RequestParam @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate to,
-            @Parameter(description="이전 page.nextCursor") @RequestParam(required=false) String cursor,
+            @Parameter(description="이전 page.nextCursor. 같은 from·to로 받은 커서만 쓸 수 있다(다르면 400 VALIDATION_ERROR)") @RequestParam(required=false) String cursor,
             @Parameter(description="페이지 크기(1~100)") @RequestParam(defaultValue="20") @Min(1) @Max(100) int limit) {
         return service.regions(CurrentUser.requireUserId(user),from,to,cursor,limit);
     }

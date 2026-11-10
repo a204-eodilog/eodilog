@@ -177,6 +177,22 @@ class TrendRegionApiTest {
         }
     }
 
+    @Test void cursorIsBoundToItsQueryWindow() throws Exception {
+        int y=YEARS.getAndIncrement();
+        UUID viewer=user("PUBLIC",true),m=user("PUBLIC",true);
+        String day=y+"-04-04";
+        for(int i=0;i<3;i++) feed(day,day,null,List.of(region(y+"W"+i)),m);
+        JsonNode first=json.readTree(mvc.perform(get("/api/v1/trends/regions").with(authUser(viewer)).param("from",day).param("to",day).param("limit","1"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        String cursor=first.path("page").path("nextCursor").asString();
+        mvc.perform(get("/api/v1/trends/regions").with(authUser(viewer)).param("from",day).param("to",day).param("limit","1").param("cursor",cursor))
+                .andExpect(status().isOk());
+        for(String[] window:List.of(new String[]{y+"-04-03",day},new String[]{day,y+"-04-05"}))
+            mvc.perform(get("/api/v1/trends/regions").with(authUser(viewer)).param("from",window[0]).param("to",window[1]).param("cursor",cursor))
+                    .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"))
+                    .andExpect(jsonPath("$.error.fields[0].field").value("cursor"));
+    }
+
     @Test void inactiveOrPendingViewersSeeNothing() throws Exception {
         int y=YEARS.getAndIncrement();
         String day=y+"-02-02";
