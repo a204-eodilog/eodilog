@@ -241,7 +241,7 @@ class DiscoveryApiTest {
         UUID liked=publish(trip(member),member),plain=publish(trip(member),member);
         like(liked,3);
         jdbc.update("update feeds set like_count=0 where id in (?,?)",liked,plain);
-        String migration=new ClassPathResource("db/migration/V202611110000__add_feeds_like_count.sql").getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+        String migration=new ClassPathResource("db/migration/V202611110600__add_feeds_like_count.sql").getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
         String backfill=Arrays.stream(migration.split(";")).map(x->x.lines().filter(l->!l.startsWith("--")).reduce("",(x1,x2)->x1+"\n"+x2).strip())
                 .filter(x->x.startsWith("UPDATE feeds")).findFirst().orElseThrow();
         jdbc.update(backfill);
