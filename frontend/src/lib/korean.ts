@@ -35,3 +35,13 @@ export function withEulReul(word: string): string {
   if (jong === null) return `${word}을(를)`;
   return `${word}${jong === 0 ? '를' : '을'}`;
 }
+
+/**
+ * 단어 뒤에 '이/가'를 붙인다. 받침이 있으면 '이', 없으면 '가'.
+ * 한글로 끝나지 않으면 '이(가)'. "가람" → "가람이", "나래" → "나래가"
+ */
+export function withIga(word: string): string {
+  const jong = finalConsonant(word);
+  if (jong === null) return `${word}이(가)`;
+  return `${word}${jong === 0 ? '가' : '이'}`;
+}

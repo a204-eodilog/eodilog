@@ -7,7 +7,6 @@ import {
   clusterMarks,
   groupBySido,
   toRegionTripCards,
-  isGroup,
   nearLabel,
   fillsFor,
   homeState,

@@ -12,20 +12,22 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class PublicPlaceWriter {
     private static final String UPSERT = """
-            INSERT INTO places(id,region_id,name,address,latitude,longitude,provider,provider_place_id,source,created_at,updated_at)
+            INSERT INTO places(id,region_id,name,address,latitude,longitude,provider,provider_place_id,source,category,created_at,updated_at)
             VALUES(:id,COALESCE(
                    (SELECT region_id FROM region_code_aliases WHERE code=left(:regionCode,5)||'00000'),
                    (SELECT region_id FROM region_code_targets WHERE code=left(:regionCode,5)||'00000')),
-                   :name,:address,:latitude,:longitude,:provider,:externalId,'PROVIDER',:now,:now)
+                   :name,:address,:latitude,:longitude,:provider,:externalId,'PROVIDER',:category,:now,:now)
             ON CONFLICT(provider,provider_place_id) DO UPDATE SET
                 region_id=COALESCE(EXCLUDED.region_id,places.region_id),
                 name=EXCLUDED.name,address=EXCLUDED.address,
-                latitude=EXCLUDED.latitude,longitude=EXCLUDED.longitude,updated_at=EXCLUDED.updated_at
+                latitude=EXCLUDED.latitude,longitude=EXCLUDED.longitude,
+                category=COALESCE(EXCLUDED.category,places.category),updated_at=EXCLUDED.updated_at
             WHERE places.name IS DISTINCT FROM EXCLUDED.name
                OR places.address IS DISTINCT FROM EXCLUDED.address
                OR places.latitude IS DISTINCT FROM EXCLUDED.latitude
                OR places.longitude IS DISTINCT FROM EXCLUDED.longitude
                OR (EXCLUDED.region_id IS NOT NULL AND places.region_id IS DISTINCT FROM EXCLUDED.region_id)
+               OR (EXCLUDED.category IS NOT NULL AND places.category IS DISTINCT FROM EXCLUDED.category)
             """;
     private final NamedParameterJdbcTemplate jdbc;
     private final Clock clock;
@@ -50,6 +52,7 @@ public class PublicPlaceWriter {
                 .addValue("longitude", row.longitude())
                 .addValue("provider", row.provider())
                 .addValue("externalId", row.externalId())
+                .addValue("category", row.normalizedCategory())
                 .addValue("now", now)).toArray(MapSqlParameterSource[]::new);
         if (args.length == 0) return 0;
         jdbc.batchUpdate(UPSERT, args);

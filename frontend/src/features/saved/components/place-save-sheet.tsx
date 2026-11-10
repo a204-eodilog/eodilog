@@ -21,6 +21,8 @@ export type PlaceSaveSheetProps = {
    * S12에서 찾은 장소는 나만 보기(값 문서 "가져온 장소")
    */
   initialChoice?: SaveChoice;
+  /** 같이 저장할 메모(S11에서 쓴 메모). 없으면 이미 저장한 장소의 메모를 그대로 둔다 */
+  memo?: string;
   onClose: () => void;
   /** 저장한 뒤. 시트는 이미 닫혔고 토스트도 떠 있다. S12는 여기서 S10(개인) 또는 S20(그룹)으로 간다 */
   onSaved?: (target: SaveTarget) => void;
@@ -40,6 +42,7 @@ export function PlaceSaveSheet({
   visible,
   places,
   initialChoice = 'trip',
+  memo,
   onClose,
   onSaved,
 }: PlaceSaveSheetProps) {
@@ -74,7 +77,7 @@ export function PlaceSaveSheet({
     const saveTarget: SaveTarget = trip ? { kind: 'trip', tripId: trip.id } : { kind: 'personal' };
     saving.current = true;
     save.mutate(
-      { placeIds: places.map((p) => p.id), target: saveTarget },
+      { placeIds: places.map((p) => p.id), target: saveTarget, memo },
       {
         // close()가 mutation을 reset하면 onSettled가 불리지 않을 수 있어 성공·실패 콜백 맨 앞에서 푼다
         onError: () => {

@@ -75,6 +75,8 @@ export function ConfirmSheet({
             leading={
               confirmIcon ? <Icon name={confirmIcon} size={20} color={colors.text.inverse} /> : null
             }
+            // 아이콘 없는 버튼은 좌우 24(S50 탈퇴 [탈퇴하기]). 아이콘이 있으면 공통 버튼 기본값
+            style={confirmIcon ? undefined : styles.plainConfirm}
           />
         </>
       }
@@ -104,6 +106,7 @@ export function ConfirmSheet({
 const styles = StyleSheet.create({
   body: { gap: spacing[16] },
   cancel: { paddingHorizontal: spacing[16], paddingVertical: spacing[12] },
+  plainConfirm: { paddingHorizontal: spacing[24] },
   cancelLabel: { color: colors.text.icon },
   pressed: { opacity: 0.6 },
   // 오류 띠(docs/design/screens README 상태 공통 모양). 피그마 둥글기 14는 토큰에 없어 12로 맞춘다

@@ -24,10 +24,13 @@ export function RegionPill({
   mark,
   onPress,
   pulse = false,
+  pulseDelayMs = 0,
 }: {
   mark: RegionMark;
   onPress?: () => void;
   pulse?: boolean;
+  /** 퍼지는 원을 시작할 때(ms). 핀이 다 올라온 뒤에 시작해야 나타나는 동안 버벅이지 않는다 */
+  pulseDelayMs?: number;
 }) {
   return (
     <Pressable
@@ -44,7 +47,7 @@ export function RegionPill({
       <View style={styles.dotWrap}>
         {/* 시군구가 작으면(전주·해운대) 칠한 면적이 안 보여서 점 둘레에도 같은 색을 깐다 */}
         <View style={[styles.halo, { backgroundColor: markFill(mark.memberCount) }]} />
-        {pulse ? <Ripple /> : null}
+        {pulse ? <Ripple delayMs={pulseDelayMs} /> : null}
         <View style={styles.dot} />
       </View>
     </Pressable>
@@ -56,10 +59,12 @@ export function GroupPill({
   group,
   onPress,
   pulse = false,
+  pulseDelayMs = 0,
 }: {
   group: RegionGroup;
   onPress?: () => void;
   pulse?: boolean;
+  pulseDelayMs?: number;
 }) {
   return (
     <Pressable
@@ -75,7 +80,7 @@ export function GroupPill({
       </View>
       <View style={styles.dotWrap}>
         <View style={[styles.halo, { backgroundColor: markFill(group.memberCount) }]} />
-        {pulse ? <Ripple /> : null}
+        {pulse ? <Ripple delayMs={pulseDelayMs} /> : null}
         <View style={styles.dot} />
       </View>
     </Pressable>
@@ -85,17 +90,31 @@ export function GroupPill({
 // Figma S05 '퍼지는 원': 1.6초 동안 0.6배 → 2.6배로 퍼지며 사라지고, 3.5초마다 반복
 const RIPPLE = { growMs: 1600, cycleMs: 3500, from: 0.6, to: 2.6, opacity: 0.9 } as const;
 
-function Ripple() {
+function Ripple({ delayMs }: { delayMs: number }) {
   const reduced = useReducedMotion();
   const scale = useSharedValue<number>(RIPPLE.from);
-  const opacity = useSharedValue<number>(reduced ? 0 : RIPPLE.opacity);
+  // 시작 전에는 숨겨 둔다(핀이 나타나는 동안 돌면 핀 전체를 매 순간 다시 그려 버벅인다)
+  const opacity = useSharedValue<number>(reduced || delayMs > 0 ? 0 : RIPPLE.opacity);
   useEffect(() => {
     if (reduced) return;
     const ease = { duration: RIPPLE.growMs, easing: Easing.out(Easing.quad) };
     const rest = RIPPLE.cycleMs - RIPPLE.growMs;
     const reset = (v: number) => withDelay(rest, withTiming(v, { duration: 0 }));
-    scale.set(withRepeat(withSequence(withTiming(RIPPLE.to, ease), reset(RIPPLE.from)), -1));
-    opacity.set(withRepeat(withSequence(withTiming(0, ease), reset(RIPPLE.opacity)), -1));
+    scale.set(
+      withDelay(
+        delayMs,
+        withRepeat(withSequence(withTiming(RIPPLE.to, ease), reset(RIPPLE.from)), -1),
+      ),
+    );
+    opacity.set(
+      withDelay(
+        delayMs,
+        withSequence(
+          withTiming(RIPPLE.opacity, { duration: 0 }),
+          withRepeat(withSequence(withTiming(0, ease), reset(RIPPLE.opacity)), -1),
+        ),
+      ),
+    );
     // 처음 한 번만 시작하면 계속 반복된다
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

@@ -123,3 +123,13 @@ export function uploadCounts(items: readonly UploadItem[]) {
 export function isBusy(status: number | null | undefined): boolean {
   return status === 503 || status === 429;
 }
+
+/** 일괄 변경 API(`POST /trips/{tripId}/photos/batch`) 한 번에 보낼 수 있는 최대 장수 */
+export const PHOTO_BATCH_MAX = 50;
+
+/** 목록을 size개씩 나눈다(마지막 묶음은 더 적을 수 있다). 일괄 변경을 50장씩 보낼 때 쓴다 */
+export function inBatches<T>(items: readonly T[], size: number = PHOTO_BATCH_MAX): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}

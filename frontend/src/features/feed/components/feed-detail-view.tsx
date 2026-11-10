@@ -20,7 +20,7 @@ import { colors, layout, radius, spacing, typography } from '@/theme';
 import { membersLabel, minutesLabel, wonShort } from '../feed-rules';
 import type { FeedDetail, FeedStop, TransportKind } from '../types';
 
-import { RouteSketch } from './route-sketch';
+import { RouteMap } from './route-map';
 
 export type FeedDetailViewProps = {
   state: 'loading' | 'error' | 'ready';
@@ -202,7 +202,7 @@ function Body({ detail, ...props }: FeedDetailViewProps & { detail: FeedDetail }
         <>
           <View style={styles.section} onLayout={mark('route')}>
             <Text style={styles.sectionTitle}>경로</Text>
-            <RouteSketch days={detail.days} />
+            <RouteMap days={detail.days} />
           </View>
 
           <View style={styles.section} onLayout={mark('places')}>
@@ -371,7 +371,8 @@ const styles = StyleSheet.create({
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: spacing[6] },
   metaText: { ...typography.caption, color: colors.text.sub },
   tabs: { flexDirection: 'row', gap: spacing[10], marginTop: -spacing[8] },
-  section: { gap: spacing[14] },
+  // 11/09 직접 확인에서 빽빽하다고 해 섹션·일차·장소 사이를 조금씩 넓혔다
+  section: { gap: spacing[16] },
   sectionTitle: { ...typography.title3, color: colors.text.default },
   photos: { flexDirection: 'row', gap: spacing[10] },
   photo: {
@@ -395,8 +396,8 @@ const styles = StyleSheet.create({
     fontFamily: typography.bodyMedium.fontFamily,
     color: colors.text.inverse,
   },
-  days: { gap: spacing[24] },
-  day: { gap: spacing[12] },
+  days: { gap: spacing[32] },
+  day: { gap: spacing[18] },
   dayHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[10] },
   dayBadge: {
     paddingHorizontal: spacing[10],
@@ -431,7 +432,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   numberText: { ...typography.micro, color: colors.text.inverse },
-  stopText: { flex: 1, minWidth: 0, gap: spacing[2] },
+  stopText: { flex: 1, minWidth: 0, gap: spacing[4] },
   stopNameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[8] },
   stopName: { ...typography.bodyBold, color: colors.text.default, flexShrink: 1 },
   score: { flexDirection: 'row', alignItems: 'center', gap: 2 },
@@ -447,7 +448,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  leg: { paddingLeft: 70, paddingTop: spacing[12] },
+  leg: { paddingLeft: 70, paddingTop: spacing[14] },
   legChip: {
     alignSelf: 'flex-start',
     flexDirection: 'row',

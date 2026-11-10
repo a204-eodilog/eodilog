@@ -90,7 +90,8 @@ public class VisitController {
 	@Operation(summary = "다녀옴 체크 해제", description = """
 			방문을 기록한 본인이 ACTIVE 멤버일 때만 지운다. 방장이라도 다른 사람의 방문은 지울 수 없다(403).
 			평가가 있는 방문은 평가를 먼저 지워야 한다(409 REVIEW_EXISTS).
-			지운 방문은 목록에서 빠지고 되살리지 않는다. 다시 체크하면 새 방문이 생긴다.""")
+			지운 방문은 목록에서 빠지고 되살리지 않는다. 다시 체크하면 새 방문이 생긴다.
+			사진 후보를 확정해 만든(연결한) 방문이면 그 후보는 INVALIDATED가 되어 다시 확정할 수 없다(409 VISIT_CANDIDATE_INVALIDATED).""")
 	@ApiResponse(responseCode = "204", description = "체크 해제 성공")
 	@ApiResponse(responseCode = "403", description = "FORBIDDEN: 내 방문이 아님",
 			content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))

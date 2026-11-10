@@ -8,6 +8,7 @@ import type {
   CoursePlace,
   PhotoBatch,
   PhotoSummary,
+  PhotoTopic,
   PickedPhoto,
   TripPhoto,
   UploadIntent,
@@ -72,11 +73,49 @@ export async function updatePhotoPlace(
   photo: Pick<TripPhoto, 'id' | 'version'>,
   placeId: string | null,
 ): Promise<TripPhoto> {
+  return updatePhoto(tripId, photo, { placeId });
+}
+
+/**
+ * 사진 수동 보정(올린 사람만). 보내지 않은 값은 그대로, placeId null은 장소 해제, topics []는 주제 해제.
+ * 버전이 다르면 409 VERSION_CONFLICT
+ */
+export async function updatePhoto(
+  tripId: string,
+  photo: Pick<TripPhoto, 'id' | 'version'>,
+  change: { placeId?: string | null; topics?: PhotoTopic[] },
+): Promise<TripPhoto> {
   const { data } = await apiClient.patch<DataResponse<TripPhoto>>(
     `/trips/${encodeURIComponent(tripId)}/photos/${encodeURIComponent(photo.id)}`,
-    { expectedVersion: photo.version, placeId },
+    { expectedVersion: photo.version, ...change },
   );
   return data.data;
+}
+
+/**
+ * 여러 장을 한 번에 수동 보정(`POST /trips/{tripId}/photos/batch`, action UPDATE, 올린 사람만, 1~50장).
+ * 한 장이라도 실패하면 아무것도 바뀌지 않는다. 버전이 하나라도 다르면 409 VERSION_CONFLICT
+ */
+export async function batchUpdatePhotos(
+  tripId: string,
+  photos: readonly Pick<TripPhoto, 'id' | 'version'>[],
+  change: { placeId?: string | null; topics?: PhotoTopic[] },
+): Promise<TripPhoto[]> {
+  const { data } = await apiClient.post<
+    DataResponse<{ photos: TripPhoto[]; deletedPhotoIds: string[] }>
+  >(`/trips/${encodeURIComponent(tripId)}/photos/batch`, {
+    action: 'UPDATE',
+    photos: photos.map((p) => ({ photoId: p.id, expectedVersion: p.version })),
+    ...change,
+  });
+  return data.data.photos;
+}
+
+/** 사진 지우기(올린 사람만). 서버는 바로 목록에서 빼고 파일은 나중에 정리한다(202 작업) */
+export async function deletePhoto(tripId: string, photoId: string): Promise<void> {
+  await apiClient.delete(
+    `/trips/${encodeURIComponent(tripId)}/photos/${encodeURIComponent(photoId)}`,
+  );
 }
 
 /** 업로드 배치. 같은 고르기의 재요청은 같은 Idempotency-Key로 보내 배치가 두 번 생기지 않는다 */

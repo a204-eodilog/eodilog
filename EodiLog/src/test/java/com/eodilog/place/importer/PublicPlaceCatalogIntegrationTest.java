@@ -23,15 +23,19 @@ class PublicPlaceCatalogIntegrationTest {
         String externalId = UUID.randomUUID().toString();
         var first = new PublicPlaceRow("SBDC", externalId, "전국카페", "부산", new BigDecimal("35.1"), new BigDecimal("129.1"), "2611000000");
         writer.upsert(List.of(first));
-        var saved = catalog.search("전국카페", null, null, 20).data();
+        var saved = catalog.search("전국카페", null, null, null, 20).data();
         assertThat(saved).hasSize(1);
         UUID id = saved.getFirst().id();
         writer.upsert(List.of(new PublicPlaceRow("SBDC", externalId, "전국카페 수정", "부산", new BigDecimal("35.1"), new BigDecimal("129.1"), "2611000000")));
-        assertThat(catalog.search("전국카페 수정", null, null, 20).data()).extracting(p -> p.id()).containsExactly(id);
+        assertThat(catalog.search("전국카페 수정", null, null, null, 20).data()).extracting(p -> p.id()).containsExactly(id);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM places WHERE provider='SBDC' AND provider_place_id=?", Integer.class, externalId)).isOne();
+        // 분류는 새 값이 있을 때만 바꾸고, 분류 없는 재수집이 기존 분류를 지우지 않는다
+        writer.upsert(List.of(new PublicPlaceRow("SBDC", externalId, "전국카페 수정", "부산", new BigDecimal("35.1"), new BigDecimal("129.1"), "2611000000", "음식>커피점/카페>카페")));
+        writer.upsert(List.of(new PublicPlaceRow("SBDC", externalId, "전국카페 수정", "부산", new BigDecimal("35.1"), new BigDecimal("129.1"), "2611000000")));
+        assertThat(jdbc.queryForObject("SELECT category FROM places WHERE id=?", String.class, id)).isEqualTo("음식>커피점/카페>카페");
 
         var manual = catalog.createManual("지도에 없는 장소", null, new BigDecimal("37.5"), new BigDecimal("127.0"), null);
-        assertThat(catalog.search("지도에 없는", null, null, 20).data()).extracting(p -> p.id()).contains(manual.id());
+        assertThat(catalog.search("지도에 없는", null, null, null, 20).data()).extracting(p -> p.id()).contains(manual.id());
         assertThat(catalog.detail(manual.id()).source().name()).isEqualTo("MANUAL");
     }
 }
