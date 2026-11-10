@@ -72,7 +72,6 @@ const feed = (
     photos: [{ id: `${id}-p`, imageUrl: '' }],
     publicItinerary: { items: [1] },
     publicReviews: [1],
-    version: 1,
     visibility: { feedId: id, hiddenViewerUserIds: hidden, version: 1, updatedAt: '' },
   }) as OwnFeedLite;
 // Figma S40: 하늘에게는 봄 경주만 보이고 3개는 숨김

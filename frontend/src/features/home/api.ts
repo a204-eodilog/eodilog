@@ -4,23 +4,13 @@ import type { DataResponse, PageResponse } from '@/api/types';
 
 import type { DiscoveryItem, FeedCard, MapResult } from './types';
 
-const EMPTY_MAP: MapResult = {
-  markers: [],
-  criteria: { from: null, to: null, regionGrouping: '' },
-  updatedAt: '',
-};
-
 /**
- * 홈 지도. 서버에 아직 없으면 빈 지도로 본다(친구 없음·공개 기록 없음 안내).
+ * 홈 지도. 팔로우한 사람이 동행인 게시 피드를 지역별로 묶어 준다.
  * bbox는 지도 SDK 기준 명세라, SVG 지도는 처음부터 전국이 보여 전국 범위를 보낸다
  */
-export function getHomeMap(bbox: string): Promise<MapResult> {
-  return emptyIfMissing(
-    apiClient
-      .get<DataResponse<MapResult>>('/home/map', { params: { bbox } })
-      .then(({ data }) => data.data),
-    EMPTY_MAP,
-  );
+export async function getHomeMap(bbox: string): Promise<MapResult> {
+  const { data } = await apiClient.get<DataResponse<MapResult>>('/home/map', { params: { bbox } });
+  return data.data;
 }
 
 /** S06 같은 지역 여행 목록 첫 쪽. 지도와 같은 경로별 공개 판정 */
@@ -58,12 +48,10 @@ export async function hasAnyTrip(): Promise<boolean> {
   return data.data.length > 0;
 }
 
-/** 팔로우한 사람이 있는지. 서버에 아직 없으면 없음으로 본다(다른 실패는 모름으로 둔다) */
-export function hasAnyFollowing(): Promise<boolean> {
-  return emptyIfMissing(
-    apiClient
-      .get<PageResponse<unknown>>('/me/following', { params: { limit: 1 } })
-      .then(({ data }) => data.data.length > 0),
-    false,
-  );
+/** 팔로우한 사람이 있는지. 실패하면 화면은 모름으로 둔다 */
+export async function hasAnyFollowing(): Promise<boolean> {
+  const { data } = await apiClient.get<PageResponse<unknown>>('/me/following', {
+    params: { limit: 1 },
+  });
+  return data.data.length > 0;
 }
