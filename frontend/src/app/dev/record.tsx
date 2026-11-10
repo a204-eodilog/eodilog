@@ -52,6 +52,11 @@ export default function RecordStates() {
           period="11.14 – 11.15 · 1박 2일"
           companions="서연, 민준과 함께"
           feed={view === 'published' ? PUBLISHED : { status: 'draft' }}
+          photos={{
+            title: '사진 32장',
+            sub: '3명이 올렸어요',
+            thumbAssetIds: ['a1', 'a2', 'a3', 'a4'],
+          }}
           course={{ value: '4곳 다녀옴', sub: '계획 5곳' }}
           review={{ value: '내 평가 1개', sub: '해운대 4점' }}
           expense={{ value: '23.4만 원', sub: '정산 계산됨' }}
