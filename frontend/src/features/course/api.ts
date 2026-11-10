@@ -40,11 +40,14 @@ export async function replaceItinerary(tripId: string, body: ItineraryWrite): Pr
 export async function requestAutoCourse(
   tripId: string,
   expectedVersion: number,
+  /** 서버 필수. 같은 키와 같은 본문이면 처음 받은 작업을 그대로 돌려준다 */
+  idempotencyKey: string,
   defaultTransportMode: TransportMode = 'TRANSIT',
 ): Promise<JobRef> {
   const { data } = await apiClient.post<DataResponse<JobRef>>(
     `/trips/${tripId}/itinerary/proposals`,
     { reason: 'INITIAL', expectedVersion, defaultTransportMode },
+    { headers: { 'Idempotency-Key': idempotencyKey } },
   );
   return data.data;
 }

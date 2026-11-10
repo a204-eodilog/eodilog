@@ -50,10 +50,19 @@ type ChooseProps = {
   savedCount: number;
   onAuto(): void;
   onManual(): void;
+  /** 자동 추천 요청을 보내는 중. 서버가 받으면 생성 중 화면으로 넘어간다 */
+  autoBusy?: boolean;
 };
 
 /** S23 구성 방식 선택(Figma 201-12269). "어떻게 짤까요?"는 작은 회색 소제목(디자인 결정) */
-export function ChooseView({ regionName, period, savedCount, onAuto, onManual }: ChooseProps) {
+export function ChooseView({
+  regionName,
+  period,
+  savedCount,
+  onAuto,
+  onManual,
+  autoBusy = false,
+}: ChooseProps) {
   return (
     <ScrollView contentContainerStyle={styles.content}>
       <Text style={[typography.bodyBold, styles.heading]}>이 내용으로 짜요</Text>
@@ -69,12 +78,15 @@ export function ChooseView({ regionName, period, savedCount, onAuto, onManual }:
         tag="추천"
         body="모은 장소로 동선을 짜요"
         onPress={onAuto}
+        busy={autoBusy}
+        disabled={autoBusy}
       />
       <Option
         icon="pencil"
         title="직접 만들기"
         body="모은 장소를 날짜별로 놓아요"
         onPress={onManual}
+        disabled={autoBusy}
       />
     </ScrollView>
   );
@@ -86,9 +98,17 @@ function Option(props: {
   tag?: string;
   body: string;
   onPress(): void;
+  busy?: boolean;
+  disabled?: boolean;
 }) {
   return (
-    <Pressable style={styles.option} onPress={props.onPress} accessibilityRole="button">
+    <Pressable
+      style={styles.option}
+      onPress={props.onPress}
+      disabled={props.disabled}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: props.disabled, busy: props.busy }}
+    >
       <View style={styles.optionIcon}>
         <Icon name={props.icon} size={22} color={colors.text.icon} />
       </View>
@@ -103,7 +123,11 @@ function Option(props: {
         </View>
         <Text style={[typography.caption, styles.muted]}>{props.body}</Text>
       </View>
-      <Icon name="chevron-right" size={20} color={colors.text.muted} />
+      {props.busy ? (
+        <ActivityIndicator size="small" color={colors.brand.primary} />
+      ) : (
+        <Icon name="chevron-right" size={20} color={colors.text.muted} />
+      )}
     </Pressable>
   );
 }

@@ -12,6 +12,7 @@ import {
   setLegMode,
   toDraft,
   type CourseDraft,
+  type NoTime,
 } from '@/features/course/course-rules';
 import { AutoFailView, AutoLoadingView } from '@/features/course/components/auto-views';
 import { ManualBuilder } from '@/features/course/components/manual-builder';
@@ -101,7 +102,12 @@ export default function DevCourse() {
   if (state === 'no-route') {
     return (
       <EditFrame>
-        <DevDraft initial={toDraft(sampleCourse(false), 2)} origin="proposal" openSheet={null} />
+        <DevDraft
+          initial={toDraft(sampleCourse(false), 2)}
+          origin="proposal"
+          openSheet={null}
+          noTime="failed"
+        />
       </EditFrame>
     );
   }
@@ -229,6 +235,7 @@ function DevDraft(props: {
   origin: DraftOrigin;
   openSheet: number | null;
   split?: boolean;
+  noTime?: NoTime;
 }) {
   const [dayRegion, setDayRegion] = useState(['region-busan', 'region-gangneung']);
   const [draft, setDraft] = useState(props.initial);
@@ -248,6 +255,7 @@ function DevDraft(props: {
   };
   return (
     <DraftView
+      noTime={props.noTime}
       draft={draft}
       origin={props.origin}
       dirty={dirty}

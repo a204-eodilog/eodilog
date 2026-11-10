@@ -43,6 +43,8 @@ import {
   setLegMode,
   toDraft,
   type CourseDraft,
+  noTimeDefault,
+  type NoTime,
 } from '../course-rules';
 import { rebaseDraft } from '../coedit-rules';
 import { getItinerary } from '../api';
@@ -90,6 +92,8 @@ export type DraftViewProps = {
   saving: boolean;
   /** 일차 탭 아래 날짜별 지역 줄 같은 덧붙임 */
   extra?: ReactNode;
+  /** 시간이 없는 구간을 계산 전으로 볼지 실패로 볼지. 미리보기의 계산 불가 상태만 failed를 넘긴다 */
+  noTime?: NoTime;
 };
 
 /** S23 코스 초안 모습(Figma 201-12879, 201-13071). 데이터는 화면이나 미리보기가 넘긴다 */
@@ -101,7 +105,8 @@ export function DraftView(props: DraftViewProps) {
   const selected = legs.find((l) => l.key === props.selectedLeg) ?? legs[0] ?? null;
   const editing = props.dirty || props.sheetIndex !== null;
   // 경로를 못 구한 구간은 0분이나 직선거리로 채우지 않고 그렇게 알린다(Figma 201-13272)
-  const noRoute = legs.some((l) => legLabel(l) === null);
+  const noTime = props.noTime ?? noTimeDefault();
+  const noRoute = noTime === 'failed' && legs.some((l) => legLabel(l) === null);
   const warning: MapBadge[] = noRoute
     ? [{ label: '두 곳 사이 경로를 찾지 못했어요', tone: 'warning' }]
     : [];
@@ -156,6 +161,7 @@ export function DraftView(props: DraftViewProps) {
               selectedLeg={selected?.key ?? null}
               onSelectLeg={props.onSelectLeg}
               onRecalculate={props.onRecalculate}
+              noTime={noTime}
             />
           )}
           {noRoute ? (
@@ -353,30 +359,40 @@ export function CourseEditScreen() {
     setDirty(true);
   };
 
-  // 폴더 첫 화면(course/index)은 pathname 객체를 타입 검사가 막아 실제 주소로 보낸다
-  const toCourse = () => router.replace(`/trips/${tripId}/course`);
   // 고친 것이나 아직 저장하지 않은 추천안·직접 만든 코스가 있으면 어떤 길로 나가도 버릴지 묻는다
   const unsaved = dirty || (mode === 'draft' && origin !== 'saved');
-  /** 저장했거나 버리기로 해서 막지 않고 나가는 중 */
-  const [exiting, setExiting] = useState(false);
-  usePreventRemove(unsaved && !exiting, () => setLeaving(true));
+  /** 저장했거나 버리기로 해서 막지 않고 나가는 중. 어디로 갈지 */
+  const [exitTo, setExitTo] = useState<'course' | 'back' | null>(null);
+  usePreventRemove(unsaved && exitTo === null, () => setLeaving(true));
   useEffect(() => {
-    if (!exiting) return;
-    if (entry === 'empty' || !router.canGoBack()) router.replace(`/trips/${tripId}/course`);
-    else router.back();
-  }, [exiting, entry, tripId]);
+    if (exitTo === 'course') {
+      // 폴더 첫 화면(course/index)은 pathname 객체를 타입 검사가 막아 실제 주소로 보낸다
+      router.replace(`/trips/${tripId}/course`);
+    } else if (exitTo === 'back') {
+      if (router.canGoBack()) router.back();
+      else router.replace(`/trips/${tripId}`);
+    }
+  }, [exitTo, tripId]);
 
-  const leave = () => {
-    // 빈 코스에서 바꿔 열렸으면 뒤가 S17이라 S24로 바꿔 간다
-    if (entry === 'empty' || !router.canGoBack()) toCourse();
-    else router.back();
+  /**
+   * 나갈 곳. 빈 코스에서 바꿔 열렸으면 뒤가 S17이다. 코스가 생겼으면 S24로 바꿔 가고,
+   * 여전히 비었으면 S17로 돌아간다. S24로 가면 빈 코스라 곧바로 다시 여기로 열려 오가기만 한다
+   */
+  const exitFor = (hasCourse: boolean): 'course' | 'back' => {
+    if (entry === 'empty') return hasCourse ? 'course' : 'back';
+    return router.canGoBack() ? 'back' : 'course';
   };
+  const savedHasCourse = (itinerary.data?.items.length ?? 0) > 0;
+
+  const leave = () => setExitTo(exitFor(savedHasCourse));
 
   const done = async () => {
     if (!draft) return;
     const result = await saver.save(draft, itinerary.data);
-    if (result.kind === 'saved' || result.kind === 'unchanged') {
-      setExiting(true);
+    if (result.kind === 'saved') {
+      setExitTo(exitFor(result.itinerary.items.length > 0));
+    } else if (result.kind === 'unchanged') {
+      setExitTo(exitFor(savedHasCourse));
     } else if (result.kind === 'conflict' && result.latest) {
       reconcile(result.latest);
     }
@@ -416,7 +432,8 @@ export function CourseEditScreen() {
     const result = await saver.save(next, latest);
     setOverwriting(false);
     setConflict(null);
-    if (result.kind === 'saved' || result.kind === 'unchanged') setExiting(true);
+    if (result.kind === 'saved') setExitTo(exitFor(result.itinerary.items.length > 0));
+    else if (result.kind === 'unchanged') setExitTo(exitFor(savedHasCourse));
     // 그 사이 또 다른 동행이 저장했으면 같은 규칙을 한 번 더 적용한다
     else if (result.kind === 'conflict' && result.latest) reconcile(result.latest);
   };
@@ -443,15 +460,20 @@ export function CourseEditScreen() {
     setMode('manual');
   };
 
-  /** 자동 추천을 받아 추천안 초안으로 연다. 실패하면 실패 화면에 머문다 */
+  /**
+   * 자동 추천을 받아 추천안 초안으로 연다. 실패하면 실패 화면에 머문다.
+   * 서버가 요청을 받기 전까지는 지금 화면을 두고 누른 버튼만 돌게 한다. 바로 실패하면 생성 중 화면 없이 실패 화면
+   */
   const runAuto = async () => {
     const base = itinerary.data;
     if (!base) return;
-    // 초안에서 재추천했으면 실패했을 때 그 초안으로 돌아갈 수 있게 기억한다
-    setAutoFromDraft(mode === 'draft' && draft !== null);
-    setMode('auto');
-    const content = await auto.start(base.version);
-    if (!content) return;
+    // 초안에서 재추천했으면 실패했을 때 그 초안으로 돌아갈 수 있게 기억한다. 실패 화면의 다시 시도는 그대로 둔다
+    if (mode !== 'auto') setAutoFromDraft(mode === 'draft' && draft !== null);
+    const content = await auto.start(base.version, () => setMode('auto'));
+    if (!content) {
+      setMode('auto');
+      return;
+    }
     setDraft(proposalToDraft(content, base.version, days, newKey));
     setOrigin('proposal');
     setDirty(false);
@@ -552,16 +574,18 @@ export function CourseEditScreen() {
           savedCount={saved.data?.length ?? 0}
           onAuto={() => void runAuto()}
           onManual={startManual}
+          autoBusy={auto.status === 'requesting'}
         />
       );
     }
   } else if (mode === 'auto') {
     body =
-      auto.status === 'failed' ? (
+      auto.status === 'failed' || auto.status === 'requesting' ? (
         <AutoFailView
           onRetry={() => void runAuto()}
           onManual={autoFromDraft ? () => setMode('draft') : startManual}
           backToDraft={autoFromDraft}
+          retrying={auto.status === 'requesting'}
         />
       ) : (
         <AutoLoadingView savedCount={saved.data?.length ?? 0} />
@@ -658,7 +682,7 @@ export function CourseEditScreen() {
         onClose={() => setLeaving(false)}
         onConfirm={() => {
           setLeaving(false);
-          setExiting(true);
+          setExitTo(exitFor(savedHasCourse));
         }}
         title="고친 내용을 버릴까요?"
         description="저장하지 않으면 지금 코스는 그대로예요"

@@ -32,6 +32,16 @@ const mockRouter = {
   canGoBack: jest.fn(() => true),
 };
 
+// 경로 계산이 생긴 뒤의 실패 화면도 확인할 수 있게 시간 없는 구간을 보이는 방식을 바꿔 끼운다
+let mockNoTime: 'pending' | 'failed' = 'pending';
+jest.mock('../course-rules', () => {
+  const actual = jest.requireActual<Record<string, unknown>>('../course-rules');
+  return {
+    ...actual,
+    noTimeDefault: () => mockNoTime,
+  };
+});
+jest.mock('expo-crypto', () => ({ randomUUID: () => 'key-1' }));
 jest.mock('@/config/env', () => ({
   env: { appEnv: 'local', apiBaseUrl: 'http://test', kakaoRedirectUri: null, devMock: false },
 }));
@@ -232,6 +242,7 @@ const lastBody = () => mockPut.mock.calls.at(-1)?.[1] as ItineraryWrite;
 const day1 = (b: ItineraryWrite) => b.items.filter((i) => i.day === 1).map((i) => i.placeId);
 
 beforeEach(() => {
+  mockNoTime = 'pending';
   jest.clearAllMocks();
   mockParams.entry = undefined;
   mockParams.split = undefined;
@@ -417,6 +428,36 @@ describe('직접 만들기', () => {
     ]);
   });
 
+  it('빈 코스에서 열려 저장 없이 뒤로 가면 코스 화면이 아니라 여행 상세로 돌아간다', async () => {
+    mockParams.entry = 'empty';
+    await renderScreen();
+    await screen.findByText('이 내용으로 짜요');
+    await fireEvent.press(screen.getByLabelText('뒤로'));
+    await waitFor(() => expect(mockRouter.back).toHaveBeenCalled());
+    // 코스 화면으로 가면 빈 코스라 곧바로 다시 코스 짜기가 열려 오가기만 한다
+    expect(mockRouter.replace).not.toHaveBeenCalled();
+  });
+
+  it('빈 코스에서 직접 만들다 버리고 나가도 여행 상세로 돌아간다', async () => {
+    mockParams.entry = 'empty';
+    await openManual();
+    await fireEvent.press(await screen.findByLabelText('해운대 해변, 1일차에 놓기'));
+    await fireEvent.press(screen.getByLabelText('뒤로'));
+    await fireEvent.press(await screen.findByText('버리고 나가기'));
+    await waitFor(() => expect(mockRouter.back).toHaveBeenCalled());
+    expect(mockRouter.replace).not.toHaveBeenCalled();
+  });
+
+  it('빈 코스에서 직접 만든 코스를 저장하면 코스 화면으로 바꿔 간다', async () => {
+    mockParams.entry = 'empty';
+    mockPut.mockResolvedValue(sampleCourse(true));
+    await openManual();
+    await fireEvent.press(await screen.findByLabelText('해운대 해변, 1일차에 놓기'));
+    await fireEvent.press(screen.getByText('코스 만들기'));
+    await fireEvent.press(await screen.findByText('완료'));
+    await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith('/trips/trip-1/course'));
+  });
+
   it('날짜를 고르고 칩을 누르면 그 날 끝에 놓이고 코스 만들기로 초안이 된다', async () => {
     await openManual();
     expect(await screen.findByText('날짜를 고르고 그룹 즐겨찾기 장소를 눌러 놓아요')).toBeTruthy();
@@ -568,6 +609,22 @@ describe('구성 방식과 준비 상태', () => {
     expect(await screen.findByText('날짜를 고르고 그룹 즐겨찾기 장소를 눌러 놓아요')).toBeTruthy();
   });
 
+  it('요청이 바로 실패하면 생성 중 화면을 거치지 않고, 다시 시도해도 실패 화면에 머문다', async () => {
+    mockRequestAuto.mockRejectedValue(new Error('404'));
+    await renderScreen();
+    await fireEvent.press(await screen.findByText('자동 추천'));
+    // 서버가 받기 전에는 선택 화면을 그대로 둔다
+    expect(screen.getByText('이 내용으로 짜요')).toBeTruthy();
+    expect(screen.queryByText('코스를 짜고 있어요')).toBeNull();
+    expect(await screen.findByText('코스를 만들지 못했어요')).toBeTruthy();
+    await fireEvent.press(screen.getByText('다시 시도'));
+    expect(screen.getByText('코스를 만들지 못했어요')).toBeTruthy();
+    expect(screen.queryByText('코스를 짜고 있어요')).toBeNull();
+    await waitFor(() => expect(mockRequestAuto).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.getByText('다시 시도')).toBeTruthy());
+    expect(screen.queryByText('코스를 짜고 있어요')).toBeNull();
+  });
+
   it('추천안에서 뒤로 가면 버릴지 묻는다', async () => {
     mockGetAuto.mockResolvedValue(proposalOf('SUCCEEDED'));
     await renderScreen();
@@ -599,12 +656,24 @@ describe('구성 방식과 준비 상태', () => {
     await renderScreen();
     await fireEvent.press(await screen.findByText('재추천'));
     expect(await screen.findByText('추천 장소 A')).toBeTruthy();
-    expect(mockRequestAuto).toHaveBeenCalledWith('trip-1', 3);
+    expect(mockRequestAuto).toHaveBeenCalledWith('trip-1', 3, expect.any(String));
+  });
+});
+
+describe('경로 계산 전', () => {
+  it('구간 시간이 없으면 실패 경고 없이 계산 전으로 보인다', async () => {
+    mockGet.mockResolvedValue(sampleCourse(false));
+    await renderScreen();
+    expect(await screen.findAllByText('대중교통 · 계산 전')).toHaveLength(2);
+    expect(screen.queryByText('두 곳 사이 경로를 찾지 못했어요')).toBeNull();
+    expect(screen.queryByText('이동 시간을 못 구했어요')).toBeNull();
+    expect(screen.queryByText(/0분/)).toBeNull();
   });
 });
 
 describe('이동 시간 계산 불가', () => {
   beforeEach(() => {
+    mockNoTime = 'failed';
     mockGet.mockResolvedValue(sampleCourse(false));
   });
 
