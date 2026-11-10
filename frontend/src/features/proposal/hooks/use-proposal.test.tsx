@@ -174,3 +174,35 @@ it('장소 빼기 요청이 응답 없이 끊기면 같은 키로, 서버가 답
   expect(keys[1]).toBe(keys[0]);
   expect(keys[2]).not.toBe(keys[1]);
 });
+
+it.each([
+  [409, 'ALREADY_APPLIED', 'alreadyApplied'],
+  [409, 'PROPOSAL_NOT_READY', 'notReady'],
+  [404, 'JOB_NOT_FOUND', 'gone'],
+] as const)('적용이 %s %s면 %s', async (status, code, expected) => {
+  mockGet.mockResolvedValue(proposal());
+  mockApply.mockRejectedValue(httpError(status, code));
+  const { result } = await render({ jobId: 'job-p' });
+  await act(async () => {
+    await result.current.start();
+  });
+  let applied = '';
+  await act(async () => {
+    applied = await result.current.apply();
+  });
+  expect(applied).toBe(expected);
+});
+
+it('이미 적용한 변경안이면 보내지 않고 alreadyApplied', async () => {
+  mockGet.mockResolvedValue(proposal({ appliedAt: '2026-11-14T03:00:00Z' }));
+  const { result } = await render({ jobId: 'job-p' });
+  await act(async () => {
+    await result.current.start();
+  });
+  let applied = '';
+  await act(async () => {
+    applied = await result.current.apply();
+  });
+  expect(applied).toBe('alreadyApplied');
+  expect(mockApply).not.toHaveBeenCalled();
+});

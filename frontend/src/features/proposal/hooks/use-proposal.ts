@@ -15,7 +15,18 @@ const WAIT = { interval: 1500, timeout: 120_000 };
 /** S29를 연 이유. 날씨 대안이 만든 작업이거나, 화면이 만들 장소 빼기 */
 export type ProposalSource = { jobId: string } | { removePlaceId: string };
 
-export type ApplyResult = 'applied' | 'conflict' | 'unschedulable' | 'failed' | 'busy';
+export type ApplyResult =
+  | 'applied'
+  | 'conflict'
+  | 'unschedulable'
+  /** 이미 적용한 변경안이다(409 ALREADY_APPLIED) */
+  | 'alreadyApplied'
+  /** 작업이 아직 끝나지 않았다(409 PROPOSAL_NOT_READY) */
+  | 'notReady'
+  /** 변경안을 찾을 수 없다(404 JOB_NOT_FOUND) */
+  | 'gone'
+  | 'failed'
+  | 'busy';
 
 /**
  * 변경안 작업을 기다리고 적용한다. 장소 빼기는 지금 코스 version으로 작업을 먼저 만든다.
@@ -92,6 +103,7 @@ export function useProposal(tripId: string, source: ProposalSource) {
   /** 변경안을 지금 코스로. 끝나면 코스 캐시를 바꾼다 */
   const apply = useCallback(async (): Promise<ApplyResult> => {
     if (!proposal || !jobId) return 'failed';
+    if (proposal.appliedAt) return 'alreadyApplied';
     if (sending.current) return 'busy';
     sending.current = true;
     setApplying(true);
@@ -103,6 +115,9 @@ export function useProposal(tripId: string, source: ProposalSource) {
       const { code } = toApiError(e);
       if (code === API_ERROR.VERSION_CONFLICT) return 'conflict';
       if (code === API_ERROR.UNSCHEDULABLE_ALTERNATIVE) return 'unschedulable';
+      if (code === 'ALREADY_APPLIED') return 'alreadyApplied';
+      if (code === 'PROPOSAL_NOT_READY') return 'notReady';
+      if (code === 'JOB_NOT_FOUND') return 'gone';
       return 'failed';
     } finally {
       sending.current = false;
