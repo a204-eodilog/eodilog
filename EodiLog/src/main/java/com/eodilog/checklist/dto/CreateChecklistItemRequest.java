@@ -9,10 +9,11 @@ public record CreateChecklistItemRequest(
 				requiredMode = Schema.RequiredMode.REQUIRED)
 		String label,
 
-		@Schema(description = "채택할 AI 준비물 제안 작업 ID. suggestionIndex와 함께 보낸다. AI 제안 기능 연동 전에는 보낼 수 없다")
+		@Schema(description = "채택할 AI 준비물 제안 작업(CHECKLIST_SUGGESTIONS) ID. suggestionIndex와 함께 보낸다. 직접 작성이면 생략",
+				example = "019a0000-0000-7000-8000-000000000001")
 		UUID sourceJobId,
 
-		@Schema(description = "제안 결과 items의 순번(0부터). sourceJobId와 함께 보낸다", example = "0")
+		@Schema(description = "작업 결과 items의 순번(0부터). sourceJobId와 함께 보낸다", example = "0")
 		Integer suggestionIndex
 ) {
 }

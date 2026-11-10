@@ -15,6 +15,12 @@ export const API_ERROR = {
   FORBIDDEN: 'FORBIDDEN',
   /** 내보낼 동행이 참여 중이 아니다 */
   MEMBER_NOT_FOUND: 'MEMBER_NOT_FOUND',
+  /** 없는 방·삭제된 여행의 방·참여하지 않았거나 나간 방. 서버는 셋을 구분하지 않는다 */
+  CHAT_ROOM_NOT_FOUND: 'CHAT_ROOM_NOT_FOUND',
+  /** 같은 clientMessageId를 다른 방이나 다른 본문에 다시 썼다 */
+  CLIENT_MESSAGE_ID_REUSED: 'CLIENT_MESSAGE_ID_REUSED',
+  /** 요청이 너무 많다. 잠시 뒤 다시 보낸다 */
+  RATE_LIMITED: 'RATE_LIMITED',
 } as const;
 
 /**

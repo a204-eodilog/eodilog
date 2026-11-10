@@ -14,6 +14,9 @@ public interface ChecklistItemRepository extends JpaRepository<ChecklistItem, UU
 
 	List<ChecklistItem> findAllByTripIdAndDeletedAtIsNullOrderByCreatedAtAscIdAsc(UUID tripId);
 
+	// 지운 항목도 포함한다. 채택 후 지운 제안을 다시 채택해 되살리지 않는다(정책 S-11)
+	boolean existsBySourceJobIdAndSuggestionIndex(UUID sourceJobId, Integer suggestionIndex);
+
 	// 수정·삭제는 항목 행을 잠근 뒤 version을 비교해 동시 변경을 덮어쓰지 않는다
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	@Query("select c from ChecklistItem c where c.id = :id and c.tripId = :tripId and c.deletedAt is null")

@@ -34,6 +34,9 @@ public class ChecklistItem {
 
 	private UUID sourceJobId;
 
+	// 채택한 제안의 순번(결과 items 위치). 같은 작업·순번은 한 번만 채택한다(DB 유니크)
+	private Integer suggestionIndex;
+
 	private String reason;
 
 	private boolean modifiedByUser;
@@ -55,6 +58,23 @@ public class ChecklistItem {
 		item.tripId = tripId;
 		item.label = label;
 		item.source = ChecklistSource.MANUAL;
+		item.createdByMemberId = createdByMemberId;
+		item.version = 1;
+		item.createdAt = now;
+		return item;
+	}
+
+	// AI 제안 채택(정책 S-9). 멤버가 이름을 고쳐 보내면 제안 원문과 달라졌다고 표시한다. 이유는 제안의 것을 남긴다
+	public static ChecklistItem adoptSuggestion(UUID tripId, String label, String suggestedLabel, String reason,
+			UUID sourceJobId, int suggestionIndex, UUID createdByMemberId, Instant now) {
+		ChecklistItem item = new ChecklistItem();
+		item.tripId = tripId;
+		item.label = label;
+		item.source = ChecklistSource.AI;
+		item.sourceJobId = sourceJobId;
+		item.suggestionIndex = suggestionIndex;
+		item.reason = reason;
+		item.modifiedByUser = !label.equals(suggestedLabel);
 		item.createdByMemberId = createdByMemberId;
 		item.version = 1;
 		item.createdAt = now;

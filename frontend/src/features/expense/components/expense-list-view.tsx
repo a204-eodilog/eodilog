@@ -1,7 +1,7 @@
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Button, Card, EmptyState, Header, Icon } from '@/components/ui';
+import { Button, Card, CenterNotice, Header, Icon } from '@/components/ui';
 import { formatTotalShort, formatWon } from '@/lib/format-number';
 import { colors, layout, spacing, typography } from '@/theme';
 
@@ -71,11 +71,13 @@ export function ExpenseListView({
       />
 
       {expenses.length === 0 ? (
-        <EmptyState
+        // README 가운데 안내 화면(좌우 36, 제목 위 20). 공통 EmptyState는 좌우 20이라 CenterNotice를 쓴다
+        <CenterNotice
           icon="card"
           title="아직 입력한 지출이 없어요"
           description="함께 쓴 돈을 넣으면 나눠 계산해요"
           actionLabel="지출 추가"
+          actionIcon="plus"
           onAction={onAdd}
         />
       ) : (

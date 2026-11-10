@@ -1,11 +1,10 @@
-import { formatPeriodShort, parseDate } from '@/lib/format-date';
+import { formatPeriodShort, formatTripNights, parseDate } from '@/lib/format-date';
 import { formatThousands } from '@/lib/format-number';
 
 import type { Feed, FeedDay, FeedDetail, FeedStop, TransportKind } from './types';
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'] as const;
 const pad = (n: number) => String(n).padStart(2, '0');
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** "01.17" */
 function monthDay(date: Date): string {
@@ -15,14 +14,8 @@ function monthDay(date: Date): string {
 /** "01.17 – 01.18". 하루면 날짜 하나, 모르면 null */
 export const periodLabel = formatPeriodShort;
 
-/** "1박 2일", 하루면 "당일", 모르면 null */
-export function nightsLabel(start: string | null, end: string | null): string | null {
-  const s = parseDate(start);
-  const e = parseDate(end);
-  if (!s || !e) return null;
-  const nights = Math.max(0, Math.round((e.getTime() - s.getTime()) / DAY_MS));
-  return nights === 0 ? '당일' : `${nights}박 ${nights + 1}일`;
-}
+/** "1박 2일", 하루면 "당일치기", 모르면 null. S06 카드와 같은 공통 문구 */
+export const nightsLabel = formatTripNights;
 
 /** 여행 시작일 + (일차 - 1)의 "01.17(토)". 시작일을 모르면 null */
 export function dayLabel(start: string | null, day: number): string | null {

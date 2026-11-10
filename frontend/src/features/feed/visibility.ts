@@ -32,7 +32,7 @@ export type ViewerRow = {
 /** GET /me/feeds → 내가 게시한 공동 피드와 내 숨김 설정 */
 export async function getOwnFeeds(): Promise<OwnFeedLite[]> {
   const { data } = await apiClient.get<PageResponse<OwnFeedLite>>('/me/feeds', {
-    params: { size: 100 },
+    params: { limit: 100 },
   });
   return data.data;
 }
@@ -40,7 +40,7 @@ export async function getOwnFeeds(): Promise<OwnFeedLite[]> {
 /** GET /me/followers → 나를 팔로우하는 사람(내 피드를 볼 수 있는 사람) */
 export async function getMyFollowers(): Promise<UserCard[]> {
   const { data } = await apiClient.get<PageResponse<Follow>>('/me/followers', {
-    params: { size: 100 },
+    params: { limit: 100 },
   });
   return data.data.map((f) => f.follower);
 }

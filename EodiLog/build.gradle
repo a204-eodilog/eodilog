@@ -19,6 +19,7 @@ repositories {
 }
 
 dependencies {
+	implementation 'com.drewnoakes:metadata-extractor:2.19.0'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-jdbc'
 	implementation 'org.springframework.security:spring-security-oauth2-jose'
@@ -30,6 +31,11 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
 	implementation 'org.springframework.boot:spring-boot-starter-websocket'
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.2.0'
+	// 사진·캡처 파일 저장(S3). 동기 클라이언트만 쓰므로 Netty 비동기 클라이언트는 뺀다
+	implementation platform('software.amazon.awssdk:bom:2.55.16')
+	implementation('software.amazon.awssdk:s3') {
+		exclude group: 'software.amazon.awssdk', module: 'netty-nio-client'
+	}
 	compileOnly 'org.projectlombok:lombok'
 	runtimeOnly 'org.postgresql:postgresql'
 	developmentOnly 'org.springframework.boot:spring-boot-docker-compose'
@@ -51,6 +57,8 @@ tasks.named('test') {
 	useJUnitPlatform()
 	// 본 application.yaml을 읽고 테스트 전용 인증 값만 덮어쓴다.
 	systemProperty 'spring.profiles.active', 'test'
+	// 실제 S3 버킷 왕복 테스트는 -PrealS3=true를 줄 때만 돈다(.env의 버킷·키 사용)
+	systemProperty 'eodilog.realS3', providers.gradleProperty('realS3').getOrElse('false')
 	finalizedBy tasks.named('jacocoTestReport')
 	// 실패 원인을 보고서가 덮어써져도 콘솔에서 볼 수 있게 남긴다
 	testLogging {

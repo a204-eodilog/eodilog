@@ -53,8 +53,14 @@ export function useVisibility(feedId: string) {
     },
   });
 
-  const failed = me.isError || feeds.isError || followers.isError || (feeds.isSuccess && !feed);
-  const ready = me.data && feed && followers.data && (companions.data || companions.isError);
+  // 동행을 못 받으면 동행이 일반 친구로 보여 숨길 수 있게 되므로 오류로 본다(!145 리뷰)
+  const failed =
+    me.isError ||
+    feeds.isError ||
+    followers.isError ||
+    companions.isError ||
+    (feeds.isSuccess && !feed);
+  const ready = me.data && feed && followers.data && companions.data;
   return {
     state: failed ? ('error' as const) : ready ? ('ready' as const) : ('loading' as const),
     tripTitle: feed?.title ?? null,
@@ -76,8 +82,10 @@ export function useVisibility(feedId: string) {
     },
     save: () => save.mutate(),
     retry: () => {
+      void me.refetch();
       void feeds.refetch();
       void followers.refetch();
+      void companions.refetch();
     },
   };
 }

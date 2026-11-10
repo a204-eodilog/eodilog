@@ -9,6 +9,8 @@ import { env } from '@/config/env';
 import { sampleFeed } from '@/features/feed/preview-data';
 import { addDays, seoulToday } from '@/lib/seoul-date';
 
+import { createChatMock } from './dev-mock-chat';
+
 import type { Follow, MyProfile, Session, UserCard } from './types';
 
 /**
@@ -234,6 +236,17 @@ const REGIONS: Region[] = [
   ['region-gyeongju', '4713000000', '경상북도 경주시'],
 ].map(([id, code, name]) => ({ id, code, name, parentId: null, latitude: null, longitude: null }));
 
+/** 홈 추천 장소·S07 예시 피드·N3 대표 장소에 나오는 예시 장소. N7 장소 정보와 S08 개인 저장이 쓴다 */
+const EXAMPLE_PLACES: Record<string, [string, string]> = {
+  'rec-2': ['명주동 골목 카페', '강원 강릉시 명주동'],
+  'rec-4': ['안목 바다뷰 카페', '강원 강릉시 견소동'],
+  p1: ['강문 해변', '강원 강릉시 강문동'],
+  p2: ['안목 바다뷰 카페', '강원 강릉시 견소동'],
+  p3: ['초당 순두부집', '강원 강릉시 초당동'],
+  p4: ['경포호 산책길', '강원 강릉시 저동'],
+  p5: ['주문진 어시장', '강원 강릉시 주문진읍'],
+};
+
 /** S10 개인 즐겨찾기 예시(값 문서 S10 "예시 데이터"). 강문 해변·명주동은 공동 피드에서 담은 것 */
 const BOOKMARKS = [
   ['광안리 바다뷰 카페', '부산광역시 수영구 광안해변로 219', 35.1532, 129.1186, null],
@@ -283,6 +296,90 @@ let bookmarks: MockBookmark[] = BOOKMARKS.map(
 );
 
 let seq = 0;
+
+/** 테스트 모드 추출 작업. 결과는 링크 글자로 정한다 */
+type MockExtraction = {
+  startedAt: number;
+  /** STUCK은 끝나지 않고 진행 중에 머문다(S12 시간 초과 확인용) */
+  outcome: 'SUCCESS' | 'MULTIPLE_CANDIDATES' | 'NOT_FOUND' | 'FAILED' | 'STUCK';
+};
+const extractions = new Map<string, MockExtraction>();
+/** 추출 요청 Idempotency-Key → 처음 만든 작업 id와 본문 */
+const extractionByKey = new Map<string, { id: string; body: string }>();
+const EXTRACTION_MS = 4500;
+
+/** 즐겨찾기 예시 장소를 추출 후보 장소로 쓴다(저장하면 개인 즐겨찾기 PUT이 그대로 받는다) */
+function bookmarkPlace(index: number) {
+  const [name, address, latitude, longitude] = BOOKMARKS[index];
+  return {
+    id: `place-bookmark-${index + 1}`,
+    name,
+    address,
+    latitude,
+    longitude,
+    regionId: null,
+    provider: 'NAVER',
+    providerPlaceId: null,
+    source: 'PROVIDER' as const,
+  };
+}
+
+function extractionResult(id: string, job: MockExtraction) {
+  const elapsed = Date.now() - job.startedAt;
+  const done = job.outcome !== 'STUCK' && elapsed >= EXTRACTION_MS;
+  const failed = done && job.outcome === 'FAILED';
+  const candidates = !done
+    ? []
+    : job.outcome === 'SUCCESS'
+      ? [
+          { index: 0, evidence: '게시물 글에서 찾았어요' },
+          { index: 2, evidence: '캡처 속 간판에서 찾았어요' },
+        ].map(({ index, evidence }, i) => ({
+          candidateId: `${id}-c${i + 1}`,
+          name: BOOKMARKS[index][0],
+          place: bookmarkPlace(index),
+          evidence,
+          confidence: 0.9,
+        }))
+      : job.outcome === 'MULTIPLE_CANDIDATES'
+        ? // AI 서버처럼 언급(name)마다 후보를 이어 붙인다: 한 곳으로 정해진 가게 + 지점이 둘인 카페
+          // (지점 이름은 place.name) + 지도에서 못 찾은 빵집(place: null)
+          [
+            {
+              name: BOOKMARKS[3][0],
+              place: bookmarkPlace(3),
+              evidence: '캡처 속 간판에서 찾았어요',
+              confidence: 1,
+            },
+            ...(['광안점', '전포점'] as const).map((branch, i) => ({
+              name: '바다 앞 카페',
+              place: { ...bookmarkPlace([0, 2][i]), name: `바다 앞 카페 ${branch}` },
+              evidence: '게시물 글에서 찾았어요',
+              confidence: 0.8,
+            })),
+            {
+              name: '골목 빵집',
+              place: null,
+              evidence: '게시물 글에서 찾았어요',
+              confidence: null,
+            },
+          ].map((c, i) => ({ candidateId: `${id}-c${i + 1}`, ...c }))
+        : [];
+  return {
+    job: {
+      id,
+      kind: 'PLACE_EXTRACTION',
+      status: !done ? (elapsed < 600 ? 'QUEUED' : 'RUNNING') : failed ? 'FAILED' : 'SUCCEEDED',
+      progress: done ? 100 : Math.min(Math.floor((elapsed / EXTRACTION_MS) * 100), 99),
+      result: null,
+      error: failed ? { code: 'SOURCE_UNREACHABLE', message: '링크를 열지 못했어요.' } : null,
+      createdAt: new Date(job.startedAt).toISOString(),
+      finishedAt: done ? new Date(job.startedAt + EXTRACTION_MS).toISOString() : null,
+    },
+    resultStatus: !done ? null : job.outcome,
+    candidates,
+  };
+}
 
 function makeTrip(input: {
   title: string;
@@ -389,12 +486,24 @@ function bump(trip: Trip) {
   trip.version += 1;
 }
 
+/** 채팅 가짜 서버. 여행 목록(trips)에 없는 여행의 방은 404다 */
+const chatMock = createChatMock({ getTrips: () => trips, me: ME, ok, fail });
+
 /**
  * 웹 테스트 모드 콘솔에서 다른 동행의 변경을 흉내 낸다(동행 명세 research R15).
  * globalThis.__devMock.bumpVersion('trip-1') → 다음 저장·나가기가 409를 받는다
  * globalThis.__devMock.giveOwner('trip-1', 'member-1-2') → 내가 방장이 아니게 된다(403 확인)
  */
 export const devMockControls = {
+  /** 채팅: globalThis.__devMock.chat.incoming('trip-1', '안녕') 등(contracts/realtime.md "테스트 모드") */
+  chat: chatMock.controls,
+  /**
+   * 다른 기기에서 내가 내보내졌거나 여행이 삭제된 것을 흉내 낸다. 그 여행과 대화방이 모두 404가 된다.
+   * globalThis.__devMock.kickMe('trip-1') 뒤 S47에서 보내기·새로고침을 하면 차단 화면이 나온다(채팅 quickstart 4-1)
+   */
+  kickMe(tripId: string) {
+    trips = trips.filter((t) => t.id !== tripId);
+  },
   /** 지금 가짜 서버의 여행. 확인용 */
   peek(tripId: string) {
     return trips.find((t) => t.id === tripId);
@@ -424,6 +533,11 @@ const createdByKey = new Map<string, Trip>();
 
 function ok<T>(config: InternalAxiosRequestConfig, data: T, status = 200): AxiosResponse<T> {
   return { data, status, statusText: 'OK', headers: {}, config };
+}
+
+/** 요청 본문(문자열이면 JSON으로 읽는다) */
+function parseBody<T>(config: InternalAxiosRequestConfig): T {
+  return (typeof config.data === 'string' ? JSON.parse(config.data) : (config.data ?? {})) as T;
 }
 
 function fail(config: InternalAxiosRequestConfig, status: number, code: string, message: string) {
@@ -471,10 +585,252 @@ function page<T>(data: T[]) {
   return { data, page: { nextCursor: null, hasNext: false } };
 }
 
+// S30 사진 업로드(백엔드 assets·photos). 바이트는 보내지 않는다(putPhoto가 테스트 모드면 건너뜀).
+// 사진 응답은 복사본으로 돌려준다(저장한 객체를 그대로 주면 고친 뒤에도 같은 객체라 화면이 바뀐 줄 모른다)
+// 완료 확인 5번에 1번은 실패해서 일부 실패 화면과 [다시 시도]를 볼 수 있다
+const photoBatches = new Map<string, { id: string; tripId: string; fileCount: number }>();
+const photoBatchByKey = new Map<string, string>();
+const assets = new Map<
+  string,
+  { status: 'PENDING' | 'READY' | 'DELETED'; batchId: string | null; purpose: string }
+>();
+type MockPhoto = {
+  id: string;
+  assetId: string;
+  tripId: string;
+  batchId: string | null;
+  uploaderMemberId: string;
+  placeId: string | null;
+  capturedAt: string | null;
+  topics: string[];
+  groupId: null;
+  version: number;
+};
+let photoSeq = 0;
+let completeCalls = 0;
+
+// S31 확인용: 첫 여행(부산 바다 여행)의 코스 장소 3곳과 사진 10장(장소 미지정 3장, 그중 1장은 동행 것)
+const PHOTO_COURSE = [
+  {
+    id: 'it-1',
+    place: { id: 'place-haeundae', name: '해운대 해변' },
+    day: 1,
+    order: 1,
+    startTime: null,
+  },
+  {
+    id: 'it-2',
+    place: { id: 'place-seomyeon', name: '서면 돼지국밥집' },
+    day: 1,
+    order: 2,
+    startTime: null,
+  },
+  {
+    id: 'it-3',
+    place: { id: 'place-gamcheon', name: '감천문화마을' },
+    day: 2,
+    order: 1,
+    startTime: null,
+  },
+];
+const tripPhotos: MockPhoto[] = (
+  [
+    ['member-1-1', 'place-haeundae', ['LANDSCAPE']],
+    ['member-1-1', 'place-haeundae', ['LANDSCAPE', 'PEOPLE']],
+    ['member-1-2', 'place-haeundae', ['PEOPLE']],
+    ['member-1-3', 'place-seomyeon', ['FOOD']],
+    ['member-1-1', 'place-seomyeon', ['FOOD']],
+    ['member-1-2', 'place-gamcheon', ['LANDSCAPE']],
+    ['member-1-1', 'place-gamcheon', ['OTHER']],
+    ['member-1-1', null, []],
+    ['member-1-1', null, ['FOOD']],
+    ['member-1-2', null, []],
+  ] as const
+).map(([uploaderMemberId, placeId, topics], i) => ({
+  id: `photo-seed-${i + 1}`,
+  assetId: `asset-seed-${i + 1}`,
+  tripId: 'trip-1',
+  batchId: null,
+  uploaderMemberId,
+  placeId,
+  capturedAt: null,
+  topics: [...topics],
+  groupId: null,
+  version: 1,
+}));
+
+function handlePhotos(
+  config: InternalAxiosRequestConfig,
+  method: string,
+  url: string,
+): AxiosResponse | null {
+  const body = (
+    typeof config.data === 'string' ? JSON.parse(config.data || '{}') : (config.data ?? {})
+  ) as Record<string, unknown>;
+  const batchMatch = /^\/trips\/([^/]+)\/photo-upload-batches$/.exec(url);
+  if (method === 'post' && batchMatch) {
+    const fileCount = Number(body.fileCount);
+    if (!(fileCount >= 1)) throw fail(config, 400, 'VALIDATION_ERROR', '파일 수를 확인해 주세요.');
+    if (fileCount > 50) throw fail(config, 422, 'INPUT_LIMIT_EXCEEDED', '50장까지 올릴 수 있어요.');
+    const key = String(config.headers['Idempotency-Key'] ?? '');
+    const existing = key ? photoBatchByKey.get(key) : undefined;
+    const id = existing ?? `photo-batch-${(photoSeq += 1)}`;
+    if (!existing) {
+      photoBatches.set(id, { id, tripId: batchMatch[1], fileCount });
+      if (key) photoBatchByKey.set(key, id);
+    }
+    const batch = photoBatches.get(id)!;
+    const registeredCount = tripPhotos.filter((p) => p.batchId === id).length;
+    return ok(
+      config,
+      { data: { ...batch, registeredCount, createdAt: new Date().toISOString() } },
+      201,
+    );
+  }
+  if (method === 'post' && url === '/assets/upload-intents') {
+    const assetId = `asset-${(photoSeq += 1)}`;
+    assets.set(assetId, {
+      status: 'PENDING',
+      batchId: (body.batchId as string) ?? null,
+      purpose: String(body.purpose ?? 'TRIP_PHOTO'),
+    });
+    return ok(
+      config,
+      {
+        data: {
+          assetId,
+          uploadUrl: `https://dev-mock.invalid/uploads/${assetId}`,
+          method: 'PUT',
+          headers: { 'content-type': String(body.contentType ?? 'image/jpeg') },
+          expiresAt: new Date(Date.now() + 10 * 60_000).toISOString(),
+        },
+      },
+      201,
+    );
+  }
+  const assetMatch = /^\/assets\/([^/]+)(\/complete)?$/.exec(url);
+  if (assetMatch && ((method === 'post' && assetMatch[2]) || method === 'delete')) {
+    const asset = assets.get(assetMatch[1]);
+    if (!asset) throw fail(config, 404, 'ASSET_NOT_FOUND', '파일을 찾을 수 없습니다.');
+    if (asset.status !== 'PENDING') {
+      throw fail(config, 409, 'ASSET_NOT_PENDING', '이미 업로드를 마쳤거나 취소한 파일입니다.');
+    }
+    if (method === 'delete') {
+      asset.status = 'DELETED';
+      return ok(config, null, 204);
+    }
+    // 일부 실패는 S30 사진 올리기에서만 본다. S11 캡처는 늘 성공
+    if (asset.purpose === 'TRIP_PHOTO') completeCalls += 1;
+    if (asset.purpose === 'TRIP_PHOTO' && completeCalls % 5 === 3) {
+      throw fail(config, 422, 'UPLOAD_MISMATCH', '올린 파일이 요청한 크기나 형식과 다릅니다.');
+    }
+    asset.status = 'READY';
+    return ok(config, { data: { id: assetMatch[1], status: 'READY' } });
+  }
+  const photosMatch = /^\/trips\/([^/]+)\/photos$/.exec(url);
+  if (method === 'post' && photosMatch) {
+    const assetId = String(body.assetId);
+    const batchId = String(body.batchId);
+    if (assets.get(assetId)?.status !== 'READY') {
+      throw fail(config, 409, 'ASSET_NOT_READY', '업로드를 마치지 않은 파일입니다.');
+    }
+    const tripId = photosMatch[1];
+    const myMember = trips
+      .find((t) => t.id === tripId)
+      ?.members.find((m) => m.user.id === ME.id)?.id;
+    const found =
+      tripPhotos.find((p) => p.assetId === assetId) ??
+      (() => {
+        const photo: MockPhoto = {
+          id: `photo-${(photoSeq += 1)}`,
+          assetId,
+          tripId,
+          batchId,
+          uploaderMemberId: myMember ?? 'member-me',
+          placeId: null,
+          capturedAt: (body.capturedAt as string) ?? null,
+          topics: [],
+          groupId: null,
+          version: 1,
+        };
+        tripPhotos.unshift(photo);
+        return photo;
+      })();
+    return ok(config, { data: { ...found, topics: [...found.topics] } }, 201);
+  }
+  if (method === 'get' && photosMatch) {
+    return ok(
+      config,
+      page(
+        tripPhotos
+          .filter((p) => p.tripId === photosMatch[1])
+          .map((p) => ({ ...p, topics: [...p.topics] })),
+      ),
+    );
+  }
+  const summaryMatch = /^\/trips\/([^/]+)\/photo-summary$/.exec(url);
+  if (method === 'get' && summaryMatch) {
+    const list = tripPhotos.filter((p) => p.tripId === summaryMatch[1]);
+    const count = (pick: (p: MockPhoto) => string[]) => {
+      const m = new Map<string, number>();
+      list.forEach((p) => pick(p).forEach((k) => m.set(k, (m.get(k) ?? 0) + 1)));
+      return [...m.entries()];
+    };
+    return ok(config, {
+      data: {
+        totalCount: list.length,
+        unplacedCount: list.filter((p) => !p.placeId).length,
+        topics: count((p) => p.topics).map(([topic, n]) => ({ topic, count: n })),
+        places: count((p) => (p.placeId ? [p.placeId] : [])).map(([placeId, n]) => ({
+          placeId,
+          count: n,
+        })),
+        groups: [],
+      },
+    });
+  }
+  const photoMatch = /^\/trips\/([^/]+)\/photos\/([^/]+)$/.exec(url);
+  if (method === 'delete' && photoMatch) {
+    const i = tripPhotos.findIndex((p) => p.id === photoMatch[2] && p.tripId === photoMatch[1]);
+    if (i === -1) throw fail(config, 404, 'PHOTO_NOT_FOUND', '사진을 찾을 수 없습니다.');
+    tripPhotos.splice(i, 1);
+    const jobId = `photo-delete-${(photoSeq += 1)}`;
+    return ok(
+      config,
+      { data: { jobId, status: 'QUEUED', statusUrl: `/api/v1/jobs/${jobId}` } },
+      202,
+    );
+  }
+  if (method === 'patch' && photoMatch) {
+    const photo = tripPhotos.find((p) => p.id === photoMatch[2] && p.tripId === photoMatch[1]);
+    if (!photo) throw fail(config, 404, 'PHOTO_NOT_FOUND', '사진을 찾을 수 없습니다.');
+    if (body.expectedVersion !== photo.version) {
+      throw fail(config, 409, 'VERSION_CONFLICT', '다른 곳에서 바뀌었어요');
+    }
+    if ('placeId' in body) photo.placeId = (body.placeId as string | null) ?? null;
+    if (Array.isArray(body.topics)) photo.topics = body.topics as string[];
+    photo.version += 1;
+    return ok(config, { data: { ...photo, topics: [...photo.topics] } });
+  }
+  // S31 코스 장소. 첫 여행만 코스가 있고 나머지는 빈 코스
+  const itineraryMatch = /^\/trips\/([^/]+)\/itinerary$/.exec(url);
+  if (method === 'get' && itineraryMatch) {
+    return ok(config, {
+      data: { version: 1, items: itineraryMatch[1] === 'trip-1' ? PHOTO_COURSE : [] },
+    });
+  }
+  return null;
+}
+
 function handle(config: InternalAxiosRequestConfig): AxiosResponse {
   const method = (config.method ?? 'get').toLowerCase();
   const url = config.url ?? '';
   const params = (config.params ?? {}) as Record<string, string>;
+
+  const chat = chatMock.handle(config, method, url, params);
+  if (chat) return chat;
+  const photo = handlePhotos(config, method, url);
+  if (photo) return photo;
 
   if (method === 'get' && url === '/me/following') {
     return followPage(
@@ -672,7 +1028,96 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
       bookmarks = [restored, ...bookmarks.filter((b) => b.place.id !== placeId)];
       return ok(config, { data: restored });
     }
+    // S08 나만 보기: S07·N3·N7의 예시 장소는 새로 담는다(이미 있으면 메모만 바꾼다). 그 밖의 장소는 404
+    const example = EXAMPLE_PLACES[placeId];
+    if (method === 'put' && (found || example)) {
+      const saved = found ?? {
+        place: {
+          id: placeId,
+          name: example[0],
+          address: example[1],
+          latitude: 37.7718,
+          longitude: 128.9478,
+          regionId: 'region-gangneung',
+          provider: 'KTO',
+          providerPlaceId: placeId,
+          source: 'PROVIDER' as const,
+        },
+        retainedPlace: { name: example[0], latitude: 37.7718, longitude: 128.9478 },
+        memo: null as string | null,
+        sourceFeedId: null as string | null,
+        sourceUnavailable: false,
+        createdAt: new Date().toISOString(),
+      };
+      saved.memo = body.memo ?? null;
+      if (!found) bookmarks = [saved, ...bookmarks];
+      return ok(config, { data: saved });
+    }
     throw fail(config, 404, 'NOT_FOUND', '저장한 장소를 찾을 수 없어요.');
+  }
+  // S12 장소 추출(백엔드 미구현, API 명세 §5). 4.5초 동안 진행률이 오르고 끝난다.
+  // 링크나 메모에 many·none·fail·stuck이 들어 있으면 복수 후보·식별 불가·처리 실패·끝나지 않음
+  // (캡처만 보낼 때는 메모로 고른다)
+  // Idempotency-Key 필수. 같은 키 + 같은 본문이면 처음 작업 id, 다른 본문이면 409
+  if (method === 'post' && url === '/extractions') {
+    const body = parseBody<{ url?: string; captureAssetIds?: string[]; memo?: string }>(config);
+    const key = String(config.headers['Idempotency-Key'] ?? '');
+    if (!key) throw fail(config, 400, 'VALIDATION_ERROR', 'Idempotency-Key 헤더가 필요해요.');
+    const serialized = JSON.stringify(body);
+    const previous = extractionByKey.get(key);
+    if (previous && previous.body !== serialized) {
+      throw fail(config, 409, 'IDEMPOTENCY_KEY_REUSED', '다른 요청에 쓴 키예요.');
+    }
+    if (previous) {
+      return ok(
+        config,
+        {
+          data: { jobId: previous.id, status: 'QUEUED', statusUrl: `/api/v1/jobs/${previous.id}` },
+        },
+        202,
+      );
+    }
+    if (!body.url && !(body.captureAssetIds?.length ?? 0)) {
+      throw fail(config, 400, 'VALIDATION_ERROR', '링크나 캡처를 하나 이상 넣어 주세요.');
+    }
+    if ((body.captureAssetIds?.length ?? 0) > 10) {
+      throw fail(config, 422, 'INPUT_LIMIT_EXCEEDED', '캡처는 10장까지 넣을 수 있어요.');
+    }
+    if (settings.ai.placeExtraction === 'OFF') {
+      throw fail(config, 409, 'AI_FEATURE_DISABLED', '장소 찾기 설정이 꺼져 있어요.');
+    }
+    seq += 1;
+    const id = `extraction-${seq}`;
+    const hint = `${body.url ?? ''} ${body.memo ?? ''}`;
+    extractions.set(id, {
+      startedAt: Date.now(),
+      outcome: /stuck/i.test(hint)
+        ? 'STUCK'
+        : /fail/i.test(hint)
+          ? 'FAILED'
+          : /none/i.test(hint)
+            ? 'NOT_FOUND'
+            : /many/i.test(hint)
+              ? 'MULTIPLE_CANDIDATES'
+              : 'SUCCESS',
+    });
+    extractionByKey.set(key, { id, body: serialized });
+    return ok(
+      config,
+      { data: { jobId: id, status: 'QUEUED', statusUrl: `/api/v1/jobs/${id}` } },
+      202,
+    );
+  }
+  const extractionMatch = /^\/extractions\/([^/]+)$/.exec(url);
+  if (extractionMatch) {
+    const id = decodeURIComponent(extractionMatch[1]);
+    const found = extractions.get(id);
+    if (!found) throw fail(config, 404, 'NOT_FOUND', '작업을 찾을 수 없어요.');
+    if (method === 'delete') {
+      extractions.delete(id);
+      return ok(config, undefined, 204);
+    }
+    if (method === 'get') return ok(config, { data: extractionResult(id, found) });
   }
   // 그룹 즐겨찾기에 추가(S14): 담기만 하고 S20 목록은 아직 흉내 내지 않는다
   if (method === 'put' && /^\/trips\/[^/]+\/saved-places\/[^/]+\/me$/.test(url)) {
@@ -818,6 +1263,258 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
     ownFeeds.delete(feed.tripId);
     return ok(config, undefined, 204);
   }
+  // S09 최근 트렌드 여행지: 예시 지역 다섯 곳
+  if (method === 'get' && url === '/trends/regions') {
+    const p = (config.params ?? {}) as { from?: string; to?: string };
+    const row = (
+      rank: number,
+      id: string,
+      trips: number,
+      friends: number,
+      move: { isNew?: boolean; change?: number },
+    ) => {
+      const region = REGIONS.find((r) => r.id === id) ?? REGIONS[0];
+      return {
+        region,
+        rank,
+        previousRank: null,
+        rankChange: move.change ?? null,
+        isNew: move.isNew ?? false,
+        publishedTripCount: trips,
+        followingCount: friends,
+        from: p.from ?? '',
+        to: p.to ?? '',
+        sampleSize: 400,
+        updatedAt: new Date(new Date().setHours(6, 0, 0, 0)).toISOString(),
+        insufficientData: false,
+      };
+    };
+    return ok(
+      config,
+      page([
+        row(1, 'region-gangneung', 128, 3, { change: 2 }),
+        row(2, 'region-gyeongju', 104, 2, { change: -1 }),
+        row(3, 'region-yeosu', 97, 1, { isNew: true }),
+        row(4, 'region-jeju', 88, 2, { change: -2 }),
+        row(5, 'region-busan', 71, 0, { change: 0 }),
+      ]),
+    );
+  }
+  // S28 주변 편의시설: 전기차 충전소만 세 곳, 다른 유형은 빈 결과
+  const facilitiesMatch = /^\/places\/([^/]+)\/facilities$/.exec(url);
+  if (method === 'get' && facilitiesMatch) {
+    const type = String((config.params as { type?: string } | undefined)?.type ?? '');
+    const at = new Date(new Date().setHours(10, 15, 0, 0)).toISOString();
+    // 기준 장소(37.7718, 128.9478) 둘레에 흩어 놓는다. 걷는 1분 ≈ 70m, 방향은 시설마다 다르게
+    const fac = (
+      id: string,
+      name: string,
+      minutes: number,
+      availability: string | null,
+      angle = Number(id.replace(/\D/g, '')) * 2.1,
+    ) => ({
+      providerId: id,
+      name,
+      type,
+      latitude: 37.7718 + ((minutes * 70) / 111_000) * Math.sin(angle),
+      longitude: 128.9478 + ((minutes * 70) / 88_000) * Math.cos(angle),
+      walkingSeconds: minutes * 60,
+      availability,
+      queriedAt: at,
+    });
+    return ok(
+      config,
+      page(
+        type === 'EV_CHARGER'
+          ? [
+              fac('f1', '안목 공영주차장 충전소', 5, '급속 2대 사용 가능'),
+              fac('f2', '견소동 주차빌딩 충전소', 9, null),
+              fac('f3', '송정 공영주차장 충전소', 12, null),
+            ]
+          : [],
+      ),
+    );
+  }
+  // S13 장소 검색: 예시 장소·즐겨찾기 예시·부산 몇 곳에서 이름이나 주소에 검색어가 든 곳(공공 장소 검색 흉내)
+  if (method === 'get' && url === '/places') {
+    const q = String((config.params as { query?: string } | undefined)?.query ?? '').trim();
+    const pool = [
+      ...Object.entries(EXAMPLE_PLACES).map(([id, [name, address]], i) => ({
+        id,
+        name,
+        address,
+        latitude: 37.7718 + i * 0.004,
+        longitude: 128.9478 - i * 0.003,
+      })),
+      ...BOOKMARKS.map(([name, address, latitude, longitude], i) => ({
+        id: `place-bookmark-${i + 1}`,
+        name,
+        address,
+        latitude,
+        longitude,
+      })),
+      {
+        id: 'sp-1',
+        name: '광안리 해수욕장',
+        address: '부산광역시 수영구 광안동',
+        latitude: 35.1532,
+        longitude: 129.1186,
+      },
+      {
+        id: 'sp-2',
+        name: '민락수변공원',
+        address: '부산광역시 수영구 민락동',
+        latitude: 35.1557,
+        longitude: 129.1342,
+      },
+      {
+        id: 'sp-3',
+        name: '수영 돼지국밥',
+        address: '부산광역시 수영구 수영동',
+        latitude: 35.1699,
+        longitude: 129.1149,
+      },
+      // 지도에서 고르기 검색 확인용 서울 몇 곳(서울역 이름이 든 곳이 여럿이라 가까운 순·같은 이름 구분을 볼 수 있다)
+      {
+        id: 'se-1',
+        name: '서울역',
+        address: '서울특별시 용산구 한강대로 405',
+        latitude: 37.5547,
+        longitude: 126.9707,
+      },
+      {
+        id: 'se-2',
+        name: '서울로7017',
+        address: '서울특별시 중구 퇴계로 22',
+        latitude: 37.5568,
+        longitude: 126.9693,
+      },
+      {
+        id: 'se-3',
+        name: '스타벅스 서울역점',
+        address: '서울특별시 중구 봉래동2가 122',
+        latitude: 37.5559,
+        longitude: 126.9723,
+      },
+      {
+        id: 'se-4',
+        name: '서울역 돼지국밥',
+        address: '서울특별시 용산구 동자동 43',
+        latitude: 37.5531,
+        longitude: 126.9725,
+      },
+      {
+        id: 'se-5',
+        name: '서울시청',
+        address: '서울특별시 중구 세종대로 110',
+        latitude: 37.5663,
+        longitude: 126.9779,
+      },
+      {
+        id: 'se-6',
+        name: '남대문시장',
+        address: '서울특별시 중구 남대문시장4길 21',
+        latitude: 37.5592,
+        longitude: 126.9775,
+      },
+    ];
+    const seen = new Set<string>();
+    const found = q
+      ? pool.filter(
+          (p) =>
+            (p.name.includes(q) || p.address.includes(q)) &&
+            !seen.has(p.name) &&
+            Boolean(seen.add(p.name)),
+        )
+      : [];
+    return ok(
+      config,
+      page(
+        found.map((p) => ({
+          ...p,
+          regionId: null,
+          provider: 'KTO',
+          providerPlaceId: p.id,
+          source: 'PROVIDER',
+        })),
+      ),
+    );
+  }
+  // S13 지도에서 직접 고른 위치를 장소로(수동 장소)
+  if (method === 'post' && url === '/places') {
+    const body = JSON.parse(String(config.data ?? '{}')) as {
+      name: string;
+      latitude: number;
+      longitude: number;
+      regionId?: string;
+    };
+    return ok(
+      config,
+      {
+        data: {
+          id: `manual-${Date.now()}`,
+          name: body.name,
+          address: null,
+          latitude: body.latitude,
+          longitude: body.longitude,
+          regionId: body.regionId ?? null,
+          provider: null,
+          providerPlaceId: null,
+          source: 'MANUAL',
+        },
+      },
+      201,
+    );
+  }
+  // N7 장소 정보: 예시 장소(홈 추천 장소, S07 예시 피드 장소). 모르는 ID도 이름만 바꿔 돌려준다
+  const placeInfoMatch = /^\/places\/([^/]+)(\/social-summary|\/public-reviews)?$/.exec(url);
+  if (method === 'get' && placeInfoMatch && placeInfoMatch[1] !== 'search') {
+    const id = decodeURIComponent(placeInfoMatch[1]);
+    const [name, address] = EXAMPLE_PLACES[id] ?? ['예시 장소', null];
+    const place = {
+      id,
+      name,
+      address,
+      latitude: 37.7718,
+      longitude: 128.9478,
+      regionId: 'region-gangneung',
+      provider: 'KTO',
+      providerPlaceId: id,
+      source: 'PROVIDER',
+    };
+    if (!placeInfoMatch[2]) return ok(config, { data: place });
+    if (placeInfoMatch[2] === '/social-summary') {
+      return ok(config, {
+        data: {
+          place,
+          visitorCount: 2,
+          visitors: [FRIENDS[0], FRIENDS[1]],
+          averageScore: 4.5,
+          reviewCount: 2,
+          partialErrors: [],
+        },
+      });
+    }
+    return ok(
+      config,
+      page([
+        {
+          id: `${id}-r1`,
+          author: FRIENDS[0],
+          score: 5,
+          body: '조용히 쉬기 좋아요',
+          writtenAt: '2026-10-20T09:00:00Z',
+        },
+        {
+          id: `${id}-r2`,
+          author: FRIENDS[1],
+          score: 4,
+          body: '주말엔 자리가 없어요',
+          writtenAt: '2026-10-21T09:00:00Z',
+        },
+      ]),
+    );
+  }
   // S06 같은 지역 여행 목록: 홈 지도 지역마다 공동 피드 두 개(카드를 누르면 S07 예시 피드)
   const regionFeedsMatch = /^\/home\/regions\/([^/]+)\/feeds$/.exec(url);
   if (method === 'get' && regionFeedsMatch) {
@@ -948,8 +1645,32 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
   if (method === 'get' && regionMatch) {
     const region = REGIONS.find((r) => r.id === regionMatch[1]);
     if (!region) throw fail(config, 404, 'REGION_NOT_FOUND', '지역을 찾을 수 없습니다.');
+    // N3 여행지 정보: 강릉만 소개·대표 장소 예시가 있다
+    const gangneung = region.id === 'region-gangneung';
+    const spot = (id: string, name: string, address: string) => ({
+      id,
+      name,
+      address,
+      latitude: 37.77,
+      longitude: 128.9,
+      regionId: region.id,
+      provider: 'KTO',
+      providerPlaceId: id,
+      source: 'PROVIDER',
+    });
     return ok(config, {
-      data: { region, introduction: null, representativePlaces: [], partialErrors: [] },
+      data: {
+        region,
+        introduction: gangneung ? '겨울 바다와 커피 거리' : null,
+        representativePlaces: gangneung
+          ? [
+              spot('p1', '강문 해변', '강원 강릉시 강문동'),
+              spot('p2', '안목 바다뷰 카페', '강원 강릉시 견소동'),
+              spot('p5', '주문진 어시장', '강원 강릉시 주문진읍'),
+            ]
+          : [],
+        partialErrors: [],
+      },
     });
   }
 

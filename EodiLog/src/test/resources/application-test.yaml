@@ -1,6 +1,14 @@
 # JPA·Flyway·Jackson·로그 설정은 src/main/resources/application.yaml에서 상속한다.
 # 실제 .env나 공급자 자격 증명 없이 테스트할 수 있는 인증 값만 덮어쓴다.
+spring:
+  datasource:
+    hikari:
+      # Cached Spring test contexts share one Postgres server (100 connection default).
+      maximum-pool-size: 4
+      minimum-idle: 0
 app:
+  assets:
+    cleanup-enabled: false
   jobs:
     enabled: false
   polls:
@@ -8,6 +16,14 @@ app:
     auto-close-enabled: false
     # 마감 1시간 전 알림도 끄고 테스트가 PollReminderSender를 직접 부른다
     reminder-enabled: false
+  # 로컬에 AI 서버가 떠 있어도 테스트가 실제로 부르지 않게 닫힌 포트를 쓴다. AI가 필요한 테스트는 클라이언트를 가짜로 바꾼다
+  ai:
+    base-url: http://127.0.0.1:9
+    internal-token: test-internal-token
+  storage:
+    # 실제 S3에 붙지 않는다. 파일 API 테스트는 메모리 저장소(InMemoryObjectStorage)로 바꿔 끼운다
+    bucket: test-bucket
+    region: ap-northeast-2
   auth:
     kakao-client-id: test-client
     kakao-client-secret: test-secret

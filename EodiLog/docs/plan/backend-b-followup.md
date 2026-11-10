@@ -1,6 +1,6 @@
 # 백엔드 B 후속 작업 — 준비물 체크리스트·멤버 관리·경비·초대·정산·채팅·나가기·투표·코스
 
-작성일: 2026-10-29 · 상태: 체크리스트·멤버 관리 병합 완료(MR !49·!50), 경비·정산 상태 병합 완료(MR !56, 2026-10-30), 초대 링크 병합 완료(MR !58·!62), 정산 계산 병합 완료(MR !69), 채팅 REST 병합 완료(MR !71), 기본 나가기 병합 완료(MR !76), 투표 구현(EODI-161), 나가기 내 채팅 삭제·방문 기록 구현(2026-11-04, §15·§16), 초대 링크 취소 병합 완료(MR !108, §9 I-11), 채팅 실시간 전달 구현(EODI-192, §12-1), 도메인 알림 이벤트 발행 병합(MR !123, §17), 방문 평가 구현(EODI-199, §18)
+작성일: 2026-10-29 · 상태: 체크리스트·멤버 관리 병합 완료(MR !49·!50), 경비·정산 상태 병합 완료(MR !56, 2026-10-30), 초대 링크 병합 완료(MR !58·!62), 정산 계산 병합 완료(MR !69), 채팅 REST 병합 완료(MR !71), 기본 나가기 병합 완료(MR !76), 투표 구현(EODI-161), 나가기 내 채팅 삭제·방문 기록 구현(2026-11-04, §15·§16), 초대 링크 취소 병합 완료(MR !108, §9 I-11), 채팅 실시간 전달 구현(EODI-192, §12-1), 도메인 알림 이벤트 발행 병합(MR !123, §17), 방문 평가 구현(EODI-199, §18), AI 준비물 추천·채택 구현(EODI-218, §19), AI 장소 추출 구현(EODI-224, §20)
 
 [B 첫 작업](backend-b-trip-basic.md)(여행 생성·조회·수정)이 끝난 뒤 A의 카카오 로그인을 기다리는 동안 진행한 B 작업이다. [분담안](../../../docs/plan/backend-first-work-split.md) §6은 이 기능들을 "첫 통합 뒤 배분"으로 두었지만, 로그인 없이 개발할 수 있고 여행 패키지 안에서 끝나는 것부터 B가 먼저 맡았다. A와 겹치는 파일(`user`·`auth` 패키지, `SecurityConfig`)은 건드리지 않는다.
 
@@ -26,6 +26,7 @@
 | 방문 기록 | `POST/GET /trips/{tripId}/visits`, `DELETE /trips/{tripId}/visits/{visitId}` | EODI-183 | 구현(§16) |
 | 도메인 알림 이벤트 발행 | 새 API 없음(`GET /me/notifications`에 투표·초대 수락·코스 알림이 생김), 주기 작업 `PollReminderScheduler` | EODI-196 | 병합(MR !123, §17) |
 | 방문 평가 | `PUT/DELETE /trips/{tripId}/visits/{visitId}/review`, `GET /trips/{tripId}/reviews`, 방문 목록·해제 보강 | EODI-199 | 구현(§18) |
+| AI 준비물 추천·채택 | `POST /trips/{tripId}/checklist-suggestions`, CHECKLIST_SUGGESTIONS 작업, `POST /trips/{tripId}/checklist`의 제안 채택 | EODI-218 | 구현(§19) |
 
 검증은 B 첫 작업과 같이 테스트에서 `AuthUser` principal을 넣어 했다. A 로그인 병합 뒤 실제 카카오 계정 2개로 여행 API 통합 검증(B-7)을 마쳤다([계약 §8](backend-a-b-contract.md)).
 
@@ -42,7 +43,7 @@ B 첫 작업의 규칙을 그대로 따른다.
 
 | # | 질문 | 결정 | 근거 |
 | --- | --- | --- | --- |
-| C-1 | AI 제안 채택(`sourceJobId`·`suggestionIndex`) | 요청 DTO에는 두되 보내면 `400 VALIDATION_ERROR`(필드 `sourceJobId`). `source_job_id` FK는 `jobs` 테이블이 생길 때 추가 | 검증할 `jobs`·AI 제안 기능이 없다. 명세 필드를 지우지 않아 나중에 계약을 바꾸지 않는다 |
+| C-1 | AI 제안 채택(`sourceJobId`·`suggestionIndex`) | ~~보내면 400~~ → 2026-11-06 §19로 대체. 채택을 받고 `source_job_id` FK·`suggestion_index`를 추가했다(V202611061000) | AI 준비물 추천(EODI-218)이 붙었다 |
 | C-2 | 삭제 방식 | `deleted_at` 논리 삭제. 목록·수정·재삭제에서 제외 | 명세 "AI 재생성 시 삭제한 항목 강제 부활 금지". AI 서버 요청의 `deletedLabels`를 여기서 얻는다 |
 | C-3 | 체크한 사람 | 서버가 요청자 멤버십으로 기록, 해제하면 `checkedByMemberId`·`checkedAt` 모두 null. 요청으로 지정 불가 | 명세 "타인 ID 입력 금지". DB CHECK로 체크 여부와 두 값을 묶었다 |
 | C-4 | 이미 체크된 항목을 다시 체크 | 처음 체크한 멤버·시각 유지, version 그대로 | 바뀐 값 없음(P-8) |
@@ -51,7 +52,7 @@ B 첫 작업의 규칙을 그대로 따른다.
 | C-7 | 목록 정렬·페이지 | `created_at ASC, id ASC`, 페이지 없이 전체 | 여행당 공동 목록 하나. 명세에 정렬 기준이 없다 |
 | C-8 | 항목 없음·다른 여행의 항목 | `404 CHECKLIST_ITEM_NOT_FOUND` | 다른 여행 경로로 항목을 고칠 수 없게 `trip_id`까지 함께 조회 |
 
-AI 준비물 제안(`POST /trips/{tripId}/checklist-suggestions`)은 `jobs`, 날씨 조회, 코스 항목이 생긴 뒤 붙인다. AI가 붙지 않아도 직접 작성 목록은 그대로 동작한다. AI를 빼기로 하면 C-1의 요청 필드를 명세와 함께 지운다.
+AI 준비물 제안(`POST /trips/{tripId}/checklist-suggestions`)은 2026-11-06 §19로 붙였다. 날씨 조회는 아직 없어 AI에 빈 날씨를 보낸다.
 
 ## 4. 멤버 관리 정책
 
@@ -484,3 +485,153 @@ A가 만든 알림 기반(`events`·`notifications`, `GET /me/notifications`)에
 | R-7 | 응답 | 명세 `Review`에 `visit{placeId,visitedAt}`·`place{name,address}` 요약을 덧붙인다. 장소는 `PlaceReader.findAll`로 한 페이지 분을 한 번에 읽는다. PUT 응답도 같은 모양 | 화면이 방문 목록과 다시 조합하지 않아도 된다. N+1 방지 |
 | R-8 | 방문 API 보강 | `Visit.reviewId`·`reviewScore`를 채우고(같은 장소 재체크 200 응답 포함), `reviewStatus=WRITTEN/UNWRITTEN`을 실제로 거른다. 평가가 있는 방문의 체크 해제는 409 `REVIEW_EXISTS`(방문 404 → 본인 403 → 평가 409 순) | 명세 §6 제안 확정(VS-6·VS-7 갱신) |
 | R-9 | 이탈·여행 삭제 | 나가도 평가는 남고 다른 멤버가 목록에서 본다. 나간 사람은 404. TRIP_DELETE 작업이 `visits`보다 먼저 `reviews`를 지운다(FK) | 방문 VS-8과 같은 원칙 |
+
+## 19. AI 준비물 추천·채택 정책 (EODI-218, 2026-11-06 사용자 확정)
+
+명세 §6 `POST /trips/{tripId}/checklist-suggestions`와 준비물 추가의 제안 채택을 구현했다. 실행은 jobs `CHECKLIST_SUGGESTIONS`(실행기·정책은 `checklist.suggestion`), AI 호출은 `global.ai`(`AiServerClient`)다. AI 서버 계약은 [AI 명세](../../../ai/docs/spec.md) §1.0·§7.
+
+| # | 질문 | 결정 | 근거 |
+| --- | --- | --- | --- |
+| S-1 | 요청 본문 `{date}` | 삭제. 본문은 생략하거나 `{}`. 다른 필드는 400 | 백엔드 날씨 조회가 없고 AI 요청에도 date가 없다. 명세 §2 "명시된 필드만" |
+| S-2 | 중복 요청 | `Idempotency-Key` 필수(명세 §2). 같은 키는 처음 JobRef | 비동기 작업 생성 POST 공통 규칙 |
+| S-3 | 판정 순서 | 키 400 → 여행 행 잠금 후 비멤버 404 → 요청자 설정 OFF 409 `AI_FEATURE_DISABLED` → 등록. 기간·코스가 비어도 거부하지 않음 | AI가 기본 준비물(신분증·충전기)로 처리한다 |
+| S-4 | 입력 스냅샷 | 등록 때 여행 기간, 코스 항목(장소 id·이름·일차·시작 시각·체류 분, category=null), 살아 있는 준비물(label·source·modifiedByUser), 지운 준비물 이름(중복 제거)을 `input_json`에 고정. 실행 때 jobId와 빈 weather를 붙인다. 재시도에서 다시 읽지 않음 | jobs 기반 "허용 입력 스냅샷". 주소·좌표·멤버 정보는 보내지 않는다 |
+| S-5 | 실행·완료 권한 | 요청자 활성 + 여행 삭제 안 됨 + 요청자 ACTIVE + 요청자 설정 OFF 아님. 깨지면 CANCELLED(`POLICY_REVOKED`) | 명세 §3 "기능 설정은 자동 작업 시작과 결과 반영 모두에 적용" |
+| S-6 | 조회 권한 | 그 여행의 현재 ACTIVE 멤버 누구나. 요청자도 나가면 404. result는 label·reason·sourceJobId만 다시 골라 공개 | 공동 목록 하나(Q-8b). 명세 §9 AI 작업 권한표 |
+| S-7 | AI 호출 | `POST {app.ai.base-url}/ai/v1/checklist-suggestions`, `X-Internal-Token`·`X-Trace-Id`(=jobId), 연결 5초·응답 50초 | AI spec §1.0 시간 예산(45 < 50 < jobs 60초) |
+| S-8 | 실패 분류 | 5xx·연결 실패·타임아웃 → `TEMPORARY_FAILURE`(최초 포함 3회, 30초 간격). 4xx·응답 형식 오류(items 아님, label 빈값·255자 초과, reason 1,000자 초과, items 50개 초과, sourceJobId≠jobId) → `EXECUTION_FAILED` | AI spec §1.0. 무기한 RUNNING은 jobs 60초 제한이 막는다 |
+| S-9 | 채택 요청 | 기존 `POST /checklist`에 `sourceJobId`·`suggestionIndex`를 함께. 하나만 보내면 400(빠진 쪽 필드). label 필수, 제안과 다르면 `modifiedByUser=true`. reason은 제안에서 복사, source=AI | 명세 §6. 정책 C-5와 같은 뜻 |
+| S-10 | 채택 검증 | 작업 없음·다른 여행·다른 kind·성공 아님(QUEUED·RUNNING·FAILED·CANCELLED) → 400 `sourceJobId`. 순번 음수·범위 밖 → 400 `suggestionIndex`. 채택자 설정 OFF → 409 `AI_FEATURE_DISABLED` | 요청 본문의 ID라 입력 오류(M-4와 같음) |
+| S-11 | 중복 채택 | `(source_job_id, suggestion_index)` 유니크(지운 행 포함). 다시 채택하면 409 `SUGGESTION_ALREADY_ADOPTED`. 채택 후 지운 제안도 409 | 명세 "삭제한 항목 강제 부활 금지" |
+| S-12 | AUTO 모드 | CONFIRM과 같게 제안만. 자동 채택 없음 | 명세 §3 "자동 적용 판정 기준 미합의 기능은 AUTO 비활성" |
+| S-13 | 동시 채택 | 채택 트랜잭션에서 jobs 행을 `FOR UPDATE`로 잠근 뒤 존재 확인. 그래도 생긴 유니크 위반은 409 | worker는 RUNNING 행만 잠가 성공한 행과 겹치지 않는다 |
+| S-14 | 작업 결과 읽기 | 공통 job 패키지를 고치지 않고 `ChecklistSuggestionReader`가 `jobs`를 직접 읽는다 | A 공통 코드 변경 없음 |
+| S-15 | 설정 읽기 | `user_settings.checklist_mode`만 읽고 행이 없으면 CONFIRM. `UserSettingsService.get`(첫 조회 때 행 생성)은 쓰지 않는다 | 검사에서 쓰기를 만들지 않는다 |
+| S-16 | 설정 키 | `app.ai.base-url`(`AI_BASE_URL`, 기본 `http://localhost:8000`), `app.ai.internal-token`(`AI_INTERNAL_TOKEN`, 기본 빈 값). 토큰이 비면 헤더를 보내지 않아 AI가 401 → 그 작업만 실패 | 키가 없는 개발자의 서버도 뜬다 |
+| S-17 | 빈 제안 | `items: []`도 SUCCEEDED | 결과 없음과 실패를 구분(명세 §2 503 원칙과 같은 뜻) |
+| S-19~S-21 | 테스트 격리 | `ChecklistSuggestionApiTest`는 끝날 때 AI 준비물·준비물 작업을 지운다(`JobIntegrationTest`의 `DELETE FROM jobs`가 새 FK에 막히지 않게). 테스트 프로필은 AI 주소를 닫힌 포트로 둔다 | 테스트 DB 컨테이너 공유 |
+| S-23 | AI HTTP 연결 | JDK HttpClient를 HTTP/1.1로 고정하고 본문은 UTF-8 바이트로 보낸다. 4xx·연결 실패는 경로·traceId·상태·응답 본문(500자)을 WARN으로 남긴다. `app.ai.*`는 yaml이 없어도 기본값(`http://localhost:8000`, 5초, 50초)으로 뜬다 | 실제 연동에서 기본 HTTP/2의 h2c 업그레이드를 uvicorn이 지원하지 않아 400이 났다. mock 테스트로는 드러나지 않았다 |
+
+### 19-0. 실제 AI 서버 연동 확인 (2026-11-06)
+
+- 방법: 로컬 `ai/`(uvicorn, `INTERNAL_API_TOKEN` 지정)를 띄우고 `AI_E2E_BASE_URL`·`AI_E2E_INTERNAL_TOKEN`을 준 뒤 `ChecklistSuggestionRealAiTest`만 실행. 평소 build에서는 환경 변수가 없어 건너뛴다.
+- 결과: 요청 → 202 → worker 실행 → SUCCEEDED → 결과 조회 → 첫 제안 채택 201(source=AI). AI가 이미 있는 "충전기"는 빼고 4개(여벌 양말·신분증·세면도구·갈아입을 옷)를 돌려줬다.
+- 한계: GMS 키가 없어 AI 서버는 LLM을 건너뛰고 규칙 기반 제안만 냈다(`checklist_llm_skipped`). LLM 경로와 날씨 입력은 확인하지 않았다.
+- 첫 실행은 400으로 실패했다. 원인과 조치는 S-23.
+
+### 19-1. A에게 공유할 것
+
+- 명세 §6 `checklist-suggestions`의 `date` 필드를 뺐다(S-1). 프론트는 본문 없이 `Idempotency-Key`만 보내면 된다.
+- 공통 설정에 `app.ai`(base-url·internal-token·connect-timeout·read-timeout)와 `global.ai.AiServerClient`를 추가했다. 다른 AI 작업도 이 클라이언트를 쓰면 된다. `.env.example`에 `AI_BASE_URL`·`AI_INTERNAL_TOKEN`을 추가했다(AI 쪽 `INTERNAL_API_TOKEN`과 같은 값).
+- `checklist_items`에 `jobs` FK가 생겼다(V202611061000). 테스트에서 `DELETE FROM jobs`를 하면 AI 준비물 행을 먼저 지워야 한다.
+- 오류 코드 `AI_FEATURE_DISABLED`는 `ChecklistErrorCode`에 두었다. 다른 AI 기능도 같은 코드 이름을 쓰면 된다.
+- 테스트 프로필(`application-test.yaml`)에 Hikari `minimum-idle: 1`, `idle-timeout: 10s`를 넣었다. 캐시된 테스트 컨텍스트(설정이 다른 `@SpringBootTest`마다 하나)가 각자 커넥션 10개를 들고 있어, 컨텍스트가 늘면 공유 PostgreSQL 한도 100을 넘었다(`too many clients already`). 그 뒤 테스트는 연결 대기 30초씩 걸리며 실패한다. 새 `@MockitoBean` 테스트를 더할 때도 이 설정이 있으면 괜찮다.
+
+## 20. AI 장소 추출 정책 (EODI-224, 2026-11-09 사용자 확정)
+
+명세 §5 `POST/GET/DELETE /extractions`를 구현했다. 실행은 jobs `PLACE_EXTRACTION`(패키지 `extraction`), AI 호출은 `global.ai`의 multipart 호출(`AiServerClient.postMultipart`)이다. AI 서버 계약은 [AI 명세](../../../ai/docs/spec.md) §1.0·§2. 분담 문서: `backend-a-b-work-split-2026-11-09`(B).
+
+| # | 질문 | 결정 | 근거 |
+| --- | --- | --- | --- |
+| E-1 | 요청 본문 | `{url?, captureAssetIds?, memo?}`만. url은 strip 후 빈 값이면 없음. url·캡처 둘 다 없으면 400(`url`·`captureAssetIds`). `regionHint`는 받지 않음 | 명세 §5 |
+| E-2 | url·memo 규칙 | url은 2048자 이하, AI `_parse_target`과 같은 규칙(http/https, host 있음, 계정 정보 없음, 포트 생략·80·443, 공백 없음). memo는 strip 후 500자(코드 포인트) 이하, 빈 값은 없음. 지원 사이트 판정은 하지 않음 | AI가 잘못된 url에 422를 주면 캡처가 정상이어도 작업 전체가 실패한다. 사이트 범위는 Q-5 |
+| E-3 | 개수 초과 | 캡처 11장 이상 422 `INPUT_LIMIT_EXCEEDED`(`ExtractionErrorCode`). 중복 ID는 400 | 명세 §5. §2 공통 표에도 추가 |
+| E-4 | 중복 요청 | `Idempotency-Key` 필수. 범위 `POST /api/v1/extractions`, 같은 키·같은 본문(정규화 후)은 처음 JobRef | 명세 §2 비동기 작업 생성 |
+| E-5 | 판정 순서 | 키 400 → 본문 400 → 개수 422 → 설정 OFF 409 `AI_FEATURE_DISABLED` → 캡처 검사 400 → 등록. 설정은 `user_settings.extraction_mode`만 읽고 행이 없으면 CONFIRM | S-15와 같다 |
+| E-6 | 캡처 검사 | 캡처 행을 id 순서로 `FOR UPDATE` 잠그고 내 것·CAPTURE·READY·표시본 있음(`display_content_type`)을 확인. 어긋나면 400 `captureAssetIds[i]`(남의·없는 파일도 같은 응답) | 존재 여부를 드러내지 않는다 |
+| E-7 | 입력 스냅샷 | `input_json = {url, memo, captureAssetIds}`. 바이트·저장소 키 없음. tripId·baseVersion null | jobs "허용 입력 스냅샷" |
+| E-8 | AUTO 모드 | CONFIRM과 같게 후보만. 자동 저장·방문 기록 없음 | 분담 문서. S-12와 같다 |
+| E-9 | 권한 | 등록·실행·완료: 요청자 설정이 OFF가 아님(계정 활성은 공통 기반). 깨지면 CANCELLED. 조회: 요청자 본인만 | 명세 §9 권한표 |
+| E-10 | 캡처 읽기 | 실행 때 행을 다시 읽어 READY가 아닌 파일은 건너뛰고, **표시본**(`display_key`, EXIF 제거본)을 15MB 한도로 읽는다. 저장소 장애는 TEMPORARY_FAILURE, 객체 없음·한도 초과는 그 장만 건너뜀. 링크도 읽은 캡처도 없으면 AI를 부르지 않고 `{resultStatus:FAILED, candidates:[]}`로 성공 | 원본은 업로드 기한(10분) 뒤 정리된다. AI 장당 한도 15MB |
+| E-11 | AI 호출 | `POST /ai/v1/place-extractions` multipart(`url`·`memo`·`captures` 파일 `capture-{n}.jpg/png`), `X-Internal-Token`·`X-Trace-Id=jobId`. 문자열 파트는 `text/plain;charset=UTF-8` 바이트 | S-23과 같은 연결 설정. 한글 깨짐 방지 |
+| E-12 | 실패 분류 | 5xx(LLM 장애 503 포함)·연결 실패·타임아웃 → TEMPORARY_FAILURE(최대 3회). 4xx·형식 오류 → EXECUTION_FAILED | AI spec §1.0 |
+| E-13 | 응답 검사 | resultStatus 4값·candidates 배열 60개 이하·name/evidence 비지 않음(255자 이하)·confidence null 또는 0~1이 아니면 전체 EXECUTION_FAILED. place만 틀리면(NAVER 아님, 이름·공급자 ID 빈값/255자 초과, 주소 500자 초과, 좌표 범위 밖) 그 후보를 place·confidence null로 | places 제약 |
+| E-14 | 장소 연결 | `PlaceResolver.resolve("NAVER", 공급자 ID=AI providerPlaceId, regionCode=null)`을 execute에서 호출(같은 ID는 한 번). DB 오류는 TEMPORARY_FAILURE. category는 버림 | complete는 결과를 바꿀 수 없다. upsert는 멱등. 예외를 던지면 worker가 영구 실패로 본다 |
+| E-15 | 결과 | `{resultStatus, candidates:[{candidateId(UUIDv7), name, place:Place\|null, evidence, confidence}]}`. place는 저장 시점 스냅샷. 저장·공개 때 같은 규칙으로 다시 고른다(`StoredExtraction`) | 명세 §10 |
+| E-16 | 조회 | `GET /extractions/{jobId}` = `JobService.get` + kind 확인(아니면 404). 성공 전에는 resultStatus null·candidates [] | 명세 §10 |
+| E-17 | JobRef | 공통 그대로(`statusUrl=/api/v1/jobs/{id}`) | |
+| E-18 | 삭제 | 요청자 아님·이미 지움·다른 kind는 404. 행을 잠그고 `deleted_at`, `input_json='{}'`, `result_json=NULL`. 끝나지 않은 작업은 CANCELLED(`POLICY_REVOKED`). 실행 중 시도는 heartbeat 실패로 멈추고 늦은 결과는 `finish`가 행을 못 찾아 버린다 | 명세 §5 "입력·후보 제거/작업 취소" |
+| E-19 | jobs 공통 변경 | `JobService.discard(viewer, jobId, kind)`(MANDATORY, cleanup kind 거부)와 `JobStore.discard` 추가 | 상태 불변식을 공통 안에 둔다 |
+| E-20 | 캡처 정리 | 삭제 때 캡처를 같은 순서로 잠근 뒤, 지워지지 않은 다른 추출 작업이 쓰지 않는 내 READY CAPTURE만 `DELETING`. 저장소 삭제·재시도·행 정리는 기존 `AssetCleanup`이 한다 | 캡처를 참조하는 다른 자료는 없다 |
+| E-21 | 캡처 보존 | 추출을 지우기 전까지 둔다(같은 캡처로 다시 시도 가능). 장기 보존 한도는 Q-11 | 프론트 "다시 시도"가 같은 캡처를 쓴다 |
+| E-22 | 테스트 충돌 | `JobIntegrationTest`의 가짜 PLACE_EXTRACTION 빈을 ROUTE_RECALCULATION으로 바꿨다 | 실제 handler와 중복 등록 |
+| E-24 | 진행률 | jobs에 중간 progress 갱신이 없어 0 → 100만 | 프론트 단계 표시는 첫 단계에 머문다 |
+
+마이그레이션 없음. ERD의 `extraction_candidates`는 물리 테이블을 만들지 않고 `jobs.result_json`에 둔다(ERD 주석 갱신).
+
+### 20-0. 검증 (2026-11-09)
+
+- 대체 테스트(가짜 AI·메모리 저장소): `ExtractionApiTest` 9개(링크+메모+캡처·링크만·캡처만, 입력 거부, 읽지 못한 캡처, 일시/영구 실패·형식 오류, 설정 OFF 취소·타인 차단, 삭제와 캡처 정리, 실행 중 삭제 후 늦은 결과 버림, Swagger), `ExtractionInputRulesTest`(url·memo 규칙), `HttpAiServerClientTest`의 multipart 본문(한글 UTF-8·파일 이름·형식)·실패 분류.
+- 실제 AI 서버(로컬 `ai/` uvicorn, GMS·네이버 키 없음): `ExtractionRealAiTest`. 11장 multipart → AI 422 `INPUT_LIMIT_EXCEEDED`(captures를 파일 목록으로 읽음) → 재시도 없는 실패. 링크+한글 메모+PNG 캡처 요청 → 202 → worker → AI가 입력 검사를 통과해 LLM 단계에서 503 `PROVIDER_UNAVAILABLE` → `TEMPORARY_FAILURE`로 재시도 대기. 실제 후보 생성·네이버 장소 연결은 키가 없어 확인하지 못했다(대체 테스트로만 확인).
+- 전체 build(A의 사진 관리 병합 870db3f 위): 457개 중 실패 1개, 건너뜀 9개(실제 AI·S3 등 환경 변수 조건부). 실패는 A의 `AssetApiTest.tripPhotoIsLimitedToActiveMembers` 하나로, HEIC 변환에 ImageMagick이 필요한데 이 PC에 `magick`이 없어 503 `IMAGE_PROCESSOR_UNAVAILABLE`이 난다(사진 업로드 문서의 설치 조건). 이번 변경과 무관하다.
+
+### 20-1. A·프론트에 공유할 것
+
+- A(MR 본문으로 충분): `JobIntegrationTest.Fixtures`의 가짜 PLACE_EXTRACTION 빈을 ROUTE_RECALCULATION으로 바꿨다. A의 사진 관리(870db3f)는 실제 사진 삭제 빈을 테스트 컨텍스트에서 빼는 방식이라 겹치지 않고, 병합 후 함께 통과했다.
+- A(MR 본문으로 충분): jobs 공통에 `JobService.discard`·`JobStore.discard`를 추가했다. 자원별 취소 API가 필요한 다른 AI 작업도 쓸 수 있다.
+- 캡처 삭제는 `AssetCleanup`의 `DELETING` 경로를 그대로 쓴다. A의 사진 관리 병합 뒤에도 사진 참조가 없는 파일은 예전과 같이 객체 삭제 → 기한 뒤 행 삭제로 처리된다(따로 알릴 필요 없음).
+- 프론트(EODI-216, 꼭 필요): `POST /extractions`에 `Idempotency-Key`가 필요하다(다시 시도마다 새 키). 2026-11-09 dbd2baa 기준 `startExtraction`은 헤더를 보내지 않아 400이 난다.
+- 프론트(참고): progress는 0 → 100만이라 진행 단계 표시는 첫 단계에 머문다. 프론트는 60초가 지나면 실패로 보여 주지만, AI 장애(503)일 때 백엔드는 30초 간격 최대 3회 시도해 1~3분 뒤 FAILED가 된다. 취소한 작업의 캡처는 지워지므로 다시 찾을 때는 새로 올린다.
+- 선택한 후보 저장 예시: 개인 `PUT /api/v1/me/bookmarks/{place.id}` `{memo?}`, 여행 `PUT /api/v1/trips/{tripId}/saved-places/{place.id}/me` `{memo?}`. `place:null` 후보는 `GET /api/v1/places?query={name}`으로 고르거나 `POST /api/v1/places`로 수동 장소를 만든 뒤 같은 PUT.
+- 남은 위험: 캡처 10장 S3(시드니) 읽기 + AI 50초가 worker 60초를 넘을 수 있다. 공급자 ID는 AI의 이름·주소 해시(AS-12)라 -162에서 규칙이 바뀌면 같은 장소가 두 행이 될 수 있다. 새 장소의 regionId는 주소로 채운다(§20-2).
+
+### 20-2. 추출 장소 지역 채우기 (EODI-246, 2026-11-09)
+
+네이버 응답에는 지역 코드가 없어 추출 장소의 `regionId`가 비었다. 지역으로 거르는 장소 검색·북마크에서 빠지고, 여행지 추천(AI가 저장 장소를 `region_id`로 묶음)의 근거가 되지 못한다.
+
+- 규칙: 주소 앞 두 단어 "시·도 시·군·구"가 `regions.name`과 정확히 같으면 그 지역이다. 일반구가 있는 시(수원시 장안구)는 시 단위로 묶인다. 시·도 줄임말·옛 이름(부산, 경남, 강원도, 전라북도, 광주광역시, 전라남도 등)과 관할·이름이 바뀐 곳(경상북도 군위군 → 대구광역시 군위군, 인천광역시 남구 → 미추홀구)은 대응표로 바꾼다. 시·도 이름만으로는 하위 지역이 없는 세종만 맞추고, 다른 시·도로 넓혀 맞추지 않는다(`RegionCodeResolver`와 같은 원칙). 못 찾으면 null이다. 지역 전체 이름은 seed에서 모두 하나뿐이다.
+- 위치: DB 함수 `region_code_for_address`(V202611091800). 추출 실행기는 `RegionAddressMatcher`로 이 함수를 불러 `ProviderPlace.regionCode`에 넣는다. `PlaceResolver`는 바꾸지 않았다. 기존 장소에 지역이 있고 새로 못 찾으면 기존 지역을 유지한다(기존 COALESCE).
+- 기존 장소: V202611091801이 provider=NAVER이고 region_id가 빈 장소만 같은 함수로 한 번 채운다. 다른 공급자·수동 장소는 건드리지 않는다.
+- 근거(공공 장소 덤프 2026-11-05, 280만 건을 임시 PostGIS 컨테이너에 마이그레이션과 함께 복원해 비교): 저장된 지역과 같음 2,802,338건(99.96%), 못 찾음 932건(주소 없음 916건, 오타 16건), 다름 22건(모두 KTO, 원본 주소와 코드가 서로 다른 행). SBDC는 2,753,778건 전부 같았다.
+- 테스트: `RegionAddressMatcherTest`(주소 18가지·빈 주소, 1300 → 1801 업그레이드로 네이버 장소만 채움), `ExtractionApiTest`의 추출 장소 regionId(부산 수영구). A의 `PhotoClassificationMigrationUpgradeTest`는 마지막 버전을 1300으로 가정해 깨지므로 `target("202611091300")`으로 고정했다(검사 내용은 그대로).
+- 전체 build(dev 2caf8ad 위): 531개 중 실패 0개, 건너뜀 12개(실제 AI·S3 등 환경 변수 조건부).
+- 남은 위험: 실제 네이버 주소 표기를 이번에 다시 호출해 보지는 않았다. 네이버가 대응표에 없는 표기(예: 새 통합 지역의 다른 줄임말)를 주면 null로 남는다.
+
+## 21. AI 최초 코스 제안·적용·되돌리기 정책 (EODI-231, 2026-11-09 사용자 확정)
+
+명세 §6 `POST /itinerary/proposals`, `GET /itinerary/proposals/{jobId}`, `POST .../apply`, `POST /itinerary/undo`를 구현했다. 실행은 jobs `ITINERARY_PROPOSAL`(패키지 `itinerary.proposal`), AI 호출은 JSON `POST /ai/v1/itinerary-proposals`([AI 명세](../../../ai/docs/spec.md) §5). 분담 문서: `backend-a-b-ai-work-split-2026-11-09`(B). AI 쪽 코스 제안은 구현 중에 dev에 들어왔다(ef31816, AS-16). 병합 직전 최신 dev(cdee75f) 위에서 실제 AI 서버로도 확인했다(21-0).
+
+| # | 질문 | 결정 | 근거 |
+| --- | --- | --- | --- |
+| I-1 | 요청 본문 | `{reason, expectedVersion, defaultTransportMode?}`. reason은 INITIAL만, PLACE_REMOVED·WEATHER는 400 `reason`. INITIAL에 `excludedPlaceIds`·`sourceWeatherJobId`·`selectedAlternativeId`가 오면 400 | 다른 사유는 날씨 대안·장소 제외 작업 때 |
+| I-2 | 기본 이동 수단 | 생략 시 TRANSIT | AI spec 예시 |
+| I-3 | 중복 요청 | `Idempotency-Key` 필수. 범위 `POST /api/v1/trips/{tripId}/itinerary/proposals`, 지문은 (reason, expectedVersion, 수단) | 명세 §2 비동기 작업 생성 |
+| I-4 | 판정 순서 | 키·본문 400 → 비멤버 404 → version 409 → 기간·장소 없음 422 → 장소 수 422 → 등록. version·장소 검사는 처음 등록할 때만(같은 키 재요청은 처음 JobRef) | 권한은 `execute` 앞 |
+| I-5 | 기간·장소 없음 | 422 `INSUFFICIENT_DATA`, fields `trip.startDate`·`places` | AI spec §0: 사용자에게 보일 사유는 등록 전에 |
+| I-6 | 대상 장소 | `trip_place_saves`(저장 순, 나간 멤버의 저장 포함) ∪ 현재 코스 장소. 최대 200곳, 초과 422 `INPUT_LIMIT_EXCEEDED`. 개인 북마크는 넣지 않음 | `GET /saved-places`와 같은 기준 |
+| I-7 | 기존 코스 | INITIAL도 허용. 적용하면 코스 전체가 제안으로 바뀐다 | "AI로 다시 짜기" |
+| I-8 | 입력 스냅샷 | 여행 행을 잠근 트랜잭션에서 AI 요청 본문 모양 그대로 고정: `{reason, expectedVersion, trip{id,startDate,endDate,destinationRegionIds}, places[Place], current{items,legs}, defaultTransportMode, excludedPlaceIds:[], selectedAlternative:null}`. `base_version=expectedVersion` | 재시도 때 다시 읽지 않는다 |
+| I-9 | 설정·동의 | 코스 AI 설정 열이 없어 검사하지 않는다. 설정이 생기면 `ItineraryProposalAccess`에 추가 | 명세 §9 "동의 검사"는 미적용 |
+| I-10 | 권한 | 등록·실행·완료: 요청자가 삭제 안 된 여행의 ACTIVE 멤버(깨지면 CANCELLED). 조회: 그 여행의 현재 ACTIVE 멤버 누구나 | 공동 코스, 준비물과 같다 |
+| I-11 | 실행 중 코스 변경 | execute·complete에서 막지 않고 apply에서 409 | 명세 |
+| I-12 | 실패 분류 | 5xx·연결 실패·타임아웃 TEMPORARY_FAILURE(최대 3회), 4xx·형식 오류 EXECUTION_FAILED | 준비물과 같다 |
+| I-13 | 응답 검증 | baseVersion·reason 일치, 항목 1~200개, 장소는 입력 places 안, 항목 id는 null 또는 요청 당시 코스 항목(한 번만), day 1~여행 일수, 날짜별 order 1부터 빈틈없이, startTime HH:mm/null, stayMinutes 1~1440/null, 구간은 같은 날 인접 쌍마다 정확히 하나, AVAILABLE이면 시간 있음·UNAVAILABLE이면 시간 없음, description은 문자열. 하나라도 어긋나면 EXECUTION_FAILED. description이 1000자를 넘으면 자른다(여행 기간 상한이 없어 일차별 문구가 길어질 수 있다) | AI spec T-04-10, PUT 규칙 |
+| I-14 | 저장 형태 | `{baseVersion, reason, proposed{items[{id,place,day,order,startTime,stayMinutes}], legs[{fromItemId,toItemId,day,fromOrder,toOrder,transportMode,durationSeconds,distanceMeters:null,geometry:null,status,queriedAt}]}, diff}`. place는 입력 스냅샷 값으로 바꿔 끼우고, 구간 항목 ID는 위치로, diff 목록은 백엔드가 다시 계산(description만 AI). queriedAt이 없으면 응답 받은 시각 | AI 값을 그대로 믿지 않는다 |
+| I-15 | 조회 | `JobService.get` + kind·trip 일치(아니면 404). 성공 전 proposed null·빈 diff. appliedAt은 `jobs.applied_at`, canUndo는 조회 시 계산. "변경 전" 필드는 추가하지 않음 | 명세 스키마 |
+| I-16 | 알림 | AI_PROPOSAL_READY는 만들지 않는다(수신 대상 미정) | 후속 |
+| I-17 | 적용 판정 순서 | 400 → 여행 404 → 작업 404(삭제·다른 kind·다른 여행) → `ALREADY_APPLIED` → `PROPOSAL_NOT_READY` → `VERSION_CONFLICT`(현재≠expected 또는 ≠base) → 여행 기간 축소로 날짜 넘침 `VERSION_CONFLICT`. 잠금은 여행 → 코스 → 작업 행 | worker 완료는 작업 행만 잠가 교착 없음 |
+| I-18 | 적용 내용 | 유지 항목 id 그대로, 나머지 기존 항목 삭제, 새 항목 발급. 구간에 AI 이동 시간·상태 저장. 교체 로직은 `CourseWriter`로 PUT과 공유 | |
+| I-19 | 원자 처리 | 한 트랜잭션에서 적용 전 코스 보관(upsert) → 교체 → version+1(내용이 같아도) → `jobs.applied_at·applied_by_member_id` → COURSE_CHANGED 알림 | 적용 기록·되돌릴 대상 |
+| I-20 | 동시 적용 | 같은 제안 동시 적용은 코스 행 잠금으로 직렬화되어 하나만 성공(나머지 409 `ALREADY_APPLIED`). 다른 제안 둘은 뒤가 409 `VERSION_CONFLICT`. apply에 Idempotency-Key는 받지 않음 | |
+| I-21 | undo 조건 | undo 행이 있고 applied_job_id=appliedJobId, 현재 version=applied_version. 바뀐 것 없는 PUT은 쓰기가 아님 | |
+| I-22 | undo 판정 순서 | 400 → 404 → expectedVersion 불일치 `VERSION_CONFLICT` → `UNDO_UNAVAILABLE` | |
+| I-23 | 복원 | 항목 id·구간 결과(지도선 포함)까지 그대로 SQL로 복원, version+1, undo 행 삭제, 알림. ACTIVE 멤버 누구나. jobs.applied_at은 유지 | |
+| I-24 | 시간 제한 | 두지 않음(Q-15 합의 전) | 임의 숫자 금지 |
+| I-25 | 마이그레이션 | `V202611091200__create_itinerary_undo_states.sql` | ERD 그대로 |
+| I-26 | 여행 삭제 | `TripDeleteJobHandler`가 itinerary_undo_states를 코스보다 먼저 지운다 | FK |
+| I-27 | PUT과 undo 행 | 실제로 바꾼 PUT은 undo 행을 지운다 | ERD "다른 쓰기 뒤 토큰 제거" |
+| I-28 | route_legs 제약 | `ck_route_legs_result`를 "AVAILABLE이면 시간 필수"로 넓혔다(거리·지도선 NULL 허용). UNAVAILABLE 조건은 그대로 | 기존 제약은 AVAILABLE에 거리를 요구해 AI 이동 시간(거리 없음)을 저장할 수 없었다. 구현 중 발견, I-18을 지키기 위한 변경 |
+
+### 21-0. 검증 (2026-11-09)
+
+- 대체 테스트(가짜 AI): `ItineraryProposalApiTest` 11개(Swagger `/v3/api-docs` 확인, 긴 description 자르기 포함). 요청·같은 키 재요청·AI 입력 스냅샷, 조회(공동 멤버·job 결과), 적용(id 유지·새 id·이동 시간 저장·알림), 재적용 409, undo(원래 id 복원·재undo 409), 요청 검증 400/404/409, 기간·장소 없음·201곳 422, 잘못된 AI 결과 4종 EXECUTION_FAILED와 적용 409, 일시/영구 실패, 실행 중 수동 수정·기간 축소 뒤 적용 409, 바뀐 것 없는 PUT 뒤 undo 가능·실제 PUT 뒤 불가, 요청자 이탈 CANCELLED·다른 여행·다른 kind 404, 동시 적용 하나만 성공, 적용 뒤 여행 삭제.
+- 실제 AI(2026-11-09, 로컬 `ai/` uvicorn, dev cdee75f, 카카오 길찾기 키 없음): `ItineraryProposalRealAiTest` 통과. 1박 2일 5곳(그중 1곳은 현재 코스 항목) → 202 → worker → SUCCEEDED, 1일차 2곳·2일차 3곳, 현재 코스 항목 id 유지 → 적용(version 3, id 유지) → 되돌리기(version 4, 원래 항목 1개·id 복원). 키가 없어 구간은 모두 UNAVAILABLE이었고 AI 이동 시간이 있는 구간 저장은 대체 테스트로만 확인했다.
+- 전체 build(최신 dev cdee75f 위, ImageMagick 7.1.2-34·`IMAGE_MAGICK` 지정): 469개 중 실패 0개, 건너뜀 7개(실제 AI 4개·실제 S3 3개). 실제 S3 왕복 `AssetRealS3Test`(`-PrealS3=true`, 개발 버킷) 3개도 따로 통과. ImageMagick이 없으면 기존 `AssetApiTest.tripPhotoIsLimitedToActiveMembers`가 503으로 실패한다(이 테스트만 `IMAGE_MAGICK` 조건이 없다). 기존 코스 PUT(`ItineraryApiTest` 11개)·여행 삭제·jobs 공통·준비물·장소 추출 테스트 모두 통과.
+
+### 21-1. A·AI·프론트에 공유할 것
+
+- A: `TripDeleteJobHandler`에 `itinerary_undo_states` 삭제 한 줄을 넣었다. 사진 AI(photo_groups)도 이 파일을 고칠 가능성이 높으니 병합 순서를 맞춘다. 마이그레이션 번호는 `V202611091200`이다.
+- A: api-spec §2 409 표에 `PROPOSAL_NOT_READY`·`UNDO_UNAVAILABLE`을 추가했고, §9 운영 실행기 문장에 ITINERARY_PROPOSAL을 넣었다.
+- AI(장수철, -150): 구현(ef31816)이 백엔드 계약과 맞는 것을 실제 호출로 확인했다. INITIAL의 `current` id 유지와 지역 모르는 장소 처리는 AS-16에 답이 있다. 알릴 것: 백엔드는 대상 장소를 200곳까지 보낸다. places에 `category`가 없어(places 열 없음) 식당·카페 시간 규칙은 적용되지 않는다. 카카오 키가 있을 때 구간이 많으면 45초 예산 안에 끝나는지는 아직 확인하지 않았다.
+- 프론트: 요청 → `GET /itinerary/proposals/{jobId}` 폴링 → 비교(현재 코스는 `GET /itinerary`) → apply(`expectedVersion`) → 필요하면 undo(`expectedVersion`=적용 후 version, `appliedJobId`). 409 VERSION_CONFLICT면 코스를 다시 조회하고 새 제안을 요청한다. 제안 구간은 새 항목 사이라 `day/fromOrder/toOrder`로 가리킨다.
+- 남은 위험: 카카오 키가 있을 때 AVAILABLE 구간의 실제 저장과 45초 예산은 확인하지 못했다. 코스 AI 설정이 없어 동의 검사가 없다. AI 이동 시간을 저장한 구간도 이후 PUT으로 바꾸면 UNAVAILABLE로 다시 저장된다(경로 재계산 작업 때 정한다).
