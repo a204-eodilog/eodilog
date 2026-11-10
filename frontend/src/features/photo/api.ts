@@ -132,9 +132,13 @@ export async function createPhotoBatch(
   return data.data;
 }
 
-/** 사진 바이트. 선택창이 크기를 주지 않아도 실제 크기를 알 수 있게 먼저 읽는다 */
-export async function readPhoto(uri: string): Promise<Blob> {
-  return (await fetch(uri)).blob();
+/**
+ * 사진 바이트. 선택창이 크기를 주지 않아도 실제 크기를 알 수 있게 먼저 읽는다.
+ * Blob이 아니라 ArrayBuffer로 읽는다: 안드로이드에서 Blob을 바디로 넘기면 바이트가 그대로 가지 않아
+ * 서명(content-type·content-length 포함)이 맞지 않고 저장소가 403으로 거부한다(!196 실기기 확인)
+ */
+export async function readPhoto(uri: string): Promise<ArrayBuffer> {
+  return (await fetch(uri)).arrayBuffer();
 }
 
 /** 파일 자리 받기(TRIP_PHOTO는 tripId·batchId 필수) */
@@ -155,7 +159,7 @@ export async function requestUploadIntent(input: {
  * 받은 서명 주소로 바이트를 보낸다. API 인증 헤더는 붙이지 않고 응답 headers를 그대로 쓰되,
  * content-length는 런타임이 바디 크기로 정하게 뺀다(백엔드 사용 순서 3). 테스트 모드면 보내지 않는다
  */
-export async function putPhoto(intent: UploadIntent, body: Blob, signal?: AbortSignal) {
+export async function putPhoto(intent: UploadIntent, body: ArrayBuffer, signal?: AbortSignal) {
   if (env.devMock) return;
   const headers = Object.fromEntries(
     Object.entries(intent.headers).filter(([name]) => name.toLowerCase() !== 'content-length'),

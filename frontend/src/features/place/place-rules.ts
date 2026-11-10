@@ -91,7 +91,7 @@ export function shortAddress(address: string | null): string | null {
 
 /**
  * 검색 결과 순서: 이름이 검색어와 똑같은 곳 먼저, 그다음 기준점(지도 가운데)에서 가까운 순.
- * 서버가 가까운 순(near)을 아직 주지 않아 받은 결과 안에서만 다시 줄 세운다
+ * 서버도 near를 주면 같은 순서로 준다. 이 함수는 받은 뒤 지도를 옮겼을 때 화면에서 다시 줄 세우는 데 쓴다
  */
 export function rankNear<P extends LatLngLike & { name: string }>(
   places: readonly P[],
@@ -106,4 +106,9 @@ export function rankNear<P extends LatLngLike & { name: string }>(
       const eb = b.place.name === q ? 0 : 1;
       return ea - eb || a.meters - b.meters;
     });
+}
+
+/** 서버 near 값 "위도,경도". 소수 6자리(약 10cm)면 충분하다 */
+export function nearParam(near: { latitude: number; longitude: number }): string {
+  return `${near.latitude.toFixed(6)},${near.longitude.toFixed(6)}`;
 }
