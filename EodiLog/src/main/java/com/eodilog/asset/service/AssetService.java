@@ -40,6 +40,7 @@ public class AssetService {
     private final Clock clock;
     private final JsonMapper json;
     private final StorageProperties storageProperties;
+    private final com.eodilog.feed.FeedAssetAccess feedAccess;
     // One full image operation per application instance bounds heap/native pressure without queuing callers.
     private final ReentrantLock completionCapacity = new ReentrantLock();
 
@@ -123,9 +124,10 @@ public class AssetService {
     @Transactional
     public Download download(UUID user, UUID id, UUID feedId) {
         var asset = repository.find(id, false);
-        // Feeds are outside this feature; do not let a feedId bypass current internal access rules.
-        if (feedId != null) throw new BusinessException(AssetErrorCode.ASSET_NOT_FOUND);
-        if (asset.tripId() == null) {
+        if (feedId != null) {
+            feedAccess.require(feedId, id, asset.tripId());
+            asset = repository.find(id, true);
+        } else if (asset.tripId() == null) {
             if (!asset.purpose().equals("PROFILE") && !asset.ownerId().equals(user)) throw new BusinessException(AssetErrorCode.ASSET_NOT_FOUND);
         } else {
             // Trip lock serializes the admission of a new stream with photo/trip deletion approval.
@@ -139,7 +141,8 @@ public class AssetService {
             acquireCapacity();
             try {
             // Preserve legacy READY rows without serving historical signature-only originals.
-            if (asset.tripId() != null) requireDownloadAccess(asset.tripId(), user, true);
+            if (feedId != null) feedAccess.require(feedId, id, asset.tripId());
+            else if (asset.tripId() != null) requireDownloadAccess(asset.tripId(), user, true);
             asset = repository.find(id, true);
             if (!asset.status().equals("READY")) throw new BusinessException(AssetErrorCode.ASSET_NOT_FOUND);
             if (asset.displayContentType() == null) sanitize(asset);
