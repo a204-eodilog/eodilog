@@ -65,3 +65,35 @@ describe('테스트 모드 편의시설(S28)', () => {
     }
   });
 });
+
+const send = (method: 'post' | 'delete', url: string, data?: unknown) =>
+  devMockAdapter({
+    method,
+    url,
+    headers: {},
+    params: {},
+    data: data === undefined ? undefined : JSON.stringify(data),
+  } as unknown as InternalAxiosRequestConfig);
+
+describe('테스트 모드 기록까지 삭제', () => {
+  it('버전이 맞으면 202로 접수하고 피드를 내린다. 다시 보내면 404', async () => {
+    const mine = (await get('/me/feeds')) as unknown as {
+      data: { id: string; tripId: string; version: number }[];
+    };
+    const feed = mine.data[0];
+    await expect(
+      send('post', `/feeds/${feed.id}/delete-own-records`, { expectedVersion: feed.version + 1 }),
+    ).rejects.toMatchObject({ response: { status: 409 } });
+
+    const res = await send('post', `/feeds/${feed.id}/delete-own-records`, {
+      expectedVersion: feed.version,
+    });
+    expect(res.status).toBe(202);
+    expect((res.data as { data: { jobId: string } }).data.jobId).toBeTruthy();
+    expect((await get(`/trips/${feed.tripId}/feed`)).data).toBeNull();
+
+    await expect(
+      send('post', `/feeds/${feed.id}/delete-own-records`, { expectedVersion: feed.version }),
+    ).rejects.toMatchObject({ response: { status: 404 } });
+  });
+});

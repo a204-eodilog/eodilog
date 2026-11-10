@@ -3,7 +3,7 @@ import { isAxiosError } from 'axios';
 import { useRef } from 'react';
 
 import { toast } from '@/components/ui';
-import { deleteFeed, getMyFollowers } from '@/features/feed';
+import { deleteFeed, deleteFeedWithOwnRecords, getMyFollowers } from '@/features/feed';
 
 import { getTripFeed, publishTripFeed } from '../api';
 import type { TripFeed } from '../types';
@@ -44,7 +44,10 @@ export function useRecordFeed(tripId: string, tripTitle: string | undefined) {
     mutationFn: () => publishTripFeed(tripId, tripTitle ?? ''),
   });
   const remove = useMutation({
-    mutationFn: (f: TripFeed) => deleteFeed(f.id, f.version),
+    mutationFn: async ({ f, withRecords }: { f: TripFeed; withRecords: boolean }) => {
+      if (withRecords) await deleteFeedWithOwnRecords(f.id, f.version);
+      else await deleteFeed(f.id, f.version);
+    },
   });
 
   return {
@@ -67,36 +70,48 @@ export function useRecordFeed(tripId: string, tripTitle: string | undefined) {
         },
       });
     },
-    remove: (onDone: () => void) => {
+    /** withRecords: S39 "기록까지 삭제". 피드를 내리고 내 사진·방문·평가도 지운다 */
+    remove: (withRecords: boolean, onDone: () => void) => {
       const current = feed.data;
       if (!current || busy.current) return;
       busy.current = true;
-      remove.mutate(current, {
-        onSuccess: () => {
-          changed(null);
-          onDone();
-          toast.show('공동 피드를 삭제했어요');
-        },
-        onError: (e) => {
-          const status = isAxiosError(e) ? e.response?.status : undefined;
-          if (status === 404) {
-            // 다른 동행이 먼저 지웠다
+      remove.mutate(
+        { f: current, withRecords },
+        {
+          onSuccess: () => {
             changed(null);
+            if (withRecords) {
+              // 내 기록은 접수 즉시 숨겨진다. 기록 화면의 사진·방문·평가 요약과 S41·S42를 새로 받는다
+              void queryClient.invalidateQueries({ queryKey: ['trips', tripId] });
+            }
             onDone();
-            toast.show('이미 삭제된 공동 피드예요');
-            return;
-          }
-          if (status === 409) {
-            void queryClient.invalidateQueries({ queryKey: key });
-            toast.show('다른 곳에서 바뀌었어요. 다시 확인해 주세요');
-            return;
-          }
-          toast.show('삭제하지 못했어요. 다시 시도해 주세요');
+            toast.show(withRecords ? '공동 피드와 내 기록을 삭제했어요' : '공동 피드를 삭제했어요');
+          },
+          onError: (e) => {
+            const status = isAxiosError(e) ? e.response?.status : undefined;
+            if (status === 404) {
+              // 다른 동행이 먼저 지웠다. 기록까지 삭제는 지금 게시된 피드에서만 되므로 기록은 그대로다
+              changed(null);
+              onDone();
+              toast.show(
+                withRecords
+                  ? '이미 삭제된 공동 피드라 기록은 지우지 않았어요'
+                  : '이미 삭제된 공동 피드예요',
+              );
+              return;
+            }
+            if (status === 409) {
+              void queryClient.invalidateQueries({ queryKey: key });
+              toast.show('다른 곳에서 바뀌었어요. 다시 확인해 주세요');
+              return;
+            }
+            toast.show('삭제하지 못했어요. 다시 시도해 주세요');
+          },
+          onSettled: () => {
+            busy.current = false;
+          },
         },
-        onSettled: () => {
-          busy.current = false;
-        },
-      });
+      );
     },
   };
 }

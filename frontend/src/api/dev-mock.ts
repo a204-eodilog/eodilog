@@ -1263,6 +1263,23 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
     ownFeeds.delete(feed.tripId);
     return ok(config, undefined, 204);
   }
+  // S39 기록까지 삭제. 피드를 내리고 정리 작업을 접수한다(테스트 모드는 피드만 내림). 피드가 없으면 404
+  const ownRecordsMatch = /^\/feeds\/([^/]+)\/delete-own-records$/.exec(url);
+  if (method === 'post' && ownRecordsMatch) {
+    const feed = [...ownFeeds.values()].find((f) => f.id === ownRecordsMatch[1]);
+    if (!feed) throw fail(config, 404, 'FEED_NOT_FOUND', '공동 피드를 찾을 수 없어요');
+    const { expectedVersion } = parseBody<{ expectedVersion?: number }>(config);
+    if (expectedVersion !== feed.version) {
+      throw fail(config, 409, 'VERSION_CONFLICT', '다른 곳에서 바뀌었어요');
+    }
+    ownFeeds.delete(feed.tripId);
+    const jobId = `job-own-records-${feed.id}`;
+    return ok(
+      config,
+      { data: { jobId, status: 'QUEUED', statusUrl: `/api/v1/jobs/${jobId}` } },
+      202,
+    );
+  }
   // S09 최근 트렌드 여행지: 예시 지역 다섯 곳
   if (method === 'get' && url === '/trends/regions') {
     const p = (config.params ?? {}) as { from?: string; to?: string };

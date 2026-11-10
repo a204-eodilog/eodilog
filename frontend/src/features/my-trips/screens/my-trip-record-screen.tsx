@@ -107,15 +107,8 @@ export function MyTripRecordScreen() {
         tripTitle={trip.title}
         loading={feed.deleting}
         onClose={() => setFeedDeleteOpen(false)}
-        onConfirm={(choice) => {
-          if (choice === 'feed') {
-            feed.remove(() => setFeedDeleteOpen(false));
-            return;
-          }
-          // "기록까지 삭제"가 어떤 API인지 아직 정해지지 않았다(S39 문서 백엔드에 필요한 것 1)
-          setFeedDeleteOpen(false);
-          notReady();
-        }}
+        // record: 기록까지 삭제(POST /feeds/{feedId}/delete-own-records). 여행은 나가지 않아 이 화면에 남는다
+        onConfirm={(choice) => feed.remove(choice === 'record', () => setFeedDeleteOpen(false))}
       />
       <DeleteRecordSheet
         visible={deleteOpen}
