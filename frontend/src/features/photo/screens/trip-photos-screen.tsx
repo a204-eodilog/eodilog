@@ -122,12 +122,17 @@ export function UnplacedPhotosScreen() {
     connect.mutate(
       { photos, placeId },
       {
-        onSuccess: ({ connected, failed }) => {
+        onSuccess: ({ connected, failed, conflict }) => {
           if (failed === 0) {
             toast.success(`사진 ${connected}장을 연결했어요`);
             leave();
           } else {
-            toast.error(`${failed}장을 연결하지 못했어요. 다시 시도해 주세요`);
+            // 목록은 다시 읽는다(useConnectPlace). 다른 곳에서 바뀌었으면 새 값으로 다시 고르게 한다
+            toast.error(
+              conflict
+                ? '다른 곳에서 사진이 바뀌었어요. 다시 확인해 주세요'
+                : `${failed}장을 연결하지 못했어요. 다시 시도해 주세요`,
+            );
             setPicked(null);
           }
         },

@@ -29,6 +29,40 @@ public class FeedExposureRepository {
     static final String LIVE = " from feeds f join trips t on t.id=f.trip_id where f.deleted_at is null and t.deleted_at is null ";
     static final String ROUTE = " and exists (select 1 from trip_members m where m.trip_id=f.trip_id and m.status='ACTIVE'"
             + " and m.user_id=any(:members) and " + NOT_HIDDEN_BY_MEMBER + ") ";
+    /** Usable viewer. Must equal VIEWER_USABLE of user/service/JdbcFollowAccess. */
+    static final String VIEWER_USABLE = " exists (select 1 from users v where v.id=:viewer and v.status='ACTIVE' and v.profile_completed) ";
+    /**
+     * Account-level route check for a member joined as {@code users u}: the viewer may view the member's content.
+     * Must equal JdbcFollowAccess.viewableMembers (member ACTIVE and profile completed; self, PUBLIC, or viewer-to-member
+     * ACCEPTED follow); use together with {@link #VIEWER_USABLE}. Lets a query check routes in SQL instead of passing :members.
+     */
+    static final String MEMBER_VIEWABLE = " (u.status='ACTIVE' and u.profile_completed and (u.id=:viewer or u.account_visibility='PUBLIC'"
+            + " or exists (select 1 from follows fo where fo.follower_user_id=:viewer and fo.followee_user_id=u.id and fo.status='ACCEPTED'))) ";
+    /** The region and its descendants (regions.parent_id). UNION stops on a parent cycle. */
+    private static final String REGION_SCOPE = """
+            with recursive scope(id) as (
+             select r.id from regions r where r.id=:region union select r.id from regions r join scope s on r.parent_id=s.id
+            ) select id from scope
+            """;
+    /**
+     * {@code :scope} is the region id list from {@link #REGION_SCOPE}, resolved first so the planner sees the real ids
+     * (a recursive CTE is estimated at many times the regions table) and reads feed_places through idx_feed_places_region.
+     * Scoped rows are read once; the route check runs once per distinct candidate feed in {@code allowed}, not per
+     * (feed, place) row. feed_places' primary key (feed_id, place_id) makes count(*) per place equal to its number of
+     * distinct allowed feeds. Places whose row is gone are skipped before LIMIT.
+     */
+    private static final String REGION_PLACES = """
+            with scoped as materialized (
+             select fp.feed_id,fp.place_id from feed_places fp where fp.region_id=any(:scope)
+            ), allowed as (
+             select f.id%s and f.id in (select feed_id from scoped)
+              and %s and exists (select 1 from trip_members m join users u on u.id=m.user_id
+               where m.trip_id=f.trip_id and m.status='ACTIVE' and %s and %s)
+            )
+            select sc.place_id from scoped sc join allowed a on a.id=sc.feed_id
+            where exists (select 1 from places p where p.id=sc.place_id)
+            group by sc.place_id order by count(*) desc,sc.place_id limit :limit
+            """.formatted(LIVE,VIEWER_USABLE,MEMBER_VIEWABLE,NOT_HIDDEN_BY_MEMBER);
     private static final String BBOX = " (r.latitude is null or r.longitude is null or (r.longitude between :west and :east and r.latitude between :south and :north)) ";
 
     public record Box(BigDecimal west,BigDecimal south,BigDecimal east,BigDecimal north) { }
@@ -56,6 +90,21 @@ public class FeedExposureRepository {
             params.addValue("at",Timestamp.from(after.createdAt())).addValue("id",after.id());
         }
         return jdbc.query(sql+" order by f.published_at desc,f.id desc limit :limit",params,feeds::map);
+    }
+
+    /**
+     * Ids of the top {@code limit} places of the region and its descendants (none when the region does not exist), by the number of distinct live feeds containing
+     * them (feed_places, region at publication) that the viewer may see through at least one member route; ties by place id.
+     * Routes are checked in SQL with the FollowAccess rules ({@link #MEMBER_VIEWABLE}) and {@link #NOT_HIDDEN_BY_MEMBER}.
+     */
+    public List<UUID> regionPlaces(UUID viewer,UUID regionId,int limit) {
+        return jdbc.queryForList(REGION_PLACES,regionPlacesParams(viewer,regionId,limit),UUID.class);
+    }
+
+    static String regionPlacesSql() { return REGION_PLACES; }
+    MapSqlParameterSource regionPlacesParams(UUID viewer,UUID regionId,int limit) {
+        var scope=jdbc.queryForList(REGION_SCOPE,new MapSqlParameterSource("region",regionId),UUID.class);
+        return new MapSqlParameterSource("viewer",viewer).addValue("scope",scope.toArray(UUID[]::new)).addValue("limit",limit);
     }
 
     /** Exposed feeds by snapshot start date DESC NULLS LAST, trip_id DESC (TimelineCursor semantics). */
