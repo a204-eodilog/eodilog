@@ -10,6 +10,7 @@ import { pickPlace } from '@/features/place/place-picker';
 import { updateTrip } from '@/features/trip/api';
 
 import {
+  applyAutoCourse,
   getAutoCourse,
   getItinerary,
   getJob,
@@ -60,6 +61,7 @@ jest.mock('../api', () => ({
   replaceItinerary: jest.fn(),
   requestAutoCourse: jest.fn(),
   getAutoCourse: jest.fn(),
+  applyAutoCourse: jest.fn(),
   recalculateRoutes: jest.fn(),
   getJob: jest.fn(),
   getTripSavedPlaces: jest.fn(),
@@ -195,6 +197,7 @@ const mockPick = jest.mocked(pickPlace);
 const mockSaved = jest.mocked(getTripSavedPlaces);
 const mockRequestAuto = jest.mocked(requestAutoCourse);
 const mockGetAuto = jest.mocked(getAutoCourse);
+const mockApplyAuto = jest.mocked(applyAutoCourse);
 const mockUpdateTrip = jest.mocked(updateTrip);
 const mockRecalc = jest.mocked(recalculateRoutes);
 const mockJob = jest.mocked(getJob);
@@ -518,7 +521,19 @@ describe('구성 방식과 준비 상태', () => {
                 stayMinutes: 60,
               },
             ],
-            legs: [{ day: 1, fromOrder: 1, toOrder: 2, transportMode: 'CAR' }],
+            legs: [
+              {
+                day: 1,
+                fromOrder: 1,
+                toOrder: 2,
+                transportMode: 'CAR',
+                durationSeconds: 1320,
+                distanceMeters: null,
+                geometry: null,
+                status: 'AVAILABLE',
+                queriedAt: '2026-11-09T03:00:00Z',
+              },
+            ],
           }
         : null,
     diff: null,
@@ -568,18 +583,82 @@ describe('구성 방식과 준비 상태', () => {
     );
   });
 
-  it('자동 추천이 끝나면 추천안 초안을 열고 완료로 저장한다', async () => {
+  it('자동 추천이 끝나면 AI 이동 시간과 함께 추천안을 열고, 고치지 않고 완료하면 적용 API로 바꾼다', async () => {
     mockGetAuto.mockResolvedValue(proposalOf('SUCCEEDED'));
+    mockApplyAuto.mockResolvedValue({ ...sampleCourse(true), version: 2 });
     await renderScreen();
     await fireEvent.press(await screen.findByText('자동 추천'));
     expect(await screen.findByText('추천안')).toBeTruthy();
     expect(screen.getByText('추천 장소 A')).toBeTruthy();
-    // 추천안 구간은 아직 구한 적이 없어 저장된 코스의 기준 시각을 붙이지 않는다
+    // AI가 준 이동 시간을 계산 전이 아니라 그대로 보인다
+    expect(screen.getByText('자동차 22분')).toBeTruthy();
+    // 추천안 구간은 저장된 코스의 기준 시각을 붙이지 않는다
     expect(screen.getByText('구간을 누르면 이동 수단을 바꿔요')).toBeTruthy();
     await fireEvent.press(screen.getByText('완료'));
+    await waitFor(() => expect(mockApplyAuto).toHaveBeenCalledWith('trip-1', 'job-1', 1));
+    expect(mockPut).not.toHaveBeenCalled();
+  });
+
+  it('추천안을 고쳤으면 적용 대신 코스 전체 저장으로 보낸다', async () => {
+    mockGetAuto.mockResolvedValue(proposalOf('SUCCEEDED'));
+    await renderScreen();
+    await fireEvent.press(await screen.findByText('자동 추천'));
+    await screen.findByText('추천안');
+    // 구간 수단을 바꾸면 고친 것이 된다
+    await fireEvent.press(screen.getByText('대중교통'));
+    await fireEvent.press(screen.getByText('완료'));
     await waitFor(() => expect(mockPut).toHaveBeenCalled());
-    expect(lastBody().items.every((i) => !('id' in i))).toBe(true);
-    expect(lastBody().legs).toEqual([{ day: 1, fromOrder: 1, toOrder: 2, transportMode: 'CAR' }]);
+    expect(mockApplyAuto).not.toHaveBeenCalled();
+    expect(lastBody().legs).toEqual([
+      { day: 1, fromOrder: 1, toOrder: 2, transportMode: 'TRANSIT' },
+    ]);
+  });
+
+  it('지금 코스가 있으면 추천안이 코스 전체를 바꾼다고 알린다', async () => {
+    mockGet.mockResolvedValue(sampleCourse(true));
+    mockGetAuto.mockResolvedValue({ ...proposalOf('SUCCEEDED'), baseVersion: 3 });
+    await renderScreen();
+    await fireEvent.press(await screen.findByText('재추천'));
+    expect(
+      await screen.findByText('완료하면 지금 코스 전체가 이 추천안으로 바뀌어요'),
+    ).toBeTruthy();
+  });
+
+  it('적용 중 그 사이 코스가 바뀌었으면 알리고 최신 코스로 채운다', async () => {
+    mockGetAuto.mockResolvedValue(proposalOf('SUCCEEDED'));
+    mockApplyAuto.mockRejectedValue(httpError(409, 'VERSION_CONFLICT'));
+    await renderScreen();
+    await fireEvent.press(await screen.findByText('자동 추천'));
+    await screen.findByText('추천안');
+    mockGet.mockResolvedValue(sampleCourse(true));
+    await fireEvent.press(screen.getByText('완료'));
+    await waitFor(() =>
+      expect(toast.show).toHaveBeenCalledWith(
+        '그 사이 코스가 바뀌어 추천안을 적용하지 못했어요. 최신 코스를 불러왔어요',
+      ),
+    );
+    expect(await screen.findByText('해운대 해변')).toBeTruthy();
+  });
+
+  it.each([
+    ['trip.startDate', '여행 기간이 없어요'],
+    ['places', '모은 장소가 없어요'],
+  ])('서버가 %s 칸으로 자동 추천을 거절하면 까닭을 알린다', async (field, title) => {
+    mockRequestAuto.mockRejectedValue(
+      Object.assign(httpError(422, 'INSUFFICIENT_DATA'), {
+        response: {
+          status: 422,
+          headers: {},
+          data: {
+            error: { code: 'INSUFFICIENT_DATA', message: '', fields: [{ field, message: '' }] },
+          },
+        },
+      }),
+    );
+    await renderScreen();
+    await fireEvent.press(await screen.findByText('자동 추천'));
+    expect(await screen.findByText(title)).toBeTruthy();
+    expect(screen.queryByText('다시 시도')).toBeNull();
   });
 
   it('자동 추천이 실패하면 다시 시도와 직접 만들기를 보인다', async () => {
