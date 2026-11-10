@@ -50,16 +50,41 @@ class PhotoUploadApiTest {
     @Autowired com.eodilog.trip.service.TripDeleteJobHandler tripDeleteHandler;
     @Autowired PhotoDeleteJobHandler photoDeleteHandler;
     @Autowired PhotoDeleteJobAccessPolicy photoDeletePolicy;
+    @Autowired ClassificationAi classificationAi;
     UUID owner, friend, outsider, trip, member;
     byte[] png;
 
     @TestConfiguration static class StorageConfiguration {
         @Bean @Primary FakeStorage photoTestStorage() { return new FakeStorage(); }
+        @Bean @Primary ClassificationAi classificationAi(JsonMapper json) { return new ClassificationAi(json); }
+    }
+    static class ClassificationAi implements com.eodilog.global.ai.AiServerClient {
+        final JsonMapper json;
+        volatile int mode;
+        volatile CountDownLatch entered, released;
+        volatile boolean real;
+        ClassificationAi(JsonMapper json) { this.json=json; }
+        public JsonNode post(String path,UUID trace,JsonNode body) { throw new UnsupportedOperationException(); }
+        public JsonNode postMultipart(String path,UUID trace,JsonNode meta,List<MultipartFile> files) {
+            if(real) return new com.eodilog.global.ai.HttpAiServerClient(
+                    new com.eodilog.global.ai.AiServerProperties(System.getenv("PHOTO_AI_URL"),System.getenv("PHOTO_AI_TOKEN"),Duration.ofSeconds(5),Duration.ofSeconds(50)),json)
+                    .postMultipart(path,trace,meta,files);
+            if(entered!=null) { entered.countDown();try {if(!released.await(15,TimeUnit.SECONDS)) throw new IllegalStateException();}catch(InterruptedException ex){throw new IllegalStateException(ex);} }
+            if(mode==1) throw new com.eodilog.global.ai.AiServerException(true);
+            var result=json.createObjectNode();var photos=result.putArray("photos");UUID group=UUID.randomUUID();
+            for(var id:meta.path("photoIds")) {
+                var p=photos.addObject().put("photoId",mode==2?UUID.randomUUID().toString():id.asString()).put("status","SUCCEEDED").putNull("errorCode");
+                p.putArray("topics").add("FOOD");
+                if(files.size()>1) p.put("groupId",group.toString());else p.putNull("groupId");
+            }
+            return result;
+        }
     }
     static class FakeStorage implements ObjectStorage {
         final Map<String, byte[]> objects = new ConcurrentHashMap<>();
         volatile boolean failDelete;
         final Set<String> failedDeleteKeys = ConcurrentHashMap.newKeySet();
+        final Set<String> failedHeadKeys = ConcurrentHashMap.newKeySet();
         volatile String blockedReadKey;
         volatile CountDownLatch readEntered;
         volatile CountDownLatch readReleased;
@@ -76,6 +101,7 @@ class PhotoUploadApiTest {
             return new PresignedUpload("https://storage.example/"+key,"PUT",Map.of("content-type",type),Instant.now().plus(ttl));
         }
         public Optional<StoredObject> head(String key) {
+            if(failedHeadKeys.contains(key)) throw new com.eodilog.global.common.error.BusinessException(AssetErrorCode.STORAGE_UNAVAILABLE,"private-provider-url");
             return Optional.ofNullable(objects.get(key)).map(bytes -> new StoredObject(bytes.length,"image/png"));
         }
         public java.io.InputStream open(String key) {
@@ -114,6 +140,7 @@ class PhotoUploadApiTest {
     }
 
     @BeforeEach void setup() throws Exception {
+        classificationAi.mode=0;classificationAi.entered=null;classificationAi.released=null;classificationAi.real=false;
         owner = user(); friend = user(); outsider = user();
         trip = UUID.fromString(data(mvc.perform(post("/api/v1/trips").with(authUser(owner))
                 .header("Idempotency-Key", UUID.randomUUID()).contentType(MediaType.APPLICATION_JSON).content("{\"title\":\"사진 여행\"}"))
@@ -123,6 +150,7 @@ class PhotoUploadApiTest {
         var output = new ByteArrayOutputStream(); ImageIO.write(new BufferedImage(3, 2, BufferedImage.TYPE_INT_RGB), "png", output); png = output.toByteArray();
         storage.failDelete = false;
         storage.failedDeleteKeys.clear(); storage.blockedReadKey = null;
+        storage.failedHeadKeys.clear();
         storage.blockedOpenKey=null;storage.blockedDeleteKey=null;
         storage.deletes.clear(); storage.streamsOpened.set(0);storage.streamsClosed.set(0);
     }
@@ -800,6 +828,212 @@ class PhotoUploadApiTest {
             cursor=response.path("page").path("nextCursor").isNull()?null:response.path("page").path("nextCursor").asString();
         }
         assertThat(actual).containsExactlyElementsOf(expected).doesNotHaveDuplicates();assertThat(cursor).isNull();
+    }
+
+    @Test void classificationWorkerAppliesGroupsAndReplaysWithoutAnotherVersion() throws Exception {
+        mvc.perform(get("/v3/api-docs")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.components.schemas.PhotoClassificationResponse.properties.photos.type").value("array"))
+                .andExpect(jsonPath("$.components.schemas.PhotoClassificationResponse.properties.photos.items['$ref']").value("#/components/schemas/PhotoResponse"));
+        var ids=classificationPhotos(3);UUID job=classify(ids);
+        awaitClassification(job,"SUCCEEDED");
+        String body=classificationBody(ids);
+        String first=applyClassification(job,body).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.photos.length()").value(3)).andExpect(jsonPath("$.data.photos[0].version").value(2))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(json.readTree(applyClassification(job,body).andExpect(status().isOk()).andReturn().getResponse().getContentAsString())).isEqualTo(json.readTree(first));
+        UUID group=jdbc.queryForObject("select group_id from photos where id=?",UUID.class,ids.getFirst());
+        mvc.perform(get("/api/v1/trips/{trip}/photos",trip).param("groupId",group.toString()).with(authUser(friend)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.length()").value(3));
+        mvc.perform(get("/api/v1/trips/{trip}/photo-summary",trip).with(authUser(friend)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.groups[0].count").value(3));
+        assertThat(count("select count(*) from photo_topics where source='AI' and photo_id in (select id from photos where trip_id=?)",trip)).isEqualTo(3);
+        applyClassification(job,classificationBody(ids.subList(0,2))).andExpect(status().isConflict());
+        edit(owner,ids.getFirst(),"{\"expectedVersion\":2,\"topics\":[]}").andExpect(status().isOk());
+        applyClassification(job,body).andExpect(status().isConflict());
+    }
+
+    @Test void classificationPartialFilesAndManualClearAreProtectedAtomically() throws Exception {
+        var ids=classificationPhotos(3);
+        String key=jdbc.queryForObject("select a.display_key from assets a join photos p on p.asset_id=a.id where p.id=?",String.class,ids.get(2));
+        storage.objects.remove(key);
+        UUID job=classify(ids);awaitClassification(job,"SUCCEEDED");
+        mvc.perform(get("/api/v1/jobs/{id}",job).with(authUser(owner))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.result.photos[2].status").value("FAILED"));
+        edit(owner,ids.get(1),"{\"expectedVersion\":1,\"topics\":[]}").andExpect(status().isOk());
+        applyClassification(job,classificationBody(ids.subList(0,2))).andExpect(status().isConflict());
+        assertThat(count("select version from photos where id=?",ids.getFirst())).isEqualTo(1);
+        assertThat(count("select count(*) from photo_groups where trip_id=?",trip)).isZero();
+        applyClassification(job,classificationBody(List.of(ids.getFirst()))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.photos[0].groupId").doesNotExist());
+    }
+
+    @Test void classificationValidatesRequestAndIdempotencyBeforeCreatingJobs() throws Exception {
+        var ids=classificationPhotos(1);String body=json.writeValueAsString(Map.of("photoIds",ids));String key=UUID.randomUUID().toString();
+        for(String invalid:List.of("1.5","\"1\"","true","null","9223372036854775808")) {
+            mvc.perform(post("/api/v1/trips/{trip}/photo-classifications/{job}/apply",trip,UUID.randomUUID()).with(authUser(owner)).contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"expectedPhotoVersions\":[{\"photoId\":\""+ids.getFirst()+"\",\"version\":"+invalid+"}]}"))
+                    .andExpect(status().isBadRequest());
+        }
+        var request=post("/api/v1/trips/{trip}/photo-classifications",trip).with(authUser(owner)).header("Idempotency-Key",key).contentType(MediaType.APPLICATION_JSON).content(body);
+        String first=data(mvc.perform(request).andExpect(status().isAccepted())).path("jobId").asString();
+        mvc.perform(request).andExpect(status().isAccepted()).andExpect(jsonPath("$.data.jobId").value(first));
+        mvc.perform(post("/api/v1/trips/{trip}/photo-classifications",trip).with(authUser(outsider)).header("Idempotency-Key","outsider").contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isNotFound());
+        for(var bad:List.of(List.of(),List.of(ids.getFirst(),ids.getFirst()),List.of(UUID.randomUUID()))) {
+            mvc.perform(post("/api/v1/trips/{trip}/photo-classifications",trip).with(authUser(owner)).header("Idempotency-Key",UUID.randomUUID()).contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of("photoIds",bad))))
+                    .andExpect(bad.size()==1?status().isNotFound():status().isBadRequest());
+        }
+        List<UUID> many=new ArrayList<>();for(int i=0;i<51;i++)many.add(UUID.randomUUID());
+        mvc.perform(post("/api/v1/trips/{trip}/photo-classifications",trip).with(authUser(owner)).header("Idempotency-Key","limit").contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of("photoIds",many))))
+                .andExpect(status().isUnprocessableEntity());
+        assertThat(count("select count(*) from jobs where trip_id=? and kind='PHOTO_CLASSIFICATION'",trip)).isEqualTo(1);
+    }
+
+    @Test void classificationRetriesTransientFailuresAndRejectsMalformedModelOutput() throws Exception {
+        classificationAi.mode=1;UUID job=classify(classificationPhotos(1));
+        long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(15);
+        while(count("select count(*) from jobs where id=? and attempt=1 and status='QUEUED'",job)==0 && System.nanoTime()<deadline){worker.pollOnce();Thread.sleep(20);}
+        assertThat(jdbc.queryForObject("select error_code from jobs where id=?",String.class,job)).isEqualTo("TEMPORARY_FAILURE");
+        classificationAi.mode=2;jdbc.update("update jobs set next_attempt_at=now()-interval '1 second' where id=?",job);awaitClassification(job,"FAILED");
+        assertThat(jdbc.queryForObject("select error_code from jobs where id=?",String.class,job)).isEqualTo("EXECUTION_FAILED");
+    }
+
+    @Test void classificationConcurrentApplyAndDeletedResultDoNotResurrectPhotos() throws Exception {
+        var ids=classificationPhotos(2);UUID job=classify(ids);awaitClassification(job,"SUCCEEDED");String body=classificationBody(ids);
+        try(var pool=Executors.newFixedThreadPool(2)) {
+            var start=new CountDownLatch(1);Callable<String> action=()->{start.await();return applyClassification(job,body).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();};
+            var first=pool.submit(action);var second=pool.submit(action);start.countDown();assertThat(json.readTree(first.get(15,TimeUnit.SECONDS))).isEqualTo(json.readTree(second.get(15,TimeUnit.SECONDS)));
+        }
+        assertThat(count("select count(*) from photo_groups where trip_id=?",trip)).isEqualTo(1);
+        remove(owner,ids.getFirst()).andExpect(status().isAccepted());applyClassification(job,body).andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/jobs/{id}",job).with(authUser(friend))).andExpect(status().isOk()).andExpect(jsonPath("$.data.result.photos.length()").value(1));
+        mvc.perform(get("/api/v1/trips/{trip}/photo-summary",trip).with(authUser(friend))).andExpect(status().isOk()).andExpect(jsonPath("$.data.groups[0].count").value(1));
+    }
+
+    @Test void classificationStorageFailureRetriesToSuccess() throws Exception {
+        var ids=classificationPhotos(2);
+        String key=jdbc.queryForObject("select a.display_key from assets a join photos p on p.asset_id=a.id where p.id=?",String.class,ids.getLast());
+        storage.failedHeadKeys.add(key);UUID job=classify(ids);
+        long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(15);
+        while(count("select count(*) from jobs where id=? and attempt=1 and status='QUEUED'",job)==0 && System.nanoTime()<deadline){worker.pollOnce();Thread.sleep(20);}
+        assertThat(jdbc.queryForObject("select error_code from jobs where id=?",String.class,job)).isEqualTo("TEMPORARY_FAILURE");
+        storage.failedHeadKeys.clear();jdbc.update("update jobs set next_attempt_at=now()-interval '1 second' where id=?",job);
+        awaitClassification(job,"SUCCEEDED");
+        mvc.perform(get("/api/v1/jobs/{id}",job).with(authUser(owner))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.result.photos[0].status").value("SUCCEEDED")).andExpect(jsonPath("$.data.result.photos[1].status").value("SUCCEEDED"));
+    }
+
+    @Test void classificationGroupFilterSelectsExactIdsAmongTwoGroupsAndUngroupedPhotos() throws Exception {
+        var ids=classificationPhotos(5);
+        for(var pair:List.of(ids.subList(0,2),ids.subList(2,4))) {
+            UUID job=classify(pair);awaitClassification(job,"SUCCEEDED");applyClassification(job,classificationBody(pair)).andExpect(status().isOk());
+        }
+        for(var pair:List.of(ids.subList(0,2),ids.subList(2,4))) {
+            UUID group=jdbc.queryForObject("select group_id from photos where id=?",UUID.class,pair.getFirst());
+            var page=json.readTree(mvc.perform(get("/api/v1/trips/{trip}/photos",trip).param("groupId",group.toString()).with(authUser(friend)))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.data.length()").value(2)).andReturn().getResponse().getContentAsString());
+            Set<UUID> actual=new HashSet<>();for(var p:page.path("data"))actual.add(UUID.fromString(p.path("id").asString()));
+            assertThat(actual).containsExactlyInAnyOrderElementsOf(pair);
+        }
+        mvc.perform(get("/api/v1/trips/{trip}/photos",trip).param("groupId",UUID.randomUUID().toString()).with(authUser(friend)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.length()").value(0));
+        assertThat(jdbc.queryForObject("select group_id from photos where id=?",UUID.class,ids.getLast())).isNull();
+    }
+
+    @Test void tripDeletionCleansAppliedPhotoGroupsAndCourseUndoStateTogether() throws Exception {
+        var ids=classificationPhotos(2);UUID photoJob=classify(ids);awaitClassification(photoJob,"SUCCEEDED");
+        applyClassification(photoJob,classificationBody(ids)).andExpect(status().isOk());
+        UUID itinerary=jdbc.queryForObject("select id from itineraries where trip_id=?",UUID.class,trip);
+        UUID courseJob=UUID.randomUUID(),placeA=UUID.randomUUID(),placeB=UUID.randomUUID(),itemA=UUID.randomUUID(),itemB=UUID.randomUUID();
+        for(UUID place:List.of(placeA,placeB)) jdbc.update("insert into places(id,name,latitude,longitude,source,created_at,updated_at) values(?,'공존 장소',37,127,'MANUAL',now(),now())",place);
+        jdbc.update("insert into itinerary_items(id,itinerary_id,place_id,day,sequence) values(?,?,?,1,1),(?,?,?,1,2)",itemA,itinerary,placeA,itemB,itinerary,placeB);
+        jdbc.update("insert into route_legs(id,itinerary_id,from_item_id,to_item_id,transport_mode,duration_seconds,status,queried_at) values(?,?,?,?,'TRANSIT',600,'AVAILABLE',now())",UUID.randomUUID(),itinerary,itemA,itemB);
+        jdbc.update("update itineraries set version=2 where id=?",itinerary);
+        jdbc.update("insert into jobs(id,requested_by_user_id,trip_id,kind,status,input_json,result_json,next_attempt_at,created_at,finished_at,base_version,applied_by_member_id,applied_at) values(?,?,?,'ITINERARY_PROPOSAL','SUCCEEDED','{}','{}',now(),now(),now(),1,?,now())",courseJob,owner,trip,member);
+        jdbc.update("insert into itinerary_undo_states(itinerary_id,applied_job_id,applied_version,before_content_json,applied_by_member_id,created_at) values(?,?,2,'{\"items\":[],\"legs\":[]}',?,now())",itinerary,courseJob,member);
+        assertThat(count("select count(*) from photo_groups where trip_id=?",trip)).isEqualTo(1);
+        assertThat(count("select count(*) from itinerary_undo_states where itinerary_id=?",itinerary)).isEqualTo(1);
+        UUID deletion=UUID.fromString(data(mvc.perform(delete("/api/v1/trips/{trip}",trip).param("expectedVersion","1").with(authUser(owner))).andExpect(status().isAccepted())).path("jobId").asString());
+        awaitClassification(deletion,"SUCCEEDED");
+        assertThat(count("select count(*) from photos where trip_id=?",trip)).isZero();
+        assertThat(count("select count(*) from photo_groups where trip_id=?",trip)).isZero();
+        assertThat(count("select count(*) from photo_topics where photo_id in (?,?)",ids.getFirst(),ids.getLast())).isZero();
+        assertThat(count("select count(*) from itinerary_undo_states where itinerary_id=?",itinerary)).isZero();
+        assertThat(count("select count(*) from route_legs where itinerary_id=?",itinerary)).isZero();
+        assertThat(count("select count(*) from itinerary_items where itinerary_id=?",itinerary)).isZero();
+        assertThat(count("select count(*) from itineraries where trip_id=?",trip)).isZero();
+        assertThat(count("select count(*) from trip_members where trip_id=?",trip)).isZero();
+        assertThat(count("select count(*) from jobs where id in (?,?) and applied_by_member_id is not null",photoJob,courseJob)).isZero();
+        assertThat(count("select count(*) from photo_classification_applies where job_id=?",photoJob)).isEqualTo(1);
+    }
+
+    @Test void classificationCancellationSettingsAndMembershipAreRechecked() throws Exception {
+        var ids=classificationPhotos(2);
+        classificationAi.entered=new CountDownLatch(1);classificationAi.released=new CountDownLatch(1);
+        UUID job=classify(ids);worker.pollOnce();
+        try {
+            assertThat(classificationAi.entered.await(10,TimeUnit.SECONDS)).isTrue();
+            jdbc.update("insert into user_settings(user_id,photo_classification_mode) values(?,'OFF')",owner);
+        } finally {classificationAi.released.countDown();}
+        awaitClassification(job,"CANCELLED");
+        mvc.perform(get("/api/v1/jobs/{id}",job).with(authUser(owner))).andExpect(status().isNotFound());
+        mvc.perform(post("/api/v1/trips/{trip}/photo-classifications",trip).with(authUser(owner)).header("Idempotency-Key","off").contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of("photoIds",ids)))).andExpect(status().isConflict());
+        classificationAi.entered=null;classificationAi.released=null;
+        jdbc.update("update user_settings set photo_classification_mode='AUTO' where user_id=?",owner);
+        UUID next=classify(ids);awaitClassification(next,"SUCCEEDED");
+        assertThat(count("select version from photos where id=?",ids.getFirst())).isEqualTo(1);
+        jdbc.update("update trip_members set status='LEFT',left_at=now() where trip_id=? and user_id=?",trip,friend);
+        mvc.perform(get("/api/v1/jobs/{id}",next).with(authUser(friend))).andExpect(status().isNotFound());
+        mvc.perform(post("/api/v1/trips/{trip}/photo-classifications/{job}/apply",trip,next).with(authUser(friend)).contentType(MediaType.APPLICATION_JSON).content(classificationBody(ids))).andExpect(status().isNotFound());
+        jdbc.update("update user_settings set photo_classification_mode='OFF' where user_id=?",owner);
+        applyClassification(next,classificationBody(ids)).andExpect(status().isConflict());
+    }
+
+    @Test void classificationDisplaySizeIsBoundedAndGroupIdCollisionRollsBack() throws Exception {
+        var ids=classificationPhotos(2);UUID job=classify(ids);awaitClassification(job,"SUCCEEDED");
+        var result=json.readTree(jdbc.queryForObject("select result_json::text from jobs where id=?",String.class,job));
+        UUID group=UUID.fromString(result.path("photos").get(0).path("groupId").asString());
+        // Reusing an existing group UUID, even from the same trip, cannot attach another job to it.
+        jdbc.update("insert into photo_groups(id,trip_id,source_job_id) values(?,?,?)",group,trip,job);
+        applyClassification(job,classificationBody(ids)).andExpect(status().isConflict());
+        assertThat(count("select version from photos where id=?",ids.getFirst())).isEqualTo(1);
+        jdbc.update("delete from photo_groups where id=?",group);
+        String key=jdbc.queryForObject("select a.display_key from assets a join photos p on p.asset_id=a.id where p.id=?",String.class,ids.getFirst());
+        storage.objects.put(key,new byte[15*1024*1024+1]);
+        UUID bounded=classify(ids);awaitClassification(bounded,"SUCCEEDED");
+        var boundedResult=json.readTree(jdbc.queryForObject("select result_json::text from jobs where id=?",String.class,bounded));
+        assertThat(boundedResult.path("photos").toString()).contains("INPUT_LIMIT_EXCEEDED");
+        assertThat(storage.streamsOpened.get()).isEqualTo(storage.streamsClosed.get());
+    }
+
+    @Test @EnabledIfEnvironmentVariable(named="PHOTO_AI_URL",matches=".+")
+    void realPhotoAiUploadWorkerApplyAndSummary() throws Exception {
+        classificationAi.real=true;
+        // Two identical real image fixtures guarantee an actual-model similarity group.
+        {
+            var image=ImageIO.read(new java.io.ByteArrayInputStream(png));
+            // Use a checked-in photograph when supplied by the opt-in verification environment.
+            String fixture=System.getenv("PHOTO_AI_FIXTURE");
+            if(fixture!=null) { image=ImageIO.read(java.nio.file.Path.of(fixture).toFile());var output=new ByteArrayOutputStream();ImageIO.write(image,"png",output);png=output.toByteArray(); }
+        }
+        var ids=classificationPhotos(2);UUID job=classify(ids);awaitClassification(job,"SUCCEEDED",90);
+        applyClassification(job,classificationBody(ids)).andExpect(status().isOk()).andExpect(jsonPath("$.data.photos[0].version").value(2));
+        mvc.perform(get("/api/v1/trips/{trip}/photo-summary",trip).with(authUser(owner))).andExpect(status().isOk()).andExpect(jsonPath("$.data.groups[0].count").value(2));
+        UUID group=jdbc.queryForObject("select group_id from photos where id=?",UUID.class,ids.getFirst());
+        mvc.perform(get("/api/v1/trips/{trip}/photos",trip).param("groupId",group.toString()).with(authUser(owner))).andExpect(status().isOk()).andExpect(jsonPath("$.data.length()").value(2));
+    }
+    List<UUID> classificationPhotos(int size) throws Exception {
+        UUID batch=batch(owner,size,UUID.randomUUID().toString());List<UUID> result=new ArrayList<>();
+        for(int i=0;i<size;i++){UUID asset=intent(owner,batch,true);complete(owner,asset).andExpect(status().isOk());result.add(UUID.fromString(data(register(owner,batch,asset).andExpect(status().isCreated())).path("id").asString()));}
+        return result;
+    }
+    UUID classify(List<UUID> ids) throws Exception {return UUID.fromString(data(mvc.perform(post("/api/v1/trips/{trip}/photo-classifications",trip).with(authUser(owner)).header("Idempotency-Key",UUID.randomUUID()).contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of("photoIds",ids)))).andExpect(status().isAccepted())).path("jobId").asString());}
+    String classificationBody(List<UUID> ids) {return json.writeValueAsString(Map.of("expectedPhotoVersions",ids.stream().map(id->Map.of("photoId",id,"version",1)).toList()));}
+    ResultActions applyClassification(UUID job,String body) throws Exception {return mvc.perform(post("/api/v1/trips/{trip}/photo-classifications/{job}/apply",trip,job).with(authUser(owner)).contentType(MediaType.APPLICATION_JSON).content(body));}
+    void awaitClassification(UUID job,String state) throws Exception {awaitClassification(job,state,20);}
+    void awaitClassification(UUID job,String state,int seconds) throws Exception {
+        long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(seconds);
+        while(count("select count(*) from jobs where id=? and status=?",job,state)==0 && System.nanoTime()<deadline){worker.pollOnce();Thread.sleep(25);}
+        assertThat(jdbc.queryForObject("select status from jobs where id=?",String.class,job)).isEqualTo(state);
     }
 
     com.eodilog.job.JobSubmission photoSubmission(UUID job) {

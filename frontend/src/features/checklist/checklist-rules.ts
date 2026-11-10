@@ -1,4 +1,4 @@
-import { withIGa } from '@/lib/korean';
+import { withIga } from '@/lib/korean';
 
 import type { ChecklistItem } from './types';
 
@@ -51,7 +51,7 @@ export function metaLine(
 ): string | null {
   const reason = item.reason?.trim() || null;
   const name = item.checked ? checkerName(item.checkedByMemberId, members) : null;
-  const checker = name ? `${withIGa(name)} 챙겨요` : null;
+  const checker = name ? `${withIga(name)} 챙겨요` : null;
   const parts = [reason, checker].filter((p): p is string => p !== null);
   return parts.length > 0 ? parts.join(' · ') : null;
 }

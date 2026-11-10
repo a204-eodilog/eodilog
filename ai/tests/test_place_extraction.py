@@ -338,6 +338,15 @@ def test_T01_9_llm_image_has_no_exif(client):
 
 
 @respx.mock
+def test_prompt_tells_llm_to_skip_names_only_in_ads(client):
+    """캡처 평가에서 광고 속 숙박업소를 장소로 냈다 (capture-eval.md)."""
+    llm = mock_llm()
+    post(client, [png()])
+    system = json.loads(llm.calls.last.request.content)["messages"][0]["content"]
+    assert "광고" in system
+
+
+@respx.mock
 def test_T01_10_webp_is_unsupported_input(client):
     out = io.BytesIO()
     Image.new("RGB", (5, 5)).save(out, format="WEBP")
@@ -622,3 +631,36 @@ def test_default_wiring_uses_settings_keys_and_closes_http():
     assert response.status_code == 200
     assert llm.called
     assert app.state.http.is_closed
+
+
+@respx.mock
+def test_exact_name_ranked_fifth_by_search_is_still_found(client):
+    """네이버가 정확한 이름을 뒤쪽에 줘도 3곳 자르기에서 빠지면 안 된다."""
+    mock_llm(mention("해동용궁사"))
+    route = mock_places(
+        {
+            "해동용궁사": [
+                document("도깨비방앗간 해동용궁사점", "1"),
+                document("소원뜰 해동용궁사쉼터", "2"),
+                document("송정동핫도그 해동용궁사점", "3"),
+                document("유동커피 해동용궁사점", "4"),
+                document("해동용궁사", "5"),
+            ]
+        }
+    )
+
+    data = post(client, [png()], memo="해동용궁사 다녀왔어요").json()["data"]
+
+    assert route.calls[0].request.url.params["display"] == "5"
+    assert data["resultStatus"] == "SUCCESS"
+    assert spots(data) == ["5"]
+
+
+@respx.mock
+def test_candidates_stay_at_three_after_searching_five(client):
+    mock_llm(mention("카페"))
+    mock_places({"카페": [document(f"카페 {i}호점", str(i)) for i in range(5)]})
+
+    data = post(client, [png()], memo="카페 갔어요").json()["data"]
+
+    assert len(data["candidates"]) == 3

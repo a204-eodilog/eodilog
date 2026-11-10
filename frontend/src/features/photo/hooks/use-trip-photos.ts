@@ -1,17 +1,22 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import { isAxiosError } from 'axios';
 import { useMemo } from 'react';
 
 import { useMe } from '@/hooks/use-me';
 
 import {
+  batchUpdatePhotos,
   getCoursePlaces,
   getPhotoSummary,
   getPlaceName,
   getTrip,
   getTripPhotos,
+  updatePhoto,
   updatePhotoPlace,
+  deletePhoto,
 } from '../api';
 import { groupByPlace, topicChips } from '../photo-list-rules';
+import { inBatches } from '../photo-rules';
 import type { TripPhoto } from '../types';
 
 /** S30 업로드가 끝나면 이 앞부분으로 목록·요약을 다시 읽게 한다 */
@@ -95,7 +100,8 @@ export function useTripPhotos(tripId: string) {
 }
 
 /**
- * 장소 미지정 사진을 장소에 연결. 서버에 여러 장을 한 번에 바꾸는 API가 없어 한 장씩 PATCH한다.
+ * 장소 미지정 사진을 장소에 연결. 한 장이면 PATCH, 여러 장이면 일괄 변경 API로 50장씩 보낸다
+ * (묶음 하나는 전부 되거나 전부 안 된다). conflict: 다른 곳에서 바뀐 사진이 있어 409가 났다.
  * 내 사진만 바꿀 수 있다(남의 사진은 화면에서 고를 수 없게 막는다). 끝나면 목록·요약을 다시 읽는다
  */
 export function useConnectPlace(tripId: string) {
@@ -103,14 +109,60 @@ export function useConnectPlace(tripId: string) {
   return useMutation({
     mutationFn: async ({ photos, placeId }: { photos: TripPhoto[]; placeId: string }) => {
       let failed = 0;
-      for (const photo of photos) {
+      let conflict = false;
+      for (const batch of inBatches(photos)) {
         try {
-          await updatePhotoPlace(tripId, photo, placeId);
+          if (batch.length === 1) await updatePhotoPlace(tripId, batch[0], placeId);
+          else await batchUpdatePhotos(tripId, batch, { placeId });
+        } catch (e) {
+          failed += batch.length;
+          if (isAxiosError(e) && e.response?.status === 409) conflict = true;
+        }
+      }
+      return { connected: photos.length - failed, failed, conflict };
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: photoKeys.all(tripId) }),
+  });
+}
+
+/**
+ * S32 저장. 바꾼 사진마다 PATCH를 차례로 보내고 실패한 사진 id를 돌려준다(그 바꿈은 화면에 남겨 다시 시도).
+ * 끝나면 목록·요약을 다시 읽는다
+ */
+export function useSavePhotoEdits(tripId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (
+      changes: { photo: TripPhoto; change: Parameters<typeof updatePhoto>[2] }[],
+    ) => {
+      const failedIds: string[] = [];
+      for (const { photo, change } of changes) {
+        try {
+          await updatePhoto(tripId, photo, change);
+        } catch {
+          failedIds.push(photo.id);
+        }
+      }
+      return { saved: changes.length - failedIds.length, failedIds };
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: photoKeys.all(tripId) }),
+  });
+}
+
+/** S32 삭제(S50 확인 뒤). 한 장씩 지우고 실패 수를 돌려준다. 끝나면 목록·요약을 다시 읽는다 */
+export function useDeletePhotos(tripId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (photoIds: string[]) => {
+      let failed = 0;
+      for (const id of photoIds) {
+        try {
+          await deletePhoto(tripId, id);
         } catch {
           failed += 1;
         }
       }
-      return { connected: photos.length - failed, failed };
+      return { deleted: photoIds.length - failed, failed };
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: photoKeys.all(tripId) }),
   });

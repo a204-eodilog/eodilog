@@ -172,7 +172,9 @@ class ExtractionApiTest {
 		assertThat(candidates.get(0).get("place").get("source").asString()).isEqualTo("PROVIDER");
 		assertThat(candidates.get(0).get("place").get("provider").asString()).isEqualTo("NAVER");
 		assertThat(candidates.get(0).get("place").get("name").asString()).isEqualTo("바다 앞 카페 남천점");
-		assertThat(candidates.get(0).get("place").get("regionId").isNull()).isTrue();
+		// 네이버 응답에는 지역 코드가 없어 주소("부산 수영구 …")로 지역을 찾는다
+		assertThat(candidates.get(0).get("place").get("regionId").asString()).isEqualTo(jdbcTemplate.queryForObject(
+				"select id::text from regions where name = '부산광역시 수영구'", String.class));
 		assertThat(candidates.get(0).get("confidence").asDouble()).isEqualTo(1.0);
 		assertThat(candidates.get(1).get("place").get("id").asString()).isEqualTo(placeId(PLACE_ID_PREFIX + "2").toString());
 		assertThat(candidates.get(2).get("place").isNull()).isTrue();
@@ -188,6 +190,10 @@ class ExtractionApiTest {
 		assertThat(candidateIds).hasSize(5);
 		assertThat(count("select count(*) from places where provider = 'NAVER' and provider_place_id like ?",
 				PLACE_ID_PREFIX + "%")).isEqualTo(2);
+		// 네이버 분류는 공개 응답에 싣지 않고 장소 행에만 남긴다(날씨 대안의 실내·실외 판단용)
+		assertThat(jdbcTemplate.queryForObject("select category from places where id = ?", String.class, nam))
+				.isEqualTo("카페,디저트>카페");
+		assertThat(candidates.get(0).get("place").has("category")).isFalse();
 		// 일반 작업 조회도 같은 결과를 준다. 추출은 저장·방문을 만들지 않는다
 		mockMvc.perform(get("/api/v1/jobs/{jobId}", jobId).with(authUser(ownerId))).andExpect(status().isOk())
 				.andExpect(jsonPath("$.data.result.resultStatus").value("MULTIPLE_CANDIDATES"))

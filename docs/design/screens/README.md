@@ -18,11 +18,13 @@ B 담당 화면 17개 전부와 A 담당 S13·S45. 다른 화면은 필요할 �
 | S05 홈 친구 여행 지도 (SVG 물든 지도) | [S05-home-map.md](S05-home-map.md) |
 | S07 친구 여행 상세 | [S07-friend-trip-detail.md](S07-friend-trip-detail.md) |
 | S08 장소 저장 시트 | [S08-place-save-sheet.md](S08-place-save-sheet.md) |
+| S09 최근 트렌드 여행지 | [S09-trends.md](S09-trends.md) |
 | S10 개인 즐겨찾기 | [S10-bookmarks.md](S10-bookmarks.md) |
 | S11 링크·캡처 등록 | [S11-link-capture.md](S11-link-capture.md) |
 | S12 추출 결과 확인 | [S12-extract-result.md](S12-extract-result.md) |
 | S13 장소 직접 검색·지정 (수동 장소 규칙 포함) | [S13-place-search.md](S13-place-search.md) |
 | S14 저장 장소 상세 | [S14-saved-place.md](S14-saved-place.md) |
+| S28 주변 편의시설 | [S28-facilities.md](S28-facilities.md) |
 | S30 사진 선택·업로드 | [S30-photo-upload.md](S30-photo-upload.md) |
 | S31 여행 사진 목록 | [S31-trip-photos.md](S31-trip-photos.md) |
 | S32 사진 분류·묶음 수정 | [S32-photo-group-edit.md](S32-photo-group-edit.md) |
@@ -40,7 +42,9 @@ B 담당 화면 17개 전부와 A 담당 S13·S45. 다른 화면은 필요할 �
 | S44 친구 추천·검색 | [S44-find-friends.md](S44-find-friends.md) |
 | S45 프로필·취향·설정 (AI 상세·편집안 포함) | [S45-settings.md](S45-settings.md) |
 | S50 삭제·나가기·탈퇴 확인 | [S50-confirm.md](S50-confirm.md) |
+| N3 여행지 정보 | [N3-destination.md](N3-destination.md) |
 | N4 내 여행 목록 | [N4-my-trips.md](N4-my-trips.md) |
+| N7 장소 정보 시트 | [N7-place-info.md](N7-place-info.md) |
 | N9 다른 사용자 프로필 | [N9-user-profile.md](N9-user-profile.md) |
 
 **여러 화면에 반복되는 것** (공통으로 만들면 좋은 것): 회색 상자 입력칸(S11·S34·S35), 둥글기 8 작은 태그(S12·S14·S33·N4·S41), 사진 고르기 칸(S30·S31·S32), 버튼이 있는 토스트(S08·S33), "나" 얼굴 연파랑(S31·S35·S36), 흰 테두리 카드(S38·S42), 새로고침·카드·계산기·별 아이콘.

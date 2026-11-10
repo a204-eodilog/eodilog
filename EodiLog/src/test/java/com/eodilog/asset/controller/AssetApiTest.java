@@ -135,16 +135,16 @@ class AssetApiTest {
 		UUID tripId = createTrip(ownerId);
 		insertActiveMember(tripId, memberId, 2);
 		String body = "{\"purpose\":\"TRIP_PHOTO\",\"tripId\":\"" + tripId
-				+ "\",\"contentType\":\"image/heic\",\"byteSize\":" + HEIC.length + "}";
+				+ "\",\"contentType\":\"image/jpeg\",\"byteSize\":" + JPEG.length + "}";
 
 		intent(strangerId, body).andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.error.code").value("TRIP_NOT_FOUND"));
 		intent(ownerId, "{\"purpose\":\"TRIP_PHOTO\",\"tripId\":\"" + UUID.randomUUID()
-				+ "\",\"contentType\":\"image/heic\",\"byteSize\":2048}").andExpect(status().isNotFound());
+				+ "\",\"contentType\":\"image/jpeg\",\"byteSize\":2048}").andExpect(status().isNotFound());
 
 		UUID assetId = assetId(intent(ownerId, body).andExpect(status().isCreated()));
 		assertThat(objectKey(assetId)).startsWith("uploads/");
-		storage.put(objectKey(assetId), HEIC, "image/heic");
+		storage.put(objectKey(assetId), JPEG, "image/jpeg");
 		complete(ownerId, assetId).andExpect(status().isOk())
 				.andExpect(jsonPath("$.data.tripId").value(tripId.toString()));
 

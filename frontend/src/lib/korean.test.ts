@@ -1,6 +1,6 @@
 import { expect, it } from '@jest/globals';
 
-import { withIGa, withRo, withWa } from './korean';
+import { withIga, withRo, withWa } from './korean';
 
 it('받침이 있으면 으로, 없거나 ㄹ 받침이면 로', () => {
   expect(withRo('겨울 여행')).toBe('겨울 여행으로');
@@ -21,9 +21,9 @@ it('받침이 있으면 과, 없으면 와', () => {
 });
 
 it('받침이 있으면 이, 없으면 가, 한글이 아니면 이(가)', () => {
-  expect(withIGa('세은')).toBe('세은이');
-  expect(withIGa('영광')).toBe('영광이');
-  expect(withIGa('민수')).toBe('민수가');
-  expect(withIGa('하늘')).toBe('하늘이');
-  expect(withIGa('Amy')).toBe('Amy이(가)');
+  expect(withIga('세은')).toBe('세은이');
+  expect(withIga('영광')).toBe('영광이');
+  expect(withIga('민수')).toBe('민수가');
+  expect(withIga('하늘')).toBe('하늘이');
+  expect(withIga('Amy')).toBe('Amy이(가)');
 });
