@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams, usePreventRemove } from 'expo-router';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -18,6 +18,7 @@ import { useMe } from '@/hooks/use-me';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 import { AutoFailView, AutoLoadingView } from '../components/auto-views';
+import { CoeditConflict } from '../components/coedit-conflict';
 import { CourseDayList } from '../components/course-day-list';
 import { CourseMap, type MapBadge } from '../components/course-map';
 import { DayTabs } from '../components/day-tabs';
@@ -46,12 +47,16 @@ import {
   noTimeDefault,
   type NoTime,
 } from '../course-rules';
+import { rebaseDraft } from '../coedit-rules';
+import { getItinerary } from '../api';
+import { itineraryKey } from '../hooks/course-keys';
 import { useAutoCourse } from '../hooks/use-auto-course';
 import { useItinerary } from '../hooks/use-itinerary';
+import { useReconnected } from '../hooks/use-reconnected';
 import { useRecalculate } from '../hooks/use-recalculate';
 import { useSaveItinerary } from '../hooks/use-save-itinerary';
 import { useTripSavedPlaces } from '../hooks/use-saved-places';
-import type { Place, TransportMode } from '../types';
+import type { Itinerary, Place, TransportMode } from '../types';
 
 import type { Person } from './course-screen';
 
@@ -258,7 +263,11 @@ export function CourseEditScreen() {
   const auto = useAutoCourse(tripId);
   const [autoFromDraft, setAutoFromDraft] = useState(false);
   const recalc = useRecalculate(tripId);
-  const [syncedFrom, setSyncedFrom] = useState<unknown>(null);
+  /** 편집을 시작했거나 마지막으로 맞춘 저장 코스. 함께 편집에서 누가 어느 날을 고쳤는지 가리는 기준 */
+  const [syncedFrom, setSyncedFrom] = useState<Itinerary | null>(null);
+  /** 같은 날을 동행과 함께 고쳐 묻는 중인 최신 코스와 그 코스를 고친 동행(Figma 201-13453) */
+  const [conflict, setConflict] = useState<{ latest: Itinerary; editor: string } | null>(null);
+  const [overwriting, setOverwriting] = useState(false);
   const queryClient = useQueryClient();
   const regionIds = trip.data?.destinationRegionIds ?? [];
   const { regions } = useRegions(regionIds);
@@ -323,6 +332,47 @@ export function CourseEditScreen() {
       me: m.user.id === me.data?.id,
     }));
 
+  /** 코스를 마지막으로 고친 동행을 부르는 말. "세은님", 모르거나 나간 동행이면 "다른 동행" */
+  const editorName = (memberId: string | null | undefined) => {
+    const name = people.find((p) => p.id === memberId && !p.me)?.name;
+    return name ? `${name}님` : '다른 동행';
+  };
+
+  /** 내 변경을 버리고 최신 코스로 채운다 */
+  const takeLatest = (latest: Itinerary) => {
+    setSyncedFrom(latest);
+    setDraft(toDraft(latest, days));
+    setOrigin('saved');
+    setDirty(false);
+    setSelectedLeg(null);
+  };
+
+  /**
+   * 다른 동행이 저장한 최신 코스와 내 초안을 처음 코스 기준으로 비교한다(spec Q-8-2, Q-8-3).
+   * 서로 다른 날이면 내 날을 다시 얹고 알린다. 같은 날이면 확인 상자를 띄운다
+   */
+  const reconcile = (latest: Itinerary) => {
+    if (!draft || !syncedFrom || latest.version === draft.baseVersion) return;
+    const name = editorName(latest.updatedByMemberId);
+    const result = rebaseDraft(toDraft(syncedFrom, days), draft, toDraft(latest, days));
+    if (result.kind === 'overlap') {
+      setConflict({ latest, editor: name });
+    } else if (result.kind === 'none') {
+      takeLatest(latest);
+      toast.show('다른 동행이 먼저 코스를 고쳤어요. 최신 코스를 불러왔어요');
+    } else {
+      setSyncedFrom(latest);
+      setDraft(result.draft);
+      setDirty(true);
+      setSelectedLeg(null);
+      toast.show(
+        result.theirDays.length > 0
+          ? `${name}이 다른 날을 고쳐서 최신 코스에 내 변경을 다시 얹었어요. 확인하고 완료를 눌러 주세요`
+          : `${name}이 먼저 저장해서 최신 코스에 내 변경을 다시 얹었어요. 확인하고 완료를 눌러 주세요`,
+      );
+    }
+  };
+
   const change = (next: CourseDraft) => {
     setDraft(next);
     setDirty(true);
@@ -367,11 +417,50 @@ export function CourseEditScreen() {
     } else if (result.kind === 'unchanged') {
       setExitTo(exitFor(savedHasCourse));
     } else if (result.kind === 'conflict' && result.latest) {
-      setDraft(toDraft(result.latest, days));
-      setOrigin('saved');
-      setDirty(false);
-      setSelectedLeg(null);
+      // 추천안은 옛 코스 기준이라 다시 적용할 수 없다. 합친 뒤에는 코스 전체 저장으로 보낸다
+      setProposalJob(null);
+      reconcile(result.latest);
     }
+  };
+
+  // 연결이 끊긴 동안 동행이 바꾼 코스를 놓치지 않게 다시 연결되면 최신 코스를 받는다(Q-8-1).
+  // 고친 것이 없으면 받은 코스로 조용히 맞춰지고(위 맞추기), 고친 것이 있으면 같은 규칙으로 비교한다
+  // 받는 사이 다시 그려졌으면(그 사이 고쳤거나 저장을 눌렀으면) 그때의 초안과 상태로 비교한다
+  const live = useRef({ reconcile, dirty, origin, busy: false });
+  useEffect(() => {
+    live.current = { reconcile, dirty, origin, busy: saver.saving || conflict !== null };
+  });
+  useReconnected(() => {
+    // 저장 중이면 저장 결과(409)가 같은 비교를 하므로 건너뛴다
+    if (!draft || conflict || saver.saving) return;
+    void queryClient
+      .fetchQuery({
+        queryKey: itineraryKey(tripId),
+        queryFn: () => getItinerary(tripId),
+        staleTime: 0,
+      })
+      .then((latest) => {
+        const now = live.current;
+        if (now.busy) return;
+        if (now.dirty || now.origin !== 'saved') now.reconcile(latest);
+      })
+      .catch(() => undefined);
+  });
+
+  /** 확인 상자 [내 것으로 덮기]: 내가 고친 날만 내 것으로 덮고 바로 저장한다(Q-8-4) */
+  const overwrite = async () => {
+    if (!conflict || !draft || !syncedFrom) return;
+    const { latest } = conflict;
+    const r = rebaseDraft(toDraft(syncedFrom, days), draft, toDraft(latest, days), { force: true });
+    const next = r.kind === 'overlap' ? draft : r.draft;
+    setOverwriting(true);
+    const result = await saver.save(next, latest);
+    setOverwriting(false);
+    setConflict(null);
+    if (result.kind === 'saved') setExitTo(exitFor(result.itinerary.items.length > 0));
+    else if (result.kind === 'unchanged') setExitTo(exitFor(savedHasCourse));
+    // 그 사이 또 다른 동행이 저장했으면 같은 규칙을 한 번 더 적용한다
+    else if (result.kind === 'conflict' && result.latest) reconcile(result.latest);
   };
 
   const replace = async () => {
@@ -639,6 +728,15 @@ export function CourseEditScreen() {
         description="저장하지 않으면 지금 코스는 그대로예요"
         confirmLabel="버리고 나가기"
         cancelLabel="계속 고치기"
+      />
+      <CoeditConflict
+        editor={conflict?.editor ?? null}
+        busy={overwriting}
+        onOverwrite={() => void overwrite()}
+        onLatest={() => {
+          if (conflict) takeLatest(conflict.latest);
+          setConflict(null);
+        }}
       />
     </View>
   );

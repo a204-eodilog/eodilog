@@ -27,6 +27,7 @@ import {
   type CourseDraft,
 } from '../course-rules';
 import { useItinerary } from '../hooks/use-itinerary';
+import { useReconnected } from '../hooks/use-reconnected';
 import { useRecalculate } from '../hooks/use-recalculate';
 
 export type Person = { id: string; name: string; imageUrl: string | null; me: boolean };
@@ -156,6 +157,8 @@ export function CourseScreen() {
   const trip = useTrip(tripId);
   const me = useMe();
   const itinerary = useItinerary(tripId);
+  // 코스 실시간 이벤트가 없어(Q-8-1) 끊긴 동안 동행이 바꾼 코스는 다시 연결될 때 받는다
+  useReconnected(() => void itinerary.refetch());
   const recalc = useRecalculate(tripId);
 
   const members = trip.data?.members ?? [];

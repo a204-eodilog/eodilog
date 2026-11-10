@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { AxiosError } from 'axios';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { toast } from '@/components/ui';
+import { useConnectionStore } from '@/realtime/connection-store';
 
 import { getItinerary, getJob, recalculateRoutes } from '../api';
 import type { Itinerary } from '../types';
@@ -237,5 +238,26 @@ describe('S24 코스', () => {
         params: { tripId: 'trip-1', entry: 'empty' },
       }),
     );
+  });
+});
+
+describe('연결이 끊겼다 돌아옴', () => {
+  it('다시 연결되면 코스를 새로 받아 동행이 바꾼 코스를 보인다', async () => {
+    const dispatch = useConnectionStore.getState().dispatch;
+    await act(() => dispatch({ type: 'signOut' }));
+    await renderScreen();
+    await act(() => {
+      dispatch({ type: 'start' });
+      dispatch({ type: 'connected' });
+    });
+    expect(await screen.findByText('서면 돼지국밥집')).toBeTruthy();
+    await act(() => dispatch({ type: 'dropped', at: Date.now() }));
+    const latest = sampleCourse(true);
+    latest.version = 4;
+    latest.items = latest.items.filter((i) => i.id !== 'i3');
+    latest.legs = latest.legs.filter((l) => l.toItemId !== 'i3');
+    mockGet.mockResolvedValue(latest);
+    await act(() => dispatch({ type: 'connected' }));
+    await waitFor(() => expect(screen.queryByText('서면 돼지국밥집')).toBeNull());
   });
 });

@@ -183,7 +183,9 @@ export function createCourseMock(h: Helpers) {
     };
   }
 
-  const view = (tripId: string, c: MockCourse) => ({ tripId, ...c });
+  // 실서버 응답처럼 매번 새 사본을 준다. 안쪽 항목을 그대로 넘기면 동행 저장 흉내가 앱이 기억한 코스까지 바꾼다
+  const view = (tripId: string, c: MockCourse) =>
+    JSON.parse(JSON.stringify({ tripId, ...c })) as MockCourse & { tripId: string };
 
   function replace(config: InternalAxiosRequestConfig, trip: Trip, body: Record<string, unknown>) {
     const course = courseOf(trip);
@@ -479,14 +481,30 @@ export function createCourseMock(h: Helpers) {
   }
 
   const controls = {
-    /** 다른 동행이 코스를 저장한 것처럼 첫 날 순서를 뒤집고 version을 올린다. 다음 [완료]가 409를 받는다 */
-    editByOther(tripId = 'trip-1') {
+    /**
+     * 다른 동행이 코스를 저장한 것처럼 그 날 순서를 뒤집고 version을 올린다. 다음 [완료]가 409를 받는다.
+     * 그 날 장소가 하나뿐이면 시작 시각을 한 시간 늦춘다. 다른 날 구간은 그대로 둔다(함께 편집 quickstart)
+     */
+    editByOther(tripId = 'trip-1', day = 1) {
       const trip = tripOf(tripId);
       if (!trip) return;
       const course = courseOf(trip);
-      const first = course.items.filter((i) => i.day === 1).reverse();
-      first.forEach((i, k) => (i.order = k + 1));
-      course.legs = first.slice(1).map((to, k) => unavailable(first[k].id, to.id, 'CAR'));
+      const list = course.items
+        .filter((i) => i.day === day)
+        .sort((a, b) => a.order - b.order)
+        .reverse();
+      if (list.length === 0) return;
+      if (list.length === 1) {
+        const [only] = list;
+        const [hh, mm] = (only.startTime ?? '09:00').split(':').map(Number);
+        only.startTime = `${String((hh + 1) % 24).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+      }
+      list.forEach((i, k) => (i.order = k + 1));
+      const inDay = new Set(list.map((i) => i.id));
+      course.legs = [
+        ...course.legs.filter((l) => !inDay.has(l.fromItemId)),
+        ...list.slice(1).map((to, k) => unavailable(list[k].id, to.id, 'CAR')),
+      ];
       course.version += 1;
       course.updatedByMemberId =
         trip.members.find((x) => x.id !== myMember(trip))?.id ?? course.updatedByMemberId;
