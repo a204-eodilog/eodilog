@@ -152,9 +152,7 @@ describe('S25 여행 중', () => {
     mockItinerary.mockRejectedValue(new Error('500'));
     await renderScreen();
     // 코스 받기는 한 번 더 시도한 뒤 실패한다
-    expect(
-      await screen.findByText('여행 중 화면을 불러오지 못했어요', {}, { timeout: 5000 }),
-    ).toBeTruthy();
+    expect(await screen.findByText('불러오지 못했어요', {}, { timeout: 5000 })).toBeTruthy();
     expect(screen.queryByText('저장한 코스가 없어요')).toBeNull();
   });
 
@@ -178,7 +176,8 @@ describe('S25 여행 중', () => {
   it('날씨를 받지 못하면 갱신 실패와 다시 시도', async () => {
     mockWeather.mockRejectedValueOnce(new Error('503'));
     await renderScreen();
-    expect(await screen.findByText('날씨를 새로 불러오지 못했어요')).toBeTruthy();
+    expect(await screen.findByLabelText(/날씨를 새로 불러오지 못했어요/)).toBeTruthy();
+    expect(screen.queryByText('날씨를 새로 불러오지 못했어요')).toBeNull();
     await fireEvent.press(screen.getByText('다시 시도'));
     expect(await screen.findByText('오전 비 70%')).toBeTruthy();
   });

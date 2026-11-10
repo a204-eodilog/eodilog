@@ -3,6 +3,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { errorLook } from '@/api/error-look';
 import { AvatarGroup, ErrorState, Header, Icon, toast } from '@/components/ui';
 import {
   dayCount,
@@ -43,6 +44,8 @@ export type OnTripViewProps = {
   phase: TripPhase;
   now: Date;
   onRetry(): void;
+  /** 불러오기 실패의 원인. 아이콘과 짧은 제목을 고른다 */
+  error?: unknown;
   /** 여행 중 */
   weather: Weather | null;
   weatherFailed: boolean;
@@ -119,7 +122,7 @@ export function OnTripView(props: OnTripViewProps) {
   if (props.status === 'loading') {
     body = <ActivityIndicator color={colors.brand.primary} style={styles.loading} />;
   } else if (props.status === 'error') {
-    body = <ErrorState title="여행 중 화면을 불러오지 못했어요" onRetry={props.onRetry} />;
+    body = <ErrorState {...errorLook(props.error)} description={null} onRetry={props.onRetry} />;
   } else {
     body = (
       <ScrollView
@@ -230,6 +233,7 @@ export function OnTripScreen() {
       tripTitle={trip.data?.title}
       people={people}
       status={status}
+      error={trip.error ?? itinerary.error}
       phase={phase}
       now={now}
       onRetry={() => {
