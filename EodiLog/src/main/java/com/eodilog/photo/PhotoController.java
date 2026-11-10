@@ -76,6 +76,21 @@ public class PhotoController {
         return ResponseEntity.accepted().body(DataResponse.of(service.delete(CurrentUser.requireUserId(user), tripId, photoId)));
     }
 
+    @Operation(summary = "사진 일괄 변경", description = "현재 ACTIVE 멤버인 업로더 본인 사진만(D-16). action 하나(UPDATE 수정·MOVE 여행 이동·UNGROUP 묶음 해제·DELETE 삭제)를 사진 1~50장에 한 트랜잭션으로 적용한다. "
+            + "사진마다 expectedVersion 필수, 중복 ID 금지, 해당 action의 필드만 허용(UPDATE는 placeId/topics 하나 이상, MOVE는 targetTripId 필수). "
+            + "검증 실패 시 아무것도 바꾸지 않는다. UPDATE는 단건 수동 보정과 같은 규칙, DELETE는 단건 삭제와 같이 사진마다 PHOTO_DELETE 정리 작업을 등록한다. "
+            + "MOVE는 양쪽 여행의 ACTIVE 멤버만 가능하며 이동한 사진의 AI 묶음은 해제되고 원래 여행 피드에서 빠진다.")
+    @ApiResponse(responseCode = "200", description = "변경한 사진 또는 삭제 승인한 사진 ID")
+    @ApiResponse(responseCode = "400", description = "VALIDATION_ERROR: action·photos·expectedVersion 누락, 중복 ID, 다른 action 필드, 빈 수정, 잘못된 주제·없는 장소, 같은 여행으로 이동")
+    @ApiResponse(responseCode = "404", description = "PHOTO_NOT_FOUND(없음·타인·삭제·다른 여행 사진) / TRIP_NOT_FOUND(여행 또는 이동 대상 여행 접근 불가)")
+    @ApiResponse(responseCode = "409", description = "VERSION_CONFLICT: 한 장이라도 버전이 다름")
+    @ApiResponse(responseCode = "422", description = "INPUT_LIMIT_EXCEEDED: 51장 이상")
+    @PostMapping("/photos/batch")
+    public DataResponse<PhotoBatchWriteResponse> batchWrite(@Parameter(hidden = true) @AuthenticationPrincipal AuthUser user,
+            @PathVariable UUID tripId, @RequestBody PhotoBatchWriteRequest request) {
+        return DataResponse.of(service.batchWrite(CurrentUser.requireUserId(user), tripId, request));
+    }
+
     @Operation(summary = "사진 전체 요약", description = "ACTIVE 여행 멤버. 목록 필터와 독립적으로 삭제되지 않은 전체 사진을 집계한다. 주제별 수의 합은 전체 수와 다를 수 있다. 그룹은 삭제되지 않은 사진 수를 집계하며 빈 그룹은 제외한다.")
     @ApiResponse(responseCode = "200", description = "여행 사진 요약")
     @GetMapping("/photo-summary")
