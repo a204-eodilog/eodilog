@@ -278,13 +278,21 @@ export function createCourseMock(h: Helpers) {
       startTime: `${String(10 + (i % per) * 3).padStart(2, '0')}:00`,
       stayMinutes: 90,
     }));
+    // 실서버처럼 AI 이동 시간만 있고 거리·지도선은 비운다
     const legs = items
       .filter((i) => i.order > 1)
       .map((i) => ({
+        fromItemId: null,
+        toItemId: null,
         day: i.day,
         fromOrder: i.order - 1,
         toOrder: i.order,
         transportMode: 'TRANSIT',
+        durationSeconds: 1320,
+        distanceMeters: null,
+        geometry: null,
+        status: 'AVAILABLE',
+        queriedAt: new Date().toISOString(),
       }));
     return { items, legs };
   }
@@ -366,6 +374,27 @@ export function createCourseMock(h: Helpers) {
     if (rest === '' && method === 'put') return h.ok(config, { data: replace(config, trip, body) });
 
     if (rest === '/proposals' && method === 'post') {
+      // 실서버처럼 작업을 만들기 전에 기간과 모은 장소를 본다
+      const missing = [
+        ...(trip.startDate && trip.endDate
+          ? []
+          : [{ field: 'trip.startDate', message: '여행 기간을 먼저 정해 주세요.' }]),
+        ...(placesOf(trip).length > 0
+          ? []
+          : [{ field: 'places', message: '코스에 넣을 장소를 먼저 모아 주세요.' }]),
+      ];
+      if (missing.length > 0) {
+        const error = h.fail(
+          config,
+          422,
+          'INSUFFICIENT_DATA',
+          '추천에 필요한 정보가 부족합니다.',
+        ) as Error & {
+          response?: { data: { error: { fields: unknown[] } } };
+        };
+        if (error.response) error.response.data.error.fields = missing;
+        throw error;
+      }
       if (Number(body.expectedVersion) !== course.version)
         throw h.fail(config, 409, 'VERSION_CONFLICT', '코스가 변경되었습니다. 다시 조회해 주세요.');
       const job: MockJob = {
@@ -401,6 +430,31 @@ export function createCourseMock(h: Helpers) {
           canUndo: false,
         },
       });
+    }
+    // 고치지 않은 자동 추천안을 지금 코스로. 실서버처럼 AI 이동 시간을 함께 남긴다
+    const applyInitial = /^\/proposals\/([^/]+)\/apply$/.exec(rest);
+    if (applyInitial && method === 'post') {
+      const job = jobs.get(decodeURIComponent(applyInitial[1]));
+      if (!job || job.tripId !== trip.id)
+        throw h.fail(config, 404, 'JOB_NOT_FOUND', '작업을 찾을 수 없습니다.');
+      if (jobStatus(job) !== 'SUCCEEDED')
+        throw h.fail(config, 409, 'PROPOSAL_NOT_READY', '아직 적용할 수 없는 제안입니다.');
+      if (Number(body.expectedVersion) !== course.version || job.baseVersion !== course.version)
+        throw h.fail(config, 409, 'VERSION_CONFLICT', '코스가 변경되었습니다. 다시 조회해 주세요.');
+      const content = proposed(trip);
+      const items: MockItem[] = content.items.map((i) => ({ ...i, id: nextId('it') }));
+      const at = (day: number, order: number) =>
+        items.find((i) => i.day === day && i.order === order) as MockItem;
+      course.items = items;
+      course.legs = content.legs.map((l) => ({
+        ...unavailable(at(l.day, l.fromOrder).id, at(l.day, l.toOrder).id, 'TRANSIT'),
+        durationSeconds: l.durationSeconds,
+        status: 'AVAILABLE' as const,
+      }));
+      course.version += 1;
+      course.updatedByMemberId = myMember(trip);
+      course.updatedAt = new Date().toISOString();
+      return h.ok(config, { data: view(trip.id, course) });
     }
     if (rest === '/routes/recalculate' && method === 'post') {
       if (Number(body.expectedVersion) !== course.version)
