@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Button, Icon } from '@/components/ui';
+import { Button, Icon, type IconName } from '@/components/ui';
 import { colors, radius, spacing, typography } from '@/theme';
 
 import type { AutoFailure } from '../hooks/use-auto-course';
@@ -43,17 +43,19 @@ const FAIL_TITLE: Record<AutoFailure, string> = {
   noDates: '여행 기간이 없어요',
   noPlaces: '모은 장소가 없어요',
   tooMany: '모은 장소가 너무 많아요',
-  conflict: '코스를 만들지 못했어요',
+  conflict: '코스가 바뀌었어요',
   revoked: '추천을 받을 수 없어요',
   failed: '코스를 만들지 못했어요',
 };
 
-const FAIL_BODY: Partial<Record<AutoFailure, string>> = {
-  noDates: '날짜를 먼저 정해 주세요. 직접 만들 수도 있어요',
-  noPlaces: '그룹 즐겨찾기에 장소를 모은 뒤 추천받거나 직접 만들어 보세요',
-  tooMany: '200곳까지 추천할 수 있어요. 직접 만들어 보세요',
-  conflict: '그 사이 동행이 코스를 바꿨어요. 다시 시도하면 바뀐 코스로 짜요',
-  revoked: '이 여행에서 나가 코스를 추천받을 수 없어요',
+/** 설명 문장 대신 까닭을 보이는 아이콘 */
+const FAIL_ICON: Record<AutoFailure, IconName> = {
+  noDates: 'calendar',
+  noPlaces: 'map-pin',
+  tooMany: 'list',
+  conflict: 'people',
+  revoked: 'lock',
+  failed: 'alert',
 };
 
 /** 다시 해도 같은 실패. 다시 시도를 두지 않는다 */
@@ -82,15 +84,9 @@ export function AutoFailView({
   return (
     <View style={styles.center}>
       <View style={styles.badge}>
-        <Icon name="alert" size={28} color={colors.text.icon} />
+        <Icon name={FAIL_ICON[reason]} size={28} color={colors.text.icon} />
       </View>
       <Text style={[typography.title1, styles.title]}>{FAIL_TITLE[reason]}</Text>
-      <Text style={[typography.body, styles.body]}>
-        {FAIL_BODY[reason] ??
-          (backToDraft
-            ? '다시 시도하거나 고치던 코스로 돌아가요'
-            : '다시 시도하거나 직접 만들어 보세요')}
-      </Text>
       {FINAL.has(reason) ? null : (
         <Button
           label="다시 시도"

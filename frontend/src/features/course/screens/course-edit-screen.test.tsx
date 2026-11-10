@@ -726,9 +726,7 @@ describe('구성 방식과 준비 상태', () => {
     mockGetAuto.mockResolvedValue(proposalOf('SUCCEEDED'));
     await renderScreen();
     await fireEvent.press(await screen.findByText('자동 추천'));
-    expect(
-      await screen.findByText('그 사이 동행이 코스를 바꿨어요. 다시 시도하면 바뀐 코스로 짜요'),
-    ).toBeTruthy();
+    expect(await screen.findByText('코스가 바뀌었어요')).toBeTruthy();
     mockGet.mockResolvedValue(itinerary({ version: 5, items: [], legs: [] }));
     await fireEvent.press(screen.getByText('다시 시도'));
     await waitFor(() =>
