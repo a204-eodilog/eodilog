@@ -5,6 +5,8 @@ import com.eodilog.region.dto.*;
 import com.eodilog.region.RegionErrorCode;
 import com.eodilog.global.common.error.*;
 import com.eodilog.global.common.response.PageResponse;
+import com.eodilog.place.service.PlaceReader;
+import com.eodilog.feed.FeedExposureRepository;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,9 +14,14 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional(readOnly = true)
 public class RegionService {
+    static final int REPRESENTATIVE_PLACE_LIMIT = 5;
     private final NamedParameterJdbcTemplate jdbc;
     private final RegionReader reader;
-    public RegionService(NamedParameterJdbcTemplate jdbc, RegionReader reader) { this.jdbc = jdbc; this.reader = reader; }
+    private final PlaceReader places;
+    private final FeedExposureRepository feeds;
+    public RegionService(NamedParameterJdbcTemplate jdbc, RegionReader reader, PlaceReader places, FeedExposureRepository feeds) {
+        this.jdbc = jdbc; this.reader = reader; this.places = places; this.feeds = feeds;
+    }
     public PageResponse<RegionView> search(String query, String cursor, int limit) {
         if (query == null) throw new BusinessException(CommonErrorCode.VALIDATION_ERROR);
         query = query.strip();
@@ -35,7 +42,11 @@ public class RegionService {
         String next = hasNext ? new RegionCursor(query, page.getLast().code(), page.getLast().id()).encode() : null;
         return PageResponse.of(page, next, hasNext);
     }
-    public RegionDetail detail(UUID id) {
-        return RegionDetail.of(reader.find(id).orElseThrow(() -> new BusinessException(RegionErrorCode.REGION_NOT_FOUND)));
+    public RegionDetail detail(UUID viewer, UUID id) {
+        var region = reader.find(id).orElseThrow(() -> new BusinessException(RegionErrorCode.REGION_NOT_FOUND));
+        var ids = feeds.regionPlaces(viewer, id, REPRESENTATIVE_PLACE_LIMIT);
+        // The ranking already skips places without a row; one deleted between the two reads is dropped (fewer than 5).
+        var found = places.findAll(ids);
+        return RegionDetail.of(region, ids.stream().filter(found::containsKey).map(found::get).toList());
     }
 }

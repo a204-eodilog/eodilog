@@ -32,7 +32,7 @@ export type ViewerRow = {
 /** GET /me/feeds → 내가 게시한 공동 피드와 내 숨김 설정 */
 export async function getOwnFeeds(): Promise<OwnFeedLite[]> {
   const { data } = await apiClient.get<PageResponse<OwnFeedLite>>('/me/feeds', {
-    params: { size: 100 },
+    params: { limit: 100 },
   });
   return data.data;
 }
@@ -40,7 +40,7 @@ export async function getOwnFeeds(): Promise<OwnFeedLite[]> {
 /** GET /me/followers → 나를 팔로우하는 사람(내 피드를 볼 수 있는 사람) */
 export async function getMyFollowers(): Promise<UserCard[]> {
   const { data } = await apiClient.get<PageResponse<Follow>>('/me/followers', {
-    params: { size: 100 },
+    params: { limit: 100 },
   });
   return data.data.map((f) => f.follower);
 }
@@ -67,6 +67,21 @@ export async function saveVisibility(
 /** DELETE /feeds/{feedId}?expectedVersion= 공동 피드 삭제(모든 동행 경로에서 빠짐, 원본 여행은 남음) */
 export async function deleteFeed(feedId: string, expectedVersion: number): Promise<void> {
   await apiClient.delete(`/feeds/${encodeURIComponent(feedId)}`, { params: { expectedVersion } });
+}
+
+/**
+ * POST /feeds/{feedId}/delete-own-records "기록까지 삭제"(202). 피드는 바로 내려가고(동행에게 알림),
+ * 요청한 순간까지의 내 사진·방문·평가는 바로 숨겨진 뒤 작업(jobId)으로 지워진다. 동행 기록·경비·멤버십은 남는다
+ */
+export async function deleteFeedWithOwnRecords(
+  feedId: string,
+  expectedVersion: number,
+): Promise<{ jobId: string }> {
+  const { data } = await apiClient.post<DataResponse<{ jobId: string }>>(
+    `/feeds/${encodeURIComponent(feedId)}/delete-own-records`,
+    { expectedVersion },
+  );
+  return data.data;
 }
 
 /**

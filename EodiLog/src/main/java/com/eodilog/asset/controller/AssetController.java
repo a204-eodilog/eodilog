@@ -51,7 +51,7 @@ public class AssetController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "파일 다운로드", description = "READY PROFILE은 로그인 사용자, CAPTURE는 소유자, 여행 사진은 현재 ACTIVE 멤버만. 배치 업로드는 등록된 사진만 제공하며 기존 배치 없는 파일도 호환한다. 위치·촬영시각 메타데이터가 없는 표시 이미지를 private, no-store로 제공하고 HEIC는 JPEG다. 피드 경유는 후속 기능이다.")
+    @Operation(summary = "파일 다운로드", description = "READY PROFILE은 로그인 사용자, CAPTURE는 소유자, 내부 여행 사진은 현재 ACTIVE 멤버만. feedId 경유는 로그인 사용자에게 현재 게시 피드에 포함된 동일 여행의 살아 있는 사진만 공개한다. 개인 경로 숨김은 직접 파일 접근을 막지 않는다. 위치·촬영시각 메타데이터가 없는 표시 이미지를 private, no-store로 제공하고 HEIC는 JPEG다.")
     @ApiResponse(responseCode = "200", description = "인증된 이미지 바이트")
     @ApiResponse(responseCode = "409", description = "ASSET_NOT_READY")
     @GetMapping(value = "/{assetId}/download", produces = {"image/jpeg", "image/png"})

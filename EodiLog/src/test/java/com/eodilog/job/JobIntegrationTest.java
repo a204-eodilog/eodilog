@@ -45,6 +45,11 @@ class JobIntegrationTest {
 
     @BeforeEach void setUp() {
         jdbc.update("DELETE FROM photo_delete_requests");
+        jdbc.update("DELETE FROM photo_classification_applies");
+        jdbc.update("UPDATE photos SET group_id=null WHERE group_id is not null");
+        jdbc.update("DELETE FROM photo_groups");
+        jdbc.update("DELETE FROM visit_candidate_photos");
+        jdbc.update("DELETE FROM visit_candidates");
         jdbc.update("DELETE FROM jobs");
         tx = new TransactionTemplate(manager);
         clock.now = Instant.parse("2026-11-02T00:00:00Z");

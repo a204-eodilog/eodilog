@@ -54,6 +54,7 @@ public class VisitService {
 	private final TripAccessChecker tripAccessChecker;
 	private final PlaceReader placeReader;
 	private final EntityManager entityManager;
+	private final VisitUncheckListener uncheckListener;
 	private final Clock clock;
 
 	public record CreateResult(VisitResponse visit, boolean created) {
@@ -143,6 +144,7 @@ public class VisitService {
 
 	// 체크 해제. 판정 순서: 여행 행 잠금 후 ACTIVE 404 → 방문 404 → 본인 방문이 아니면 403 → 평가가 있으면 409 REVIEW_EXISTS
 	// 평가는 여행 행 잠금 아래에서만 생기므로 확인과 해제 사이에 새 평가가 끼어들지 않는다
+	// 사진 후보를 확정해 만든(또는 연결한) 방문이면 그 후보는 같은 트랜잭션에서 INVALIDATED가 된다
 	@Transactional
 	public void deleteVisit(UUID userId, UUID tripId, UUID visitId) {
 		TripAccess access = tripAccessChecker.requireActiveMemberForUpdate(tripId, userId);
@@ -156,6 +158,7 @@ public class VisitService {
 		}
 		visit.delete(now());
 		visitRepository.flush();
+		uncheckListener.visitUnchecked(visitId);
 	}
 
 	private Instant now() {

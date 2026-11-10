@@ -30,6 +30,12 @@ const CHOICES: { key: DeleteFeedChoice; title: string; desc: string; danger?: bo
  */
 export function DeleteFeedSheet(props: DeleteFeedSheetProps) {
   const [choice, setChoice] = useState<DeleteFeedChoice>('feed');
+  // 열 때마다 기본 선택(공동 피드만 삭제)으로 돌린다. 이전 열림 상태와 비교해 그리는 중에 바꾼다
+  const [wasVisible, setWasVisible] = useState(props.visible);
+  if (props.visible !== wasVisible) {
+    setWasVisible(props.visible);
+    if (props.visible) setChoice('feed');
+  }
   return (
     <BottomSheet
       visible={props.visible}

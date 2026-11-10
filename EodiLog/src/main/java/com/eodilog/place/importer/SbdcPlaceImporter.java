@@ -63,7 +63,7 @@ public class SbdcPlaceImporter {
                     var row = new PublicPlaceRow("SBDC", field(record, columns, "상가업소번호"), field(record, columns, "상호명"),
                             first(field(record, columns, "도로명주소"), field(record, columns, "지번주소")),
                             new BigDecimal(field(record, columns, "위도")), new BigDecimal(field(record, columns, "경도")),
-                            field(record, columns, "법정동코드"));
+                            field(record, columns, "법정동코드"), category(record, columns));
                     if (row.valid()) batch.add(row);
                 } catch (NumberFormatException ignored) { /* A source row without coordinates cannot become a pin. */ }
                 if (batch.size() == 500) { total += writer.upsert(batch); batch.clear(); }
@@ -76,6 +76,15 @@ public class SbdcPlaceImporter {
     private static String field(List<String> row, Map<String, Integer> columns, String key) {
         Integer index = columns.get(key);
         return index == null || index >= row.size() ? null : row.get(index).strip();
+    }
+    // 업종 대>중>소분류 이름. 열이 없거나 비면 그 단계는 건너뛴다
+    private static String category(List<String> row, Map<String, Integer> columns) {
+        var parts = new ArrayList<String>();
+        for (var key : List.of("상권업종대분류명", "상권업종중분류명", "상권업종소분류명")) {
+            String value = field(row, columns, key);
+            if (value != null && !value.isBlank()) parts.add(value);
+        }
+        return parts.isEmpty() ? null : String.join(">", parts);
     }
     private static String first(String a, String b) { return a != null && !a.isBlank() ? a : b; }
 }

@@ -18,8 +18,8 @@ const MIN_SPAN = 30;
 const DAY_COLORS = [colors.brand.primary, colors.brand.primarySoft, colors.brand.primaryDark];
 
 /**
- * S07 경로. 홈과 같은 시도·시군구 SVG 지도(통계청 경계)를 바탕에 깔고, 장소를 찍어 같은 날끼리 선으로 잇는다.
- * 네이버 지도 키 없이 보인다. 실제 길·지명이 필요해지면 네이버 지도로 바꾼다(S07 문서).
+ * S07 경로(웹 미리보기용). 홈과 같은 시도·시군구 SVG 지도(통계청 경계)를 바탕에 깔고, 장소를 찍어 같은 날끼리 선으로 잇는다.
+ * 앱에서는 route-map.tsx가 네이버 지도로 그린다.
  * 장소가 없으면 그리지 않는다(부르는 쪽이 섹션을 숨긴다)
  */
 export function RouteSketch({ days }: { days: readonly FeedDay[] }) {
