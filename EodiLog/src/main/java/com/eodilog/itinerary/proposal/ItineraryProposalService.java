@@ -86,7 +86,8 @@ public class ItineraryProposalService {
 	// 같은 키 재요청 판정에 쓰는 정규화한 본문. WEATHER 필드는 null이면 빼서 INITIAL 지문이 이전과 같은 해시가 되게 한다
 	record Fingerprint(String reason, long expectedVersion, String defaultTransportMode,
 			@JsonInclude(JsonInclude.Include.NON_NULL) UUID sourceWeatherJobId,
-			@JsonInclude(JsonInclude.Include.NON_NULL) UUID selectedAlternativeId) {
+			@JsonInclude(JsonInclude.Include.NON_NULL) UUID selectedAlternativeId,
+			@JsonInclude(JsonInclude.Include.NON_NULL) List<UUID> excludedPlaceIds) {
 	}
 
 	// WEATHER 제안의 원본: 날씨 대안 작업의 기준 version, 날씨 날짜, 고른 대안
@@ -108,7 +109,7 @@ public class ItineraryProposalService {
 		Trip trip = tripAccessChecker.requireActiveMemberForUpdate(tripId, userId).trip();
 		return idempotencyService.execute(userId, "POST /api/v1/trips/" + tripId + "/itinerary/proposals",
 				idempotencyKey, new Fingerprint(request.reason().name(), expectedVersion, mode.name(),
-						request.sourceWeatherJobId(), request.selectedAlternativeId()), JobRef.class,
+						request.sourceWeatherJobId(), request.selectedAlternativeId(), request.excludedPlaceIds()), JobRef.class,
 				HttpStatus.ACCEPTED, () -> {
 					// 코스를 쓰는 모든 경로가 여행 행을 먼저 잠그므로, 잠금 없이 읽어도 이 트랜잭션 동안 version이 바뀌지 않는다
 					Itinerary itinerary = requireItinerary(tripId);
@@ -128,6 +129,16 @@ public class ItineraryProposalService {
 							throw new BusinessException(ItineraryErrorCode.VERSION_CONFLICT);
 						}
 						input = snapshot(trip, itinerary, mode);
+                        if (request.reason() == ProposalReason.PLACE_REMOVED) {
+                            Set<UUID> currentIds = new LinkedHashSet<>();
+                            input.path("current").path("items").forEach(item -> currentIds.add(UUID.fromString(item.path("place").path("id").asString())));
+							if (!currentIds.containsAll(request.excludedPlaceIds())) throw invalid("excludedPlaceIds", "현재 코스에 없는 장소입니다.");
+                            input.put("reason", "PLACE_REMOVED");
+                            input.set("excludedPlaceIds", jsonMapper.valueToTree(request.excludedPlaceIds()));
+                            ArrayNode available = jsonMapper.createArrayNode();
+                            input.path("places").forEach(place -> { if (!request.excludedPlaceIds().contains(UUID.fromString(place.path("id").asString()))) available.add(place); });
+                            input.set("places", available);
+                        }
 					}
 					return jobService.submit(new JobSubmission(userId, JobKind.ITINERARY_PROPOSAL, tripId, input,
 							expectedVersion, null));
@@ -219,13 +230,15 @@ public class ItineraryProposalService {
 		List<ErrorField> errors = new ArrayList<>();
 		if (request.reason() == null) {
 			errors.add(new ErrorField("reason", "제안 사유를 보내 주세요."));
-		} else if (request.reason() == ProposalReason.PLACE_REMOVED) {
-			errors.add(new ErrorField("reason", "아직 지원하지 않는 사유입니다. INITIAL과 WEATHER만 보낼 수 있습니다."));
-		}
+				}
 		if (request.expectedVersion() == null || request.expectedVersion() < 1) {
 			errors.add(new ErrorField("expectedVersion", "조회한 코스의 version을 보내 주세요."));
 		}
-		if (request.excludedPlaceIds() != null) {
+		if (request.reason() == ProposalReason.PLACE_REMOVED) {
+            List<UUID> ids = request.excludedPlaceIds();
+            if (ids == null || ids.isEmpty() || ids.contains(null) || new LinkedHashSet<>(ids).size() != ids.size())
+                errors.add(new ErrorField("excludedPlaceIds", "중복 없는 현재 코스 장소 ID를 하나 이상 보내 주세요."));
+        } else if (request.excludedPlaceIds() != null) {
 			errors.add(new ErrorField("excludedPlaceIds", "INITIAL·WEATHER에는 보낼 수 없습니다."));
 		}
 		boolean weather = request.reason() == ProposalReason.WEATHER;
@@ -324,6 +337,11 @@ public class ItineraryProposalService {
 			TransportMode mode, ProposalReason reason, JsonNode selectedAlternative) {
 		UUID tripId = trip.getId();
 		Map<UUID, PlaceView> places = placeReader.findAll(placeIds);
+        Map<UUID, String> categories = new java.util.HashMap<>();
+        if (!placeIds.isEmpty()) new org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate(jdbcTemplate).query(
+                "select id, category from places where id in (:ids)",
+                new org.springframework.jdbc.core.namedparam.MapSqlParameterSource("ids", placeIds),
+                (org.springframework.jdbc.core.RowCallbackHandler) rs -> categories.put(rs.getObject(1, UUID.class), rs.getString(2)));
 
 		ObjectNode input = jsonMapper.createObjectNode();
 		input.put("reason", reason.name());
@@ -340,7 +358,7 @@ public class ItineraryProposalService {
 		for (UUID placeId : placeIds) {
 			PlaceView place = places.get(placeId);
 			if (place != null) {
-				placeArray.add(jsonMapper.<JsonNode>valueToTree(place));
+				placeArray.add(aiPlace(place, categories));
 			}
 		}
 		ObjectNode currentNode = input.putObject("current");
@@ -348,7 +366,7 @@ public class ItineraryProposalService {
 		for (SnapshotItem item : current.items()) {
 			ObjectNode node = items.addObject();
 			node.put("id", item.id().toString());
-			node.set("place", jsonMapper.valueToTree(places.get(item.placeId())));
+			node.set("place", aiPlace(places.get(item.placeId()), categories));
 			node.put("day", item.day());
 			node.put("order", item.order());
 			node.put("startTime", item.startTime());
@@ -392,6 +410,11 @@ public class ItineraryProposalService {
 		return input;
 	}
 
+    private ObjectNode aiPlace(PlaceView place, Map<UUID, String> categories) {
+        ObjectNode node = jsonMapper.valueToTree(place);
+        node.put("category", categories.get(place.id()));
+        return node;
+    }
 	private Itinerary requireItinerary(UUID tripId) {
 		// 여행 생성 때 ItineraryInitializer가 함께 만들므로 없으면 자료 오류다
 		return itineraryRepository.findByTripId(tripId)

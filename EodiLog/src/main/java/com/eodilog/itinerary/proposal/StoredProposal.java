@@ -63,7 +63,9 @@ record StoredProposal(long baseVersion, ProposalReason reason, List<Item> items,
 			}
 			Map<UUID, PlaceView> places = new HashMap<>();
 			for (JsonNode place : input.get("places")) {
-				PlaceView view = jsonMapper.treeToValue(place, PlaceView.class);
+				ObjectNode publicPlace = ((ObjectNode) place).deepCopy();
+				publicPlace.remove("category");
+				PlaceView view = jsonMapper.treeToValue(publicPlace, PlaceView.class);
 				places.put(view.id(), view);
 			}
 			List<UUID> currentPlaceIds = new ArrayList<>();
@@ -169,7 +171,7 @@ record StoredProposal(long baseVersion, ProposalReason reason, List<Item> items,
 	// 구간은 같은 날짜의 인접 쌍마다 정확히 하나. 구간의 항목 ID는 AI 값이 아니라 위치로 다시 정한다
 	private static Optional<StoredProposal> structured(long baseVersion, ProposalReason reason, List<Item> items,
 			List<Leg> legs, ProposalDiff storedDiff, String description, List<UUID> currentPlaceIds) {
-		if (items.isEmpty() || items.size() > ItineraryService.MAX_ITEMS) {
+		if ((items.isEmpty() && reason != ProposalReason.PLACE_REMOVED) || items.size() > ItineraryService.MAX_ITEMS) {
 			return Optional.empty();
 		}
 		Set<UUID> ids = new HashSet<>();

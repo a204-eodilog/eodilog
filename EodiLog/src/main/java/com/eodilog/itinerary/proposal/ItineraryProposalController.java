@@ -42,13 +42,13 @@ public class ItineraryProposalController {
 			reason=INITIAL: 코스가 이미 있어도 요청할 수 있고, 적용하면 코스 전체가 제안으로 바뀐다.
 			reason=WEATHER: sourceWeatherJobId(같은 여행의 성공한 날씨 대안 작업)와 selectedAlternativeId(TIME_SHIFT·PLACE_SWAP)가 필수다.
 			고른 대안의 그날만 바뀐다. 요청자의 날씨 대안 설정이 OFF면 409, 대안을 만든 뒤 코스가 바뀌었으면 409 VERSION_CONFLICT다.
-			PLACE_REMOVED는 아직 지원하지 않는다.
+			reason=PLACE_REMOVED: 중복 없는 excludedPlaceIds가 필수이며 현재 코스의 해당 장소를 제외한 제안을 만든다.
 			제안만 만들며 코스는 apply 전까지 그대로다. expectedVersion은 GET /itinerary의 version이다.
 			Idempotency-Key가 필수이며 같은 키·같은 본문이면 처음 접수한 작업을 그대로 반환한다.
 			진행·결과는 GET /trips/{tripId}/itinerary/proposals/{jobId}로 조회한다.""")
 	@ApiResponse(responseCode = "202", description = "작업 접수")
 	@ApiResponse(responseCode = "400", description = """
-			VALIDATION_ERROR: 키 없음, reason·expectedVersion 없음, PLACE_REMOVED, 사유에 맞지 않는 필드,
+			VALIDATION_ERROR: 키 없음, reason·expectedVersion 없음, 잘못된 excludedPlaceIds, 사유에 맞지 않는 필드,
 			WEATHER에 원본 작업·대안 ID 없음, 결과에 없는 selectedAlternativeId""",
 			content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
 	@ApiResponse(responseCode = "404", description = "TRIP_NOT_FOUND: 없거나 볼 수 없는 여행 / JOB_NOT_FOUND: 없거나 다른 여행의 날씨 대안 작업(WEATHER)",
