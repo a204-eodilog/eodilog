@@ -33,6 +33,7 @@ plan: "./plan.md"
 | 15 | 운영 지표: 기능별 지연·토큰·실패율 로그 | 지표 기록 | 완료(요청마다 `request_metrics` 한 줄) |
 | 16 | `POST /visit-detections` (VISIT_DETECTION). S45 판정 기준 합의 후 | T-08-7 ~ T-08-10 | 구현 완료(spec 기준). S45 판정 기준 합의 대기, 반경 300m는 잠정값(AS-17) |
 | 17 | `POST /discovery-recommendations`, `POST /follow-suggestions` | spec §9 사례 | 완료 |
+| 18 | `POST /route-legs` (ROUTE_RECALCULATION, 직접 편집 뒤 구간 시간). 길찾기 호출을 AI 서버 한 곳에 둔다(백엔드 합의 전 초안) | T-04-11 ~ T-04-16 | 구현 완료. 요청·응답 형식 백엔드 합의 대기 |
 
 ## 백엔드와 맞출 것 (spec §11)
 
