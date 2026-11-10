@@ -1,6 +1,6 @@
 import { expect, it } from '@jest/globals';
 
-import { withEulReul, withRo, withWa } from './korean';
+import { withEulReul, withIga, withRo, withWa } from './korean';
 
 it('받침이 있으면 으로, 없거나 ㄹ 받침이면 로', () => {
   expect(withRo('겨울 여행')).toBe('겨울 여행으로');
@@ -25,4 +25,12 @@ it('받침이 있으면 을, 없으면 를, 한글이 아니면 을(를)', () =>
   expect(withEulReul('광안리 바다뷰 카페')).toBe('광안리 바다뷰 카페를');
   expect(withEulReul('서울')).toBe('서울을');
   expect(withEulReul('Cafe 22')).toBe('Cafe 22을(를)');
+});
+
+it('받침이 있으면 이, 없으면 가, 한글이 아니면 이(가)', () => {
+  expect(withIga('세은')).toBe('세은이');
+  expect(withIga('영광')).toBe('영광이');
+  expect(withIga('민수')).toBe('민수가');
+  expect(withIga('하늘')).toBe('하늘이');
+  expect(withIga('Amy')).toBe('Amy이(가)');
 });
