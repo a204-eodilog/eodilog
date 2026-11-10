@@ -8,7 +8,7 @@ from app.clients.kakao_routing import Coordinate, straight_line_meters
 from app.core.schemas import CamelModel
 from app.features.weather_alternatives.service import ItineraryItem
 
-# S45 판정 기준을 백엔드와 합의하면 이 값만 바꾼다
+# 백엔드와 확정한 방문 판정 반경 (2026-11-10)
 VISIT_RADIUS_METERS = 300
 KST = timezone(timedelta(hours=9))
 

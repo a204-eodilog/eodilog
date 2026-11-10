@@ -30,12 +30,25 @@ async def routing():
         yield KakaoRoutingClient(http, api_key=KEY, timeout_seconds=1)
 
 
+METERS = {"CAR": 8000, "WALK": 550, "TRANSIT": 9000}
+
+
 def unavailable(mode: str) -> dict:
-    return {"transportMode": mode, "durationSeconds": None, "status": "UNAVAILABLE"}
+    return {
+        "transportMode": mode,
+        "durationSeconds": None,
+        "distanceMeters": None,
+        "status": "UNAVAILABLE",
+    }
 
 
 def available(mode: str, seconds: int) -> dict:
-    return {"transportMode": mode, "durationSeconds": seconds, "status": "AVAILABLE"}
+    return {
+        "transportMode": mode,
+        "durationSeconds": seconds,
+        "distanceMeters": METERS[mode],
+        "status": "AVAILABLE",
+    }
 
 
 @respx.mock
@@ -157,3 +170,40 @@ async def test_missing_key_is_unavailable_without_calling():
 
     assert leg.model_dump(by_alias=True) == unavailable("CAR")
     assert not route.called
+
+
+@pytest.mark.parametrize("distance", [None, -1, "abc"], ids=["missing", "negative", "not-a-number"])
+@pytest.mark.parametrize(
+    ("mode", "url", "body"),
+    [
+        (
+            TransportMode.CAR,
+            CAR_URL,
+            lambda d: {"routes": [{"result_code": 0, "summary": {"duration": 900, "distance": d}}]},
+        ),
+        (
+            TransportMode.WALK,
+            WALK_URL,
+            lambda d: {
+                "status": "OK",
+                "route": {"properties": {"totalTime": 900, "totalDistance": d}},
+            },
+        ),
+        (
+            TransportMode.TRANSIT,
+            TRANSIT_URL,
+            lambda d: {
+                "status": "OK",
+                "routes": [{"properties": {"totalTime": 900, "totalDistance": d}}],
+            },
+        ),
+    ],
+    ids=["car", "walk", "transit"],
+)
+@respx.mock
+async def test_unusable_distance_keeps_the_time(routing, mode, url, body, distance):
+    respx.get(url).mock(return_value=httpx.Response(200, json=body(distance)))
+
+    leg = await routing.leg(ORIGIN, FAR, mode)
+
+    assert (leg.status, leg.duration_seconds, leg.distance_meters) == ("AVAILABLE", 900, None)

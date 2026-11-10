@@ -1,4 +1,4 @@
-"""구간 이동 시간 재계산 (spec §5.1, T-04-11 ~ T-04-16). 카카오 HTTP 응답만 respx로 고정한다."""
+"""구간 이동 시간 재계산 (spec §5.1, T-04-11 ~ T-04-17). 카카오 HTTP 응답만 respx로 고정한다."""
 
 import httpx
 import pytest
@@ -121,6 +121,20 @@ def test_t04_15_all_legs_share_one_query_time(client, routes):
 
     assert legs[0]["queriedAt"] == legs[1]["queriedAt"]
     assert legs[0]["queriedAt"].endswith("Z") or "+00:00" in legs[0]["queriedAt"]
+
+
+def test_t04_17_distance_comes_from_the_provider_and_is_null_when_absent(client, routes):
+    routes.get(TRANSIT_URL).mock(return_value=httpx.Response(500))
+
+    legs = post(client, [leg(1, 1, "CAR"), leg(1, 2, "WALK"), leg(2, 1, "TRANSIT")]).json()["data"][
+        "legs"
+    ]
+
+    assert [(row["status"], row["distanceMeters"]) for row in legs] == [
+        ("AVAILABLE", 8000),
+        ("AVAILABLE", None),
+        ("UNAVAILABLE", None),
+    ]
 
 
 def test_no_legs_gives_no_legs(client, routes):
