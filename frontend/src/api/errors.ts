@@ -21,6 +21,8 @@ export const API_ERROR = {
   CLIENT_MESSAGE_ID_REUSED: 'CLIENT_MESSAGE_ID_REUSED',
   /** 요청이 너무 많다. 잠시 뒤 다시 보낸다 */
   RATE_LIMITED: 'RATE_LIMITED',
+  /** 코스 구간이 같은 날 인접한 장소 쌍과 맞지 않는다(빠짐·겹침·인접하지 않음) */
+  INVALID_ROUTE_LEGS: 'INVALID_ROUTE_LEGS',
   /** 없거나 이미 지워진 준비물. 다른 여행의 항목도 같은 코드다 */
   CHECKLIST_ITEM_NOT_FOUND: 'CHECKLIST_ITEM_NOT_FOUND',
   /** 내 준비물 추천 설정이 꺼져 있어 제안 요청과 채택을 막았다 */

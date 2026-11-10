@@ -11,7 +11,9 @@ import { addDays, seoulToday } from '@/lib/seoul-date';
 
 import { createChatMock } from './dev-mock-chat';
 import { createChecklistMock } from './dev-mock-checklist';
+import { createCourseMock } from './dev-mock-course';
 import { createGroupMock } from './dev-mock-group';
+import { createNotificationMock } from './dev-mock-notification';
 import { createPollMock } from './dev-mock-poll';
 import { createRecommendMock } from './dev-mock-recommend';
 import { mockMyTimeline, mockTripSummary, mockTripTimeline } from './dev-mock-timeline';
@@ -493,6 +495,8 @@ function bump(trip: Trip) {
 
 /** 채팅 가짜 서버. 여행 목록(trips)에 없는 여행의 방은 404다 */
 const chatMock = createChatMock({ getTrips: () => trips, me: ME, ok, fail });
+/** 코스 가짜 서버. 자동 추천·다시 계산·그룹 즐겨찾기 조회도 답한다 */
+const courseMock = createCourseMock({ getTrips: () => trips, meId: ME.id, ok, fail });
 /** 준비물 가짜 서버. 추천 설정이 OFF면 제안을 막는다 */
 const checklistMock = createChecklistMock({
   getTrips: () => trips,
@@ -512,6 +516,8 @@ const groupMock = createGroupMock({
   fail,
 });
 
+/** 알림 가짜 서버. 홈 종 숫자(notification-summary)도 여기서 센다 */
+const notificationMock = createNotificationMock({ ok, fail });
 /** 투표 가짜 서버. 장소 조회와 그룹 즐겨찾기 목록도 함께 답한다 */
 const pollMock = createPollMock({ getTrips: () => trips, ok, fail });
 
@@ -523,6 +529,10 @@ const pollMock = createPollMock({ getTrips: () => trips, ok, fail });
 export const devMockControls = {
   /** 채팅: globalThis.__devMock.chat.incoming('trip-1', '안녕') 등(contracts/realtime.md "테스트 모드") */
   chat: chatMock.controls,
+  /** 코스: globalThis.__devMock.course.editByOther('trip-1'), failNextProposal() 등(코스 quickstart) */
+  course: courseMock.controls,
+  /** 알림: globalThis.__devMock.notification.push('POLL_OPENED'), failNext() */
+  notification: notificationMock.controls,
   /** 준비물: globalThis.__devMock.checklist.editByOther('trip-1'), failNextSuggestion() 등(준비물 quickstart) */
   checklist: checklistMock.controls,
   /** 투표: globalThis.__devMock.poll.addCandidateByOther(), closeNow('tie') 등(투표 quickstart) */
@@ -889,11 +899,15 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
 
   const chat = chatMock.handle(config, method, url, params);
   if (chat) return chat;
-  const checklist = checklistMock.handle(config, method, url);
-  if (checklist) return checklist;
   // 그룹 즐겨찾기 GET /trips/{id}/saved-places는 그룹 가짜 서버가 먼저 답한다. 다른 가짜 서버의 같은 주소 처리보다 앞선다
   const group = groupMock.handle(config, method, url, params);
   if (group) return group;
+  const course = courseMock.handle(config, method, url);
+  if (course) return course;
+  const notification = notificationMock.handle(config, method, url, params);
+  if (notification) return notification;
+  const checklist = checklistMock.handle(config, method, url);
+  if (checklist) return checklist;
   const poll = pollMock.handle(config, method, url);
   if (poll) return poll;
 
@@ -1753,9 +1767,6 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
         place('rec-4', '안목 바다뷰 카페', '강원 강릉시 견소동'),
       ]),
     );
-  }
-  if (method === 'get' && url === '/me/notification-summary') {
-    return ok(config, { data: { unreadCount: 2, asOf: new Date().toISOString() } });
   }
 
   const regionMatch = /^\/regions\/([^/]+)$/.exec(url);

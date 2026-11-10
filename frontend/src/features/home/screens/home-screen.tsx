@@ -40,7 +40,7 @@ export function HomeScreen() {
         friendCount={null}
         onRetry={home.retry}
         onTrend={() => router.push('/trends')}
-        onBell={soon}
+        onBell={() => router.push('/notifications')}
         onFindFriends={() => router.push('/find-friends')}
         onNewTrip={() => router.push('/trips/new')}
         onRegion={soon}

@@ -34,7 +34,13 @@ const MENU: MenuItem[] = [
     // S22 지역·장소 투표(투표 명세). 폴더(polls/index.tsx)라 평가 메뉴처럼 실제 주소로 보낸다
     open: (tripId) => router.push(`/trips/${tripId}/polls`),
   },
-  { key: 'course', label: '코스', icon: 'map-pin' },
+  {
+    key: 'course',
+    label: '코스',
+    icon: 'map-pin',
+    // S24 코스(course/index.tsx). 코스가 비어 있으면 그 화면이 S23 코스 짜기로 바꿔 연다
+    open: (tripId) => router.push(`/trips/${tripId}/course`),
+  },
   {
     key: 'today',
     label: '여행 중',
