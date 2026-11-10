@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { AxiosError } from 'axios';
@@ -8,14 +8,16 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { toast } from '@/components/ui';
 import { useConnectionStore } from '@/realtime/connection-store';
 
+import { undoApply } from '@/features/proposal/api';
+
 import { getItinerary, getJob, recalculateRoutes } from '../api';
+import { httpError, itinerary, sampleCourse } from '../testing';
 import type { Itinerary } from '../types';
-import { itinerary, sampleCourse } from '../testing';
 
 import { CourseScreen } from './course-screen';
 
-const mockParams = { tripId: 'trip-1' };
-const mockRouter = { replace: jest.fn(), back: jest.fn(), push: jest.fn() };
+const mockParams: { tripId: string; applied?: string } = { tripId: 'trip-1' };
+const mockRouter = { replace: jest.fn(), back: jest.fn(), push: jest.fn(), setParams: jest.fn() };
 
 // 경로 계산이 생긴 뒤의 실패 화면도 확인할 수 있게 시간 없는 구간을 보이는 방식을 바꿔 끼운다
 let mockNoTime: 'pending' | 'failed' = 'pending';
@@ -43,6 +45,7 @@ jest.mock('../api', () => ({
   recalculateRoutes: jest.fn(),
   getJob: jest.fn(),
 }));
+jest.mock('@/features/proposal/api', () => ({ undoApply: jest.fn() }));
 
 jest.mock('@/features/trip/hooks/use-trip', () => ({
   tripKey: (id: string) => ['trips', id],
@@ -204,10 +207,14 @@ describe('S24 코스', () => {
     expect(screen.getByLabelText(/이동 시간을 새로 구하지 못했어요/)).toBeTruthy();
   });
 
-  it('빼기는 아직 준비 중 안내를 띄운다', async () => {
+  it('빼기는 그 장소를 뺀 AI 변경안으로 간다', async () => {
     await renderScreen();
     await fireEvent.press(await screen.findByLabelText('해운대 해변 빼기'));
-    expect(toast.show).toHaveBeenCalledWith('준비 중이에요');
+    expect(mockRouter.push).toHaveBeenCalledWith({
+      pathname: '/trips/[tripId]/proposal',
+      params: { tripId: 'trip-1', removePlaceId: 'p-haeundae' },
+    });
+    expect(toast.show).not.toHaveBeenCalled();
   });
 
   it('받아 둔 코스가 비었어도 다시 받은 코스가 있으면 코스 짜기로 가지 않는다', async () => {
@@ -259,5 +266,68 @@ describe('연결이 끊겼다 돌아옴', () => {
     mockGet.mockResolvedValue(latest);
     await act(() => dispatch({ type: 'connected' }));
     await waitFor(() => expect(screen.queryByText('서면 돼지국밥집')).toBeNull());
+  });
+});
+
+describe('AI 변경안 적용 뒤', () => {
+  const mockUndo = jest.mocked(undoApply);
+
+  beforeEach(() => {
+    mockParams.applied = 'job-p';
+    mockUndo.mockReset();
+  });
+
+  afterEach(() => {
+    mockParams.applied = undefined;
+  });
+
+  /** toast.success에 달린 [되돌리기]를 누른다 */
+  const pressUndo = async () => {
+    const call = jest
+      .mocked(toast.success)
+      .mock.calls.find(([text]) => text === '새 코스를 적용했어요');
+    const options = call?.[1] as { action: { onPress(): void } } | undefined;
+    await act(async () => options?.action.onPress());
+  };
+
+  it('새 코스를 적용했다고 한 번 알리고 동행에게 알렸다는 줄', async () => {
+    await renderScreen();
+    expect(await screen.findByText('바뀐 코스가 지금 코스예요. 동행에게 알렸어요')).toBeTruthy();
+    expect(toast.success).toHaveBeenCalledWith('새 코스를 적용했어요', {
+      action: { label: '되돌리기', onPress: expect.any(Function) },
+    });
+    expect(
+      jest.mocked(toast.success).mock.calls.filter(([t]) => t === '새 코스를 적용했어요'),
+    ).toHaveLength(1);
+  });
+
+  it('되돌리기는 지금 version과 적용한 작업으로 보내고 적용 줄을 숨긴다', async () => {
+    mockUndo.mockResolvedValue({ ...sampleCourse(true), version: 6 });
+    await renderScreen();
+    await screen.findByText('바뀐 코스가 지금 코스예요. 동행에게 알렸어요');
+    await pressUndo();
+    await waitFor(() => expect(mockUndo).toHaveBeenCalledWith('trip-1', 3, 'job-p'));
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('되돌렸어요'));
+    await waitFor(() =>
+      expect(screen.queryByText('바뀐 코스가 지금 코스예요. 동행에게 알렸어요')).toBeNull(),
+    );
+    expect(screen.queryByText(/님이 적용했어요/)).toBeNull();
+  });
+
+  it('알린 뒤 주소값을 지우고 고친 사람 줄은 적용했어요', async () => {
+    await renderScreen();
+    await screen.findByText('바뀐 코스가 지금 코스예요. 동행에게 알렸어요');
+    expect(mockRouter.setParams).toHaveBeenCalledWith({ applied: undefined });
+    expect(screen.getByText(/세은님이 적용했어요$/)).toBeTruthy();
+  });
+
+  it('그 사이 코스가 바뀌었으면 되돌릴 수 없다고 알린다', async () => {
+    mockUndo.mockRejectedValue(httpError(409, 'UNDO_UNAVAILABLE'));
+    await renderScreen();
+    await screen.findByText('바뀐 코스가 지금 코스예요. 동행에게 알렸어요');
+    await pressUndo();
+    await waitFor(() =>
+      expect(toast.show).toHaveBeenCalledWith('그 사이 코스가 바뀌어 되돌릴 수 없어요'),
+    );
   });
 });

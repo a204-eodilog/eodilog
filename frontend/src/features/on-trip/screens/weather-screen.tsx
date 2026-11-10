@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -291,8 +291,13 @@ export function WeatherScreen() {
           from={change.from}
           to={change.to}
           onClose={alts.closeProposal}
-          // S29 변경안 화면은 다음 작업에서 만든다(Q-10-6)
-          onView={() => toast.show('준비 중이에요')}
+          // 만든 변경안을 S29에서 비교하고 적용한다
+          onView={() => {
+            const id = alts.proposal.jobId;
+            alts.closeProposal();
+            if (id)
+              router.push({ pathname: '/trips/[tripId]/proposal', params: { tripId, jobId: id } });
+          }}
         />
       }
     />

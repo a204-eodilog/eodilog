@@ -54,6 +54,37 @@ type MockJob = {
   createdAt: number;
   fail: boolean;
   baseVersion: number;
+  /** 변경안 이유. 없으면 INITIAL */
+  reason?: string;
+  /** 장소 빼기·날씨 변경안의 결과 코스. 없으면 그룹 즐겨찾기로 새로 짠다 */
+  content?: { items: ProposedItem[]; legs: ProposedLeg[] };
+  /** 안내뿐인 날씨 대안이라 적용할 수 없다 */
+  unschedulable?: boolean;
+};
+
+type ProposedItem = {
+  id: string | null;
+  place: MockPlace;
+  day: number;
+  order: number;
+  startTime: string | null;
+  stayMinutes: number | null;
+};
+type ProposedLeg = {
+  day: number;
+  fromOrder: number;
+  toOrder: number;
+  transportMode: Mode;
+  /** 추천안은 AI 이동 시간을 준다. 날씨·장소 빼기 변경안은 없을 수 있다 */
+  durationSeconds?: number | null;
+};
+
+/** 날씨 대안 가짜 서버가 아는 대안. 날씨 변경안을 만들 때 쓴다 */
+export type MockAlternative = {
+  type: 'PLACE_SWAP' | 'TIME_SHIFT' | 'INFO';
+  place: MockPlace | null;
+  itemId: string | null;
+  targetStartTime: string | null;
 };
 
 type Helpers = {
@@ -61,6 +92,8 @@ type Helpers = {
   meId: string;
   ok<T>(config: InternalAxiosRequestConfig, data: T, status?: number): AxiosResponse<T>;
   fail(config: InternalAxiosRequestConfig, status: number, code: string, message: string): Error;
+  /** 날씨 대안을 찾는다. 날씨 가짜 서버가 준다 */
+  alternativeOf?(alternativeId: string): MockAlternative | null;
 };
 
 const JOB_RUN_MS = 2500;
@@ -107,6 +140,78 @@ export function createCourseMock(h: Helpers) {
   let jobs = new Map<string, MockJob>();
   let seq = 0;
   let failProposal = false;
+  /** 직전 적용. 되돌리기는 이것 한 번만 */
+  let lastApplied: {
+    tripId: string;
+    jobId: string;
+    version: number;
+    prev: { items: MockItem[]; legs: MockLeg[] };
+  } | null = null;
+
+  /** 날마다 order를 1부터 다시 매긴다 */
+  function renumber(items: ProposedItem[]): ProposedItem[] {
+    const days = [...new Set(items.map((i) => i.day))].sort((a, b) => a - b);
+    return days.flatMap((day) =>
+      items.filter((i) => i.day === day).map((i, k) => ({ ...i, order: k + 1 })),
+    );
+  }
+
+  /** 인접 쌍마다 구간. 같은 쌍이 지금 코스에 있으면 그 수단 */
+  function legsFor(items: ProposedItem[], course: MockCourse): ProposedLeg[] {
+    return items
+      .filter((i) => i.order > 1)
+      .map((i) => {
+        const prev = items.find((x) => x.day === i.day && x.order === i.order - 1);
+        const old = course.legs.find((l) => l.fromItemId === prev?.id && l.toItemId === i.id);
+        return {
+          day: i.day,
+          fromOrder: i.order - 1,
+          toOrder: i.order,
+          transportMode: old?.transportMode ?? 'TRANSIT',
+        };
+      });
+  }
+
+  /**
+   * 장소 빼기: 그 장소를 빼고 같은 날 뒤 일정은 앞 칸의 시각으로 당긴다(Figma 201-16028).
+   * 날씨: 장소 바꾸기는 그 일정의 장소를, 시간 옮기기는 시각을 바꾼다. 안내뿐이면 적용할 수 없다
+   */
+  function contentFor(course: MockCourse, body: Record<string, unknown>) {
+    const current = [...course.items].sort((a, b) => a.day - b.day || a.order - b.order);
+    const copy = (i: MockItem): ProposedItem => ({ ...i });
+    if (body.reason === 'PLACE_REMOVED') {
+      const excluded = new Set((body.excludedPlaceIds ?? []) as string[]);
+      const days = [...new Set(current.map((i) => i.day))];
+      const items = days.flatMap((day) => {
+        const list = current.filter((i) => i.day === day);
+        const slots = list.map((i) => i.startTime);
+        return list
+          .filter((i) => !excluded.has(i.place.id))
+          .map((i, k) => ({ ...copy(i), order: k + 1, startTime: slots[k] }));
+      });
+      return { content: { items, legs: legsFor(items, course) }, unschedulable: false };
+    }
+    if (body.reason === 'WEATHER') {
+      const alt = h.alternativeOf?.(String(body.selectedAlternativeId ?? '')) ?? null;
+      if (!alt || alt.type === 'INFO') {
+        const items = current.map(copy);
+        return { content: { items, legs: legsFor(items, course) }, unschedulable: true };
+      }
+      const changed = current.map((i): ProposedItem => {
+        if (i.id !== alt.itemId) return copy(i);
+        if (alt.type === 'PLACE_SWAP' && alt.place)
+          return { ...copy(i), id: null, place: alt.place };
+        return { ...copy(i), startTime: alt.targetStartTime };
+      });
+      const items = renumber(
+        [...changed].sort(
+          (a, b) => a.day - b.day || (a.startTime ?? '').localeCompare(b.startTime ?? ''),
+        ),
+      );
+      return { content: { items, legs: legsFor(items, course) }, unschedulable: false };
+    }
+    return null;
+  }
   let failRecalc = false;
   const nextId = (prefix: string) => `${prefix}-${++seq}`;
 
@@ -399,6 +504,7 @@ export function createCourseMock(h: Helpers) {
       }
       if (Number(body.expectedVersion) !== course.version)
         throw h.fail(config, 409, 'VERSION_CONFLICT', '코스가 변경되었습니다. 다시 조회해 주세요.');
+      const made = contentFor(course, body);
       const job: MockJob = {
         id: nextId('job-course'),
         kind: 'ITINERARY_PROPOSAL',
@@ -406,6 +512,8 @@ export function createCourseMock(h: Helpers) {
         createdAt: Date.now(),
         fail: failProposal,
         baseVersion: course.version,
+        reason: typeof body.reason === 'string' ? body.reason : 'INITIAL',
+        ...(made ? { content: made.content, unschedulable: made.unschedulable } : {}),
       };
       failProposal = false;
       jobs.set(job.id, job);
@@ -421,41 +529,81 @@ export function createCourseMock(h: Helpers) {
       if (!job || job.tripId !== trip.id)
         throw h.fail(config, 404, 'JOB_NOT_FOUND', '작업을 찾을 수 없습니다.');
       const status = jobStatus(job);
+      const before = new Set(course.items.map((i) => i.place.id));
+      const after = new Set((job.content?.items ?? []).map((i) => i.place.id));
       return h.ok(config, {
         data: {
           job: jobView(job),
           baseVersion: job.baseVersion,
-          reason: 'INITIAL',
-          proposed: status === 'SUCCEEDED' ? proposed(trip) : null,
-          diff: null,
+          reason: job.reason ?? 'INITIAL',
+          proposed: status === 'SUCCEEDED' ? (job.content ?? proposed(trip)) : null,
+          diff: job.content
+            ? {
+                removedPlaceIds: [...before].filter((id) => !after.has(id)),
+                addedPlaceIds: [...after].filter((id) => !before.has(id)),
+                description:
+                  job.reason === 'WEATHER' ? '날씨에 맞춰 다시 짰어요' : '빼고 다시 짰어요',
+              }
+            : null,
           appliedAt: null,
           canUndo: false,
         },
       });
     }
-    // 고치지 않은 자동 추천안을 지금 코스로. 실서버처럼 AI 이동 시간을 함께 남긴다
-    const applyInitial = /^\/proposals\/([^/]+)\/apply$/.exec(rest);
-    if (applyInitial && method === 'post') {
-      const job = jobs.get(decodeURIComponent(applyInitial[1]));
+    const applyMatch = /^\/proposals\/([^/]+)\/apply$/.exec(rest);
+    if (applyMatch && method === 'post') {
+      const job = jobs.get(decodeURIComponent(applyMatch[1]));
       if (!job || job.tripId !== trip.id)
         throw h.fail(config, 404, 'JOB_NOT_FOUND', '작업을 찾을 수 없습니다.');
       if (jobStatus(job) !== 'SUCCEEDED')
         throw h.fail(config, 409, 'PROPOSAL_NOT_READY', '아직 적용할 수 없는 제안입니다.');
+      if (job.unschedulable)
+        throw h.fail(config, 422, 'UNSCHEDULABLE_ALTERNATIVE', '코스에 넣을 수 없는 대안입니다.');
       if (Number(body.expectedVersion) !== course.version || job.baseVersion !== course.version)
         throw h.fail(config, 409, 'VERSION_CONFLICT', '코스가 변경되었습니다. 다시 조회해 주세요.');
-      const content = proposed(trip);
-      const items: MockItem[] = content.items.map((i) => ({ ...i, id: nextId('it') }));
+      const content = (job.content ?? proposed(trip)) as {
+        items: ProposedItem[];
+        legs: ProposedLeg[];
+      };
+      const prev = JSON.parse(JSON.stringify({ items: course.items, legs: course.legs })) as {
+        items: MockItem[];
+        legs: MockLeg[];
+      };
+      const items: MockItem[] = content.items.map((i) => ({ ...i, id: i.id ?? nextId('it') }));
       const at = (day: number, order: number) =>
         items.find((i) => i.day === day && i.order === order) as MockItem;
       course.items = items;
-      course.legs = content.legs.map((l) => ({
-        ...unavailable(at(l.day, l.fromOrder).id, at(l.day, l.toOrder).id, 'TRANSIT'),
-        durationSeconds: l.durationSeconds,
-        status: 'AVAILABLE' as const,
-      }));
+      // 실서버처럼 AI 이동 시간이 있으면 함께 남긴다
+      course.legs = content.legs.map((l) => {
+        const leg = unavailable(
+          at(l.day, l.fromOrder).id,
+          at(l.day, l.toOrder).id,
+          l.transportMode,
+        );
+        return l.durationSeconds != null
+          ? { ...leg, durationSeconds: l.durationSeconds, status: 'AVAILABLE' as const }
+          : leg;
+      });
       course.version += 1;
       course.updatedByMemberId = myMember(trip);
       course.updatedAt = new Date().toISOString();
+      lastApplied = { tripId: trip.id, jobId: job.id, version: course.version, prev };
+      return h.ok(config, { data: view(trip.id, course) });
+    }
+    if (rest === '/undo' && method === 'post') {
+      const ok =
+        lastApplied !== null &&
+        lastApplied.tripId === trip.id &&
+        lastApplied.jobId === body.appliedJobId &&
+        lastApplied.version === course.version &&
+        Number(body.expectedVersion) === course.version;
+      if (!ok || !lastApplied) throw h.fail(config, 409, 'UNDO_UNAVAILABLE', '되돌릴 수 없습니다.');
+      course.items = lastApplied.prev.items;
+      course.legs = lastApplied.prev.legs;
+      course.version += 1;
+      course.updatedByMemberId = myMember(trip);
+      course.updatedAt = new Date().toISOString();
+      lastApplied = null;
       return h.ok(config, { data: view(trip.id, course) });
     }
     if (rest === '/routes/recalculate' && method === 'post') {

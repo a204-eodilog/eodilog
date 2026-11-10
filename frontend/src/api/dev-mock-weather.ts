@@ -80,6 +80,63 @@ export function createWeatherMock(h: Helpers) {
   let failWeather = false;
   let emptyNext = false;
 
+  /** 그 작업의 대안들. 요청한 장소의 코스 항목을 대상으로 한다 */
+  function alternativesFor(job: MockJob) {
+    return [
+      {
+        alternativeId: `${job.id}-shift`,
+        type: 'TIME_SHIFT',
+        place: null,
+        itemId: job.item.id,
+        targetStartTime: '14:00',
+        activity: `${job.item.name} 일정을 오후로 옮기기`,
+        reason: '비가 그친 뒤에 가요',
+      },
+      {
+        alternativeId: `${job.id}-aquarium`,
+        type: 'PLACE_SWAP',
+        place: place('place-aquarium', '해운대 실내 수족관', '부산 해운대구 해운대해변로'),
+        itemId: job.item.id,
+        targetStartTime: null,
+        activity: '실내 수족관 둘러보기',
+        reason: '도보 8분 · 실내라 비를 피해요',
+      },
+      {
+        alternativeId: `${job.id}-bookcafe`,
+        type: 'PLACE_SWAP',
+        place: place('place-bookcafe', '마린시티 북카페', '부산 해운대구 마린시티'),
+        itemId: job.item.id,
+        targetStartTime: null,
+        activity: '북카페에서 쉬기',
+        reason: '도보 15분 · 실내',
+      },
+      {
+        alternativeId: `${job.id}-info`,
+        type: 'INFO',
+        place: null,
+        itemId: null,
+        targetStartTime: null,
+        activity: '우산을 챙겨요',
+        reason: '오전 내내 비가 와요',
+      },
+    ];
+  }
+
+  /** 대안 ID로 대안을 찾는다. 코스 가짜 서버가 날씨 변경안을 만들 때 쓴다 */
+  function alternativeOf(alternativeId: string) {
+    for (const job of jobs.values()) {
+      const found = alternativesFor(job).find((a) => a.alternativeId === alternativeId);
+      if (found)
+        return {
+          type: found.type as 'PLACE_SWAP' | 'TIME_SHIFT' | 'INFO',
+          place: found.place,
+          itemId: found.itemId,
+          targetStartTime: found.targetStartTime,
+        };
+    }
+    return null;
+  }
+
   function jobView(job: MockJob) {
     const done = Date.now() - job.createdAt >= RUN_MS;
     return {
@@ -89,50 +146,7 @@ export function createWeatherMock(h: Helpers) {
       progress: done ? 100 : 50,
       result: done
         ? {
-            alternatives: job.empty
-              ? []
-              : [
-                  {
-                    alternativeId: `${job.id}-shift`,
-                    type: 'TIME_SHIFT',
-                    place: null,
-                    itemId: job.item.id,
-                    targetStartTime: '14:00',
-                    activity: `${job.item.name} 일정을 오후로 옮기기`,
-                    reason: '비가 그친 뒤에 가요',
-                  },
-                  {
-                    alternativeId: `${job.id}-aquarium`,
-                    type: 'PLACE_SWAP',
-                    place: place(
-                      'place-aquarium',
-                      '해운대 실내 수족관',
-                      '부산 해운대구 해운대해변로',
-                    ),
-                    itemId: job.item.id,
-                    targetStartTime: null,
-                    activity: '실내 수족관 둘러보기',
-                    reason: '도보 8분 · 실내라 비를 피해요',
-                  },
-                  {
-                    alternativeId: `${job.id}-bookcafe`,
-                    type: 'PLACE_SWAP',
-                    place: place('place-bookcafe', '마린시티 북카페', '부산 해운대구 마린시티'),
-                    itemId: job.item.id,
-                    targetStartTime: null,
-                    activity: '북카페에서 쉬기',
-                    reason: '도보 15분 · 실내',
-                  },
-                  {
-                    alternativeId: `${job.id}-info`,
-                    type: 'INFO',
-                    place: null,
-                    itemId: null,
-                    targetStartTime: null,
-                    activity: '우산을 챙겨요',
-                    reason: '오전 내내 비가 와요',
-                  },
-                ],
+            alternatives: job.empty ? [] : alternativesFor(job),
             weather: weatherOf(job.date, job.placeId),
             baseVersion: job.baseVersion,
           }
@@ -216,5 +230,5 @@ export function createWeatherMock(h: Helpers) {
     },
   };
 
-  return { handle, controls };
+  return { handle, controls, alternativeOf };
 }
