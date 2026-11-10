@@ -6,6 +6,7 @@ import { toast } from '@/components/ui';
 import { PhotoViewer } from '../components/photo-viewer';
 import { TripPhotosView } from '../components/trip-photos-view';
 import { UnplacedPhotosView } from '../components/unplaced-photos-view';
+import { useSearchPlace } from '../hooks/use-search-place';
 import { useConnectPlace, useTripPhotos } from '../hooks/use-trip-photos';
 import {
   courseDays,
@@ -46,6 +47,7 @@ export function TripPhotosScreen() {
         onTopic={setTopic}
         onUnplaced={() => router.push(`/trips/${tripId}/photos/unplaced`)}
         onPhoto={setViewing}
+        onEditSection={(placeId) => router.push(`/trips/${tripId}/photos/place/${placeId}`)}
         onPublish={() => router.push(`/trips/${tripId}/record`)}
         onRetry={data.retry}
       />
@@ -80,6 +82,15 @@ export function UnplacedPhotosScreen() {
   const [picked, setPicked] = useState<Set<string> | null>(null);
   const selected = useMemo(() => picked ?? new Set(mine.map((p) => p.id)), [picked, mine]);
   const [placeId, setPlaceId] = useState<string | null>(null);
+  // S13에서 고른 장소. 돌아오면 그 장소를 고른 상태로 둔다(값 문서: 고른 장소를 안고 돌아옴)
+  const [searched, setSearched] = useState<{ id: string; name: string } | null>(null);
+  const searchPlace = useSearchPlace(data.trip, data.course);
+  const search = async () => {
+    const place = await searchPlace();
+    if (!place) return;
+    setSearched(place);
+    setPlaceId(place.id);
+  };
 
   // 한 번만 나간다(연결 성공과 목록이 비는 것이 겹쳐도)
   const left = useRef(false);
@@ -134,12 +145,21 @@ export function UnplacedPhotosScreen() {
       days={courseDays(data.course, data.trip?.startDate ?? null)}
       courseState={data.courseState as 'loading' | 'error' | 'ready'}
       placeId={placeId}
+      searched={searched}
       saving={connect.isPending}
       memberName={data.memberName}
       myMemberId={data.myMemberId}
+      members={[...(data.trip?.members ?? [])]
+        .sort((a, b) => a.joinOrder - b.joinOrder)
+        .map((m) => ({
+          name: m.user.nickname,
+          imageUrl: m.user.profileImageUrl,
+          me: m.id === data.myMemberId,
+        }))}
       onBack={() => router.back()}
       onToggle={toggle}
       onPlace={setPlaceId}
+      onSearch={() => void search()}
       onConnect={run}
     />
   );

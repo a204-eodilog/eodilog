@@ -24,3 +24,44 @@ export type Bookmark = {
   sourceUnavailable: boolean;
   createdAt: string;
 };
+
+/** 비동기 작업 접수 (docs/api-spec.md JobRef) */
+export type JobRef = { jobId: string; status: 'QUEUED'; statusUrl: string };
+
+/** 비동기 작업 (docs/api-spec.md Job). progress는 0~100 */
+export type Job = {
+  id: string;
+  kind: string;
+  status: 'QUEUED' | 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED';
+  progress: number;
+  result: unknown;
+  error: { code: string; message: string } | null;
+  createdAt: string;
+  finishedAt: string | null;
+};
+
+/** 추출 후보. 아직 저장·방문이 아니다. 지도에서 장소를 찾지 못하면 place가 null */
+export type ExtractionCandidate = {
+  candidateId: string;
+  name: string;
+  place: Place | null;
+  /** 찾은 근거. "게시물 글에서 찾았어요" */
+  evidence: string;
+  confidence: number | null;
+};
+
+/** 링크·캡처 장소 추출 결과 (docs/api-spec.md ExtractionResult). 작업이 끝나기 전에는 resultStatus가 null */
+export type ExtractionResult = {
+  job: Job;
+  resultStatus: 'SUCCESS' | 'MULTIPLE_CANDIDATES' | 'NOT_FOUND' | 'FAILED' | null;
+  candidates: ExtractionCandidate[];
+};
+
+/** 업로드 준비 (docs/api-spec.md UploadIntent). uploadUrl에는 API 인증 헤더를 보내지 않는다 */
+export type UploadIntent = {
+  assetId: string;
+  uploadUrl: string;
+  method: 'PUT';
+  headers: Record<string, string>;
+  expiresAt: string;
+};

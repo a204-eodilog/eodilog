@@ -65,19 +65,37 @@ public class HttpAiServerClient implements AiServerClient {
 
 	@Override
 	public JsonNode postMultipart(String path, UUID traceId, Map<String, String> fields, List<FilePart> files) {
-		MultipartBodyBuilder builder = new MultipartBodyBuilder();
-		fields.forEach((name, value) -> {
-			if (value != null) {
-				// 문자열 파트도 변환기 기본 문자셋에 맡기지 않고 UTF-8 바이트로 넣는다(한글 메모)
-				builder.part(name, value.getBytes(StandardCharsets.UTF_8), TEXT_UTF8);
-			}
-		});
+		MultipartBodyBuilder builder = multipartFields(fields);
 		for (FilePart file : files) {
 			builder.part(file.field(), file.bytes(), MediaType.parseMediaType(file.contentType()))
 					.filename(file.filename());
 		}
 		MultiValueMap<String, HttpEntity<?>> body = builder.build();
 		return call(path, traceId, request -> request.contentType(MediaType.MULTIPART_FORM_DATA).body(body));
+	}
+
+	@Override
+	public JsonNode postMultipart(String path, UUID traceId, JsonNode meta, List<MultipartFile> files) {
+		return postMultipart(path, traceId, Map.of("meta", jsonMapper.writeValueAsString(meta)), "files", files);
+	}
+
+	@Override
+	public JsonNode postMultipart(String path, UUID traceId, Map<String, String> fields,
+			String fileFieldName, List<MultipartFile> files) {
+		MultipartBodyBuilder builder = multipartFields(fields);
+		for (MultipartFile file : files) {
+			builder.part(fileFieldName, new org.springframework.core.io.FileSystemResource(file.path()),
+					MediaType.parseMediaType(file.contentType()));
+		}
+		return call(path, traceId, request -> request.contentType(MediaType.MULTIPART_FORM_DATA).body(builder.build()));
+	}
+
+	private static MultipartBodyBuilder multipartFields(Map<String, String> fields) {
+		MultipartBodyBuilder builder = new MultipartBodyBuilder();
+		fields.forEach((name, value) -> {
+			if (value != null) builder.part(name, value.getBytes(StandardCharsets.UTF_8), TEXT_UTF8);
+		});
+		return builder;
 	}
 
 	private JsonNode call(String path, UUID traceId, UnaryOperator<RestClient.RequestBodySpec> withBody) {
@@ -96,20 +114,15 @@ public class HttpAiServerClient implements AiServerClient {
 					.retrieve()
 					.body(String.class);
 		} catch (RestClientResponseException ex) {
-			// 응답 본문에는 오류 코드와 필드 이름만 있다(AI spec §1). 원인을 찾을 수 있게 남긴다
-			log.warn("ai_call_failed path={} traceId={} status={} body={}", path, traceId, ex.getStatusCode().value(),
-					abbreviate(ex.getResponseBodyAsString()));
+			// 외부 응답/예외 메시지에는 자료·URL이 포함될 수 있어 상태와 분류만 기록한다.
+			log.warn("ai_call_failed path={} traceId={} status={}", path, traceId, ex.getStatusCode().value());
 			throw new AiServerException(ex.getStatusCode().is5xxServerError());
 		} catch (ResourceAccessException ex) {
 			// 연결 실패·읽기 타임아웃
-			log.warn("ai_call_unreachable path={} traceId={} reason={}", path, traceId, ex.getMessage());
+			log.warn("ai_call_unreachable path={} traceId={} exceptionClass={}", path, traceId, ex.getClass().getSimpleName());
 			throw new AiServerException(true);
 		}
 		return data(response);
-	}
-
-	private static String abbreviate(String text) {
-		return text.length() <= 500 ? text : text.substring(0, 500) + "...";
 	}
 
 	private JsonNode data(String response) {
