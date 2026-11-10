@@ -67,6 +67,9 @@ public class OwnRecordsDeleteJobHandler implements JobHandler {
         // Serialize with trip deletion and other trip mutations: same trip-first lock order.
         jdbc.query("select id from trips where id=? for update", (rs, row) -> rs.getObject(1), s.tripId());
         // Reviews before visits (FK). Frozen visits were tombstoned at admission, so no review can be added to them later.
+        // Visit candidates point at the purged photos/visits: drop links to those photos and candidates of those visits first.
+        update("delete from visit_candidate_photos where photo_id=any(?) or candidate_id in (select id from visit_candidates where visit_id=any(?))", photos, visits);
+        update("delete from visit_candidates where visit_id=any(?)", visits);
         update("delete from reviews where id=any(?) or visit_id=any(?)", reviews, visits);
         update("delete from visits where id=any(?) and trip_id=? and deleted_at is not null", visits, s.tripId());
         update("delete from photo_topics where photo_id=any(?)", photos);

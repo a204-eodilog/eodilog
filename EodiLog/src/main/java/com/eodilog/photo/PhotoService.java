@@ -44,6 +44,7 @@ public class PhotoService {
     private final Clock clock;
     private final JobService jobs;
     private final JsonMapper json;
+    private final PhotoEvidenceInvalidator evidence;
     private static final java.util.Set<String> TOPICS = java.util.Set.of("LANDSCAPE", "FOOD", "PEOPLE", "OTHER");
     public static final String PHOTO_SELECT = "select photos.*, array(select topic from photo_topics where photo_id=photos.id order by topic) as topics from photos";
 
@@ -135,6 +136,7 @@ public class PhotoService {
 
     // Manual correction: omitted fields stay, and the manual flags keep later AI results from overwriting them.
     private void applyEdit(PhotoResponse photo, boolean sentPlace, UUID place, boolean sentTopics, List<String> topics) {
+        if (sentPlace && !Objects.equals(place, photo.placeId())) evidence.photosChanged(List.of(photo.id()));
         jdbc.update("update photos set place_id=?,place_manually_edited=place_manually_edited or ?,topics_manually_edited=topics_manually_edited or ?,version=version+1 where id=?",
                 sentPlace ? place : photo.placeId(), sentPlace, sentTopics, photo.id());
         if (sentTopics) {
@@ -161,6 +163,7 @@ public class PhotoService {
         var now = clock.instant();
         jdbc.update("update photos set deleted_at=?,version=version+1 where id=?", Timestamp.from(now), id);
         jdbc.update("update assets set status='DELETING',deleted_at=? where id=?", Timestamp.from(now), asset.id());
+        evidence.photosChanged(List.of(id));
         var input = json.createObjectNode().put("photoId", id.toString()).put("assetId", asset.id().toString())
                 .put("objectKey", asset.objectKey()).put("displayKey", asset.displayKey());
         var ref = jobs.submit(new JobSubmission(user, JobKind.PHOTO_DELETE, trip, input, null,
@@ -242,6 +245,8 @@ public class PhotoService {
      * feed drops the photo, and download/feed access follow photos.trip_id and assets.trip_id, which both move.
      */
     private void move(UUID source, UUID target, UUID targetMember, List<PhotoResponse> rows) {
+        // Visit candidates are per trip and member: moved evidence invalidates pending ones (visits themselves stay).
+        evidence.photosChanged(rows.stream().map(PhotoResponse::id).toList());
         for (var photo : rows) {
             assets.find(photo.assetId(), true);
             jdbc.update("update photos set trip_id=?,uploader_member_id=?,group_id=null,version=version+1 where id=?",
