@@ -24,7 +24,7 @@ import {
 export type ProposalViewProps = {
   tripTitle?: string;
   people: { name: string; imageUrl?: string | null; me?: boolean }[];
-  state: 'loading' | 'compare' | 'failed' | 'unsupported';
+  state: 'loading' | 'compare' | 'failed' | 'unsupported' | 'courseFailed';
   /** 비교 화면 */
   compare?: ReactNode;
   onRetry(): void;
@@ -45,6 +45,15 @@ export function ProposalView(props: ProposalViewProps) {
     );
   } else if (props.state === 'failed') {
     body = <ProposalFail onRetry={props.onRetry} onCourse={props.onCourse} />;
+  } else if (props.state === 'courseFailed') {
+    body = (
+      <ProposalFail
+        onRetry={props.onRetry}
+        onCourse={props.onCourse}
+        title="지금 코스를 불러오지 못했어요"
+        body="비교하려면 지금 코스가 필요해요"
+      />
+    );
   } else if (props.state === 'unsupported') {
     body = (
       <ProposalUnsupported onEdit={props.onEdit ?? props.onCourse} onCourse={props.onCourse} />
@@ -138,6 +147,15 @@ export function ProposalScreen() {
         setConflict(true);
       } else if (result === 'unschedulable') {
         toast.error('이 대안은 코스에 넣을 수 없어요');
+      } else if (result === 'alreadyApplied') {
+        // 다시 눌러도 같으므로 바뀐 지금 코스를 보여 준다
+        toast.show('이미 적용한 변경안이에요');
+        toCourse();
+      } else if (result === 'notReady') {
+        toast.show('변경안이 아직 준비되지 않았어요. 잠시 뒤 다시 시도해 주세요');
+      } else if (result === 'gone') {
+        toast.error('변경안을 찾을 수 없어요');
+        toCourse();
       } else if (result === 'failed') {
         toast.error('적용하지 못했어요. 다시 시도해 주세요');
       }
@@ -172,12 +190,16 @@ export function ProposalScreen() {
     );
   }
 
+  // 변경안은 끝났는데 지금 코스를 받지 못했으면 기다림이 아니라 실패로 보인다
+  const courseFailed = p.phase === 'done' && !itinerary.data && itinerary.isError;
   const state =
     p.phase === 'failed' || p.phase === 'unsupported'
       ? p.phase
-      : p.phase === 'done' && compare
-        ? 'compare'
-        : 'loading';
+      : courseFailed
+        ? 'courseFailed'
+        : p.phase === 'done' && compare
+          ? 'compare'
+          : 'loading';
 
   return (
     <ProposalView
@@ -185,7 +207,10 @@ export function ProposalScreen() {
       people={people}
       state={state}
       compare={compare}
-      onRetry={() => void begin()}
+      onRetry={() => {
+        if (courseFailed) void itinerary.refetch();
+        else void begin();
+      }}
       onCourse={toCourse}
       onEdit={() => router.replace(`/trips/${tripId}/course/edit` as Href)}
     />

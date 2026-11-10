@@ -200,6 +200,28 @@ describe('실패와 충돌', () => {
     expect(mockRouter.replace).toHaveBeenCalledWith('/trips/trip-1/course/edit');
   });
 
+  it('지금 코스를 받지 못하면 계속 기다리지 않고 다시 받기를 보인다', async () => {
+    // 날씨 변경안처럼 작업 번호로 열면 변경안은 받지만 비교할 지금 코스가 없다
+    mockParams.removePlaceId = undefined;
+    mockParams.jobId = 'job-p';
+    mockItinerary.mockRejectedValue(new Error('500'));
+    await renderScreen();
+    expect(
+      await screen.findByText('지금 코스를 불러오지 못했어요', {}, { timeout: 5000 }),
+    ).toBeTruthy();
+    mockItinerary.mockResolvedValue(sampleCourse(true));
+    await fireEvent.press(screen.getByText('다시 시도'));
+    expect(await screen.findByText('적용')).toBeTruthy();
+  });
+
+  it('이미 적용한 변경안이면 알리고 코스로 간다', async () => {
+    mockApply.mockRejectedValue(httpError(409, 'ALREADY_APPLIED'));
+    await renderScreen();
+    await fireEvent.press(await screen.findByText('적용'));
+    await waitFor(() => expect(toast.show).toHaveBeenCalledWith('이미 적용한 변경안이에요'));
+    expect(mockRouter.replace).toHaveBeenCalledWith('/trips/trip-1/course');
+  });
+
   it('재계산 실패의 코스 보기는 코스로', async () => {
     mockGet.mockResolvedValueOnce(proposal({ job: job('FAILED'), proposed: null }));
     await renderScreen();
