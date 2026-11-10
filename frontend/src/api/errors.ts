@@ -27,6 +27,10 @@ export const API_ERROR = {
   AI_FEATURE_DISABLED: 'AI_FEATURE_DISABLED',
   /** 같은 준비물 제안은 한 번만 채택한다. 채택 뒤 지운 제안도 다시 채택하지 않는다 */
   SUGGESTION_ALREADY_ADOPTED: 'SUGGESTION_ALREADY_ADOPTED',
+  /** 마감 시각이 지났거나 이미 마감한 투표에 투표·후보 추가를 했다 */
+  POLL_CLOSED: 'POLL_CLOSED',
+  /** 없거나 다른 여행의 투표 */
+  POLL_NOT_FOUND: 'POLL_NOT_FOUND',
 } as const;
 
 /**
