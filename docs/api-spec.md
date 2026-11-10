@@ -50,7 +50,8 @@
 
 | 상태 | 대표 업무 오류 |
 | --- | --- |
-| 404 | `TRIP_NOT_FOUND`, `FEED_NOT_FOUND`, `JOB_NOT_FOUND` — 존재를 공개할 수 없는 자료도 같은 응답. 여행 안의 하위 자료는 `MEMBER_NOT_FOUND`(없거나 이탈한 멤버십), `CHECKLIST_ITEM_NOT_FOUND`(없거나 삭제된 준비물), `EXPENSE_NOT_FOUND`(없거나 삭제된 경비), `SETTLEMENT_NOT_FOUND`(없거나 다른 여행의 정산 계산), `CHAT_ROOM_NOT_FOUND`(없거나 삭제된 여행·참여하지 않았거나 나간 채팅방), `POLL_NOT_FOUND`(없거나 다른 여행의 투표), `VISIT_NOT_FOUND`(없거나 체크 해제한·다른 여행의 방문), `REVIEW_NOT_FOUND`(평가를 쓰지 않았거나 지운 방문), `ASSET_NOT_FOUND`(없거나 남의·볼 수 없는 파일) |
+| 400 | 입력 오류는 `VALIDATION_ERROR`. 업무 규칙 위반은 `CANNOT_FOLLOW_SELF`(자기 자신 팔로우), `INVALID_PROFILE_IMAGE`(없거나 남의·PROFILE 용도가 아닌·업로드 확인 전 파일을 프로필 사진으로 지정) |
+| 404 | `TRIP_NOT_FOUND`, `FEED_NOT_FOUND`, `JOB_NOT_FOUND` — 존재를 공개할 수 없는 자료도 같은 응답. 회원은 `USER_NOT_FOUND`(없거나 탈퇴·가입 대기 회원), 팔로우 요청은 `FOLLOW_REQUEST_NOT_FOUND`(없거나 이미 처리됐거나 당사자가 아닌 요청). 여행 안의 하위 자료는 `MEMBER_NOT_FOUND`(없거나 이탈한 멤버십), `CHECKLIST_ITEM_NOT_FOUND`(없거나 삭제된 준비물), `EXPENSE_NOT_FOUND`(없거나 삭제된 경비), `SETTLEMENT_NOT_FOUND`(없거나 다른 여행의 정산 계산), `CHAT_ROOM_NOT_FOUND`(없거나 삭제된 여행·참여하지 않았거나 나간 채팅방), `POLL_NOT_FOUND`(없거나 다른 여행의 투표), `VISIT_NOT_FOUND`(없거나 체크 해제한·다른 여행의 방문), `REVIEW_NOT_FOUND`(평가를 쓰지 않았거나 지운 방문), `ASSET_NOT_FOUND`(없거나 남의·볼 수 없는 파일) |
 | 409 | `VERSION_CONFLICT`, `POLL_CLOSED`, `ALREADY_MEMBER`, `ALREADY_APPLIED`(이미 적용한 AI 코스 제안 등), `PROPOSAL_NOT_READY`(진행 중·실패·취소된 AI 코스 제안 적용), `UNDO_UNAVAILABLE`(직전 AI 적용이 아니거나 그 뒤 코스가 바뀌어 되돌릴 수 없음), `TRIP_FULL`(여행 ACTIVE 멤버 정원 초과), `CLIENT_MESSAGE_ID_REUSED`(같은 clientMessageId를 다른 방·본문에 재사용), `REVIEW_EXISTS`(평가가 있는 방문의 체크 해제), `AI_FEATURE_DISABLED`(내 AI 기능 설정이 OFF인데 명시적 요청·채택), `SUGGESTION_ALREADY_ADOPTED`(이미 채택한 준비물 제안), `ASSET_NOT_PENDING`(이미 확인했거나 취소한 파일의 complete·취소), `UPLOAD_NOT_FOUND`(complete 때 저장소에 아직 파일이 없음) |
 | 410 | `INVITATION_EXPIRED`·`INVITATION_REVOKED` — 사용자가 제시한 유효 형식의 초대 토큰 검증 결과. 새 링크 발급이나 취소로 무효가 된 링크만 `INVITATION_REVOKED`, 없는 토큰·기간 지남·삭제된 여행·초대자 이탈은 `INVITATION_EXPIRED` |
 | 422 | `INSUFFICIENT_DATA`, `CURRENCY_MISMATCH`, `INVALID_PARTICIPANTS`, `UNSUPPORTED_INPUT`, `INVALID_ROUTE_LEGS`(코스 구간이 빠지거나 겹치거나 인접하지 않음), `INPUT_LIMIT_EXCEEDED`(캡처 11장 이상·사진 51장 이상), `UPLOAD_MISMATCH`(올린 파일의 크기·실제 형식이 업로드 요청과 다름), `WEATHER_NOT_AVAILABLE`(지난 날짜·10일 뒤를 넘는 날짜·국내 예보 범위 밖 장소의 날씨), `UNSCHEDULABLE_ALTERNATIVE`(INFO 날씨 대안으로 코스 제안 요청) |
@@ -62,7 +63,7 @@
 
 근거: WD-FR-01~03·08·35. 인증 세부는 공급자 공식 흐름에 맞춰 별도 확정하며 URL에 제공자 토큰을 싣지 않는다.
 
-2026-10-28 카카오·Expo 구현 결정: 최초의 유효 카카오 닉네임으로 가입 완료한다. 미제공·빈 값·기본 닉네임·50자 초과는 `nickname=""`, `profileCompleted=false`로 저장한다. 대기 토큰은 GET/PATCH `/me`와 갱신·현재 세션 로그아웃을 허용하고 다른 서비스 요청은 `403 PROFILE_INCOMPLETE`다. PATCH 완료 뒤에는 같은 토큰에서도 DB의 현재 상태로 접근을 판단한다. 재로그인은 이름을 덮어쓰지 않는다. 웹 쿠키와 NAVER는 후속이다. [환경 설정·Swagger 수동 호출 가이드](design/backend-auth-integration.md)를 따른다. 갱신·현재 세션 로그아웃은 구현하며 닉네임 외 프로필 API는 후속 설계 계약이다.
+2026-10-28 카카오·Expo 구현 결정: 최초의 유효 카카오 닉네임으로 가입 완료한다. 미제공·빈 값·기본 닉네임·50자 초과는 `nickname=""`, `profileCompleted=false`로 저장한다. 대기 토큰은 GET/PATCH `/me`와 갱신·현재 세션 로그아웃을 허용하고 다른 서비스 요청은 `403 PROFILE_INCOMPLETE`다. PATCH 완료 뒤에는 같은 토큰에서도 DB의 현재 상태로 접근을 판단한다. 재로그인은 이름을 덮어쓰지 않는다. 웹 쿠키와 NAVER는 후속이다. [환경 설정·Swagger 수동 호출 가이드](design/backend-auth-integration.md)를 따른다. 갱신·현재 세션 로그아웃은 구현했다. 프로필 수정·회원 검색·팔로우·친구 추천은 2026-11-10 구현했다(아래 표와 「회원·팔로우 구현 결정」).
 
 | Method | URL | 권한 | 요청 | 성공 data / 상태 | 주요 규칙 |
 | --- | --- | --- | --- | --- | --- |
@@ -71,26 +72,35 @@
 | POST | `/auth/sessions/refresh` | 갱신 토큰 | `{refreshToken:string}` | `Session` / 200 | Bearer 불필요(만료 헤더도 무시). 이전 access·refresh 즉시 폐기, 새 refresh는 갱신 시점부터 14일. 재사용은 해당 로그인 후속 세션까지 폐기 후 401, 다른 기기 유지. 앱 갱신 직렬화, isNewUser=false, 원문 DB 저장 금지 |
 | DELETE | `/auth/session` | 로그인 | 없음 | 204 | 유효 Bearer의 현재 세션 폐기. 다른 기기 유지, 가입 대기 허용 |
 | GET | `/me` | 본인 | 없음 | `MyProfile` / 200 | 비공개 연령·동의 정보는 본인에게만 |
-| PATCH | `/me` | 본인·가입 대기 허용 | `{nickname:string}` | `MyProfile` / 200 | 현재 구현은 닉네임만 지원, 다른 필드는 400. 공백 제거 후 1~50자로 가입 완료. 이미지·연령·공개 범위 수정은 후속 |
+| PATCH | `/me` | 본인·가입 대기 허용 | `ProfilePatch` | `MyProfile` / 200 | 보낸 필드만 바꾼다. nickname은 공백 제거 후 1~50자이며 저장하면 가입 완료. 가입 대기 사용자는 nickname 필수. 빈 본문·표에 없는 필드·profileImageAssetId·ageBand 외의 null은 400. 쓸 수 없는 사진은 400 `INVALID_PROFILE_IMAGE`. 한 필드라도 실패하면 아무것도 저장하지 않는다. 공개 범위 전환은 아래 결정 |
 | DELETE | `/me` | 본인 | 없음 | `{accepted:true}` / 202 | 접수 후 계정 비활성화·세션 폐기, 별도 작업 폴링 없음. 보존 정책 Q-11 확정 후 활성화 |
-| GET | `/users` | 로그인 | `query:string` + 페이지 | `UserCard[]` / 200 | 닉네임으로만 검색, 프로필 링크/ID 검색은 제공하지 않음, 노출 범위 Q-2 |
-| GET | `/users/{userId}` | 로그인 | 없음 | `UserCard` / 200 | 연령·이메일 반환 금지 |
-| GET | `/me/following` | 본인 | 페이지 | `Follow[]` / 200 | 내가 팔로우한 ACCEPTED 방향만 |
-| GET | `/me/followers` | 본인 | 페이지 | `Follow[]` / 200 | 나를 팔로우한 ACCEPTED 방향만 |
-| GET | `/me/follow-requests` | 본인 | `direction:RECEIVED\|SENT` + 페이지 | `Follow[]` / 200 | 비공개 계정의 REQUESTED 목록 |
-| POST | `/users/{userId}/follow` | 로그인 | 없음 | `Follow` / 200 | 대상 PUBLIC이면 ACCEPTED, PRIVATE면 REQUESTED. 자기 자신 금지·방향별 멱등 |
-| POST | `/me/follow-requests/{requestId}/accept` | 대상 계정 본인 | 없음 | `Follow` / 200 | REQUESTED→ACCEPTED, 반대 방향 생성 없음 |
-| DELETE | `/me/follow-requests/{requestId}` | 당사자 | 없음 | 204 | 발신자 취소·수신자 거절 |
-| DELETE | `/users/{userId}/follow` | 팔로우 발신자 | 없음 | 204 | 해당 방향 언팔로우, 공동 여행 유지 |
-| DELETE | `/me/followers/{userId}` | 대상 계정 본인 | 없음 | 204 | 본인 팔로워 제거, 반대 방향 유지 |
-| GET | `/me/follow-suggestions` | 본인 | 페이지 | `{user:UserCard,reason:string}[]` / 200 | 공개 가능한 추천 이유만 |
-| PUT | `/me/follow-suggestion-dismissals/{userId}` | 본인 | 없음 | 204 | 추천 숨김은 영구 재추천 제외, 만료 없음 |
+| GET | `/users` | 로그인 | `query:string`(공백 제거 후 1~50자) + 페이지(limit 1~50, 기본 20) | `UserCard[]` / 200 | 닉네임 부분 일치만(대소문자 무시, `%`·`_`는 문자 그대로), 프로필 링크/ID 검색은 제공하지 않음. 완전 일치 먼저, 그다음 닉네임·id 순 전용 커서. 본인·탈퇴·가입 대기 회원 제외, PRIVATE 계정도 카드는 노출(콘텐츠 열람 허용과 별개) |
+| GET | `/users/{userId}` | 로그인 | 없음 | `PublicProfile` / 200 | 연령·동의·이메일 반환 금지. 본인 조회 가능. 없는·탈퇴·가입 대기 회원은 404 `USER_NOT_FOUND` |
+| GET | `/me/following` | 본인 | 페이지(limit 1~100, 기본 20) | `Follow[]` / 200 | 내가 팔로우한 ACCEPTED 방향만, acceptedAt DESC·id DESC. 탈퇴·가입 대기 상대 제외 |
+| GET | `/me/followers` | 본인 | 페이지(limit 1~100, 기본 20) | `Follow[]` / 200 | 나를 팔로우한 ACCEPTED 방향만, acceptedAt DESC·id DESC. 탈퇴·가입 대기 상대 제외 |
+| GET | `/me/follow-requests` | 본인 | `direction:RECEIVED\|SENT`(필수) + 페이지(limit 1~100, 기본 20) | `Follow[]` / 200 | REQUESTED만, requestedAt DESC·id DESC. RECEIVED는 받은 요청, SENT는 보낸 요청. 탈퇴·가입 대기 상대 제외 |
+| POST | `/users/{userId}/follow` | 로그인 | 없음 | `Follow` / 200 | 대상 PUBLIC이면 ACCEPTED, PRIVATE면 REQUESTED(대상에게 FOLLOW_REQUESTED). 같은 방향이 있으면 그 관계를 그대로 반환(방향별 멱등, 동시 요청도 한 건). 자기 자신 400 `CANNOT_FOLLOW_SELF`, 없는·탈퇴·가입 대기 대상 404 `USER_NOT_FOUND` |
+| POST | `/me/follow-requests/{requestId}/accept` | 대상 계정 본인 | 없음 | `Follow` / 200 | REQUESTED→ACCEPTED(요청자에게 FOLLOW_ACCEPTED), 이미 수락한 요청은 그대로 반환. 반대 방향 생성 없음. 없는 요청·내가 받은 요청이 아님·요청자 탈퇴는 404 `FOLLOW_REQUEST_NOT_FOUND` |
+| DELETE | `/me/follow-requests/{requestId}` | 당사자 | 없음 | 204 | 발신자 취소·수신자 거절. REQUESTED만 지우며 ACCEPTED·당사자 아님·없음은 404 `FOLLOW_REQUEST_NOT_FOUND` |
+| DELETE | `/users/{userId}/follow` | 팔로우 발신자 | 없음 | 204 | 해당 방향 언팔로우(대기 요청 취소 포함), 공동 여행 유지. 관계가 없어도 204 |
+| DELETE | `/me/followers/{userId}` | 대상 계정 본인 | 없음 | 204 | 본인 팔로워(ACCEPTED) 제거, 반대 방향 유지. 관계가 없어도 204 |
+| GET | `/me/follow-suggestions` | 본인 | 페이지(limit 1~50, 기본 20) | `FollowSuggestion[]` / 200 | 공개 가능한 추천 이유만. 후보·정렬은 아래 결정 |
+| PUT | `/me/follow-suggestion-dismissals/{userId}` | 본인 | 없음 | 204 | 추천 숨김은 영구 재추천 제외, 만료 없음. 다시 숨겨도 204. 검색·팔로우·기존 관계는 막지 않음. 자기 자신 400, 없는·탈퇴·가입 대기 회원 404 `USER_NOT_FOUND` |
 | GET | `/me/preferences` | 본인 | 없음 | `Preferences` / 200 | 직접 입력·추론 분리 |
 | PUT | `/me/preferences` | 본인 | `PreferencesWrite` | `Preferences` / 200 | 직접 입력 전체 교체, 추론 허용과 공유 범위 별도 |
 | PUT | `/trips/{tripId}/members/me/preference-consent` | 멤버 | `{scope:EXPLICIT_ONLY\|EXPLICIT_AND_INFERRED\|NONE\|INHERIT}` | `{scope:string,effectiveScope:string}` / 200 | D-17. 나만 보기는 NONE, 추론 허용을 대신하지 않음 |
 | DELETE | `/me/preferences/inferred/{key}` | 본인 | 없음 | 204 | 추론 항목 개별 제거·재추론 거부 표식. 재추론 기간 Q-5 |
 | GET | `/me/settings` | 본인 | 없음 | `UserSettings` / 200 | 가입 완료 사용자만 접근. 첫 조회에서 기본 설정 행을 생성하고 version 1 반환 |
 | PATCH | `/me/settings` | 본인 | `SettingsPatch` | `UserSettings` / 200 | 가입 완료 사용자만 접근. expectedVersion 불일치 시 409 VERSION_CONFLICT 및 전체 이전 설정 유지. 제공한 필드만 원자적으로 저장하고 값이 실제 바뀔 때만 version 증가 |
+
+### 회원·팔로우 구현 결정 (2026-11-10)
+
+- **계정 공개 범위(Q-2 확정)**: PRIVATE→PUBLIC 전환 시 받은 REQUESTED를 같은 트랜잭션에서 모두 ACCEPTED로 바꾸고 알림은 보내지 않는다. PUBLIC→PRIVATE 전환은 기존 ACCEPTED·REQUESTED를 그대로 둔다. 회원 행 잠금으로 전환과 새 팔로우 요청의 순서를 맞춘다. 차단 기능은 제공하지 않는다(미정).
+- **연령대(Q-1 확정)**: `AgeBand` = TEENS/TWENTIES/THIRTIES/FORTIES/FIFTIES/SIXTIES_PLUS 영문 코드. 화면 문구는 앱이 붙이고 본인 응답(MyProfile)에만 나간다.
+- **프로필 사진**: `profileImageAssetId`는 본인이 올린 READY 상태 PROFILE 파일만 받는다. 응답 `profileImageUrl`은 `/assets/{assetId}/download`(`/api/v1` 뒤 경로, READY PROFILE은 로그인 사용자 누구나 다운로드)이며 탈퇴 회원 카드는 null이다. 가입 대기 토큰은 `/assets`를 쓸 수 없으므로 첫 가입은 닉네임 저장 → 업로드 → 사진 PATCH 순서다.
+- **알림**: 비공개 계정에 요청하면 대상에게 `FOLLOW_REQUESTED`, 수락하면 요청자에게 `FOLLOW_ACCEPTED`. 받는 사람의 `notifications.followRequests`가 false면 둘 다 만들지 않는다. 공개 계정 즉시 팔로우와 공개 전환 일괄 수락은 알리지 않는다.
+- **친구 추천**: 점수 모델 없이 두 이유만 쓴다. `CO_TRAVELER`는 같은 여행을 함께한 사람(양쪽 ACTIVE·LEFT 멤버십, 삭제된 여행·REMOVED 제외, count=함께한 여행 수), `FOLLOWS_YOU`는 나를 ACCEPTED로 팔로우하는데 내가 팔로우하지 않은 사람이다. 둘 다 해당하면 CO_TRAVELER로 한 번만 나온다. 본인·탈퇴·가입 대기·내가 팔로우하거나 요청 중인 사람·숨긴 사람은 제외한다. 정렬은 CO_TRAVELER(여행 수 많은 순) → FOLLOWS_YOU → id이며 전용 커서를 쓴다. 공개 취향 일치·지인의 지인 추천은 제공하지 않는다(비공개 관계 노출 방지).
+- **다른 도메인의 열람 판정**: 회원 콘텐츠 경로(프로필 피드·지도·타임라인)는 본인, ACTIVE·가입 완료 PUBLIC 회원, PRIVATE 회원 중 viewer→member가 ACCEPTED인 경우만 허용한다(내부 `FollowAccess`). REQUESTED와 반대 방향 팔로우는 허용 근거가 아니다. 최소 UserCard 노출은 이 판정과 별개다.
 
 기능 설정은 자동 작업 시작과 결과 반영 모두에 적용한다. OFF면 새 자동 작업을 시작하지 않고, 명시적 사용자 재시도는 409 AI_FEATURE_DISABLED 제안으로 구분한다. AUTO는 허용된 범위의 결과만 반영하고, CONFIRM은 저장 전 사용자의 적용/확인 동작을 요구한다. 추출 후보 저장은 일반 장소/북마크 API, 준비물 채택은 sourceJobId·suggestionIndex를 담은 POST, 사진 분류는 apply, 방문은 후보 confirm으로 연결한다. 자동 적용할 판정 기준이 미합의인 기능은 기준 확정 전 AUTO 실행을 비활성화한다. 날씨는 항상 제안만이며 코스 변경안은 사용자 적용 시 서버가 기준 버전을 검사한다. 진행 중 설정 변경의 취소/유지 세부는 Q-11이다. 구체 모드/기본값은 D-19 제안이다.
 
@@ -337,7 +347,7 @@ STOMP over WebSocket으로 서버 → 앱 전달만 한다. 메시지 보내기�
 - 여행 상태는 기간에 따라 자동 전환한다. 날짜 미정은 PLANNING, 시작/종료 경계의 현지 시간대·서버 작업 시점은 Q-4에서 합의한다. status 직접 쓰기를 받지 않으며 날짜 수정 시 파생 상태를 다시 계산한다.
 - 투표 기본 마감은 화면에서 서버 시각 기준 +24시간으로 제안하고 명시적 closesAt을 제출한다. 마감 1시간 전 현재 미투표자만 알린다. 짧은 마감/마감 변경·재개 정책은 Q-6이다. 결과는 여러 지역을 날짜별 배분 가능하게 반환하고 확정 장소는 후보 상단에 표시한다.
 - 알림 종류는 FOLLOW_REQUESTED/ACCEPTED, TRIP_MEMBER_JOINED, TRIP_INFO_CHANGED, POLL_OPENED/CANDIDATE_ADDED/REMINDER/FINALIZED/CLOSED_NO_VOTES, AI_PROPOSAL_READY, COURSE_CHANGED, FEED_DELETED 제안이다. 후보 추가는 현재 투표한 멤버, reminder는 미투표자에게만. 게시·방장 양도·승인 요청·사진 동의·정산 완료 이벤트는 생성하지 않는다.
-- 현재 서버가 남기는 알림(2026-11-05): `TRIP_INFO_CHANGED`(여행 수정·지역 투표 확정), `TRIP_MEMBER_JOINED`(초대 수락으로 멤버십이 새로 생기거나 재참여, 이미 참여 중인 재수락은 제외), `POLL_OPENED`, `POLL_CANDIDATE_ADDED`(그 투표에 표를 낸 멤버만), `POLL_FINALIZED`·`POLL_CLOSED_NO_VOTES`(투표당 한 번, 서버 마감이라 행동한 사람 없음), `POLL_REMINDER`(마감까지 1시간 이하로 남은 OPEN 투표의 미투표 멤버에게 투표당 한 번, 1분 주기), `COURSE_CHANGED`(코스 version이 오른 저장마다 1건, 묶음은 Q-16). 수신자는 그 여행의 지금 ACTIVE 멤버이며 행동한 본인은 받지 않는다. `target`은 투표 알림이 `POLL`/pollId, 참여 알림이 `TRIP`/tripId, 코스 알림이 `ITINERARY`/tripId다.
+- 현재 서버가 남기는 알림(2026-11-05): `TRIP_INFO_CHANGED`(여행 수정·지역 투표 확정), `TRIP_MEMBER_JOINED`(초대 수락으로 멤버십이 새로 생기거나 재참여, 이미 참여 중인 재수락은 제외), `POLL_OPENED`, `POLL_CANDIDATE_ADDED`(그 투표에 표를 낸 멤버만), `POLL_FINALIZED`·`POLL_CLOSED_NO_VOTES`(투표당 한 번, 서버 마감이라 행동한 사람 없음), `POLL_REMINDER`(마감까지 1시간 이하로 남은 OPEN 투표의 미투표 멤버에게 투표당 한 번, 1분 주기), `COURSE_CHANGED`(코스 version이 오른 저장마다 1건, 묶음은 Q-16). 수신자는 그 여행의 지금 ACTIVE 멤버이며 행동한 본인은 받지 않는다. `target`은 투표 알림이 `POLL`/pollId, 참여 알림이 `TRIP`/tripId, 코스 알림이 `ITINERARY`/tripId다. 2026-11-10부터 `FOLLOW_REQUESTED`(비공개 계정에 요청, 대상에게)·`FOLLOW_ACCEPTED`(수락, 요청자에게)도 남긴다. 여행에 묶이지 않고(tripId 없음) `target`은 `USER`/상대 userId이며, 받는 사람의 팔로우 요청 알림 설정이 꺼져 있으면 만들지 않는다.
 - 팝업은 POLL_OPENED/REMINDER, FOLLOW_REQUESTED, AI_PROPOSAL_READY처럼 내 행동이 필요한 이벤트만, 나머지는 목록으로 제공한다. 여행 이벤트는 해당 여행 그룹 시스템 카드에 연결하고 팔로우 이벤트는 여행 채팅에 넣지 않는다. 코스 변경 묶음 키/시간창·건수/최종 상태·읽음/카드 갱신은 Q-16이며 임의 수치를 확정하지 않는다.
 
 ## 10. 요청·응답 DTO
@@ -349,10 +359,13 @@ STOMP over WebSocket으로 서버 → 앱 전달만 한다. 메시지 보내기�
 | OAuthAuthorization | `authorizationId:id,authorizationUrl:string,state:string,expiresAt:datetime`. 앱이 보관한 verifier의 S256 challenge에 바인딩. 기본 만료 300초(환경 설정). 외부 브라우저에서 authorizationUrl을 열고 앱 redirect의 code/state를 수신 |
 | OAuthExchange | `authorizationId:id,code:string,redirectUri:string,state:string,codeVerifier:string`. verifier는 RFC 7636의 43~128자. provider·state·만료·redirect·S256 challenge 일치 후 컨텍스트 원자적 일회 소비. 제공자 실패도 재사용 불가, 인가 시작부터 재시도 |
 | Session | `accessToken:string,refreshToken:string,expiresIn:integer,user:MyProfile,isNewUser:boolean` |
-| UserCard | `id,nickname:string,profileImageUrl:string\|null,accountVisibility:PUBLIC\|PRIVATE,followingStatus:NONE\|REQUESTED\|ACCEPTED,followedByStatus:NONE\|REQUESTED\|ACCEPTED`. 양방향 독립, 연령·이메일 미반환 |
+| UserCard | `id,nickname:string,profileImageUrl:string\|null,accountVisibility:PUBLIC\|PRIVATE,followingStatus:NONE\|REQUESTED\|ACCEPTED,followedByStatus:NONE\|REQUESTED\|ACCEPTED`. followingStatus는 보는 사람→카드 주인, followedByStatus는 카드 주인→보는 사람이며 양방향 독립. profileImageUrl은 `/assets/{assetId}/download`, 탈퇴 회원은 null. 연령·이메일 미반환 |
 | Follow | `id,follower:UserCard,followee:UserCard,status:REQUESTED\|ACCEPTED,requestedAt:datetime,acceptedAt:datetime\|null` |
 | FeedVisibility | `feedId:id,hiddenViewerUserIds:id[],version:integer,updatedAt:datetime`. 본인 경로의 특정 친구별 숨김, 피드와 독립 버전 |
-| MyProfile | UserCard + `ageBand:string\|null,ageUseConsent:boolean,profileCompleted:boolean,profileUrl:string` |
+| MyProfile | UserCard + `ageBand:AgeBand\|null,ageUseConsent:boolean,profileCompleted:boolean,profileUrl:string`. AgeBand=TEENS/TWENTIES/THIRTIES/FORTIES/FIFTIES/SIXTIES_PLUS. 본인 응답의 followingStatus·followedByStatus는 NONE |
+| ProfilePatch | 모두 선택 `nickname?:string,accountVisibility?:PUBLIC\|PRIVATE,profileImageAssetId?:id\|null,ageBand?:AgeBand\|null,ageUseConsent?:boolean`. 보낸 필드만 바꾸며 null은 profileImageAssetId(사진 지우기)·ageBand(지우기)에만 허용. 빈 본문 400 |
+| PublicProfile | UserCard 필드 + `followerCount:integer,followingCount:integer`. 수는 상대가 활동 중·가입 완료인 ACCEPTED 관계만, PRIVATE 계정도 공개. 공동 피드 수·연령·동의·이메일 미반환 |
+| FollowSuggestion | `user:UserCard,reason:{kind:CO_TRAVELER\|FOLLOWS_YOU,count?:integer}`. count는 CO_TRAVELER의 함께한 여행 수이고 FOLLOWS_YOU에는 필드가 없다. 2026-11-10 `reason:string`에서 변경, 문구는 앱이 붙인다 |
 | PreferencesWrite | `explicitItems:{key:string,value:string}[],allowInference:boolean,sharingScope:EXPLICIT_ONLY\|EXPLICIT_AND_INFERRED\|NONE`. 직접 입력만 교체, 추론 생성과 공유를 구분 |
 | Preferences | `explicitItems:{key:string,value:string}[],inferredItems:{key:string,value:string}[],allowInference:boolean,sharingScope:string,updatedAt:datetime`. 추론 거부 시 이후 생성/활용 중단, 삭제·보존 Q-11 |
 | Trip | `id,title,startDate:date\|null,endDate:date\|null,destinationRegionIds:id[],status:TripStatus,currency:KRW,ownerMemberId:id,members:Member[],version:integer,expenseVersion:integer` |
@@ -463,7 +476,7 @@ STOMP over WebSocket으로 서버 → 앱 전달만 한다. 메시지 보내기�
 2. **Q-6:** 참가자 변동·후보 삭제·재개/짧은 마감 알림. 0표 확정 없이 마감·24시간 기본·동률 모두·1시간 전 미투표자 알림·직후 1단계 되돌리기는 적용했다.
 3. **Q-10:** 2026-11-02 확정(여행 합산 후 1회 10원 올림, 차액은 원금 기준 받을 돈이 가장 많은 사람, 이전 계산은 여행이 있는 동안 보관). 최종 송금액 재올림·완료 상태는 추가하지 않는다.
 4. **Q-15·16:** 실시간 전송·presence/편집 저장·재접속·AI/undo 경합 및 코스 변경 알림 묶음. 추가 오래된 변경안 확인 화면 없이 서버 검증/재계산을 정해야 한다.
-5. **Q-1·2·4·5·7~9·11~14:** 인증/프로필·공개 전환·기간 경계/시간대·추천/사진 판정/집계·용량/보존·채팅 이력 등. 검색/추천 숨김·이미 정한 한도/별점/정렬/준비물은 다시 미정으로 돌리지 않는다.
+5. **Q-1·2·4·5·7~9·11~14:** 인증/프로필·공개 전환·기간 경계/시간대·추천/사진 판정/집계·용량/보존·채팅 이력 등. 검색/추천 숨김·이미 정한 한도/별점/정렬/준비물은 다시 미정으로 돌리지 않는다. 2026-11-10 연령대 형식(Q-1)·공개 전환 시 기존 관계(Q-2)·친구 추천 후보 규칙은 §3 「회원·팔로우 구현 결정」으로 확정했고, 차단은 미정이다.
 6. 사용자 지정 C-1~C-51 원문은 여전히 없어 전체 항목 대조는 미완료이며 팀 전체 합의/구현 완료를 선언하지 않는다. 소스 간 폐기된 종료/확정 팝업·삭제 알림 충돌은 PRD §1.1의 우선순위를 따른다.
 
 검증 사례: 닉네임 검색·영구 추천 숨김, 관계 없는 링크 참여·마지막 이탈=삭제, 수동 게시 유일성·특정 친구 경로 숨김/직접 경로 유지·전체 삭제 알림, 마감 경합·동률 모두·0표 미확정·후보 추가 알림, 10/11캡처·50/51사진·HEIC·정수 별점, 구간 수단·단일 코스·AI 1단계 undo·경합, 공동 준비물 체크 멤버, 시작일 정렬·날짜 미정 마지막, 원금/1인 올림 차액 분리·완료 상태 없음, 그룹 채팅만·이탈자 접근 차단.
