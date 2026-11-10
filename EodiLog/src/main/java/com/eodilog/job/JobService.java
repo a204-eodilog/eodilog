@@ -63,7 +63,7 @@ public class JobService {
         var safe = JsonNodeFactory.instance.objectNode();
         // A kind name describes scope without disclosing target IDs or content.
         var scope = source.get("scope");
-        if (scope == null || !scope.isString() || !java.util.Set.of("LEAVE_CLEANUP", "PHOTO_DELETE", "TRIP_DELETE", "ACCOUNT_DELETE").contains(scope.asString()))
+        if (scope == null || !scope.isString() || !java.util.Set.of("LEAVE_CLEANUP", "PHOTO_DELETE", "TRIP_DELETE", "ACCOUNT_DELETE", "OWN_RECORDS_DELETE").contains(scope.asString()))
             throw new IllegalArgumentException("Invalid cleanup result scope");
         safe.put("scope", scope.asString());
         for (String count : new String[]{"completedCount", "failedCount"}) {

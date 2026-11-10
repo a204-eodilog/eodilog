@@ -15,16 +15,16 @@ public class MemberStore {
     public record MyProfile(
         @Schema(description="사용자 UUID",example="3f2b8c1e-5d4a-4e7b-9c1f-2a6d8e0b7c45",requiredMode=Schema.RequiredMode.REQUIRED) UUID id,
         @Schema(description="닉네임, 가입 대기 시 빈 문자열",example="여행자",requiredMode=Schema.RequiredMode.REQUIRED) String nickname,
-        @Schema(description="프로필 이미지 URL",nullable=true,requiredMode=Schema.RequiredMode.REQUIRED) String profileImageUrl,
+        @Schema(description="프로필 사진 URL(/api/v1 뒤 경로), 없으면 null",example="/assets/0196f1d2-7c3a-7b2e-9a41-5c2d8e0b7c45/download",nullable=true,requiredMode=Schema.RequiredMode.REQUIRED) String profileImageUrl,
         @Schema(description="계정 공개 범위",example="PRIVATE",requiredMode=Schema.RequiredMode.REQUIRED) AccountVisibility accountVisibility,
         @Schema(description="팔로우 상태",example="NONE",requiredMode=Schema.RequiredMode.REQUIRED) FollowStatus followingStatus,
         @Schema(description="역방향 팔로우 상태",example="NONE",requiredMode=Schema.RequiredMode.REQUIRED) FollowStatus followedByStatus,
-        @Schema(description="비공개 연령대",nullable=true,requiredMode=Schema.RequiredMode.REQUIRED) String ageBand,
+        @Schema(description="비공개 연령대, 본인에게만",example="TWENTIES",nullable=true,requiredMode=Schema.RequiredMode.REQUIRED) AgeBand ageBand,
         @Schema(description="연령 활용 동의",example="false",requiredMode=Schema.RequiredMode.REQUIRED) boolean ageUseConsent,
         @Schema(description="가입 완료 여부",example="true",requiredMode=Schema.RequiredMode.REQUIRED) boolean profileCompleted,
         @Schema(description="프로필 경로",example="/users/3f2b8c1e-5d4a-4e7b-9c1f-2a6d8e0b7c45",requiredMode=Schema.RequiredMode.REQUIRED) String profileUrl) { }
     public MyProfile profile(UUID id) {
-        var rows=jdbc.query("SELECT * FROM users WHERE id=? AND status='ACTIVE'",(rs,n)->new MyProfile(id,rs.getString("nickname"),null,AccountVisibility.valueOf(rs.getString("account_visibility")),FollowStatus.NONE,FollowStatus.NONE,rs.getString("age_band"),rs.getBoolean("age_use_consent"),rs.getBoolean("profile_completed"),"/users/"+id),id);
+        var rows=jdbc.query("SELECT * FROM users WHERE id=? AND status='ACTIVE'",(rs,n)->new MyProfile(id,rs.getString("nickname"),ProfileImages.url(rs.getObject("profile_asset_id",UUID.class)),AccountVisibility.valueOf(rs.getString("account_visibility")),FollowStatus.NONE,FollowStatus.NONE,rs.getString("age_band")==null?null:AgeBand.valueOf(rs.getString("age_band")),rs.getBoolean("age_use_consent"),rs.getBoolean("profile_completed"),"/users/"+id),id);
         if(rows.isEmpty()) throw new BusinessException(CommonErrorCode.UNAUTHENTICATED);
         return rows.getFirst();
     }
