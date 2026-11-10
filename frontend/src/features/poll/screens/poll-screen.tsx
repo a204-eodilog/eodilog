@@ -52,11 +52,16 @@ export function PollScreen() {
   const { tripId, pollId } = useLocalSearchParams<{ tripId: string; pollId?: string }>();
   const trip = useTrip(tripId);
   const list = usePolls(tripId, !pollId);
-  const targetId = pollId ?? list.picked?.id ?? null;
+  // 메뉴로 들어와 처음 고른 투표를 붙잡는다. 앱으로 돌아와 목록을 다시 받을 때 동행이 새 투표를 열었어도
+  // 보던 투표가 말없이 바뀌지 않게 한다
+  const [pinnedId, setPinnedId] = useState<string | null>(null);
+  if (!pollId && pinnedId === null && list.picked) setPinnedId(list.picked.id);
+  const targetId = pollId ?? pinnedId ?? list.picked?.id ?? null;
   const detail = usePoll(tripId, targetId);
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  const poll: Poll | null = detail.data ?? (pollId ? null : list.picked);
+  const listed = list.data?.find((p) => p.id === targetId) ?? null;
+  const poll: Poll | null = detail.data ?? (pollId ? null : listed);
   const { data: me } = useMe();
   const members = (trip.data?.members ?? []).filter((m) => m.status === 'ACTIVE');
 

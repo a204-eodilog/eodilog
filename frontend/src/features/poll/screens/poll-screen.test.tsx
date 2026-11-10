@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -251,6 +251,24 @@ function versionConflict() {
     response: { status: 409, data: { error: { code: 'VERSION_CONFLICT', message: '' } } },
   });
 }
+
+describe('메뉴로 들어온 투표', () => {
+  it('앱으로 돌아와 목록을 다시 받을 때 동행이 새 투표를 열었어도 보던 투표를 그대로 보인다', async () => {
+    const first = { ...OPEN, id: 'poll-1', title: '지역 투표' };
+    const newer = { ...OPEN, id: 'poll-2', title: '장소 투표' };
+    mockGetPolls.mockResolvedValueOnce([first]).mockResolvedValue([newer, first]);
+    mockGetPoll.mockImplementation(async (_tripId, id) => (id === 'poll-2' ? newer : first));
+    await renderScreen();
+    expect((await screen.findAllByText('지역 투표')).length).toBeGreaterThan(0);
+    await act(async () => {
+      await lastClient.refetchQueries({ queryKey: ['trips', 'trip-1', 'polls'] });
+    });
+    await waitFor(() => expect(mockGetPolls).toHaveBeenCalledTimes(2));
+    expect(screen.getAllByText('지역 투표').length).toBeGreaterThan(0);
+    expect(screen.queryByText('장소 투표')).toBeNull();
+    expect(mockGetPoll).not.toHaveBeenCalledWith('trip-1', 'poll-2', expect.anything());
+  });
+});
 
 describe('진행 중 투표', () => {
   beforeEach(() => {
