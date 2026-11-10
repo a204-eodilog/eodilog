@@ -52,6 +52,23 @@ export async function requestAutoCourse(
   return data.data;
 }
 
+/**
+ * POST .../itinerary/proposals/{jobId}/apply. 추천안을 지금 코스로 바꾼다. Idempotency-Key는 받지 않는다.
+ * expectedVersion은 지금 코스 version이고 추천안의 baseVersion과 같아야 한다. AI 이동 시간이 함께 저장되고
+ * 바로 되돌릴 수 있다. 409 ALREADY_APPLIED·PROPOSAL_NOT_READY·VERSION_CONFLICT, 404 JOB_NOT_FOUND
+ */
+export async function applyAutoCourse(
+  tripId: string,
+  jobId: string,
+  expectedVersion: number,
+): Promise<Itinerary> {
+  const { data } = await apiClient.post<DataResponse<Itinerary>>(
+    `/trips/${tripId}/itinerary/proposals/${encodeURIComponent(jobId)}/apply`,
+    { expectedVersion },
+  );
+  return data.data;
+}
+
 /** GET .../itinerary/proposals/{jobId}. job.status가 SUCCEEDED면 proposed에 추천 코스가 있다 */
 export async function getAutoCourse(
   tripId: string,
