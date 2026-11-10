@@ -225,7 +225,7 @@ export function GroupFavoritesScreen() {
   // 투표 후보 고르기 모드. null이면 평소 화면
   const [selecting, setSelecting] = useState<Set<string> | null>(null);
   /** 코스에 든 장소를 빼려 할 때 그 장소와 코스를 고친 동행 */
-  const [confirm, setConfirm] = useState<{ placeId: string; editor: string } | null>(null);
+  const [confirm, setConfirm] = useState<{ placeId: string } | null>(null);
   // 개인 즐겨찾기는 고르기 시트를 열 때만 받는다(개인 즐겨찾기 화면과 같은 캐시)
   const bookmarks = useQuery({
     queryKey: bookmarkKeys.all,
@@ -248,7 +248,6 @@ export function GroupFavoritesScreen() {
   const notReady = () => toast.show('준비 중이에요');
   const myMemberId = people.find((p) => p.me)?.id ?? null;
   const openItem = list.items.find((i) => i.place.id === openId) ?? null;
-  const nameOf = (memberId: string | null) => people.find((p) => p.id === memberId)?.name ?? '동행';
 
   const search = async () => {
     setAdding(false);
@@ -260,7 +259,7 @@ export function GroupFavoritesScreen() {
     setOpenId(null);
     // 코스에 든 장소면 빼기 전에 확인한다(Figma 201-29151)
     if (course.data?.placeIds.has(placeId)) {
-      setConfirm({ placeId, editor: nameOf(course.data.updatedByMemberId) });
+      setConfirm({ placeId });
       return;
     }
     void mutations.remove(placeId);
@@ -357,7 +356,7 @@ export function GroupFavoritesScreen() {
         onRemove={() => openItem && removeMine(openItem.place.id)}
       />
       <InCourseConfirm
-        editor={confirm?.editor ?? null}
+        visible={confirm !== null}
         onRemoveAnyway={() => {
           if (confirm) void mutations.remove(confirm.placeId);
           setConfirm(null);

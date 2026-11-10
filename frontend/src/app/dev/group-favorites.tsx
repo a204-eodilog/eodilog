@@ -163,7 +163,7 @@ function DevScreen({ state }: { state: string }) {
         busy={false}
       />
       <InCourseConfirm
-        editor={editor}
+        visible={editor !== null}
         onRemoveAnyway={() => setEditor(null)}
         onRefresh={() => setEditor(null)}
       />

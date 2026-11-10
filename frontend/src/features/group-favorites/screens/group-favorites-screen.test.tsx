@@ -374,7 +374,7 @@ describe('담기와 빼기', () => {
     await renderScreen();
     await fireEvent.press(await screen.findByLabelText('해운대 해변'));
     await fireEvent.press(screen.getByText('내 저장 빼기'));
-    expect(await screen.findByText(/세은님이 이 장소를/)).toBeTruthy();
+    expect(await screen.findByText('코스에 들어 있는 장소예요')).toBeTruthy();
     expect(mockDelete).not.toHaveBeenCalled();
     await fireEvent.press(screen.getByText('그래도 빼기'));
     await waitFor(() => expect(mockDelete).toHaveBeenCalledWith('trip-1', 'p-haeundae'));
