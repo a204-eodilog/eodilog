@@ -5,6 +5,8 @@ import com.eodilog.feed.FeedRequests.*;
 import com.eodilog.global.common.error.*;
 import com.eodilog.global.common.response.*;
 import com.eodilog.global.id.UuidV7;
+import com.eodilog.itinerary.dto.ItineraryItemResponse;
+import com.eodilog.itinerary.domain.RouteLegStatus;
 import com.eodilog.job.*;
 import com.eodilog.notification.NotificationEventRegistrar;
 import com.eodilog.trip.exception.TripErrorCode;
@@ -40,7 +42,52 @@ public class FeedService {
         return repository.current(trip).map(row->own(row,user)).orElse(null);
     }
     @Transactional(readOnly=true,isolation=Isolation.REPEATABLE_READ)
-    public Feed get(UUID id) { return assembler.visible(repository.require(id)); }
+    public Feed get(UUID user,UUID id) { return withLikes(assembler.visible(repository.require(id)),user); }
+    /** Feed as seen by {@code user}: public representation with that user's like state. */
+    public Feed withLikes(Feed feed,UUID user) { return withLikes(feed,repository.likes(List.of(feed.id()),user).get(feed.id())); }
+    private static Feed withLikes(Feed feed,FeedRepository.Likes likes) {
+        return likes==null?feed.withLikes(false,0):feed.withLikes(likes.likedByMe(),likes.count());
+    }
+    @Transactional
+    public LikeResult like(UUID user,UUID id) {
+        repository.lockLive(id);
+        repository.like(id,user,clock.instant());
+        var likes=repository.likes(List.of(id),user).get(id);
+        return new LikeResult(true,likes==null?0:likes.count());
+    }
+    @Transactional
+    public void unlike(UUID user,UUID id) {
+        repository.require(id);
+        repository.unlike(id,user);
+    }
+    /**
+     * Public summary from the published representation only: visible photos, snapshot places that still have a live visit
+     * recorded at or before publication (and their snapshot regions), the public course legs, and the captured expense total.
+     */
+    @Transactional(readOnly=true,isolation=Isolation.REPEATABLE_READ)
+    public FeedSummary summary(UUID id) {
+        var row=repository.require(id);
+        var feed=assembler.visible(row);
+        var visited=repository.visitedPlaceIds(row);
+        var places=feed.places().stream().filter(p->visited.contains(p.id())).toList();
+        long regionCount=places.stream().map(p->p.regionId()).filter(Objects::nonNull).distinct().count();
+        return new FeedSummary(id,feed.photos().size(),places.size(),regionCount,plannedDistance(feed.publicItinerary()),null,feed.expenseSummary());
+    }
+    private static Long plannedDistance(CourseContent course) {
+        if(course==null) return null;
+        var items=course.items().stream().sorted(Comparator.comparingInt(ItineraryItemResponse::day).thenComparingInt(ItineraryItemResponse::order)).toList();
+        Map<String,Integer> legs=new HashMap<>();
+        course.legs().forEach(l->{ if(l.status()==RouteLegStatus.AVAILABLE && l.distanceMeters()!=null) legs.put(l.fromItemId()+">"+l.toItemId(),l.distanceMeters()); });
+        long sum=0; int pairs=0;
+        for(int i=0;i+1<items.size();i++) {
+            var a=items.get(i); var b=items.get(i+1);
+            if(a.day()!=b.day()) continue;
+            Integer d=legs.get(a.id()+">"+b.id());
+            if(d==null) return null;
+            sum+=d; pairs++;
+        }
+        return pairs==0?null:sum;
+    }
     @Transactional(readOnly=true,isolation=Isolation.REPEATABLE_READ)
     public PageResponse<OwnFeed> list(UUID user,String cursor,int limit) {
         if(limit<1 || limit>100) throw new BusinessException(CommonErrorCode.VALIDATION_ERROR);
@@ -48,7 +95,8 @@ public class FeedService {
         boolean next=rows.size()>limit;
         var page=rows.subList(0,Math.min(rows.size(),limit));
         String after=next?new CreatedAtCursor(page.getLast().snapshot().publishedAt(),page.getLast().id()).encode():null;
-        return PageResponse.of(page.stream().map(r->own(r,user)).toList(),after,next);
+        var likes=repository.likes(page.stream().map(FeedRepository.Row::id).toList(),user);
+        return PageResponse.of(page.stream().map(r->OwnFeed.of(withLikes(assembler.visible(r),likes.get(r.id())),repository.visibility(r,user))).toList(),after,next);
     }
     @Transactional
     public Publication publish(UUID user,UUID trip,FeedWrite request) {
@@ -147,7 +195,7 @@ public class FeedService {
         access.requireActiveMemberForUpdate(observed.tripId(),user);
         return repository.require(id);
     }
-    private OwnFeed own(FeedRepository.Row row,UUID user) { return OwnFeed.of(assembler.visible(row),repository.visibility(row,user)); }
+    private OwnFeed own(FeedRepository.Row row,UUID user) { return OwnFeed.of(withLikes(assembler.visible(row),user),repository.visibility(row,user)); }
     private void version(long actual,long expected) {
         if(actual!=expected) throw new BusinessException(FeedErrorCode.VERSION_CONFLICT);
     }

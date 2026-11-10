@@ -47,8 +47,27 @@ public class FeedController {
     @Operation(summary="공동 피드 상세",description="로그인 사용자 전체에게 공개한다. 비공개 동행 계정·개인 경로 숨김은 직접 링크를 막지 않는다. 삭제된 피드는 404. 내부 정산과 개인 설정은 반환하지 않는다.")
     @ApiResponse(responseCode="200",description="공개 피드")
     public DataResponse<Feed> get(@Parameter(hidden=true) @AuthenticationPrincipal AuthUser user,@PathVariable UUID feedId) {
+        return DataResponse.of(service.get(CurrentUser.requireUserId(user),feedId));
+    }
+    @GetMapping("/feeds/{feedId}/summary")
+    @Operation(summary="공동 피드 요약",description="로그인 사용자 전체(직접 링크와 같은 열람 범위). 게시 표현만 집계한다: 원본이 남은 게시 사진 수, 게시 시각까지 기록되어 남아 있는 방문이 있는 게시 장소 수·그 지역 수, 공개 코스의 같은 날 인접 구간 거리 합(누락·실패면 null), 게시 시점 경비 원금. 내부 정산·멤버 명단은 없다. 삭제된 피드는 404.")
+    @ApiResponse(responseCode="200",description="조회 성공")
+    public DataResponse<FeedSummary> summary(@Parameter(hidden=true) @AuthenticationPrincipal AuthUser user,@PathVariable UUID feedId) {
         CurrentUser.requireUserId(user);
-        return DataResponse.of(service.get(feedId));
+        return DataResponse.of(service.summary(feedId));
+    }
+    @PutMapping("/feeds/{feedId}/like")
+    @Operation(summary="피드 좋아요",description="로그인 사용자 전체(직접 링크와 같은 열람 범위). 사용자·피드당 하나이며 반복해도 같다. 삭제된 피드는 404. 재게시 피드는 새 ID라 0부터 센다. 방문·평가로 집계하지 않는다.")
+    @ApiResponse(responseCode="200",description="좋아요 상태와 현재 수")
+    public DataResponse<LikeResult> like(@Parameter(hidden=true) @AuthenticationPrincipal AuthUser user,@PathVariable UUID feedId) {
+        return DataResponse.of(service.like(CurrentUser.requireUserId(user),feedId));
+    }
+    @DeleteMapping("/feeds/{feedId}/like")
+    @Operation(summary="피드 좋아요 취소",description="본인 좋아요만 지운다. 좋아요가 없어도 204. 삭제된 피드는 404.")
+    @ApiResponse(responseCode="204",description="취소됨")
+    public ResponseEntity<Void> unlike(@Parameter(hidden=true) @AuthenticationPrincipal AuthUser user,@PathVariable UUID feedId) {
+        service.unlike(CurrentUser.requireUserId(user),feedId);
+        return ResponseEntity.noContent().build();
     }
     @PatchMapping("/feeds/{feedId}")
     @Operation(summary="공동 제목·본문 수정",description="현재 ACTIVE 멤버만 수정한다. expectedVersion 필수. 제목·본문 생략은 유지, null은 거부한다.")
