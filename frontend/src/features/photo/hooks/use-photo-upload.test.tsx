@@ -65,7 +65,7 @@ beforeEach(() => {
     registeredCount: 0,
     createdAt: '',
   });
-  read.mockResolvedValue({ size: 1234 } as Blob);
+  read.mockResolvedValue(new ArrayBuffer(1234));
   intent.mockImplementation(async () => ({
     assetId: `asset-${++assetSeq}`,
     uploadUrl: 'https://s3/put',

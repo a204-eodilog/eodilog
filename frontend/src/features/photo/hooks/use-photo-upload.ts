@@ -59,7 +59,7 @@ export function usePhotoUpload(tripId: string) {
           tripId,
           batchId,
           contentType: item.photo.contentType,
-          byteSize: body.size || item.photo.byteSize,
+          byteSize: body.byteLength || item.photo.byteSize,
         });
         assetId = intent.assetId;
         patch(index, { assetId, ready: false });
