@@ -28,9 +28,12 @@ public class TripSavedPlaceService {
     private final PlaceReader places;
     private final TripAccessChecker access;
     private final Clock clock;
+    private final com.eodilog.user.preference.PreferenceService preferences;
 
     public TripSavedPlaceService(NamedParameterJdbcTemplate jdbc, PlaceReader places,
-            TripAccessChecker access, Clock clock) {
+            TripAccessChecker access, Clock clock,
+            com.eodilog.user.preference.PreferenceService preferences) {
+        this.preferences = preferences;
         this.jdbc = jdbc; this.places = places; this.access = access; this.clock = clock;
     }
 
@@ -83,6 +86,7 @@ public class TripSavedPlaceService {
         validateMemo(memo);
         var member = access.requireActiveMemberForUpdate(tripId, userId).member();
         requirePlace(placeId);
+        preferences.lockSavedPlaces(userId);
         Instant now = clock.instant();
         jdbc.update("INSERT INTO trip_place_saves(trip_id,place_id,saved_by_member_id,memo,created_at,updated_at) "
                         + "VALUES(:tripId,:placeId,:memberId,:memo,:now,:now) "
@@ -91,6 +95,7 @@ public class TripSavedPlaceService {
                 new MapSqlParameterSource("tripId", tripId).addValue("placeId", placeId)
                         .addValue("memberId", member.getId()).addValue("memo", memo)
                         .addValue("now", Timestamp.from(now)));
+        preferences.savedPlacesChanged(userId);
         return get(tripId, placeId);
     }
 
@@ -110,10 +115,12 @@ public class TripSavedPlaceService {
     @Transactional
     public void delete(UUID userId, UUID tripId, UUID placeId) {
         var member = access.requireActiveMemberForUpdate(tripId, userId).member();
+        preferences.lockSavedPlaces(userId);
         jdbc.update("DELETE FROM trip_place_saves WHERE trip_id=:tripId AND place_id=:placeId "
                 + "AND saved_by_member_id=:memberId",
                 new MapSqlParameterSource("tripId", tripId).addValue("placeId", placeId)
                         .addValue("memberId", member.getId()));
+        preferences.savedPlacesChanged(userId);
     }
 
     private SavedPlaceView get(UUID tripId, UUID placeId) {
