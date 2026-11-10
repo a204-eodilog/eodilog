@@ -18,6 +18,8 @@ import {
 import { checklistItem, httpError, networkError, suggestion, suggestionJob } from '../testing';
 import type { ChecklistItem, JobRef } from '../types';
 
+import { checklistKey } from '../hooks/checklist-keys';
+
 import { ChecklistScreen } from './checklist-screen';
 
 const mockParams = { tripId: 'trip-1' };
@@ -146,10 +148,12 @@ const mockJob = jest.mocked(getSuggestionJob);
 const mockAdopt = jest.mocked(adoptSuggestion);
 const REF: JobRef = { jobId: 'job-1', status: 'QUEUED', statusUrl: '/api/v1/jobs/job-1' };
 
+let lastClient: QueryClient;
 function renderScreen() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: Infinity } },
   });
+  lastClient = client;
   // 아래 고정 줄이 안전 영역을 읽는다. 테스트에서는 크기를 정해 준다
   const metrics = {
     frame: { x: 0, y: 0, width: 375, height: 812 },
@@ -384,6 +388,29 @@ describe('직접 추가, 고치기, 지우기', () => {
     );
     await waitFor(() => expect(mockGet).toHaveBeenCalledTimes(2));
     expect(screen.queryByText('준비물 고치기')).toBeNull();
+  });
+
+  it('시트를 열어 둔 사이 목록을 다시 받아도 연 때의 version으로 보내 동행 변경을 덮지 않는다', async () => {
+    mockUpdate.mockRejectedValue(httpError(409, 'VERSION_CONFLICT'));
+    await renderScreen();
+    await fireEvent.press(await screen.findByLabelText('우비 고치기'));
+    // 그 사이 다른 동행이 이름을 바꿨고, 앱으로 돌아와 목록을 다시 받았다
+    await act(async () => {
+      lastClient.setQueryData(checklistKey('trip-1'), (old: ChecklistItem[] | undefined) =>
+        (old ?? []).map((i) =>
+          i.id === 'raincoat' ? { ...i, label: '판초 우비', version: 2 } : i,
+        ),
+      );
+    });
+    await fireEvent.changeText(screen.getByLabelText('준비물 이름'), '우비 2벌');
+    await fireEvent.press(screen.getByText('저장'));
+    expect(mockUpdate).toHaveBeenCalledWith('trip-1', 'raincoat', {
+      expectedVersion: 1,
+      label: '우비 2벌',
+    });
+    await waitFor(() =>
+      expect(toast.show).toHaveBeenCalledWith('다른 동행이 먼저 바꿨어요. 최신 목록을 불러왔어요'),
+    );
   });
 
   it('지우기를 누르면 확인 없이 목록에서 빠진다', async () => {

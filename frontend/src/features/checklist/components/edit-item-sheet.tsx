@@ -23,11 +23,17 @@ type Props = {
 export function EditItemSheet({ item, onClose, onSave, onDelete }: Props) {
   const [text, setText] = useState(item?.label ?? '');
   const [prevId, setPrevId] = useState(item?.id ?? null);
+  /**
+   * 시트를 연 때의 항목. 열어 둔 사이 목록을 다시 받아 version이 올라가도 연 때의 version으로 보내야
+   * 다른 동행이 그 사이 바꾼 이름을 말없이 덮지 않고 충돌로 알 수 있다
+   */
+  const [opened, setOpened] = useState(item);
   const [saving, setSaving] = useState(false);
   // 다른 항목으로 열리면 입력을 그 항목 이름으로 다시 채운다
   if ((item?.id ?? null) !== prevId) {
     setPrevId(item?.id ?? null);
     setText(item?.label ?? '');
+    setOpened(item);
   }
 
   const valid = validateLabel(text) !== null;
@@ -35,7 +41,7 @@ export function EditItemSheet({ item, onClose, onSave, onDelete }: Props) {
   const save = async () => {
     if (!item || !valid || saving) return;
     setSaving(true);
-    const done = await onSave(item, text);
+    const done = await onSave(opened ?? item, text);
     setSaving(false);
     if (done) onClose();
   };
