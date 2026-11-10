@@ -36,9 +36,16 @@ public class FeedRepository {
         }
         return named.query(sql+" order by f.published_at desc,f.id desc limit :limit",args,this::map);
     }
+    /** Stores the snapshot and its queryable copies (period, regions, place regions) used by member-route exposure. */
     public void insert(Feed feed) {
-        jdbc.update("insert into feeds(id,trip_id,title,body,published_at,snapshot_json) values(?,?,?,?,?,?::jsonb)",
-                feed.id(),feed.tripId(),feed.title(),feed.body(),Timestamp.from(feed.publishedAt()),json.writeValueAsString(feed));
+        jdbc.update("insert into feeds(id,trip_id,title,body,published_at,start_date,end_date,snapshot_json) values(?,?,?,?,?,?,?,?::jsonb)",
+                feed.id(),feed.tripId(),feed.title(),feed.body(),Timestamp.from(feed.publishedAt()),feed.startDate(),feed.endDate(),json.writeValueAsString(feed));
+        jdbc.batchUpdate("insert into feed_regions(feed_id,region_id) values(?,?)",
+                feed.regions().stream().map(r->r.id()).distinct().map(r->new Object[]{feed.id(),r}).toList());
+        Map<UUID,UUID> places=new LinkedHashMap<>();
+        feed.places().forEach(p->places.putIfAbsent(p.id(),p.regionId()));
+        jdbc.batchUpdate("insert into feed_places(feed_id,place_id,region_id) values(?,?,?)",
+                places.entrySet().stream().map(e->new Object[]{feed.id(),e.getKey(),e.getValue()}).toList());
     }
     public void photo(UUID feed, UUID photo, UUID asset) {
         jdbc.update("insert into feed_photos(feed_id,photo_id,asset_id) values(?,?,?)",feed,photo,asset);
@@ -77,7 +84,47 @@ public class FeedRepository {
         return new HashSet<>(jdbc.query("select r.id from reviews r join visits v on v.id=r.visit_id where v.trip_id=? and v.deleted_at is null",
                 (rs,n)->rs.getObject(1,UUID.class),trip));
     }
-    private Row map(ResultSet rs,int n) throws SQLException {
+    public record Likes(long count, boolean likedByMe) { }
+    public Map<UUID,Likes> likes(Collection<UUID> feedIds, UUID viewer) {
+        Map<UUID,Likes> result=new HashMap<>();
+        if(feedIds.isEmpty()) return result;
+        named.query("select feed_id,count(*),bool_or(user_id=:viewer) from feed_likes where feed_id in (:ids) group by feed_id",
+                new MapSqlParameterSource("ids",feedIds).addValue("viewer",viewer),
+                rs->{ result.put(rs.getObject(1,UUID.class),new Likes(rs.getLong(2),rs.getBoolean(3))); });
+        return result;
+    }
+    /** Share-locks the live feed and its trip so a concurrent tombstone or trip delete waits; absent means FEED_NOT_FOUND. */
+    public void lockLive(UUID id) {
+        if(jdbc.query("select 1"+LIVE+"and f.id=? for share",(rs,n)->1,id).isEmpty()) throw new BusinessException(FeedErrorCode.FEED_NOT_FOUND);
+    }
+    public void like(UUID feed, UUID user, Instant now) {
+        jdbc.update("insert into feed_likes(feed_id,user_id,created_at) values(?,?,?) on conflict(feed_id,user_id) do nothing",feed,user,Timestamp.from(now));
+    }
+    public void unlike(UUID feed, UUID user) {
+        jdbc.update("delete from feed_likes where feed_id=? and user_id=?",feed,user);
+    }
+    public boolean activeMember(UUID trip, UUID user) {
+        return !jdbc.queryForList("select 1 from trip_members where trip_id=? and user_id=? and status='ACTIVE'",Integer.class,trip,user).isEmpty();
+    }
+    /** Live original photo IDs per feed, with the same checks as {@link #livePhotoIds(UUID)}. */
+    public Map<UUID,Set<UUID>> livePhotoIds(Collection<UUID> feedIds) {
+        Map<UUID,Set<UUID>> result=new HashMap<>();
+        if(feedIds.isEmpty()) return result;
+        named.query("""
+                select fp.feed_id,p.id from feed_photos fp join feeds f on f.id=fp.feed_id
+                join photos p on p.id=fp.photo_id and p.trip_id=f.trip_id and p.asset_id=fp.asset_id
+                join assets a on a.id=p.asset_id and a.trip_id=f.trip_id
+                where fp.feed_id in (:ids) and p.deleted_at is null and a.deleted_at is null and a.status='READY'
+                """,new MapSqlParameterSource("ids",feedIds),
+                rs->{ result.computeIfAbsent(rs.getObject(1,UUID.class),k->new HashSet<>()).add(rs.getObject(2,UUID.class)); });
+        return result;
+    }
+    /** Places of the feed's trip with a live visit recorded at or before publication. */
+    public Set<UUID> visitedPlaceIds(Row row) {
+        return new HashSet<>(jdbc.query("select distinct place_id from visits where trip_id=? and deleted_at is null and created_at<=?",
+                (rs,n)->rs.getObject(1,UUID.class),row.tripId(),Timestamp.from(row.snapshot().publishedAt())));
+    }
+    Row map(ResultSet rs,int n) throws SQLException {
         return new Row(rs.getObject("id",UUID.class),rs.getObject("trip_id",UUID.class),rs.getString("title"),rs.getString("body"),
                 rs.getLong("version"),json.readValue(rs.getString("snapshot_json"),Feed.class));
     }
