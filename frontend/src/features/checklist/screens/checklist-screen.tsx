@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { errorLook } from '@/api/error-look';
 import { toApiError } from '@/api/errors';
 import { AvatarGroup, ErrorState, Header, Icon } from '@/components/ui';
 import { useTrip } from '@/features/trip/hooks/use-trip';
@@ -39,6 +40,8 @@ export type ChecklistViewProps = {
   status: 'loading' | 'error' | 'notFound' | 'ready';
   items: ChecklistItem[];
   onRetry(): void;
+  /** 불러오기 실패의 원인. 아이콘과 짧은 제목을 고른다 */
+  error?: unknown;
   onToggle(item: ChecklistItem): void;
   onMore(item: ChecklistItem): void;
   onAdd(label: string): Promise<boolean>;
@@ -75,14 +78,15 @@ export function ChecklistView(props: ChecklistViewProps) {
   } else if (status === 'notFound') {
     body = (
       <ErrorState
-        title="여행을 찾을 수 없어요"
-        description="나갔거나 지워진 여행일 수 있어요"
+        icon="lock"
+        title="볼 수 없어요"
+        description={null}
         retryLabel="돌아가기"
         onRetry={() => router.back()}
       />
     );
   } else if (status === 'error') {
-    body = <ErrorState title="준비물을 불러오지 못했어요" onRetry={props.onRetry} />;
+    body = <ErrorState {...errorLook(props.error)} description={null} onRetry={props.onRetry} />;
   } else if (items.length === 0) {
     body = (
       <ScrollView contentContainerStyle={styles.emptyScroll} keyboardShouldPersistTaps="handled">
@@ -225,6 +229,7 @@ export function ChecklistScreen() {
       tripTitle={trip.data?.title}
       people={people}
       status={status}
+      error={checklist.error ?? trip.error}
       items={checklist.data ?? []}
       onRetry={() => void checklist.refetch()}
       onToggle={toggle}

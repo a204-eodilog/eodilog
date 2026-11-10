@@ -290,9 +290,7 @@ describe('불러오기', () => {
     // 연결 오류는 한 번 다시 시도한 뒤 실패를 보인다
     mockGet.mockRejectedValueOnce(networkError()).mockRejectedValueOnce(networkError());
     await renderScreen();
-    expect(
-      await screen.findByText('준비물을 불러오지 못했어요', {}, { timeout: 4000 }),
-    ).toBeTruthy();
+    expect(await screen.findByText('연결이 끊겼어요', {}, { timeout: 4000 })).toBeTruthy();
     await fireEvent.press(screen.getByText('다시 시도'));
     expect(await screen.findByText('3개 중 1개 챙겼어요')).toBeTruthy();
   });
@@ -300,7 +298,7 @@ describe('불러오기', () => {
   it('볼 수 없는 여행이면 돌아가기를 보인다', async () => {
     mockGet.mockRejectedValue(httpError(404, 'TRIP_NOT_FOUND'));
     await renderScreen();
-    expect(await screen.findByText('여행을 찾을 수 없어요')).toBeTruthy();
+    expect(await screen.findByText('볼 수 없어요')).toBeTruthy();
     await fireEvent.press(screen.getByText('돌아가기'));
     expect(mockRouter.back).toHaveBeenCalled();
   });
@@ -511,14 +509,18 @@ describe('다시 제안 받기', () => {
     await renderScreen();
     await fireEvent.press(await screen.findByText('다시 제안 받기'));
 
-    expect(await screen.findByText('준비물을 다시 제안하지 못했어요')).toBeTruthy();
-    expect(screen.getByText('지금 목록은 그대로예요')).toBeTruthy();
+    expect(
+      await screen.findByLabelText('준비물을 다시 제안하지 못했어요. 지금 목록은 그대로예요'),
+    ).toBeTruthy();
+    expect(screen.queryByText('지금 목록은 그대로예요')).toBeNull();
     expect(screen.getByText('직접 고친 항목은 그대로 둬요')).toBeTruthy();
     expect(screen.getByText('3개 중 1개 챙겼어요')).toBeTruthy();
 
     mockJob.mockResolvedValue(suggestionJob({ status: 'SUCCEEDED', result: { items: [] } }));
     await fireEvent.press(screen.getByText('다시 시도'));
-    await waitFor(() => expect(screen.queryByText('준비물을 다시 제안하지 못했어요')).toBeNull());
+    await waitFor(() =>
+      expect(screen.queryByLabelText(/준비물을 다시 제안하지 못했어요/)).toBeNull(),
+    );
     expect(mockRequest).toHaveBeenCalledTimes(2);
   });
 
@@ -526,7 +528,7 @@ describe('다시 제안 받기', () => {
     mockRequest.mockRejectedValue(httpError(409, 'AI_FEATURE_DISABLED'));
     await renderScreen();
     await fireEvent.press(await screen.findByText('다시 제안 받기'));
-    expect(await screen.findByText('준비물 추천이 꺼져 있어요')).toBeTruthy();
+    expect(await screen.findByLabelText(/준비물 추천이 꺼져 있어요/)).toBeTruthy();
     await fireEvent.press(screen.getByText('설정 열기'));
     expect(mockRouter.push).toHaveBeenCalledWith('/settings');
   });

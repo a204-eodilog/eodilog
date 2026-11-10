@@ -14,35 +14,39 @@ type Props = {
 
 const COPY: Record<
   SuggestFailure,
-  { title: string; body: string; action: string; icon: IconName }
+  { title: string; body: string; action: string; icon: IconName; badge: IconName }
 > = {
   general: {
     title: CHECKLIST_TEXT.suggestFailTitle,
     body: CHECKLIST_TEXT.suggestFailBody,
     action: '다시 시도',
     icon: 'refresh',
+    badge: 'alert',
   },
   disabled: {
     title: CHECKLIST_TEXT.disabledTitle,
     body: CHECKLIST_TEXT.disabledBody,
     action: '설정 열기',
     icon: 'settings',
+    badge: 'gear',
   },
 };
 
-/** 다시 제안 실패 카드(Figma 201-30087). 목록 위에 두고 목록은 그대로 보인다 */
+/**
+ * 다시 제안 실패 카드(Figma 201-30087). 목록 위에 두고 목록은 그대로 보인다.
+ * 글 대신 까닭 아이콘과 버튼만 보이고, 제목과 설명은 화면 읽기 프로그램에만 준다
+ */
 export function SuggestFailCard({ failure, onAction }: Props) {
   const copy = COPY[failure];
   return (
-    <View style={styles.card} accessibilityRole="alert">
-      <View style={styles.top}>
-        <View style={styles.badge}>
-          <Icon name="alert" size={22} color={colors.text.icon} />
-        </View>
-        <View style={styles.texts}>
-          <Text style={[typography.bodyBold, styles.title]}>{copy.title}</Text>
-          <Text style={[typography.caption, styles.body]}>{copy.body}</Text>
-        </View>
+    <View style={styles.card}>
+      <View
+        style={styles.badge}
+        accessible
+        accessibilityRole="alert"
+        accessibilityLabel={`${copy.title}. ${copy.body}`}
+      >
+        <Icon name={copy.badge} size={22} color={colors.text.icon} />
       </View>
       <View style={styles.actionRow}>
         <Pressable style={styles.action} onPress={onAction} accessibilityRole="button">
@@ -56,12 +60,13 @@ export function SuggestFailCard({ failure, onAction }: Props) {
 
 const styles = StyleSheet.create({
   card: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: colors.surface.default,
     borderRadius: radius.xl,
-    padding: spacing[18],
+    padding: spacing[14],
     gap: spacing[10],
   },
-  top: { flexDirection: 'row', alignItems: 'center', gap: spacing[14] },
   badge: {
     width: 44,
     height: 44,
@@ -70,10 +75,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  texts: { flex: 1, gap: spacing[2] },
-  title: { color: colors.text.default },
-  body: { color: colors.text.icon },
-  actionRow: { flexDirection: 'row', justifyContent: 'flex-end' },
+  actionRow: { flex: 1, flexDirection: 'row', justifyContent: 'flex-end' },
   action: {
     flexDirection: 'row',
     alignItems: 'center',
