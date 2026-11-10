@@ -230,7 +230,8 @@ class VisitCandidateApiTest {
         detectRequest(owner, trip, key(), List.of()).andExpect(status().isBadRequest());
         detectRequest(owner, trip, null, List.of(mine)).andExpect(status().isBadRequest());
         detectRequest(owner, trip, key(), IntStream.range(0, 51).mapToObj(i -> UUID.randomUUID()).toList())
-                .andExpect(status().isUnprocessableContent()).andExpect(jsonPath("$.error.code").value("INPUT_LIMIT_EXCEEDED"));
+                .andExpect(status().isUnprocessableContent()).andExpect(jsonPath("$.error.code").value("INPUT_LIMIT_EXCEEDED"))
+                .andExpect(jsonPath("$.error.message").value("사진은 50장까지 보낼 수 있습니다."));
         UUID stranger = user();
         detectRequest(stranger, trip, key(), List.of(mine)).andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("TRIP_NOT_FOUND"));
@@ -469,6 +470,59 @@ class VisitCandidateApiTest {
         assertThat(count("select count(*) from photos where id in (?,?)", confirmedPhoto, pendingPhoto)).isZero();
         assertThat(count("select count(*) from visit_candidates where id=?", confirmed)).isZero();
         assertThat(count("select count(*) from visit_candidate_photos where candidate_id in (?,?)", confirmed, pending)).isZero();
+    }
+
+    @Test void sameKeyWithTheSamePhotosInAnotherOrderReplaysTheFirstJob() throws Exception {
+        UUID first = photo(trip, ownerMember, owner, gps(37.5, 127.0, null), Instant.parse(CAPTURED), null);
+        UUID second = photo(trip, ownerMember, owner, gps(37.5, 127.0, null), Instant.parse(CAPTURED), null);
+        String key = key();
+        String job = data(detectRequest(owner, trip, key, List.of(first, second)).andExpect(status().isAccepted())).path("jobId").asString();
+        assertThat(data(detectRequest(owner, trip, key, List.of(second, first)).andExpect(status().isAccepted())).path("jobId").asString())
+                .isEqualTo(job);
+        assertThat(count("select count(*) from jobs where kind='VISIT_DETECTION' and requested_by_user_id=?", owner)).isEqualTo(1);
+        detectRequest(owner, trip, key, List.of(first, first)).andExpect(status().isBadRequest());
+    }
+
+    @Test void invalidatedEvidenceIsReportedBeforeAStaleVersion() throws Exception {
+        UUID photo = photo(trip, ownerMember, owner, gps(37.5, 127.0, null), Instant.parse(CAPTURED), null);
+        UUID candidate = candidate(photo);
+        // 이동·삭제 경로를 거치지 않고 근거가 사라지면 행은 PENDING:1 그대로다
+        jdbc.update("update photos set deleted_at=now() where id=?", photo);
+        assertThat(jdbc.queryForObject("select status||':'||version from visit_candidates where id=?", String.class, candidate)).isEqualTo("PENDING:1");
+        confirm(owner, trip, candidate, "{\"expectedVersion\":7}").andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("VISIT_CANDIDATE_INVALIDATED"));
+    }
+
+    @Test void finishedJobStaysReadableWithTheSettingOffButConfirmIsBlocked() throws Exception {
+        UUID job = detect(owner, trip, photo(trip, ownerMember, owner, gps(37.5, 127.0, null), Instant.parse(CAPTURED), null));
+        run(job);
+        jdbc.update("insert into user_settings(user_id,visit_detection_mode) values(?,'OFF')", owner);
+
+        JsonNode candidates = result(owner, job).path("candidates");
+        assertThat(candidates).hasSize(1);
+        mvc.perform(get("/api/v1/jobs/{id}", job).with(authUser(friend))).andExpect(status().isNotFound());
+        confirm(owner, trip, UUID.fromString(candidates.get(0).path("id").asString()), "{\"expectedVersion\":1}")
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("AI_FEATURE_DISABLED"));
+    }
+
+    @Test void uncheckingAConfirmedVisitInvalidatesItsCandidateAndAllowsCheckingAgain() throws Exception {
+        UUID photo = photo(trip, ownerMember, owner, gps(37.5, 127.0, null), Instant.parse(CAPTURED), null);
+        UUID candidate = candidate(photo);
+        String visit = data(confirm(owner, trip, candidate, "{\"expectedVersion\":1}").andExpect(status().isCreated())).path("id").asString();
+
+        mvc.perform(delete("/api/v1/trips/{trip}/visits/{id}", trip, visit).with(authUser(owner))).andExpect(status().isNoContent());
+        assertThat(jdbc.queryForObject("select status||':'||version||':'||coalesce(visit_id::text,'-') from visit_candidates where id=?",
+                String.class, candidate)).isEqualTo("INVALIDATED:3:-");
+        confirm(owner, trip, candidate, "{\"expectedVersion\":3}").andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("VISIT_CANDIDATE_INVALIDATED"));
+        confirm(owner, trip, candidate, "{\"expectedVersion\":2}").andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("VISIT_CANDIDATE_INVALIDATED"));
+
+        // 같은 장소를 다시 체크하고 새 후보로 확정할 수 있다(체크한 장소는 제안하지 않으므로 후보를 먼저 받는다)
+        UUID again = candidate(photo(trip, ownerMember, owner, gps(37.5, 127.0, null), Instant.parse(CAPTURED), null));
+        String manual = data(manualVisit(owner, trip, placeA).andExpect(status().isCreated())).path("id").asString();
+        assertThat(data(confirm(owner, trip, again, "{\"expectedVersion\":1}").andExpect(status().isCreated())).path("id").asString())
+                .isEqualTo(manual);
     }
 
     // 접수한 작업을 worker 없이 직접 실행·완료해 그 사이에 상태를 바꿀 수 있게 한다

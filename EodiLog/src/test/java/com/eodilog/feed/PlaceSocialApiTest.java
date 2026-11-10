@@ -19,6 +19,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.*;
+import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -29,6 +30,8 @@ class PlaceSocialApiTest {
     @Autowired MockMvc mvc;
     @Autowired JdbcTemplate jdbc;
     @Autowired JsonMapper json;
+    @Autowired PlaceSocialRepository repository;
+    @Autowired TransactionTemplate tx;
     record Trip(UUID id,Map<UUID,UUID> members) { }
 
     @Test void accountVisibilityRelationAndHidingDecideWhetherAFeedCounts() throws Exception {
@@ -141,6 +144,26 @@ class PlaceSocialApiTest {
         assertThat(author.path("profileImageUrl").isNull()).isTrue();
         assertThat(author.path("followingStatus").asString()).isEqualTo("NONE");
         assertThat(author.path("followedByStatus").asString()).isEqualTo("NONE");
+    }
+
+    @Test void visitorWithoutAUserRowIsLeftOutOfBothCountAndList() throws Exception {
+        UUID member=user("PUBLIC"),viewer=user("PUBLIC"),place=place();
+        Trip trip=trip(member);
+        visit(trip,member,place);
+        publish(trip,member);
+        UUID ghost=UUID.randomUUID();
+        tx.executeWithoutResult(status->{
+            status.setRollbackOnly();
+            // the FK normally guarantees the user row; disable FK triggers for this rolled-back transaction only
+            jdbc.execute("set local session_replication_role=replica");
+            UUID ghostMember=UUID.randomUUID();
+            jdbc.update("insert into trip_members(id,trip_id,user_id,join_order,joined_at) values(?,?,?,2,now())",ghostMember,trip.id(),ghost);
+            jdbc.update("insert into visits(id,trip_id,member_id,place_id,visited_at,created_at) values(?,?,?,?,now(),now()-interval '1 hour')",
+                    UUID.randomUUID(),trip.id(),ghostMember,place);
+            var summary=repository.summary(viewer,Set.of(member,ghost),place,20);
+            assertThat(summary.visitorIds()).containsExactly(member);
+            assertThat(summary.visitorCount()).isEqualTo(1);
+        });
     }
 
     @Test void unknownPlaceIsNotFoundAndBadPagingInputIsRejected() throws Exception {

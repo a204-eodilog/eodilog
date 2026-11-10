@@ -41,6 +41,7 @@ public class PlaceSocialRepository {
              select m.user_id,max(vi.visited_at) as last_at from allowed f
              join visits vi on vi.trip_id=f.trip_id and vi.place_id=:place and vi.deleted_at is null and vi.created_at<=f.published_at
              join trip_members m on m.id=vi.member_id and m.status='ACTIVE' and m.user_id=any(:members) and m.user_id<>:viewer
+             join users u on u.id=m.user_id
              where %s group by m.user_id
             )""".formatted(NOT_HIDDEN_BY_MEMBER);
 
@@ -71,7 +72,8 @@ public class PlaceSocialRepository {
 
     /**
      * One statement: review count/average over published reviews, plus distinct visitors other than the viewer (a live visit to
-     * the place on an allowed feed's trip recorded at or before publication, by a user who is an open route of that feed) with
+     * the place on an allowed feed's trip recorded at or before publication, by a user who is an open route of that feed and whose
+ * user row exists, so visitorCount and visitors are computed over the same set) with
      * their total and the first {@code limit} ids by latest visit DESC, user id DESC. The allowed CTE is referenced more than
      * once and is therefore materialized once.
      */

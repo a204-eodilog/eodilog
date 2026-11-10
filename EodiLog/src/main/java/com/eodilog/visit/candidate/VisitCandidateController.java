@@ -33,11 +33,13 @@ public class VisitCandidateController {
 
 	@Operation(summary = "사진으로 방문 후보 감지", description = """
 			ACTIVE 멤버가 이 여행에 직접 올린 사진(삭제 안 됨·READY) 1~50장으로 본인 방문 후보만 제안한다. Idempotency-Key 필수.
+			같은 키로 같은 사진 집합을 순서만 바꿔 보내도 같은 본문으로 보고 처음 작업을 돌려준다.
 			실제 방문(체크)은 만들지 않으며 사진 속 다른 사람을 방문자로 정하지 않는다. 남이 올린·다른 여행·지운 사진은 404 PHOTO_NOT_FOUND.
 			판정은 AI 서버(AI spec §8.2)가 비공개 EXIF 위치·촬영 시각과 지금 코스로 한다(같은 날 코스 장소 300m 안 우선, 없으면 날짜 무관).
 			시각은 사진의 capturedAt, 없으면 EXIF 촬영 시각(한국 시각). 위치나 시각이 없는 사진은 보내지 않는다. 이미 체크한 장소는 제안하지 않는다.
 			여행 기간이 없으면 422 INSUFFICIENT_DATA(trip.startDate).
-			결과는 GET /jobs/{jobId}(요청자만)의 {candidates:VisitCandidate[]}이다. 방문 감지 설정 OFF면 409.""")
+			결과는 GET /jobs/{jobId}(요청자만)의 {candidates:VisitCandidate[]}이다. 방문 감지 설정 OFF면 409.
+			설정을 나중에 꺼도 요청자(ACTIVE 멤버)는 끝난 작업 결과를 조회할 수 있다(확정은 OFF면 409).""")
 	@ApiResponse(responseCode = "202", description = "VISIT_DETECTION 작업 접수")
 	@ApiResponse(responseCode = "409", description = "AI_FEATURE_DISABLED: 방문 감지 설정 OFF / IDEMPOTENCY_KEY_REUSED")
 	@ApiResponse(responseCode = "422", description = "INPUT_LIMIT_EXCEEDED: 50장 초과 / INSUFFICIENT_DATA: 여행 기간 없음")
@@ -53,7 +55,8 @@ public class VisitCandidateController {
 			후보 본인(ACTIVE 멤버)만 확정한다. 남의 후보·다른 여행의 후보는 404 VISIT_CANDIDATE_NOT_FOUND.
 			확정하면 evidenceType=PHOTO 방문이 생긴다. 이미 직접 체크한 같은 장소면 그 방문에 연결해 돌려준다.
 			같은 후보를 다시 확정하면 처음 방문을 그대로 201로 돌려준다(expectedVersion·설정 검사 없음). 미확정 후보는 방문 감지 설정 OFF면 409.
-			근거 사진이 이동·삭제됐거나 같은 장소의 다른 후보가 먼저 확정되면 409 VISIT_CANDIDATE_INVALIDATED.""")
+			근거 사진이 이동·삭제됐거나 같은 장소의 다른 후보가 먼저 확정됐거나 확정한 방문을 체크 해제했으면 409 VISIT_CANDIDATE_INVALIDATED.
+			무효 판정이 version 판정보다 먼저다(무효 후보는 version이 달라도 VISIT_CANDIDATE_INVALIDATED).""")
 	@ApiResponse(responseCode = "201", description = "확정한 방문(중복 확정이면 기존 방문)")
 	@ApiResponse(responseCode = "404", description = "TRIP_NOT_FOUND / VISIT_CANDIDATE_NOT_FOUND")
 	@ApiResponse(responseCode = "409", description = "VERSION_CONFLICT / VISIT_CANDIDATE_INVALIDATED / AI_FEATURE_DISABLED")

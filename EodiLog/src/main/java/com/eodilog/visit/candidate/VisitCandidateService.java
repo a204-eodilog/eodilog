@@ -59,7 +59,7 @@ public class VisitCandidateService {
 		}
 		List<UUID> ids = request.photoIds();
 		if (ids.size() > VisitDetectionHandler.MAX_PHOTOS) {
-			throw new BusinessException(AssetErrorCode.INPUT_LIMIT_EXCEEDED);
+			throw new BusinessException(AssetErrorCode.INPUT_LIMIT_EXCEEDED, "사진은 " + VisitDetectionHandler.MAX_PHOTOS + "장까지 보낼 수 있습니다.");
 		}
 		if (ids.stream().anyMatch(Objects::isNull) || new HashSet<>(ids).size() != ids.size()) {
 			throw invalid("photoIds", "사진을 중복 없이 보내 주세요.");
@@ -79,13 +79,15 @@ public class VisitCandidateService {
 		var input = json.createObjectNode().put("memberId", member.toString());
 		var photoIds = input.putArray("photoIds");
 		ids.forEach(id -> photoIds.add(id.toString()));
-		return idempotency.execute(user, "POST /api/v1/trips/" + trip + "/visit-detections", key, request, JobRef.class,
+		// 사진 순서는 의미가 없다: 같은 사진 집합이면 같은 본문으로 보고 처음 작업을 돌려준다
+		var fingerprint = new VisitDetectionRequest(ids.stream().sorted().toList());
+		return idempotency.execute(user, "POST /api/v1/trips/" + trip + "/visit-detections", key, fingerprint, JobRef.class,
 				HttpStatus.ACCEPTED, () -> jobs.submit(new JobSubmission(user, JobKind.VISIT_DETECTION, trip, input, null, null)));
 	}
 
 	/**
-	 * 판정 순서: expectedVersion 400 → 여행 404 → 내 후보가 아님 404 → 이미 확정이면 연결된 방문 → 설정 OFF 409 → 무효 409
-	 * → version 409 → 근거 사진 이동·삭제 409 → 방문 생성(또는 이미 직접 체크한 같은 장소 방문 연결).
+	 * 판정 순서: expectedVersion 400 → 여행 404 → 내 후보가 아님 404 → 이미 확정이면 연결된 방문 → 설정 OFF 409 → 무효(근거 사진 이동·삭제,
+	 * 장소 없음 포함) 409 VISIT_CANDIDATE_INVALIDATED → version 409 VERSION_CONFLICT → 방문 생성(또는 이미 직접 체크한 같은 장소 방문 연결).
 	 * 확정하면 version이 오르고, 같은 장소의 다른 미확정 후보는 무효가 된다(여행·멤버·장소당 방문 하나).
 	 */
 	@Transactional
@@ -105,14 +107,11 @@ public class VisitCandidateService {
 		if (access.disabled(user)) {
 			throw new BusinessException(VisitCandidateErrorCode.AI_FEATURE_DISABLED);
 		}
-		if ("INVALIDATED".equals(candidate.status())) {
+		if ("INVALIDATED".equals(candidate.status()) || !candidate.live() || places.find(candidate.placeId()).isEmpty()) {
 			throw new BusinessException(VisitCandidateErrorCode.VISIT_CANDIDATE_INVALIDATED);
 		}
 		if (candidate.version() != request.expectedVersion()) {
 			throw new BusinessException(VisitCandidateErrorCode.VERSION_CONFLICT);
-		}
-		if (!candidate.live() || places.find(candidate.placeId()).isEmpty()) {
-			throw new BusinessException(VisitCandidateErrorCode.VISIT_CANDIDATE_INVALIDATED);
 		}
 		var existing = visits.findByTripIdAndMemberIdAndPlaceIdAndDeletedAtIsNull(trip, member, candidate.placeId());
 		Visit visit;

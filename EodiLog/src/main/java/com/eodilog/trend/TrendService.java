@@ -39,7 +39,7 @@ public class TrendService {
         if(from.isAfter(to)) throw invalid("from","from은 to보다 늦을 수 없습니다.");
         long days=ChronoUnit.DAYS.between(from,to)+1;
         if(days>MAX_DAYS) throw invalid("to","기간은 최대 "+MAX_DAYS+"일입니다.");
-        TrendCursor after=cursor==null?null:TrendCursor.decode(cursor);
+        TrendCursor after=cursor==null?null:TrendCursor.decode(cursor,from,to);
         var rows=repository.page(viewer,from,to,from.minusDays(days),from.minusDays(1),after,limit+1);
         boolean next=rows.size()>limit;
         var page=next?rows.subList(0,limit):rows;
@@ -47,7 +47,7 @@ public class TrendService {
         List<TrendRegion> items=page.stream().map(r->new TrendRegion(r.region(),r.rank(),r.previousRank(),
                 r.previousRank()==null?null:r.previousRank()-r.rank(),r.previousRank()==null,r.count(),r.followingCount(),
                 from,to,r.sampleSize(),now,r.sampleSize()<MIN_SAMPLE_SIZE)).toList();
-        String nextCursor=next?new TrendCursor(page.getLast().count(),page.getLast().region().code()).encode():null;
+        String nextCursor=next?new TrendCursor(from,to,page.getLast().count(),page.getLast().region().code()).encode():null;
         return PageResponse.of(items,nextCursor,next);
     }
 

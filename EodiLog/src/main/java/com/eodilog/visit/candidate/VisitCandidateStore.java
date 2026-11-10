@@ -3,6 +3,7 @@ package com.eodilog.visit.candidate;
 import com.eodilog.photo.PhotoEvidenceInvalidator;
 import com.eodilog.place.dto.PlaceView;
 import com.eodilog.place.service.PlaceReader;
+import com.eodilog.visit.service.VisitUncheckListener;
 import java.sql.Array;
 import java.sql.SQLException;
 import java.util.Collection;
@@ -20,7 +21,7 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @RequiredArgsConstructor
-public class VisitCandidateStore implements PhotoEvidenceInvalidator {
+public class VisitCandidateStore implements PhotoEvidenceInvalidator, VisitUncheckListener {
 
 	static final String LIVE_EVIDENCE = """
 			(exists(select 1 from visit_candidate_photos l where l.candidate_id=c.id)
@@ -66,6 +67,16 @@ public class VisitCandidateStore implements PhotoEvidenceInvalidator {
 				update visit_candidates set status='INVALIDATED',version=version+1
 				where status='PENDING' and place_id<>? and id in (select candidate_id from visit_candidate_photos where photo_id=?)""",
 				placeId, photoId);
+	}
+
+	/**
+	 * 확정한 방문을 체크 해제하면 그 후보는 INVALIDATED가 된다(version 증가). CONFIRMED만 visit_id를 가지므로(ck_visit_candidates_confirmed)
+	 * 연결을 끊는다. 그래서 같은 장소를 다시 체크·확정할 때 visit_id UNIQUE에 걸리지 않는다.
+	 */
+	@Override
+	public void visitUnchecked(UUID visitId) {
+		jdbc.update("update visit_candidates set status='INVALIDATED',visit_id=null,version=version+1 where status='CONFIRMED' and visit_id=?",
+				visitId);
 	}
 
 	List<VisitCandidateResponse> findByJob(UUID jobId) {
