@@ -10,7 +10,11 @@ import { JobStopped, waitForJob } from '@/features/course/wait-job';
 
 import { applyProposal, requestRemoval } from '../api';
 
-const WAIT = { interval: 1500, timeout: 120_000 };
+/**
+ * 1.5초마다 확인하고 4분이 넘으면 실패. AI가 잠깐 실패하면 백엔드가 다시 시도해 1~3분 걸릴 수 있다
+ * (백엔드 안내 2026-11-09). 그 사이 작업은 QUEUED로 남으므로 백엔드보다 먼저 실패로 끝내지 않는다
+ */
+const WAIT = { interval: 1500, timeout: 4 * 60_000 };
 
 /** S29를 연 이유. 날씨 대안이 만든 작업이거나, 화면이 만들 장소 빼기 */
 export type ProposalSource = { jobId: string } | { removePlaceId: string };

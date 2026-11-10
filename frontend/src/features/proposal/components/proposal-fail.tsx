@@ -33,7 +33,7 @@ export function ProposalUnsupported({ onEdit, onCourse }: { onEdit(): void; onCo
 }
 
 /**
- * S29 재계산 실패(Figma 201-16329). 변경안 작업이 실패하거나 2분을 넘겼다.
+ * S29 재계산 실패(Figma 201-16329). 변경안 작업이 실패하거나 4분을 넘겼다.
  * 지금 코스는 그대로라고 알리고 [다시 시도], [코스 보기].
  */
 export function ProposalFail({
