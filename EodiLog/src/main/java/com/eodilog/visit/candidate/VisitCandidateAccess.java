@@ -22,6 +22,11 @@ public class VisitCandidateAccess {
 		return jdbc.queryForList("select visit_detection_mode from user_settings where user_id=?", String.class, user).contains("OFF");
 	}
 
+	public java.time.LocalDate startDate(UUID trip) {
+		return jdbc.queryForList("select start_date from trips where id=?", java.time.LocalDate.class, trip).stream()
+				.filter(java.util.Objects::nonNull).findFirst().orElse(null);
+	}
+
 	public boolean allowed(UUID trip, UUID user) {
 		return active(trip, user) && !disabled(user);
 	}

@@ -2,10 +2,18 @@ package com.eodilog.visit.candidate;
 
 import static com.eodilog.global.security.AuthUserRequestPostProcessors.authUser;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import com.eodilog.TestcontainersConfiguration;
+import com.eodilog.global.ai.AiServerClient;
+import com.eodilog.global.ai.AiServerException;
 import com.eodilog.global.storage.InMemoryStorageConfiguration;
 import com.eodilog.job.CleanupScope;
 import com.eodilog.job.JobContext;
@@ -33,11 +41,13 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
+import org.mockito.ArgumentCaptor;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
-// 사진 방문 후보 감지(VISIT_DETECTION)·확정(EODI-267). 규칙 기반 판정이라 AI 서버 없이 실제 jobs worker를 직접 돌린다
+// 사진 방문 후보 감지(VISIT_DETECTION)·확정(EODI-267). AI 서버는 AI spec §8.2 규칙(코스 장소 300m)을 흉내 내는 가짜로 바꾸고 실제 jobs worker를 직접 돌린다
 @SpringBootTest @AutoConfigureMockMvc
 @Import({TestcontainersConfiguration.class, InMemoryStorageConfiguration.class})
 class VisitCandidateApiTest {
@@ -48,6 +58,7 @@ class VisitCandidateApiTest {
     @Autowired TransactionTemplate transactions;
     @Autowired TripDeleteJobHandler tripDeleteHandler;
     @Autowired VisitDetectionHandler handler;
+    @MockitoBean AiServerClient ai;
     UUID owner, friend, trip, other, ownerMember, friendMember, placeA, placeB, outsider;
 
     static final String CAPTURED = "2026-11-01T03:00:00Z";
@@ -59,35 +70,87 @@ class VisitCandidateApiTest {
         friendMember = UUID.randomUUID();
         jdbc.update("insert into trip_members(id,trip_id,user_id,join_order,joined_at) values(?,?,?,2,now())", friendMember, trip, friend);
         placeA = place(37.5, 127.0); placeB = place(37.51, 127.0);
-        // 여행 장소가 아닌 곳은 사진 바로 옆이어도 후보가 되지 않는다
+        // 코스에 없는 저장 장소는 AI에 보내지 않는다(AI는 코스 장소만 맞춘다)
         outsider = place(37.50041, 127.0);
-        jdbc.update("insert into trip_place_saves(trip_id,place_id,saved_by_member_id,created_at,updated_at) values(?,?,?,now(),now())", trip, placeA, ownerMember);
+        jdbc.update("insert into trip_place_saves(trip_id,place_id,saved_by_member_id,created_at,updated_at) values(?,?,?,now(),now())", trip, outsider, ownerMember);
+        jdbc.update("update trips set start_date='2026-11-01',end_date='2026-11-03' where id in (?,?)", trip, other);
         jdbc.update("insert into itineraries(id,trip_id,updated_by_member_id,updated_at) values(?,?,?,now()) on conflict (trip_id) do nothing",
                 UUID.randomUUID(), trip, ownerMember);
         UUID itinerary = jdbc.queryForObject("select id from itineraries where trip_id=?", UUID.class, trip);
-        jdbc.update("insert into itinerary_items(id,itinerary_id,place_id,day,sequence) values(?,?,?,1,1)", UUID.randomUUID(), itinerary, placeB);
+        jdbc.update("insert into itinerary_items(id,itinerary_id,place_id,day,sequence) values(?,?,?,1,1)", UUID.randomUUID(), itinerary, placeA);
+        jdbc.update("insert into itinerary_items(id,itinerary_id,place_id,day,sequence,start_time,stay_minutes) values(?,?,?,2,1,'10:30',60)", UUID.randomUUID(), itinerary, placeB);
+        doAnswer(call -> fakeAi(call.getArgument(2))).when(ai).post(eq(VisitDetectionHandler.AI_PATH), any(), any());
     }
 
-    @Test void suggestsOnlyRequesterCandidatesFromNearestTripPlaceAndSkipsPhotosWithoutMetadata() throws Exception {
+    // AI spec §8.2를 흉내 낸다: 사진마다 300m 안 가장 가까운 코스 장소, 업로더·장소별 묶음, visitedAt은 첫 사진 시각을 그대로
+    JsonNode fakeAi(JsonNode body) {
+        var groups = new java.util.LinkedHashMap<String, tools.jackson.databind.node.ObjectNode>();
+        for (JsonNode photo : body.path("photos")) {
+            String best = null;
+            double bestMeters = 300;
+            for (JsonNode item : body.path("items")) {
+                double dLat = (photo.path("latitude").asDouble() - item.path("place").path("latitude").asDouble()) * 111_000;
+                double dLng = (photo.path("longitude").asDouble() - item.path("place").path("longitude").asDouble()) * 88_000;
+                double meters = Math.sqrt(dLat * dLat + dLng * dLng);
+                if (meters <= bestMeters) { bestMeters = meters; best = item.path("place").path("id").asString(); }
+            }
+            if (best == null) continue;
+            String place = best;
+            var group = groups.computeIfAbsent(photo.path("uploaderMemberId").asString() + "/" + place, k -> {
+                var node = json.createObjectNode().put("memberId", photo.path("uploaderMemberId").asString())
+                        .put("placeId", place).put("visitedAt", photo.path("capturedAt").asString());
+                node.putArray("evidencePhotoIds");
+                return node;
+            });
+            ((tools.jackson.databind.node.ArrayNode) group.get("evidencePhotoIds")).add(photo.path("photoId").asString());
+        }
+        var result = json.createObjectNode();
+        var candidates = result.putArray("candidates");
+        groups.values().forEach(candidates::add);
+        return result;
+    }
+
+    @Test void sendsOnlyRequesterPhotosWithLocationAndTimeAndStoresValidatedCandidates() throws Exception {
         UUID near = photo(trip, ownerMember, owner, gps(37.5004, 127.0, null), Instant.parse(CAPTURED), null);
-        // capturedAt이 없으면 EXIF 촬영 시각을 한국 시각으로 읽는다: 09:00 KST = 00:00Z
+        // capturedAt이 없으면 EXIF 촬영 시각을 시간대 없는 현지 시각으로 보낸다: 09:00 KST = 00:00Z
         UUID exifOnly = photo(trip, ownerMember, owner, gps(37.4997, 127.0, "2026:11:01 09:00:00"), null, null);
-        UUID edge = photo(trip, ownerMember, owner, gps(37.5016, 127.0, null), Instant.parse(CAPTURED), null);
-        UUID tooFar = photo(trip, ownerMember, owner, gps(37.5020, 127.0, null), Instant.parse(CAPTURED), null);
-        UUID noMetadata = photo(trip, ownerMember, owner, "{}", null, null);
+        UUID nearB = photo(trip, ownerMember, owner, gps(37.5101, 127.0, null), Instant.parse("2026-11-02T01:00:00Z"), null);
+        UUID tooFar = photo(trip, ownerMember, owner, gps(37.5050, 127.0, null), Instant.parse(CAPTURED), null);
+        UUID noMetadata = photo(trip, ownerMember, owner, "{}", Instant.parse(CAPTURED), null);
+        UUID textGps = photo(trip, ownerMember, owner, "{\"latitude\":\"37.5\",\"longitude\":\"127.0\"}", Instant.parse(CAPTURED), null);
         UUID noTime = photo(trip, ownerMember, owner, gps(37.5, 127.0, null), null, null);
         UUID future = photo(trip, ownerMember, owner, gps(37.5, 127.0, null), Instant.now().plusSeconds(3600), null);
-        UUID tagged = photo(trip, ownerMember, owner, "{}", Instant.parse("2026-11-02T01:00:00Z"), placeB);
+        // 업로더가 연결한 장소는 AI 계약에 없어, 위치가 없는 사진은 연결 장소가 있어도 보내지 않는다
+        UUID tagged = photo(trip, ownerMember, owner, "{}", Instant.parse(CAPTURED), placeB);
 
-        UUID job = detect(owner, trip, near, exifOnly, edge, tooFar, noMetadata, noTime, future, tagged);
+        UUID job = detect(owner, trip, near, exifOnly, nearB, tooFar, noMetadata, textGps, noTime, future, tagged);
         run(job);
-        JsonNode candidates = result(owner, job).path("candidates");
 
+        var body = ArgumentCaptor.forClass(JsonNode.class);
+        verify(ai).post(eq(VisitDetectionHandler.AI_PATH), eq(job), body.capture());
+        JsonNode sent = body.getValue();
+        assertThat(sent.path("tripStartDate").asString()).isEqualTo("2026-11-01");
+        assertThat(sent.path("photos").findValues("photoId").stream().map(n -> UUID.fromString(n.asString())).toList()).containsExactlyInAnyOrder(near, exifOnly, nearB, tooFar);
+        for (JsonNode photo : sent.path("photos")) {
+            assertThat(photo.path("uploaderMemberId").asString()).isEqualTo(ownerMember.toString());
+            assertThat(photo.size()).isEqualTo(5);
+        }
+        assertThat(photoNode(sent, near).path("capturedAt").asString()).isEqualTo(CAPTURED);
+        assertThat(photoNode(sent, exifOnly).path("capturedAt").asString()).isEqualTo("2026-11-01T09:00:00");
+        assertThat(photoNode(sent, near).path("latitude").asDouble()).isEqualTo(37.5004);
+        assertThat(sent.path("items")).hasSize(2);
+        assertThat(sent.path("items").get(0).path("place").path("id").asString()).isEqualTo(placeA.toString());
+        assertThat(sent.path("items").get(0).path("day").asInt()).isEqualTo(1);
+        assertThat(sent.path("items").get(1).path("startTime").asString()).isEqualTo("10:30");
+        assertThat(sent.path("items").get(1).path("stayMinutes").asInt()).isEqualTo(60);
+        assertThat(sent.path("items").get(1).path("order").asInt()).isEqualTo(1);
+
+        JsonNode candidates = result(owner, job).path("candidates");
         assertThat(candidates).hasSize(2);
         JsonNode a = byPlace(candidates, placeA), b = byPlace(candidates, placeB);
-        assertThat(ids(a.path("evidencePhotoIds"))).containsExactlyInAnyOrder(near, exifOnly, edge);
+        assertThat(ids(a.path("evidencePhotoIds"))).containsExactlyInAnyOrder(near, exifOnly);
         assertThat(Instant.parse(a.path("visitedAt").asString())).isEqualTo(Instant.parse("2026-11-01T00:00:00Z"));
-        assertThat(ids(b.path("evidencePhotoIds"))).containsExactly(tagged);
+        assertThat(ids(b.path("evidencePhotoIds"))).containsExactly(nearB);
         for (JsonNode c : candidates) {
             assertThat(c.path("memberId").asString()).isEqualTo(ownerMember.toString());
             assertThat(c.path("status").asString()).isEqualTo("PENDING");
@@ -97,7 +160,60 @@ class VisitCandidateApiTest {
         assertThat(a.path("place").path("name").asString()).isNotBlank();
         // 후보는 실제 방문이 아니다
         assertThat(count("select count(*) from visits where trip_id=?", trip)).isZero();
-        assertThat(count("select count(*) from visit_candidates where trip_id=? and member_id<>?", trip, ownerMember)).isZero();
+    }
+
+    @Test void dropsAiCandidatesForOtherMembersUnknownPlacesOrUnsentPhotos() throws Exception {
+        UUID mine = photo(trip, ownerMember, owner, gps(37.5, 127.0, null), Instant.parse(CAPTURED), null);
+        UUID friends = photo(trip, friendMember, friend, gps(37.5, 127.0, null), Instant.parse(CAPTURED), null);
+        String response = """
+                {"candidates":[
+                 {"memberId":"%1$s","placeId":"%2$s","visitedAt":"2026-11-01T12:00:00","evidencePhotoIds":["%3$s"]},
+                 {"memberId":"%4$s","placeId":"%5$s","visitedAt":"%6$s","evidencePhotoIds":["%3$s"]},
+                 {"memberId":"%1$s","placeId":"%7$s","visitedAt":"%6$s","evidencePhotoIds":["%3$s"]},
+                 {"memberId":"%1$s","placeId":"%5$s","visitedAt":"%6$s","evidencePhotoIds":["%8$s"]},
+                 {"memberId":"%1$s","placeId":"%5$s","visitedAt":"yesterday","evidencePhotoIds":["%3$s"]},
+                 {"memberId":"%1$s","placeId":"%5$s","visitedAt":"%6$s","evidencePhotoIds":["%3$s","%3$s"]},
+                 {"memberId":"%1$s","placeId":"%5$s","visitedAt":"%6$s","evidencePhotoIds":[]}]}""".formatted(
+                ownerMember, placeA, mine, friendMember, placeB, CAPTURED, outsider, friends);
+        doAnswer(call -> json.readTree(response)).when(ai).post(eq(VisitDetectionHandler.AI_PATH), any(), any());
+
+        UUID job = detect(owner, trip, mine);
+        run(job);
+        JsonNode candidates = result(owner, job).path("candidates");
+        assertThat(candidates).hasSize(1);
+        assertThat(candidates.get(0).path("place").path("id").asString()).isEqualTo(placeA.toString());
+        assertThat(count("select count(*) from visit_candidates where trip_id=?", trip)).isEqualTo(1);
+    }
+
+    @Test void malformedAiResponseFailsAndTransientAiErrorIsRetried() throws Exception {
+        UUID mine = photo(trip, ownerMember, owner, gps(37.5, 127.0, null), Instant.parse(CAPTURED), null);
+        doAnswer(call -> json.readTree("{\"items\":[]}")).when(ai).post(eq(VisitDetectionHandler.AI_PATH), any(), any());
+        UUID broken = detect(owner, trip, mine);
+        runUntil(broken, "FAILED");
+        assertThat(jdbc.queryForObject("select error_code from jobs where id=?", String.class, broken)).isEqualTo("EXECUTION_FAILED");
+
+        doThrow(new AiServerException(true)).when(ai).post(eq(VisitDetectionHandler.AI_PATH), any(), any());
+        UUID transientJob = detect(owner, trip, mine);
+        long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(15);
+        while (count("select count(*) from jobs where id=? and attempt=1 and status='QUEUED'", transientJob) == 0 && System.nanoTime() < until) {
+            if (!state(transientJob).equals("QUEUED") || !worker.pollOnce()) LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(10));
+        }
+        assertThat(jdbc.queryForObject("select status||':'||attempt||':'||error_code from jobs where id=?", String.class, transientJob))
+                .isEqualTo("QUEUED:1:TEMPORARY_FAILURE");
+        assertThat(count("select count(*) from visit_candidates where job_id in (?,?)", broken, transientJob)).isZero();
+    }
+
+    @Test void skipsTheAiCallWhenNoPhotoHasLocationAndTimeAndRequiresTripDates() throws Exception {
+        UUID noMetadata = photo(trip, ownerMember, owner, "{}", Instant.parse(CAPTURED), null);
+        UUID job = detect(owner, trip, noMetadata);
+        run(job);
+        assertThat(result(owner, job).path("candidates")).isEmpty();
+        verify(ai, never()).post(any(), eq(job), any());
+
+        jdbc.update("update trips set start_date=null,end_date=null where id=?", trip);
+        detectRequest(owner, trip, key(), List.of(noMetadata)).andExpect(status().isUnprocessableContent())
+                .andExpect(jsonPath("$.error.code").value("INSUFFICIENT_DATA"))
+                .andExpect(jsonPath("$.error.fields[0].field").value("trip.startDate"));
     }
 
     @Test void rejectsOtherMembersPhotosAndInvalidRequestsWithoutCreatingJobs() throws Exception {
@@ -235,7 +351,7 @@ class VisitCandidateApiTest {
     @Test void evidenceRemovedOutsideTheMoveDeletePathsIsInvalidAtConfirmAndTripDeletionClearsCandidates() throws Exception {
         UUID photo = photo(trip, ownerMember, owner, gps(37.5, 127.0, null), Instant.parse(CAPTURED), null);
         UUID pending = candidate(photo);
-        UUID confirmed = candidate(photo(trip, ownerMember, owner, "{}", Instant.parse(CAPTURED), placeB));
+        UUID confirmed = candidate(photo(trip, ownerMember, owner, gps(37.51, 127.0, null), Instant.parse(CAPTURED), placeB));
         confirm(owner, trip, confirmed, "{\"expectedVersion\":1}").andExpect(status().isCreated());
         jdbc.update("update photos set deleted_at=now() where id=?", photo);
 
@@ -279,7 +395,7 @@ class VisitCandidateApiTest {
         UUID later = photo(trip, ownerMember, owner, gps(37.5001, 127.0, null), Instant.parse(CAPTURED), null);
         JobContext context = context(detect(owner, trip, earliest, later));
         var result = handler.execute(context).result();
-        assertThat(Instant.parse(result.path("candidates").get(0).path("visitedAt").asString())).isEqualTo(Instant.parse("2026-11-01T01:00:00Z"));
+        assertThat(result.path("candidates").get(0).path("evidencePhotoIds")).hasSize(2);
         jdbc.update("update photos set deleted_at=now() where id=?", earliest);
         transactions.executeWithoutResult(tx -> handler.complete(context, result));
 
@@ -301,7 +417,7 @@ class VisitCandidateApiTest {
     @Test void changingAnEvidencePhotosPlaceInvalidatesThePendingCandidate() throws Exception {
         UUID single = photo(trip, ownerMember, owner, gps(37.5, 127.0, null), Instant.parse(CAPTURED), null);
         UUID batched = photo(trip, ownerMember, owner, gps(37.5, 127.0, null), Instant.parse(CAPTURED), null);
-        UUID untouched = photo(trip, ownerMember, owner, "{}", Instant.parse(CAPTURED), placeB);
+        UUID untouched = photo(trip, ownerMember, owner, gps(37.51, 127.0, null), Instant.parse(CAPTURED), placeB);
         UUID singleCandidate = candidate(single), batchedCandidate = candidate(batched), sameCandidate = candidate(untouched);
 
         mvc.perform(patch("/api/v1/trips/{trip}/photos/{id}", trip, single).with(authUser(owner)).contentType(MediaType.APPLICATION_JSON)
@@ -320,7 +436,7 @@ class VisitCandidateApiTest {
 
     @Test void repeatedConfirmReturnsTheVisitEvenWithTheSettingOffButLeavingHidesEverything() throws Exception {
         UUID candidate = candidate(photo(trip, ownerMember, owner, gps(37.5, 127.0, null), Instant.parse(CAPTURED), null));
-        UUID pending = candidate(photo(trip, ownerMember, owner, "{}", Instant.parse(CAPTURED), placeB));
+        UUID pending = candidate(photo(trip, ownerMember, owner, gps(37.51, 127.0, null), Instant.parse(CAPTURED), placeB));
         JsonNode visit = data(confirm(owner, trip, candidate, "{\"expectedVersion\":1}").andExpect(status().isCreated()));
         jdbc.update("insert into user_settings(user_id,visit_detection_mode) values(?,'OFF')", owner);
 
@@ -337,7 +453,7 @@ class VisitCandidateApiTest {
 
     @Test void ownRecordsDeletionPurgesConfirmedCandidatesWithTheirVisitAndPhotos() throws Exception {
         UUID confirmedPhoto = photo(trip, ownerMember, owner, gps(37.5, 127.0, null), Instant.parse(CAPTURED), null);
-        UUID pendingPhoto = photo(trip, ownerMember, owner, "{}", Instant.parse(CAPTURED), placeB);
+        UUID pendingPhoto = photo(trip, ownerMember, owner, gps(37.51, 127.0, null), Instant.parse(CAPTURED), placeB);
         UUID confirmed = candidate(confirmedPhoto), pending = candidate(pendingPhoto);
         UUID visit = UUID.fromString(data(confirm(owner, trip, confirmed, "{\"expectedVersion\":1}").andExpect(status().isCreated())).path("id").asString());
         UUID feed = UUID.fromString(data(mvc.perform(post("/api/v1/trips/{id}/feed", trip).with(authUser(owner)).contentType(MediaType.APPLICATION_JSON)
@@ -377,13 +493,18 @@ class VisitCandidateApiTest {
         assertThat(found.path("status").asString()).isEqualTo("SUCCEEDED");
         return found.path("result");
     }
-    void run(UUID jobId) {
+    static JsonNode photoNode(JsonNode body, UUID photo) {
+        for (JsonNode p : body.path("photos")) if (p.path("photoId").asString().equals(photo.toString())) return p;
+        throw new AssertionError("Photo not sent: " + photo);
+    }
+    void run(UUID jobId) { runUntil(jobId, "SUCCEEDED"); }
+    void runUntil(UUID jobId, String expected) {
         long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(15);
         Set<String> done = Set.of("SUCCEEDED", "FAILED", "CANCELLED");
         while (!done.contains(state(jobId)) && System.nanoTime() < until) {
             if (!state(jobId).equals("QUEUED") || !worker.pollOnce()) LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(10));
         }
-        assertThat(state(jobId)).isEqualTo("SUCCEEDED");
+        assertThat(state(jobId)).isEqualTo(expected);
     }
     String state(UUID jobId) { return jdbc.queryForObject("select status from jobs where id=?", String.class, jobId); }
     ResultActions detectRequest(UUID user, UUID tripId, String key, List<UUID> photos) throws Exception {

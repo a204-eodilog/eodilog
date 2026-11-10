@@ -136,7 +136,7 @@ public class PhotoService {
 
     // Manual correction: omitted fields stay, and the manual flags keep later AI results from overwriting them.
     private void applyEdit(PhotoResponse photo, boolean sentPlace, UUID place, boolean sentTopics, List<String> topics) {
-        if (sentPlace && !Objects.equals(place, photo.placeId())) evidence.photosChanged(List.of(photo.id()));
+        if (sentPlace && place != null && !place.equals(photo.placeId())) evidence.placeLinked(photo.id(), place);
         jdbc.update("update photos set place_id=?,place_manually_edited=place_manually_edited or ?,topics_manually_edited=topics_manually_edited or ?,version=version+1 where id=?",
                 sentPlace ? place : photo.placeId(), sentPlace, sentTopics, photo.id());
         if (sentTopics) {

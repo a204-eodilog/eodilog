@@ -13,7 +13,10 @@ public enum VisitCandidateErrorCode implements ErrorCode {
 
 	VERSION_CONFLICT(HttpStatus.CONFLICT, "방문 후보가 변경되었습니다. 다시 조회해 주세요."),
 
-	AI_FEATURE_DISABLED(HttpStatus.CONFLICT, "방문 감지 설정이 꺼져 있습니다.");
+	AI_FEATURE_DISABLED(HttpStatus.CONFLICT, "방문 감지 설정이 꺼져 있습니다."),
+
+	// 코스 일차를 날짜로 바꿀 여행 시작일이 없다(AI spec §8.2 tripStartDate 필수)
+	INSUFFICIENT_DATA(HttpStatus.UNPROCESSABLE_CONTENT, "방문 후보를 찾으려면 여행 기간이 필요합니다.");
 
 	private final HttpStatus status;
 	private final String message;

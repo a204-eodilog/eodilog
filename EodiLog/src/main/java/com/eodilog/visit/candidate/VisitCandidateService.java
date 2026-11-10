@@ -47,8 +47,8 @@ public class VisitCandidateService {
 	private final Clock clock;
 
 	/**
-	 * 판정 순서: 키·본문 400 → 여행 404 → 설정 OFF 409 → 51장 이상 422 / 중복 400 → 내 사진이 아님 404 → 등록(같은 키·본문이면 처음 작업).
-	 * 위치·시각 메타데이터가 없는 사진도 받아 두고 판정에서 건너뛴다. 남이 올린 사진은 근거로 쓰지 않는다(D-16).
+	 * 판정 순서: 키·본문 400 → 여행 404 → 설정 OFF 409 → 51장 이상 422 / 중복 400 → 여행 기간 없음 422 INSUFFICIENT_DATA → 내 사진이 아님 404 → 등록(같은 키·본문이면 처음 작업).
+	 * 위치·시각 메타데이터가 없는 사진도 받아 두고 AI에 보내지 않는다. 남이 올린 사진은 근거로 쓰지 않는다(D-16).
 	 */
 	@Transactional
 	public JobRef request(UUID user, UUID trip, String key, VisitDetectionRequest request) {
@@ -63,6 +63,10 @@ public class VisitCandidateService {
 		}
 		if (ids.stream().anyMatch(Objects::isNull) || new HashSet<>(ids).size() != ids.size()) {
 			throw invalid("photoIds", "사진을 중복 없이 보내 주세요.");
+		}
+		if (access.startDate(trip) == null) {
+			throw new BusinessException(VisitCandidateErrorCode.INSUFFICIENT_DATA, VisitCandidateErrorCode.INSUFFICIENT_DATA.message(),
+					List.of(new ErrorField("trip.startDate", "여행 기간을 먼저 정해 주세요.")));
 		}
 		// 재요청에도 검사한다: 지운·옮긴 사진으로 예전 요청이 되살아나지 않는다. 같은 키의 다른 본문은 execute가 409로 거부한다
 		Long own = jdbc.queryForObject("""

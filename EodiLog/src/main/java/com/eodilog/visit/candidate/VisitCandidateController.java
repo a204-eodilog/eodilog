@@ -34,12 +34,13 @@ public class VisitCandidateController {
 	@Operation(summary = "사진으로 방문 후보 감지", description = """
 			ACTIVE 멤버가 이 여행에 직접 올린 사진(삭제 안 됨·READY) 1~50장으로 본인 방문 후보만 제안한다. Idempotency-Key 필수.
 			실제 방문(체크)은 만들지 않으며 사진 속 다른 사람을 방문자로 정하지 않는다. 남이 올린·다른 여행·지운 사진은 404 PHOTO_NOT_FOUND.
-			장소는 사진에 지정한 장소, 없으면 비공개 EXIF 위치에서 200m 안의 가장 가까운 여행 장소(코스·저장 장소). 시각은 사진의 capturedAt,
-			없으면 EXIF 촬영 시각(한국 시각). 위치나 시각이 없는 사진은 건너뛴다. 이미 체크한 장소는 제안하지 않는다.
+			판정은 AI 서버(AI spec §8.2)가 비공개 EXIF 위치·촬영 시각과 지금 코스로 한다(같은 날 코스 장소 300m 안 우선, 없으면 날짜 무관).
+			시각은 사진의 capturedAt, 없으면 EXIF 촬영 시각(한국 시각). 위치나 시각이 없는 사진은 보내지 않는다. 이미 체크한 장소는 제안하지 않는다.
+			여행 기간이 없으면 422 INSUFFICIENT_DATA(trip.startDate).
 			결과는 GET /jobs/{jobId}(요청자만)의 {candidates:VisitCandidate[]}이다. 방문 감지 설정 OFF면 409.""")
 	@ApiResponse(responseCode = "202", description = "VISIT_DETECTION 작업 접수")
 	@ApiResponse(responseCode = "409", description = "AI_FEATURE_DISABLED: 방문 감지 설정 OFF / IDEMPOTENCY_KEY_REUSED")
-	@ApiResponse(responseCode = "422", description = "INPUT_LIMIT_EXCEEDED: 50장 초과")
+	@ApiResponse(responseCode = "422", description = "INPUT_LIMIT_EXCEEDED: 50장 초과 / INSUFFICIENT_DATA: 여행 기간 없음")
 	@PostMapping("/visit-detections")
 	public ResponseEntity<DataResponse<JobRef>> detect(@Parameter(hidden = true) @AuthenticationPrincipal AuthUser user,
 			@Parameter(description = "여행 ID(UUID)") @PathVariable UUID tripId,
