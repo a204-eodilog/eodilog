@@ -13,6 +13,7 @@ import { TripRecordView } from '../components/trip-record-view';
 import { useRecordFeed } from '../hooks/use-record-feed';
 import { useTripRecord } from '../hooks/use-trip-record';
 import { companionNames, formatPeriod } from '../my-trip-rules';
+import { photoCardInfo } from '../photo-card-rules';
 import {
   companionLine,
   courseSummary,
@@ -25,9 +26,9 @@ const notReady = () => toast.show('준비 중이에요');
 
 /**
  * S38 내 여행 기록. N4 여행 줄에서 연다.
- * 코스·평가·경비 요약은 지금 있는 API로 채운다. 공동 피드는 명세 §8대로 게시 전/게시됨을 그리고
+ * 사진·코스·평가·경비 요약은 지금 있는 API로 채운다. 공동 피드는 명세 §8대로 게시 전/게시됨을 그리고
  * [게시] → 게시 API, [내 노출 설정] → S39, [공동 피드 삭제] → S39 삭제 확인 시트로 잇는다.
- * 사진, 기록 삭제, 지도 핀 API가 아직 없어 그 버튼들은 준비 중 안내를 띄운다
+ * 기록 삭제, 지도 핀 API가 아직 없어 그 버튼들은 준비 중 안내를 띄운다
  */
 export function MyTripRecordScreen() {
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
@@ -73,11 +74,12 @@ export function MyTripRecordScreen() {
         period={period && nights ? `${period} · ${nights}` : period}
         companions={companionLine(companionNames(trip, record.myUserId))}
         feed={recordFeed(feed.feed, feed.nameById, others)}
+        photos={photoCardInfo(record.photos)}
         course={courseSummary(record.items, record.visits)}
         review={reviewSummary(record.items, record.visits)}
         expense={expenseSummary(record.expenses, record.settlement)}
-        // S31 사진 목록, S24 코스 화면은 아직 없다
-        onPhotos={notReady}
+        onPhotos={() => router.push(`/trips/${tripId}/photos`)}
+        // S24 코스 화면은 아직 없다
         onCourse={notReady}
         onReview={() => router.push(`/trips/${tripId}/visits`)}
         onExpense={() => router.push(`/trips/${tripId}/expenses`)}

@@ -89,17 +89,19 @@ const PIN_ROOM = 280;
 const LAND = colors.surface.white;
 
 /**
- * Figma S05 모션(3.5초 타임라인) 값. 지역은 0.2초부터 0.18초 간격으로 0.5초 동안 물들고,
- * 더 진한 층은 0.35초씩 뒤에 겹친다. 핀은 물들기가 끝난 뒤 0.15초 간격으로 10px 올라오며 나타난다.
+ * S05 지도 모션 값. 지역은 0.2초부터 0.13초 간격으로 0.5초 동안 물들고,
+ * 더 진한 층은 0.35초씩 뒤에 겹친다. 핀은 물들기 0.18초 뒤 0.12초 간격으로 10px 올라오며 나타난다.
+ * Figma(3.5초 타임라인: 물들기 0.18초·핀 0.15초 간격, 물들기 뒤 0.26초)보다 빠르게 맞춘 값이다.
+ * 실기기에서 지역이 많으면 핀을 누를 수 있을 때까지 3초쯤 기다려 줄였다(S05 문서와 같은 값).
  * Figma는 미리보기라 전체가 반복되지만 앱은 화면에 들어올 때 한 번만 재생한다
  */
 export const MAP_MOTION = {
   fillStartMs: 200,
-  fillStaggerMs: 180,
+  fillStaggerMs: 130,
   fillFadeMs: 500,
   layerGapMs: 350,
-  pinGapAfterFillMs: 260,
-  pinStaggerMs: 150,
+  pinGapAfterFillMs: 180,
+  pinStaggerMs: 120,
   pinRiseMs: 350,
   pinFadeMs: 300,
   pinRisePx: 10,

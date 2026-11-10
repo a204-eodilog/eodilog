@@ -76,9 +76,16 @@ public class KtoPlaceImporter {
         try {
             var row = new PublicPlaceRow("KTO", value(item, "contentid"), value(item, "title"),
                     value(item, "addr1"), new BigDecimal(value(item, "mapy")), new BigDecimal(value(item, "mapx")),
-                    regionCode(item));
+                    regionCode(item), contentType(item));
             if (row.valid()) rows.add(row);
         } catch (NumberFormatException | NullPointerException ignored) { /* Some attractions have no mappable location. */ }
+    }
+    // 관광 타입 이름(한국관광공사 contentTypeId 표). 세부 분류 코드는 이름 표가 따로 필요해 이번에는 쓰지 않는다
+    private static final Map<String, String> CONTENT_TYPES = Map.of("12", "관광지", "14", "문화시설", "15", "축제공연행사",
+            "25", "여행코스", "28", "레포츠", "32", "숙박", "38", "쇼핑", "39", "음식점");
+    private static String contentType(JsonNode item) {
+        String type = value(item, "contenttypeid");
+        return type == null ? null : CONTENT_TYPES.get(type);
     }
     private static String value(JsonNode item, String key) {
         var node = item.path(key);

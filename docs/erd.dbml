@@ -169,11 +169,13 @@ Table places {
   provider varchar(32)
   provider_place_id varchar(255)
   source varchar(16) [not null, note: 'PROVIDER/MANUAL']
+  category varchar(200) [note: '공급자 분류 이름을 >로 이은 값(SBDC 업종 대>중>소, KTO 관광 타입). 날씨 대안 실내 판단용 AI 입력에만 쓰고 공개 Place에는 없음. 모르면 null(EODI-247)']
   created_at timestamp [not null]
   updated_at timestamp [not null]
   indexes {
     (provider, provider_place_id) [unique]
     region_id
+    (longitude, latitude) [name: 'idx_places_location', note: 'GiST geography 식 인덱스. 날씨 대안 후보 반경 검색']
   }
   Note: 'provider 두 필드는 함께 NULL 또는 함께 NOT NULL. 공급자 검색/추출에서 local UUID를 반환하기 전에 공급자 키로 upsert하고 동시 충돌은 기존 행 재조회. 공급자 ID가 없으면 자동 중복 병합하지 않음(D-6). 수동 장소 수정은 저장 메모 변경과 구분. 지역 코드를 주지 않는 공급자(NAVER) 장소는 주소의 "시·도 시·군·구" 전체 이름(줄임말·옛 이름 대응 포함)이 regions.name과 정확히 같을 때만 region_id를 채움(DB 함수 region_code_for_address, -246). 전체 이름은 지역마다 하나뿐이고, 시·군·구 이름만으로는 맞추지 않음.'
 }

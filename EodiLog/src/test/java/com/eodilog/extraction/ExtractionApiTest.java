@@ -190,6 +190,10 @@ class ExtractionApiTest {
 		assertThat(candidateIds).hasSize(5);
 		assertThat(count("select count(*) from places where provider = 'NAVER' and provider_place_id like ?",
 				PLACE_ID_PREFIX + "%")).isEqualTo(2);
+		// 네이버 분류는 공개 응답에 싣지 않고 장소 행에만 남긴다(날씨 대안의 실내·실외 판단용)
+		assertThat(jdbcTemplate.queryForObject("select category from places where id = ?", String.class, nam))
+				.isEqualTo("카페,디저트>카페");
+		assertThat(candidates.get(0).get("place").has("category")).isFalse();
 		// 일반 작업 조회도 같은 결과를 준다. 추출은 저장·방문을 만들지 않는다
 		mockMvc.perform(get("/api/v1/jobs/{jobId}", jobId).with(authUser(ownerId))).andExpect(status().isOk())
 				.andExpect(jsonPath("$.data.result.resultStatus").value("MULTIPLE_CANDIDATES"))

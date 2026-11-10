@@ -39,22 +39,27 @@ public class ItineraryProposalController {
 
 	@Operation(summary = "AI 코스 제안 요청", description = """
 			여행의 ACTIVE 멤버. 모은 장소(여행 저장 장소와 현재 코스 장소, 최대 200곳)와 여행 기간으로 날짜별 코스 제안 작업(ITINERARY_PROPOSAL)을 등록한다.
-			지금은 reason=INITIAL만 지원한다. 코스가 이미 있어도 요청할 수 있고, 적용하면 코스 전체가 제안으로 바뀐다.
+			reason=INITIAL: 코스가 이미 있어도 요청할 수 있고, 적용하면 코스 전체가 제안으로 바뀐다.
+			reason=WEATHER: sourceWeatherJobId(같은 여행의 성공한 날씨 대안 작업)와 selectedAlternativeId(TIME_SHIFT·PLACE_SWAP)가 필수다.
+			고른 대안의 그날만 바뀐다. 요청자의 날씨 대안 설정이 OFF면 409, 대안을 만든 뒤 코스가 바뀌었으면 409 VERSION_CONFLICT다.
+			PLACE_REMOVED는 아직 지원하지 않는다.
 			제안만 만들며 코스는 apply 전까지 그대로다. expectedVersion은 GET /itinerary의 version이다.
 			Idempotency-Key가 필수이며 같은 키·같은 본문이면 처음 접수한 작업을 그대로 반환한다.
 			진행·결과는 GET /trips/{tripId}/itinerary/proposals/{jobId}로 조회한다.""")
 	@ApiResponse(responseCode = "202", description = "작업 접수")
 	@ApiResponse(responseCode = "400", description = """
-			VALIDATION_ERROR: 키 없음, reason·expectedVersion 없음, INITIAL이 아닌 reason, INITIAL에 다른 사유용 필드""",
+			VALIDATION_ERROR: 키 없음, reason·expectedVersion 없음, PLACE_REMOVED, 사유에 맞지 않는 필드,
+			WEATHER에 원본 작업·대안 ID 없음, 결과에 없는 selectedAlternativeId""",
 			content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
-	@ApiResponse(responseCode = "404", description = "TRIP_NOT_FOUND: 없거나 볼 수 없는 여행",
+	@ApiResponse(responseCode = "404", description = "TRIP_NOT_FOUND: 없거나 볼 수 없는 여행 / JOB_NOT_FOUND: 없거나 다른 여행의 날씨 대안 작업(WEATHER)",
 			content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
 	@ApiResponse(responseCode = "409", description = """
-			VERSION_CONFLICT: 코스가 이미 바뀜(다시 조회) / IDEMPOTENCY_KEY_REUSED·REQUEST_IN_PROGRESS: 요청 키 충돌""",
+			VERSION_CONFLICT: 코스가 이미 바뀜(다시 조회) / AI_FEATURE_DISABLED: 요청자의 날씨 대안 설정 OFF(WEATHER) /
+			PROPOSAL_NOT_READY: 원본 날씨 대안 작업이 아직 성공하지 않음 / IDEMPOTENCY_KEY_REUSED·REQUEST_IN_PROGRESS: 요청 키 충돌""",
 			content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
 	@ApiResponse(responseCode = "422", description = """
 			INSUFFICIENT_DATA: 여행 기간(fields trip.startDate)이나 모은 장소(fields places)가 없음 /
-			INPUT_LIMIT_EXCEEDED: 대상 장소가 200곳 초과""",
+			INPUT_LIMIT_EXCEEDED: 대상 장소가 200곳 초과 / UNSCHEDULABLE_ALTERNATIVE: INFO(안내만) 대안은 코스를 바꿀 수 없음""",
 			content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
 	@PostMapping("/proposals")
 	public ResponseEntity<DataResponse<JobRef>> requestProposal(
@@ -97,7 +102,8 @@ public class ItineraryProposalController {
 			content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
 	@ApiResponse(responseCode = "409", description = """
 			ALREADY_APPLIED: 이미 적용한 제안 / PROPOSAL_NOT_READY: 진행 중·실패·취소된 제안 /
-			VERSION_CONFLICT: 제안 뒤 코스가 바뀌었거나 여행 기간이 줄어 오래된 제안(새로 요청)""",
+			VERSION_CONFLICT: 제안 뒤 코스가 바뀌었거나 여행 기간이 줄어 오래된 제안(새로 요청) /
+			AI_FEATURE_DISABLED: 날씨 대안에서 온 제안인데 적용하는 사람의 날씨 대안 설정이 OFF""",
 			content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
 	@PostMapping("/proposals/{jobId}/apply")
 	public ResponseEntity<DataResponse<ItineraryResponse>> applyProposal(

@@ -147,7 +147,7 @@ public class PlaceExtractionJobHandler implements JobHandler {
 	// 네이버 응답에는 지역 코드가 없어 주소로 찾는다. 못 찾으면 null이고, 이미 지역이 있는 장소는 PlaceResolver가 그 지역을 유지한다
 	private ProviderPlace withRegion(ProviderPlace place) {
 		return new ProviderPlace(place.providerPlaceId(), place.name(), place.address(), place.latitude(),
-				place.longitude(), regionAddressMatcher.regionCode(place.address()));
+				place.longitude(), regionAddressMatcher.regionCode(place.address()), place.category());
 	}
 
 	static List<UUID> captureIds(JsonNode input) {
@@ -233,7 +233,10 @@ public class PlaceExtractionJobHandler implements JobHandler {
 			if (name == null || providerPlaceId == null || latitude == null || longitude == null) {
 				return null;
 			}
-			return new ProviderPlace(providerPlaceId, name, address, latitude, longitude, null);
+			// 네이버 분류(예: `여행,명소>해수욕장`). 날씨 대안의 실내·실외 판단에 쓴다. 형식이 맞지 않으면 버리고 장소는 살린다
+			JsonNode categoryNode = node.get("category");
+			String category = categoryNode != null && categoryNode.isString() ? categoryNode.asString() : null;
+			return new ProviderPlace(providerPlaceId, name, address, latitude, longitude, null, category);
 		}
 
 		private static BigDecimal coordinate(JsonNode node, int limit) {
