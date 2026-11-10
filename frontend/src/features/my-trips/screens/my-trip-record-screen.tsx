@@ -11,13 +11,14 @@ import { PublishSheet } from '../components/publish-sheet';
 import { TripRecordView } from '../components/trip-record-view';
 import { useTripRecord } from '../hooks/use-trip-record';
 import { companionNames, formatPeriod } from '../my-trip-rules';
+import { photoCardInfo } from '../photo-card-rules';
 import { companionLine, courseSummary, expenseSummary, reviewSummary } from '../record-rules';
 
 const notReady = () => toast.show('준비 중이에요');
 
 /**
  * S38 내 여행 기록. N4 여행 줄에서 연다.
- * 코스·평가·경비 요약은 지금 있는 API로 채운다. 공동 피드(게시·노출 설정·삭제), 사진, 기록 삭제,
+ * 사진·코스·평가·경비 요약은 지금 있는 API로 채운다. 공동 피드(게시·노출 설정·삭제), 기록 삭제,
  * 지도 핀 API가 아직 없어서 늘 "게시 전"으로 그리고 그 버튼들은 준비 중 안내를 띄운다.
  * 게시 확인·기록 삭제 확인(S50) 시트는 열 수 있지만 [게시]·[지우기]도 준비 중 안내다
  */
@@ -60,11 +61,12 @@ export function MyTripRecordScreen() {
         period={period && nights ? `${period} · ${nights}` : period}
         companions={companionLine(companionNames(trip, record.myUserId))}
         feed={{ status: 'draft' }}
+        photos={photoCardInfo(record.photos)}
         course={courseSummary(record.items, record.visits)}
         review={reviewSummary(record.items, record.visits)}
         expense={expenseSummary(record.expenses, record.settlement)}
-        // S31 사진 목록, S24 코스 화면은 아직 없다
-        onPhotos={notReady}
+        onPhotos={() => router.push(`/trips/${tripId}/photos`)}
+        // S24 코스 화면은 아직 없다
         onCourse={notReady}
         onReview={() => router.push(`/trips/${tripId}/visits`)}
         onExpense={() => router.push(`/trips/${tripId}/expenses`)}

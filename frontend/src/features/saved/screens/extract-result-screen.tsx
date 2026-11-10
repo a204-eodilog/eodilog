@@ -271,15 +271,17 @@ export function ExtractResultScreen() {
         <View style={styles.handle} />
         {asking ? (
           <>
-            <Text style={[typography.title1, styles.text]}>어느 곳인가요?</Text>
-            <View style={styles.inline}>
-              <Icon name="map-pin" size={16} color={colors.text.icon} />
-              <Text style={[typography.caption, styles.sub]} numberOfLines={1}>
-                {`"${asking.name}" 같은 이름이 ${options.length}곳 있어요`}
-                {ambiguous.length > 1
-                  ? ` · ${ambiguous.findIndex((g) => g.key === asking.key) + 1}/${ambiguous.length}`
-                  : ''}
-              </Text>
+            <View style={styles.titles}>
+              <Text style={[typography.title1, styles.text]}>어느 곳인가요?</Text>
+              <View style={styles.inline}>
+                <Icon name="map-pin" size={16} color={colors.text.icon} />
+                <Text style={[typography.caption, styles.sub]} numberOfLines={1}>
+                  {`"${asking.name}" 같은 이름이 ${options.length}곳 있어요`}
+                  {ambiguous.length > 1
+                    ? ` · ${ambiguous.findIndex((g) => g.key === asking.key) + 1}/${ambiguous.length}`
+                    : ''}
+                </Text>
+              </View>
             </View>
             <ScrollView
               style={styles.list}
@@ -351,20 +353,22 @@ export function ExtractResultScreen() {
           </>
         ) : (
           <>
-            <Text style={[typography.title1, styles.text]}>
-              {placed.length > 0
-                ? `장소 ${placed.length}곳을 찾았어요`
-                : items.length > 0
-                  ? '지도에서 찾지 못했어요'
-                  : '저장할 장소가 없어요'}
-            </Text>
-            <Text style={[typography.caption, styles.sub]}>
-              {placed.length > 0
-                ? '확인하고 저장해 주세요'
-                : items.length > 0
-                  ? '직접 골라 주세요'
-                  : '다시 찾으려면 뒤로 가 주세요'}
-            </Text>
+            <View style={styles.titles}>
+              <Text style={[typography.title1, styles.text]}>
+                {placed.length > 0
+                  ? `장소 ${placed.length}곳을 찾았어요`
+                  : items.length > 0
+                    ? '지도에서 찾지 못했어요'
+                    : '저장할 장소가 없어요'}
+              </Text>
+              <Text style={[typography.caption, styles.sub]}>
+                {placed.length > 0
+                  ? '확인하고 저장해 주세요'
+                  : items.length > 0
+                    ? '직접 골라 주세요'
+                    : '다시 찾으려면 뒤로 가 주세요'}
+              </Text>
+            </View>
             <ScrollView style={styles.list} contentContainerStyle={styles.rows}>
               {items.map((item) => {
                 const itemPlace = item.place;
@@ -590,8 +594,11 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
     backgroundColor: colors.gray[300],
   },
+  // 시트 제목과 설명 사이 2(성공·복수 후보)
+  titles: { gap: spacing[2] },
   list: { flexGrow: 0, maxHeight: 280, marginTop: spacing[16] },
-  rows: { gap: spacing[16], paddingTop: spacing[4] },
+  // 값 문서: 장소 줄 위 여백 20(목록 위 16 + 4), 줄 사이 24
+  rows: { gap: spacing[24], paddingTop: spacing[4] },
   row: {
     flexDirection: 'row',
     alignItems: 'flex-start',
