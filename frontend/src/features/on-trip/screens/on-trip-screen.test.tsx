@@ -148,6 +148,33 @@ describe('S25 여행 중', () => {
     expect(mockWeather).not.toHaveBeenCalled();
   });
 
+  it('코스를 받지 못하면 코스가 없다고 하지 않고 다시 시도를 보인다', async () => {
+    mockItinerary.mockRejectedValue(new Error('500'));
+    await renderScreen();
+    // 코스 받기는 한 번 더 시도한 뒤 실패한다
+    expect(
+      await screen.findByText('여행 중 화면을 불러오지 못했어요', {}, { timeout: 5000 }),
+    ).toBeTruthy();
+    expect(screen.queryByText('저장한 코스가 없어요')).toBeNull();
+  });
+
+  it('오늘 코스가 없으면 날씨 대안을 열지 않고 알린다', async () => {
+    mockItinerary.mockResolvedValue(itinerary({ items: [], legs: [] }));
+    await renderScreen();
+    await fireEvent.press(await screen.findByText('날씨 대안'));
+    expect(toast.show).toHaveBeenCalledWith('오늘 코스에 장소가 없어 날씨 대안을 찾을 수 없어요');
+    expect(mockRouter.push).not.toHaveBeenCalled();
+  });
+
+  it('여행이 끝났으면 다음 일정 표시와 비 안내를 하지 않는다', async () => {
+    mockTrip.startDate = '2026-11-12';
+    mockTrip.endDate = '2026-11-13';
+    await renderScreen();
+    expect(await screen.findByText('오늘 코스')).toBeTruthy();
+    expect(screen.queryByText('다음')).toBeNull();
+    expect(screen.queryByText(/비가 와요$/)).toBeNull();
+  });
+
   it('날씨를 받지 못하면 갱신 실패와 다시 시도', async () => {
     mockWeather.mockRejectedValueOnce(new Error('503'));
     await renderScreen();
