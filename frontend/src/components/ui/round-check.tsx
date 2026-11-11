@@ -2,7 +2,7 @@ import { Pressable, StyleSheet } from 'react-native';
 
 import { colors, layout, radius } from '@/theme';
 
-import { Icon } from './icon';
+import { CheckMarkWhen } from './check-mark';
 
 export type RoundCheckProps = {
   checked: boolean;
@@ -36,7 +36,8 @@ export function RoundCheck({
       hitSlop={(layout.minTouchTarget - DIAMETER) / 2}
       style={[styles.circle, checked && styles.checked, disabled && styles.disabled]}
     >
-      {checked ? <Icon name="check" size={14} color={colors.text.inverse} /> : null}
+      {/* 체크하면 선이 그려지며 나타난다(theme/motion) */}
+      <CheckMarkWhen checked={checked} size={14} color={colors.text.inverse} />
     </Pressable>
   );
 }
