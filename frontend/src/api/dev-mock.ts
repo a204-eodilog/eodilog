@@ -1278,6 +1278,16 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
     }
     return ok(config, page([]));
   }
+  // 동행 목록. 경비 화면이 낸 사람 이름을 보이려고 나간 동행까지(includeInactive) 부른다.
+  // 이 응답이 없어 테스트 모드의 경비 화면이 "경비를 불러오지 못했어요"로 열렸다(2026-11-11 여행 메뉴 조사)
+  const membersMatch = /^\/trips\/([^/]+)\/members$/.exec(url);
+  if (method === 'get' && membersMatch) {
+    const trip = trips.find((t) => t.id === membersMatch[1]);
+    if (!trip) throw fail(config, 404, 'TRIP_NOT_FOUND', '여행을 찾을 수 없어요');
+    const all = String(config.params?.includeInactive) === 'true';
+    const members = all ? trip.members : trip.members.filter((m) => m.status === 'ACTIVE');
+    return ok(config, { data: { members } });
+  }
   const tripFeedMatch = /^\/trips\/([^/]+)\/feed$/.exec(url);
   if (tripFeedMatch) {
     const trip = trips.find((t) => t.id === tripFeedMatch[1]);
