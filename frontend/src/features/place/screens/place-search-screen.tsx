@@ -15,7 +15,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, ErrorState, Icon } from '@/components/ui';
-import { colors, layout, radius, spacing, typography } from '@/theme';
+import { caret, colors, layout, radius, spacing, typography } from '@/theme';
 
 import { searchPlaces } from '../api';
 import { cancelPickOnLeave, finishPick, handOffPick } from '../place-picker';
@@ -99,6 +99,7 @@ export function PlaceSearchScreen() {
             <Icon name="search" size={20} color={colors.text.sub} />
           </View>
           <TextInput
+            {...caret}
             value={text}
             onChangeText={setText}
             onFocus={() => setFocused(true)}

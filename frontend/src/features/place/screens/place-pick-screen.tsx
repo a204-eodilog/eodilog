@@ -18,7 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CenterPin, KOREA_REGION, MapHint, MapView, type MapViewRef } from '@/components/map';
 import { Button, Header, Icon, TextField, toast } from '@/components/ui';
-import { colors, layout, radius, spacing, typography } from '@/theme';
+import { caret, colors, layout, radius, spacing, typography } from '@/theme';
 
 import { createManualPlace, searchPlaces } from '../api';
 import { cancelPickOnLeave, finishPick } from '../place-picker';
@@ -210,6 +210,7 @@ export function PlacePickScreen() {
               <Icon name="search" size={20} color={colors.text.sub} />
             </View>
             <TextInput
+              {...caret}
               value={text}
               onChangeText={(v) => {
                 setText(v);

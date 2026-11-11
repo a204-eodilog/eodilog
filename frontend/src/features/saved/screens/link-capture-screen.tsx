@@ -17,7 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { apiErrorCode } from '@/api/errors';
 import { Button, Header, Icon, type IconName, toast } from '@/components/ui';
-import { colors, layout, radius, spacing, typography } from '@/theme';
+import { caret, colors, layout, radius, spacing, typography } from '@/theme';
 
 import type { CaptureFile } from '../api';
 import {
@@ -222,6 +222,7 @@ export function LinkCaptureScreen() {
               <SectionLabel icon="link" label="링크" />
               <View>
                 <TextInput
+                  {...caret}
                   accessibilityLabel="링크"
                   value={link}
                   onChangeText={setLink}
@@ -233,7 +234,7 @@ export function LinkCaptureScreen() {
                   autoCorrect={false}
                   keyboardType="url"
                   returnKeyType="done"
-                  style={[typography.body, styles.input, styles.linkInput]}
+                  style={[styles.inputText, styles.input, styles.linkInput]}
                 />
                 {link.length > 0 ? (
                   <Pressable
@@ -339,6 +340,7 @@ export function LinkCaptureScreen() {
                 <Text style={[typography.captionMedium, styles.sub]}>메모</Text>
               </View>
               <TextInput
+                {...caret}
                 accessibilityLabel="메모"
                 value={memo}
                 onChangeText={setMemo}
@@ -348,7 +350,7 @@ export function LinkCaptureScreen() {
                 multiline
                 autoFocus
                 textAlignVertical="top"
-                style={[typography.body, styles.input, styles.memo]}
+                style={[styles.inputText, styles.input, styles.memo]}
               />
             </View>
           ) : (
@@ -437,6 +439,12 @@ const styles = StyleSheet.create({
   copiedPaste: { height: 36, paddingHorizontal: spacing[12], justifyContent: 'center' },
   section: { gap: spacing[12] },
   labelRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
+  // 입력칸 글자. 줄 높이(lineHeight)를 주면 안드로이드가 커서를 칸 높이만큼 길게 그려서 주지 않는다(TextField와 같다)
+  inputText: {
+    fontFamily: typography.body.fontFamily,
+    fontSize: typography.body.fontSize,
+    includeFontPadding: false,
+  },
   // 회색 상자 입력칸(값 문서: 공통 TextField는 밑줄이라 모양이 다르다)
   input: {
     color: colors.text.default,

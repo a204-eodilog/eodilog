@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { UserCard } from '@/api/types';
 import { Avatar, EmptyState, ErrorState, Header, Icon } from '@/components/ui';
-import { colors, layout, radius, spacing, typography } from '@/theme';
+import { caret, colors, layout, radius, spacing, typography } from '@/theme';
 
 import { followButtonState, suggestionReason } from '../people-rules';
 import type { FriendSuggestion } from '../types';
@@ -43,6 +43,7 @@ export function FindFriendsView(props: FindFriendsViewProps) {
       <View style={styles.searchBox}>
         <Icon name="search" size={20} color={colors.text.icon} />
         <TextInput
+          {...caret}
           value={text}
           onChangeText={(v) => {
             setText(v);

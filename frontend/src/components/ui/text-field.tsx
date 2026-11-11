@@ -10,7 +10,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 
-import { colors, radius, spacing, typography } from '@/theme';
+import { caret, colors, radius, spacing, typography } from '@/theme';
 
 export type TextFieldProps = TextInputProps & {
   /** 칸 위 작은 이름. "여행 이름" */
@@ -89,6 +89,7 @@ export function TextField({
           ]}
         >
           <TextInput
+            {...caret}
             {...inputProps}
             maxLength={maxLength}
             placeholderTextColor={colors.text.sub}
@@ -111,6 +112,7 @@ export function TextField({
         </View>
       ) : (
         <TextInput
+          {...caret}
           {...inputProps}
           maxLength={maxLength}
           placeholderTextColor={colors.text.muted}
