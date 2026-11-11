@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Button, Header, Icon, TextField } from '@/components/ui';
+import { Button, Header, Icon, Stagger, TextField } from '@/components/ui';
 import { formatRange } from '@/lib/seoul-date';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -75,10 +75,15 @@ export function NewTripScreen() {
         <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
           {/* 피그마 S16: 큰 질문 28, 아래 8 안내 15 */}
           <View style={styles.questionBlock}>
-            <Text style={[typography.question, styles.question]}>어떤 여행을{'\n'}떠나시나요?</Text>
-            <Text style={[typography.bodySmall, styles.hint]}>
-              이름만 정하면 바로 시작할 수 있어요
-            </Text>
+            {/* 큰 질문 → 안내가 한 줄씩 나타난다 */}
+            <Stagger>
+              <Text style={[typography.question, styles.question]}>
+                어떤 여행을{'\n'}떠나시나요?
+              </Text>
+              <Text style={[typography.bodySmall, styles.hint]}>
+                이름만 정하면 바로 시작할 수 있어요
+              </Text>
+            </Stagger>
           </View>
 
           <TextField

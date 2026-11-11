@@ -125,6 +125,8 @@ export function PollScreen() {
       {body}
       <OpenPollSheet
         visible={sheetOpen}
+        // 진행 중인 투표가 없으면 [투표 열기]가 보인다. 그때 후보 목록을 미리 받는다
+        prefetch={!poll}
         onClose={() => setSheetOpen(false)}
         tripId={tripId}
         onOpened={onOpened}
@@ -176,6 +178,8 @@ function OpenSection({ tripId, poll }: { tripId: string; poll: Poll }) {
       />
       <AddCandidateSheet
         visible={addOpen}
+        // 진행 중인 투표에는 [후보 추가]가 늘 보인다
+        prefetch
         onClose={() => setAddOpen(false)}
         tripId={tripId}
         poll={poll}

@@ -27,6 +27,8 @@ type Props = {
   initialSelected?: string[];
   /** 그룹 즐겨찾기에 없어도 지역 후보로 보일 곳. 추천 결과의 여행지를 투표 후보로 넘길 때 쓴다 */
   extraRegions?: { id: string; name: string }[];
+  /** 시트를 여는 버튼이 화면에 보이는가. 보이면 후보 목록을 미리 받아 시트가 올라올 때 목록이 같이 보인다 */
+  prefetch?: boolean;
   /** 미리보기에서 후보 목록을 그대로 넣는다. 없으면 그룹 즐겨찾기를 받는다 */
   previewOptions?: CandidateOption[];
   now?: Date;
@@ -45,6 +47,7 @@ export function OpenPollSheet({
   initialType = 'REGION',
   initialSelected = [],
   extraRegions,
+  prefetch = false,
   previewOptions,
   now,
 }: Props) {
@@ -52,7 +55,7 @@ export function OpenPollSheet({
   const [selected, setSelected] = useState<string[]>(initialSelected);
   const [closesAt, setClosesAt] = useState(() => defaultClosesAt(now ?? new Date()));
   const [limitHit, setLimitHit] = useState(false);
-  const saved = useSavedPlaces(tripId, visible && !previewOptions);
+  const saved = useSavedPlaces(tripId, (visible || prefetch) && !previewOptions);
   const regionNames = useRegionNameMap(regionCounts(saved.data ?? []).map((r) => r.regionId));
   const open = useOpenPoll(tripId);
   const trip = useTrip(tripId);

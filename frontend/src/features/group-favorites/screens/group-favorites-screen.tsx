@@ -235,7 +235,8 @@ export function GroupFavoritesScreen() {
   const bookmarks = useQuery({
     queryKey: bookmarkKeys.all,
     queryFn: getAllBookmarks,
-    enabled: picking,
+    // 장소 추가 시트가 뜨면 미리 받는다. 내 즐겨찾기 시트가 열린 뒤에야 받으면 시트가 다 올라온 다음에 목록이 나타난다
+    enabled: adding || picking,
   });
 
   const people: Person[] = (trip.data?.members ?? [])
@@ -345,6 +346,8 @@ export function GroupFavoritesScreen() {
         onClose={() => setPollOpen(false)}
         tripId={tripId}
         initialType="PLACE"
+        // 장소를 고르는 동안에는 [N곳으로 투표 열기]가 보인다
+        prefetch={selecting !== null}
         initialSelected={[...(selecting ?? [])]}
         onOpened={(poll) => {
           setSelecting(null);

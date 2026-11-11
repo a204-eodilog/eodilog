@@ -20,6 +20,8 @@ type Props = {
   /** 고른 후보를 넣는다. 끝나면 시트를 닫는다 */
   onSubmit: (inputs: CandidateInput[]) => Promise<unknown>;
   busy: boolean;
+  /** 시트를 여는 버튼이 화면에 보이는가. 보이면 후보 목록을 미리 받는다 */
+  prefetch?: boolean;
   /** 미리보기에서 후보 목록을 그대로 넣는다 */
   previewOptions?: CandidateOption[];
 };
@@ -35,6 +37,7 @@ export function AddCandidateSheet({
   poll,
   onSubmit,
   busy,
+  prefetch = false,
   previewOptions,
 }: Props) {
   const [selected, setSelected] = useState<string[]>([]);
@@ -43,7 +46,7 @@ export function AddCandidateSheet({
     setWasVisible(visible);
     if (visible) setSelected([]);
   }
-  const saved = useSavedPlaces(tripId, visible && !previewOptions);
+  const saved = useSavedPlaces(tripId, (visible || prefetch) && !previewOptions);
   const regionNames = useRegionNameMap(regionCounts(saved.data ?? []).map((r) => r.regionId));
   const options = useMemo(
     () =>
