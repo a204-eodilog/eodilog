@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 
 import { BottomSheet, Button, Tag } from '@/components/ui';
 import { CheckMarkWhen } from '@/components/ui/check-mark';
@@ -55,7 +56,7 @@ export function BookmarkPickSheet({
       descriptionVariant="caption"
     >
       {!bookmarks ? (
-        <ActivityIndicator color={colors.brand.primary} style={styles.loading} />
+        <Spinner color={colors.brand.primary} style={styles.loading} />
       ) : bookmarks.length === 0 ? (
         <Text style={[typography.body, styles.empty]}>개인 즐겨찾기가 비어 있어요</Text>
       ) : (

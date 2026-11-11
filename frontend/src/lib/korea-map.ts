@@ -28,7 +28,10 @@ type KoreaRegions = {
 
 export const KOREA_MAP = data as unknown as KoreaRegions;
 
-/** 화면에 표기할 지도 출처 (통계청 SGIS 공공누리 1유형) */
+/**
+ * 지도 출처 글(통계청 SGIS 공공누리 1유형). 2026-11-11 사용자 요청으로 지도 위에서는 뺐다.
+ * 공공누리 1유형은 출처를 표시해야 쓸 수 있는 자료다. 지도 위가 아니어도 앱 안 어딘가(설정의 정보 화면 등)에는 적어야 한다
+ */
 export const KOREA_MAP_CREDIT = '지도 출처: 통계청 SGIS';
 
 const { lat0, minX, minY, scale } = KOREA_MAP.projection;

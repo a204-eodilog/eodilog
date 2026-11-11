@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, SectionList, StyleSheet, Text, View } from 'react-native';
+import { Pressable, SectionList, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Header } from '@/components/ui';
@@ -50,7 +51,7 @@ export function NotificationsView(props: NotificationsViewProps) {
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <Header title="알림" largeTitle onBack={props.onBack} right={readAll} />
       {status === 'loading' ? (
-        <ActivityIndicator style={styles.loading} color={colors.brand.primary} />
+        <Spinner style={styles.loading} color={colors.brand.primary} />
       ) : status === 'error' ? (
         <NotificationsError onRetry={props.onRetry} error={props.error} />
       ) : sections.length === 0 ? (
@@ -82,7 +83,7 @@ export function NotificationsView(props: NotificationsViewProps) {
           initialNumToRender={20}
           ListFooterComponent={
             props.loadingMore ? (
-              <ActivityIndicator style={styles.more} color={colors.brand.primary} />
+              <Spinner style={styles.more} color={colors.brand.primary} />
             ) : (
               <View style={styles.bottom} />
             )

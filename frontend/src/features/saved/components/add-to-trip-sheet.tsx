@@ -1,4 +1,5 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 
 import { BottomSheet, Button, Icon } from '@/components/ui';
 import { colors, layout, spacing, typography } from '@/theme';
@@ -67,7 +68,7 @@ export function AddToTripSheet({
 
       <View style={styles.body}>
         {tripsStatus === 'loading' ? (
-          <ActivityIndicator
+          <Spinner
             accessibilityLabel="내 여행 불러오는 중"
             style={styles.empty}
             color={colors.brand.primary}

@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams, type Href } from 'expo-router';
 import { useEffect, useState, type ReactNode } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { errorLook } from '@/api/error-look';
@@ -121,7 +122,7 @@ export function OnTripView(props: OnTripViewProps) {
 
   let body: ReactNode;
   if (props.status === 'loading') {
-    body = <ActivityIndicator color={colors.brand.primary} style={styles.loading} />;
+    body = <Spinner color={colors.brand.primary} style={styles.loading} />;
   } else if (props.status === 'error') {
     body = <ErrorState {...errorLook(props.error)} description={null} onRetry={props.onRetry} />;
   } else {
@@ -292,7 +293,8 @@ export function OnTripScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.surface.white },
-  loading: { marginTop: spacing[32] },
+  // 로딩 동그라미를 남은 화면의 정중앙에 둔다
+  loading: { flex: 1 },
   content: { paddingHorizontal: layout.screenPaddingX, paddingTop: spacing[16], gap: spacing[20] },
   phaseRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[10] },
   pill: {

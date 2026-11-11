@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 
 import { BottomSheet, Button } from '@/components/ui';
 import { CheckMarkWhen } from '@/components/ui/check-mark';
@@ -85,7 +86,7 @@ export function AddCandidateSheet({
       />
       <View style={styles.card}>
         {loading ? (
-          <ActivityIndicator color={colors.brand.primary} />
+          <Spinner color={colors.brand.primary} />
         ) : options.length === 0 ? (
           <Text style={styles.empty}>더 넣을 수 있는 곳이 없어요</Text>
         ) : (

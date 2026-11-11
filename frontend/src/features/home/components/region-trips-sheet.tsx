@@ -2,7 +2,8 @@ import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { Image } from 'expo-image';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, BackHandler, Pressable, StyleSheet, Text, View } from 'react-native';
+import { BackHandler, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 // 시트 안 가로 목록은 제스처 핸들러 스크롤이어야 시트 끌기와 손가락을 나눠 가진다(안드로이드)
 import { ScrollView } from 'react-native-gesture-handler';
 
@@ -122,7 +123,7 @@ export function RegionTripsSheet({ groups, onClose, onTrip, onRetry }: RegionTri
             onPress={() => onTrip(card)}
           />
         ))}
-        {loading ? <ActivityIndicator color={colors.brand.primary} style={styles.loading} /> : null}
+        {loading ? <Spinner color={colors.brand.primary} style={styles.loading} /> : null}
         {!loading && failed ? (
           <View style={styles.note}>
             <Text style={styles.noteTitle}>

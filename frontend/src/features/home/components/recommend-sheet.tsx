@@ -4,7 +4,8 @@ import BottomSheet, {
 } from '@gorhom/bottom-sheet';
 import { Image } from 'expo-image';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 // 시트 안 가로 목록은 제스처 핸들러 스크롤이어야 시트 끌기와 손가락을 나눠 가진다(안드로이드)
 import { ScrollView } from 'react-native-gesture-handler';
 import Animated, { Easing, FadeInDown } from 'react-native-reanimated';
@@ -70,7 +71,7 @@ export function RecommendSheet({ items, status, initialExpanded = false, onPress
         <Text style={styles.title}>좋아요한 여행과 비슷해요</Text>
       </View>
       {status === 'loading' ? (
-        <ActivityIndicator color={colors.brand.primary} style={styles.loading} />
+        <Spinner color={colors.brand.primary} style={styles.loading} />
       ) : status === 'error' && items.length === 0 ? (
         <Text style={styles.empty}>추천을 불러오지 못했어요</Text>
       ) : items.length === 0 ? (

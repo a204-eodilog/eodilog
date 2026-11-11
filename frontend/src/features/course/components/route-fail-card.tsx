@@ -1,4 +1,5 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 
 import { Icon } from '@/components/ui';
 import { colors, radius, spacing, typography } from '@/theme';
@@ -34,7 +35,7 @@ export function RouteFailCard({ basis, onRecalculate, busy }: Props) {
           accessibilityState={{ disabled: busy, busy }}
         >
           {busy ? (
-            <ActivityIndicator size="small" color={colors.text.icon} />
+            <Spinner size="small" color={colors.text.icon} />
           ) : (
             <Icon name="refresh" size={16} color={colors.text.default} />
           )}

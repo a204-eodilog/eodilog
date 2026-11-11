@@ -1,4 +1,5 @@
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, Button, ErrorState, Header, Icon } from '@/components/ui';
@@ -35,7 +36,7 @@ export function VisibilityView(props: VisibilityViewProps) {
       {props.state === 'error' ? (
         <ErrorState title="노출 설정을 불러오지 못했어요" onRetry={props.onRetry} />
       ) : props.state === 'loading' ? (
-        <ActivityIndicator style={styles.flex} color={colors.brand.primary} />
+        <Spinner style={styles.flex} color={colors.brand.primary} />
       ) : (
         <>
           <ScrollView contentContainerStyle={styles.content}>

@@ -1,4 +1,5 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 
 import { Icon } from '@/components/ui';
 import { colors, radius, spacing, typography } from '@/theme';
@@ -45,7 +46,7 @@ function RetryPill({ onPress, busy }: { onPress(): void; busy: boolean }) {
       accessibilityState={{ disabled: busy }}
     >
       {busy ? (
-        <ActivityIndicator size="small" color={colors.text.icon} />
+        <Spinner size="small" color={colors.text.icon} />
       ) : (
         <Icon name="refresh" size={16} color={colors.text.default} />
       )}
@@ -117,7 +118,7 @@ export function WeatherCard(props: CardProps) {
           accessibilityLabel="날씨 새로고침"
         >
           {props.refreshing ? (
-            <ActivityIndicator size="small" color={colors.text.icon} />
+            <Spinner size="small" color={colors.text.icon} />
           ) : (
             <Icon name="refresh" size={18} color={colors.text.icon} />
           )}

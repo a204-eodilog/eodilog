@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type Href, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, ErrorState, Header, Icon, type IconName, toast } from '@/components/ui';
@@ -101,7 +102,7 @@ function InviteContent({ token, first }: { token: string; first: boolean }) {
       <SafeAreaView style={styles.screen} edges={['left', 'right', 'bottom']}>
         <Header />
         <View style={styles.center}>
-          <ActivityIndicator color={colors.brand.primary} />
+          <Spinner color={colors.brand.primary} />
         </View>
       </SafeAreaView>
     );
@@ -148,7 +149,7 @@ function InviteContent({ token, first }: { token: string; first: boolean }) {
             {withRo(tripTitle)} 바로 이동할게요.
           </Text>
           <View style={styles.moving}>
-            <ActivityIndicator size="small" color={colors.text.icon} />
+            <Spinner size="small" color={colors.text.icon} />
             <Text style={[typography.caption, styles.noticeDescription]}>이동하는 중</Text>
           </View>
         </View>

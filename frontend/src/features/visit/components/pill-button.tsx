@@ -1,4 +1,5 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
+import { Pressable, StyleSheet, Text } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 
 import { Icon, type IconName } from '@/components/ui';
 import { colors, radius, spacing, typography } from '@/theme';
@@ -58,7 +59,7 @@ export function PillButton({
       ]}
     >
       {loading ? (
-        <ActivityIndicator size="small" color={FG[tone]} />
+        <Spinner size="small" color={FG[tone]} />
       ) : (
         <Icon name={icon} size={16} color={FG[tone]} />
       )}

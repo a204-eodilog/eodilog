@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 
 import { CenterNotice, Header } from '@/components/ui';
 import { colors } from '@/theme';
@@ -16,7 +17,7 @@ export function TimelineScreen() {
     <View style={styles.screen}>
       <Header onBack={goBack} />
       {timeline.state === 'loading' ? (
-        <ActivityIndicator style={styles.loading} color={colors.brand.primary} />
+        <Spinner style={styles.loading} color={colors.brand.primary} />
       ) : timeline.state === 'error' ? (
         <CenterNotice
           icon="calendar"

@@ -1,4 +1,5 @@
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MapMarker, MapView } from '@/components/map';
@@ -64,7 +65,7 @@ export function SavedPlaceView({
               style={styles.headerButton}
             >
               {busy ? (
-                <ActivityIndicator color={colors.brand.primary} />
+                <Spinner color={colors.brand.primary} />
               ) : (
                 <Icon name="bookmark" color={colors.brand.primary} filled />
               )}

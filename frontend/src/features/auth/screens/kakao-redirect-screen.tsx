@@ -1,7 +1,8 @@
 import { Redirect } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect } from 'react';
-import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 
 import { env } from '@/config/env';
 import { colors } from '@/theme';
@@ -18,7 +19,7 @@ export function KakaoRedirectScreen() {
   if (Platform.OS !== 'web') return <Redirect href="/" />;
   return (
     <View style={styles.screen}>
-      <ActivityIndicator color={colors.brand.primary} />
+      <Spinner color={colors.brand.primary} />
     </View>
   );
 }

@@ -11,7 +11,6 @@ export function MyPageScreen() {
       state={page.state}
       summary={page.summary}
       onRetry={page.retry}
-      onPreview={() => router.push('/visible-to')}
       onTrips={() => router.push('/my-trips')}
       onNewTrip={() => router.push('/trips/new')}
       onTimeline={() => router.push('/timeline')}

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 
 import { EmptyState, ErrorState } from '@/components/ui';
 import { colors, layout, spacing, typography } from '@/theme';
@@ -50,7 +51,7 @@ export function ChatRoomListView({
 }: Props) {
   let body: ReactNode;
   if (status === 'loading') {
-    body = <ActivityIndicator style={styles.loading} color={colors.brand.primary} />;
+    body = <Spinner style={styles.loading} color={colors.brand.primary} />;
   } else if (status === 'error') {
     body = <ErrorState onRetry={onRetry} />;
   } else if (status === 'empty') {
@@ -135,7 +136,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: layout.screenPaddingX,
   },
   heading: { color: colors.text.default },
-  loading: { marginTop: spacing[32] },
+  // 로딩 동그라미를 남은 화면의 정중앙에 둔다
+  loading: { flex: 1 },
   content: { paddingTop: spacing[8], paddingBottom: spacing[32] },
   section: {
     color: colors.text.sub,

@@ -1,4 +1,5 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 
 import { Icon, type IconName } from '@/components/ui';
 import { colors, layout, radius, spacing, typography } from '@/theme';
@@ -83,7 +84,7 @@ export function RecommendCard({ title, location, reason, reasonIcon, action }: P
             accessibilityState={{ disabled: action.busy }}
           >
             {action.busy ? (
-              <ActivityIndicator size="small" color={colors.text.inverse} />
+              <Spinner size="small" color={colors.text.inverse} />
             ) : (
               <Icon name="people" size={16} color={colors.text.inverse} />
             )}

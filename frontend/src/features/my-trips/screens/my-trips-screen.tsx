@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 
 import { CenterNotice, Header } from '@/components/ui';
 import { colors } from '@/theme';
@@ -18,7 +19,7 @@ export function MyTripsScreen() {
       <View style={styles.screen}>
         <Header onBack={goBack} />
         {board.isLoading ? (
-          <ActivityIndicator style={styles.loading} color={colors.brand.primary} />
+          <Spinner style={styles.loading} color={colors.brand.primary} />
         ) : (
           <CenterNotice
             icon="trip"

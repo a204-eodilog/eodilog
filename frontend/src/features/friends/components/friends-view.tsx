@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Avatar,
@@ -71,7 +72,7 @@ export function FriendsView({
       <Header title="친구" />
       {controls}
       {loading ? (
-        <ActivityIndicator
+        <Spinner
           accessibilityLabel="친구 목록 불러오는 중"
           style={styles.fill}
           color={colors.brand.primary}
@@ -258,7 +259,7 @@ export function FriendsView({
                       }
                     >
                       {blocked ? (
-                        <ActivityIndicator color={colors.brand.primary} />
+                        <Spinner color={colors.brand.primary} />
                       ) : (
                         <Text style={styles.name}>⋯</Text>
                       )}

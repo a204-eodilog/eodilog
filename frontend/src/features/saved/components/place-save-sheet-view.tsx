@@ -1,4 +1,5 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 
 import { BottomSheet, Button, Icon, type IconName } from '@/components/ui';
 import { colors, layout, radius, spacing, typography } from '@/theme';
@@ -108,7 +109,7 @@ export function PlaceSaveSheetView({
           </View>
         ) : target === 'trip' ? (
           tripsStatus === 'loading' ? (
-            <ActivityIndicator
+            <Spinner
               accessibilityLabel="내 여행 불러오는 중"
               style={styles.status}
               color={colors.brand.primary}
@@ -166,7 +167,7 @@ export function PlaceSaveSheetView({
           style={({ pressed }) => [styles.save, !canSave && styles.dim, pressed && styles.pressed]}
         >
           {saving ? (
-            <ActivityIndicator color={colors.text.inverse} />
+            <Spinner color={colors.text.inverse} />
           ) : (
             <Icon name="check" size={24} color={colors.text.inverse} />
           )}

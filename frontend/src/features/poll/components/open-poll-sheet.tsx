@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 
 import { BottomSheet, Button, Chip, Icon } from '@/components/ui';
 import { useTrip } from '@/features/trip/hooks/use-trip';
@@ -145,7 +146,7 @@ export function OpenPollSheet({
       </View>
 
       {loading ? (
-        <ActivityIndicator style={styles.loading} color={colors.brand.primary} />
+        <Spinner style={styles.loading} color={colors.brand.primary} />
       ) : saved.isError && !previewOptions ? (
         <View style={styles.failed}>
           <View

@@ -62,7 +62,7 @@ export type KoreaMapProps = {
   maxScale?: number;
   /** false면 손가락으로 확대·이동하지 않는다. 화면 안 작은 카드 지도(S37)가 세로 스크롤을 막지 않게 */
   interactive?: boolean;
-  /** false면 출처 표기를 숨긴다. 부르는 쪽이 따로 표기할 때만 */
+  /** true면 지도 위에 출처 글을 보인다. 기본은 보이지 않는다 */
   showCredit?: boolean;
   /** 지도 위를 덮는 것(위 버튼·아래 시트)의 높이. 처음 맞출 때 이 영역을 피한다 */
   inset?: { top?: number; bottom?: number };
@@ -131,7 +131,8 @@ export function KoreaMap({
   focus,
   maxScale = 5,
   interactive = true,
-  showCredit = true,
+  // 지도 위 출처 글은 기본으로 보이지 않는다(2026-11-11 사용자 요청). lib/korea-map의 KOREA_MAP_CREDIT 설명 참고
+  showCredit = false,
   inset,
   creditBottom = spacing[8],
   style,

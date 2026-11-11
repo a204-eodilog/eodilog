@@ -1,11 +1,5 @@
-import {
-  ActivityIndicator,
-  ScrollView,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AvatarGroup, Button, ErrorState, Header, Icon } from '@/components/ui';
@@ -70,7 +64,7 @@ export function UnplacedPhotosView(props: UnplacedPhotosViewProps) {
         {props.state === 'error' ? (
           <ErrorState title="사진을 불러오지 못했어요" onRetry={props.onRetry} />
         ) : (
-          <ActivityIndicator style={styles.flex} color={colors.brand.primary} />
+          <Spinner style={styles.flex} color={colors.brand.primary} />
         )}
       </View>
     );

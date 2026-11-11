@@ -1,14 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { errorLook } from '@/api/error-look';
@@ -74,7 +67,7 @@ export function ChecklistView(props: ChecklistViewProps) {
 
   let body;
   if (status === 'loading') {
-    body = <ActivityIndicator style={styles.loading} color={colors.brand.primary} />;
+    body = <Spinner style={styles.loading} color={colors.brand.primary} />;
   } else if (status === 'notFound') {
     body = (
       <ErrorState
@@ -146,7 +139,7 @@ export function ChecklistView(props: ChecklistViewProps) {
             accessibilityState={{ disabled: props.suggesting, busy: props.suggesting }}
           >
             {props.suggesting ? (
-              <ActivityIndicator size="small" color={colors.text.icon} />
+              <Spinner size="small" color={colors.text.icon} />
             ) : (
               <Icon name="refresh" size={20} color={colors.text.default} />
             )}
@@ -253,7 +246,8 @@ export function ChecklistScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.surface.white },
   flex: { flex: 1 },
-  loading: { marginTop: spacing[32] },
+  // 로딩 동그라미를 남은 화면의 정중앙에 둔다
+  loading: { flex: 1 },
   content: {
     paddingHorizontal: layout.screenPaddingX,
     paddingTop: spacing[16],

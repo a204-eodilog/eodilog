@@ -1,7 +1,8 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 
 import { CenterNotice, Header, toast } from '@/components/ui';
 import { colors } from '@/theme';
@@ -53,7 +54,7 @@ export function SavedPlaceScreen() {
       <View style={styles.screen}>
         <Header />
         {bookmarks.isPending ? (
-          <ActivityIndicator style={styles.loading} color={colors.brand.primary} />
+          <Spinner style={styles.loading} color={colors.brand.primary} />
         ) : bookmarks.isError ? (
           <CenterNotice
             icon="alert"

@@ -1,7 +1,8 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams, usePreventRemove } from 'expo-router';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { errorLook } from '@/api/error-look';
@@ -206,7 +207,7 @@ export function DraftView(props: DraftViewProps) {
           accessibilityState={{ disabled: props.saving, busy: props.saving }}
         >
           {props.saving ? (
-            <ActivityIndicator size="small" color={colors.text.inverse} />
+            <Spinner size="small" color={colors.text.inverse} />
           ) : (
             <Icon name="check" size={18} color={colors.text.inverse} />
           )}
@@ -581,7 +582,7 @@ export function CourseEditScreen() {
       />
     );
   } else if (!itinerary.data || !trip.data) {
-    body = <ActivityIndicator style={styles.loading} color={colors.brand.primary} />;
+    body = <Spinner style={styles.loading} color={colors.brand.primary} />;
   } else if (mode === 'setup') {
     const regionName = regionNames.join('·');
     if (trip.data.destinationRegionIds.length === 0) {
@@ -744,7 +745,8 @@ export function CourseEditScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.surface.white },
-  loading: { marginTop: spacing[32] },
+  // 로딩 동그라미를 남은 화면의 정중앙에 둔다
+  loading: { flex: 1 },
   scroll: { paddingBottom: spacing[24] },
   content: {
     paddingHorizontal: layout.screenPaddingX,

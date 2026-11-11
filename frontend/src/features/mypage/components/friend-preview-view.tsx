@@ -1,5 +1,6 @@
 import { Image } from 'expo-image';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { UserCard } from '@/api/types';
@@ -40,7 +41,7 @@ export function FriendPreviewView(props: FriendPreviewViewProps) {
       {props.state === 'error' ? (
         <ErrorState title="미리 보기를 불러오지 못했어요" onRetry={props.onRetry} />
       ) : props.state === 'loading' ? (
-        <ActivityIndicator style={styles.flex} color={colors.brand.primary} />
+        <Spinner style={styles.flex} color={colors.brand.primary} />
       ) : props.state === 'no-friends' ? (
         <EmptyState
           title="나를 팔로우하는 친구가 없어요"

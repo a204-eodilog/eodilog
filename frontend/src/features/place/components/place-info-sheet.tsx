@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 
 import { Avatar, BottomSheet, Icon } from '@/components/ui';
 import { assetSource } from '@/lib/asset-image';
@@ -34,7 +35,7 @@ export function PlaceInfoSheetView(props: PlaceInfoSheetViewProps) {
       titleVariant="title2"
     >
       {props.state === 'loading' ? (
-        <ActivityIndicator color={colors.brand.primary} style={styles.loading} />
+        <Spinner color={colors.brand.primary} style={styles.loading} />
       ) : props.state === 'error' || !info ? (
         <View style={styles.error}>
           <Text style={styles.sub}>장소 정보를 불러오지 못했어요</Text>

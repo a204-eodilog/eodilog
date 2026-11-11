@@ -19,9 +19,14 @@ export default function MainLayout() {
   if (status !== 'signedIn') return <Redirect href="/" />;
   return (
     <>
-      {/* 상세 화면은 옆에서 밀려 들어오고, 새로 만드는 입력 화면은 아래에서 올라온다(2026-11-11 사용자 결정) */}
-      <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
-        <Stack.Screen name="trips/new" options={{ animation: 'slide_from_bottom' }} />
+      {/*
+        상세 화면은 옆에서 밀려 들어오고, 새로 만드는 입력 화면은 아래에서 올라온다(2026-11-11 사용자 결정).
+        안드로이드는 전환 시간을 숫자로 바꿀 수 없고 종류마다 정해져 있다. 휴대폰에서 보고 조금 더 빠르게 해 달라고 해서
+        같은 방향의 더 빠른 종류로 바꿨다: 옆에서 400ms(slide_from_right) → 200ms(ios_from_right),
+        아래에서 400ms(slide_from_bottom) → 350ms(fade_from_bottom)
+      */}
+      <Stack screenOptions={{ headerShown: false, animation: 'ios_from_right' }}>
+        <Stack.Screen name="trips/new" options={{ animation: 'fade_from_bottom' }} />
       </Stack>
       <NotificationPopupHost />
     </>

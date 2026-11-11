@@ -1,4 +1,5 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 
 import { Icon } from '@/components/ui';
 import { colors, radius, spacing, typography } from '@/theme';
@@ -95,7 +96,7 @@ function CourseRows({
   onPlace: (placeId: string) => void;
   search: boolean;
 }) {
-  if (state === 'loading') return <ActivityIndicator color={colors.brand.primary} />;
+  if (state === 'loading') return <Spinner color={colors.brand.primary} />;
   if (days.length === 0) {
     return (
       <Text style={[typography.body, styles.sub]}>

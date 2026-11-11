@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 
 import { ErrorState } from '@/components/ui';
 import { colors } from '@/theme';
@@ -71,7 +72,7 @@ export function SettlementScreen() {
     return (
       <View style={styles.screen}>
         {header}
-        <ActivityIndicator style={styles.loading} color={colors.brand.primary} />
+        <Spinner style={styles.loading} color={colors.brand.primary} />
       </View>
     );
   }
