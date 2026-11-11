@@ -19,7 +19,10 @@ export default function MainLayout() {
   if (status !== 'signedIn') return <Redirect href="/" />;
   return (
     <>
-      <Stack screenOptions={{ headerShown: false }} />
+      {/* 상세 화면은 옆에서 밀려 들어오고, 새로 만드는 입력 화면은 아래에서 올라온다(2026-11-11 사용자 결정) */}
+      <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+        <Stack.Screen name="trips/new" options={{ animation: 'slide_from_bottom' }} />
+      </Stack>
       <NotificationPopupHost />
     </>
   );

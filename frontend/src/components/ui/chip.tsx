@@ -2,6 +2,8 @@ import { StyleSheet, Text } from 'react-native';
 
 import { colors, radius, size, spacing, typography } from '@/theme';
 
+import { haptic } from '@/lib/haptics';
+
 import { PressableScale } from './pressable-scale';
 
 export type ChipProps = {
@@ -30,7 +32,11 @@ export function Chip({
       accessibilityRole="button"
       accessibilityState={{ selected, disabled }}
       disabled={disabled || !onPress}
-      onPress={onPress}
+      onPress={() => {
+        // 고르는 칩은 선택 진동
+        haptic.select();
+        onPress?.();
+      }}
       style={[
         styles.base,
         { height: size.button[sz] },

@@ -3,6 +3,7 @@ import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { isReduceMotion } from '@/hooks/use-reduce-motion';
+import { haptic } from '@/lib/haptics';
 import { colors, spacing, typography } from '@/theme';
 import { motion } from '@/theme/motion';
 
@@ -40,7 +41,11 @@ export function TabBar({ active, onChange, badges = {} }: TabBarProps) {
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
             accessibilityLabel={tab.label}
-            onPress={() => onChange(tab.key)}
+            onPress={() => {
+              // 다른 탭으로 바꿀 때만 가볍게 울린다
+              if (!on) haptic.light();
+              onChange(tab.key);
+            }}
             style={styles.item}
           >
             <TabIcon on={on}>
