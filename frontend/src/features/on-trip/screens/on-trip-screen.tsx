@@ -29,6 +29,7 @@ import { useChecklistSummary, useForecasts, useWeather } from '../hooks/use-weat
 import {
   affectedIndex,
   clock,
+  amenityBase,
   nextIndex,
   rainChance,
   tripDates,
@@ -266,7 +267,15 @@ export function OnTripScreen() {
       }}
       // 준비물 화면은 준비물 작업 브랜치에 있어 합치면 열린다(Q-10-5)
       onChecklist={() => router.push(`/trips/${tripId}/checklist` as Href)}
-      onAmenities={() => toast.show('준비 중이에요')}
+      // S28 주변 편의시설은 지금 향하는 장소를 기준으로 연다. 다음 일정이 없으면 오늘 마지막 장소
+      onAmenities={() => {
+        const base = amenityBase(items, phase.kind === 'during' ? nextIndex(items, now) : null);
+        if (!base) {
+          toast.show('오늘 코스에 장소가 없어 주변 편의시설을 찾을 수 없어요');
+          return;
+        }
+        router.push({ pathname: '/trips/[tripId]/facilities', params: { tripId, placeId: base } });
+      }}
       onCourse={() => router.push(`/trips/${tripId}/course`)}
       before={
         <BeforeStart

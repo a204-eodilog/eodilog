@@ -154,6 +154,15 @@ export function nextIndex(items: readonly DraftItem[], now: Date): number | null
   return i >= 0 ? i : null;
 }
 
+/**
+ * 주변 편의시설의 기준 장소 ID. 다음 일정이 있으면 그 장소, 없으면 오늘 마지막 장소.
+ * 오늘 일정을 다 마쳤으면 마지막 장소 근처에 있다고 본다. 장소가 없으면 null
+ */
+export function amenityBase(items: readonly DraftItem[], next: number | null): string | null {
+  const item = next !== null ? items[next] : items[items.length - 1];
+  return item?.place.id ?? null;
+}
+
 export type AltLine = { icon: 'clock' | 'alert' | 'walk' | 'info'; text: string };
 
 /**

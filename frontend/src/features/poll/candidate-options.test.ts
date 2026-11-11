@@ -1,6 +1,11 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { buildCandidateOptions, regionCounts, UNKNOWN_NAME } from './candidate-options';
+import {
+  buildCandidateOptions,
+  regionCounts,
+  UNKNOWN_NAME,
+  withExtraRegions,
+} from './candidate-options';
 import { candidate, savedPlace } from './testing';
 
 const saved = [
@@ -71,5 +76,26 @@ describe('buildCandidateOptions', () => {
   it('그룹 즐겨찾기가 비면 후보도 없다', () => {
     expect(buildCandidateOptions('REGION', [], [], names)).toEqual([]);
     expect(buildCandidateOptions('PLACE', [], [], names)).toEqual([]);
+  });
+});
+
+describe('withExtraRegions', () => {
+  const option = (key: string) => ({ key, title: key, subtitle: null, input: { regionId: key } });
+
+  it('후보 줄에 없는 지역만 앞에 더한다', () => {
+    const out = withExtraRegions(
+      [option('r-1')],
+      [
+        { id: 'r-1', name: '부산' },
+        { id: 'r-2', name: '영도 흰여울 일대' },
+      ],
+    );
+    expect(out.map((o) => o.key)).toEqual(['r-2', 'r-1']);
+    expect(out[0]).toEqual({
+      key: 'r-2',
+      title: '영도 흰여울 일대',
+      subtitle: '추천 여행지',
+      input: { regionId: 'r-2' },
+    });
   });
 });

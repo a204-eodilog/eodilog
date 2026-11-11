@@ -5,7 +5,7 @@ import { BottomSheet, Button, Chip, Icon } from '@/components/ui';
 import { useTrip } from '@/features/trip/hooks/use-trip';
 import { colors, spacing, typography } from '@/theme';
 
-import { buildCandidateOptions, regionCounts } from '../candidate-options';
+import { buildCandidateOptions, regionCounts, withExtraRegions } from '../candidate-options';
 import { useRegionNameMap } from '../hooks/use-candidate-names';
 import { openPollErrorText, useOpenPoll } from '../hooks/use-open-poll';
 import { useSavedPlaces } from '../hooks/use-saved-places';
@@ -25,6 +25,8 @@ type Props = {
   initialType?: PollType;
   /** 미리 고른 후보 키(지역·장소 ID) */
   initialSelected?: string[];
+  /** 그룹 즐겨찾기에 없어도 지역 후보로 보일 곳. 추천 결과의 여행지를 투표 후보로 넘길 때 쓴다 */
+  extraRegions?: { id: string; name: string }[];
   /** 미리보기에서 후보 목록을 그대로 넣는다. 없으면 그룹 즐겨찾기를 받는다 */
   previewOptions?: CandidateOption[];
   now?: Date;
@@ -42,6 +44,7 @@ export function OpenPollSheet({
   onOpened,
   initialType = 'REGION',
   initialSelected = [],
+  extraRegions,
   previewOptions,
   now,
 }: Props) {
@@ -77,11 +80,11 @@ export function OpenPollSheet({
     onClose();
   };
 
-  const options = useMemo(
-    () =>
-      previewOptions ?? buildCandidateOptions(type, saved.data ?? [], [], regionNames, memberNames),
-    [previewOptions, type, saved.data, regionNames, memberNames],
-  );
+  const options = useMemo(() => {
+    if (previewOptions) return previewOptions;
+    const built = buildCandidateOptions(type, saved.data ?? [], [], regionNames, memberNames);
+    return type === 'REGION' ? withExtraRegions(built, extraRegions ?? []) : built;
+  }, [previewOptions, type, saved.data, regionNames, memberNames, extraRegions]);
 
   const changeType = (next: PollType) => {
     if (next === type) return;

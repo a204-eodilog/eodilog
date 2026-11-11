@@ -61,7 +61,7 @@ export function useOpenNotification() {
             // 그 밖의 실패는 대상 화면이 스스로 안내한다
           }
         }
-        // 투표·코스·변경안 화면은 다른 브랜치에 있어 타입 있는 주소 목록에 아직 없다
+        // 주소를 알림 종류에 따라 글자로 만들어서 타입 있는 주소로 볼 수 없다
         router.push(dest.href as Href);
         return 'opened';
       } finally {

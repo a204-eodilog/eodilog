@@ -10,10 +10,11 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Chip, Header, Icon, toast } from '@/components/ui';
+import { Chip, Header, Icon } from '@/components/ui';
 import { isMine } from '@/features/group-favorites/group-rules';
 import { useFavoriteMutations } from '@/features/group-favorites/hooks/use-favorite-mutations';
 import { useGroupFavorites } from '@/features/group-favorites/hooks/use-group-favorites';
+import { OpenPollSheet } from '@/features/poll/components/open-poll-sheet';
 import { getPreferences } from '@/features/preferences/api';
 import { useRegions } from '@/features/trip/hooks/use-region-names';
 import { useTrip } from '@/features/trip/hooks/use-trip';
@@ -203,6 +204,8 @@ export function RecommendScreen() {
   const { regions } = useRegions(regionIds.slice(0, 1));
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
+  // 투표 후보로 넘길 추천 여행지. 있으면 N8 투표 열기 시트를 연다
+  const [votePick, setVotePick] = useState<{ id: string; name: string } | null>(null);
 
   const start = rec.start;
   /** 처음 시작(취향 확인 포함)을 마쳤는지 */
@@ -267,45 +270,56 @@ export function RecommendScreen() {
   };
 
   return (
-    <RecommendView
-      state={rec.phase === 'running' ? 'loading' : state}
-      startedAt={rec.startedAt}
-      progress={result?.job.progress ?? 0}
-      placeCount={group.totals?.allPlaceCount ?? 0}
-      peopleCount={members.length}
-      regions={regionPicks}
-      places={places}
-      cells={
-        result
-          ? basisCells(
-              result.basis,
-              overlap,
-              regionName,
-              formatPeriodShort(trip.data?.startDate ?? null, trip.data?.endDate ?? null),
-            )
-          : []
-      }
-      savedIds={savedIds}
-      savingIds={savingIds}
-      onSave={(id) => void save(id)}
-      // 투표 열기 시트는 투표 쪽 작업과 합칠 때 그 여행지로 연다(Q-9-2)
-      onVote={() => toast.show('준비 중이에요')}
-      onRedo={() => void start()}
-      notice={state === 'noOverlap' ? <NoOverlapNotice /> : undefined}
-      other={
-        state === 'insufficient' && result ? (
-          <InsufficientView
-            lines={insufficientLines(result.basis)}
-            // 그룹 즐겨찾기에서 왔으면 그리로 돌아가고, 아니면 연다
-            onMorePlaces={() => router.dismissTo(`/trips/${tripId}/favorites`)}
-            // 취향을 넣고 돌아오면 다시 추천한다
-            onPreferences={toPreferences}
-          />
-        ) : state === 'failed' ? (
-          <RecommendFailView onRetry={() => void start()} />
-        ) : undefined
-      }
-    />
+    <>
+      <RecommendView
+        state={rec.phase === 'running' ? 'loading' : state}
+        startedAt={rec.startedAt}
+        progress={result?.job.progress ?? 0}
+        placeCount={group.totals?.allPlaceCount ?? 0}
+        peopleCount={members.length}
+        regions={regionPicks}
+        places={places}
+        cells={
+          result
+            ? basisCells(
+                result.basis,
+                overlap,
+                regionName,
+                formatPeriodShort(trip.data?.startDate ?? null, trip.data?.endDate ?? null),
+              )
+            : []
+        }
+        savedIds={savedIds}
+        savingIds={savingIds}
+        onSave={(id) => void save(id)}
+        // 그 여행지를 미리 고른 채 N8 투표 열기 시트를 연다
+        onVote={(pick) => setVotePick({ id: pick.region.id, name: pick.region.name })}
+        onRedo={() => void start()}
+        notice={state === 'noOverlap' ? <NoOverlapNotice /> : undefined}
+        other={
+          state === 'insufficient' && result ? (
+            <InsufficientView
+              lines={insufficientLines(result.basis)}
+              // 그룹 즐겨찾기에서 왔으면 그리로 돌아가고, 아니면 연다
+              onMorePlaces={() => router.dismissTo(`/trips/${tripId}/favorites`)}
+              // 취향을 넣고 돌아오면 다시 추천한다
+              onPreferences={toPreferences}
+            />
+          ) : state === 'failed' ? (
+            <RecommendFailView onRetry={() => void start()} />
+          ) : undefined
+        }
+      />
+      <OpenPollSheet
+        visible={votePick !== null}
+        onClose={() => setVotePick(null)}
+        tripId={tripId}
+        initialType="REGION"
+        initialSelected={votePick ? [votePick.id] : []}
+        extraRegions={votePick ? [votePick] : []}
+        onOpened={(poll) => router.push(`/trips/${tripId}/polls/${poll.id}`)}
+      />
+    </>
   );
 }
 

@@ -38,6 +38,31 @@ jest.mock('expo-router', () => {
   };
 });
 
+// N8 투표 열기 시트는 투표 쪽 테스트가 본다. 여기서는 무엇을 넘겨 여는지만 본다
+jest.mock('@/features/poll/components/open-poll-sheet', () => {
+  const { Pressable, Text } = jest.requireActual<typeof import('react-native')>('react-native');
+  return {
+    OpenPollSheet: (props: {
+      visible: boolean;
+      initialType?: string;
+      initialSelected?: string[];
+      extraRegions?: { id: string; name: string }[];
+      onOpened: (poll: { id: string }) => void;
+    }) =>
+      props.visible ? (
+        <Pressable onPress={() => props.onOpened({ id: 'poll-9' })}>
+          <Text>
+            {`투표 열기 시트 ${props.initialType} ${(props.initialSelected ?? []).join(',')} ${(
+              props.extraRegions ?? []
+            )
+              .map((r) => r.name)
+              .join(',')}`.trim()}
+          </Text>
+        </Pressable>
+      ) : null,
+  };
+});
+
 jest.mock('../api', () => ({ requestRecommendation: jest.fn(), getRecommendation: jest.fn() }));
 jest.mock('@/features/group-favorites/api', () => ({
   PAGE_LIMIT: 20,
@@ -226,10 +251,12 @@ describe('결과로 다음 행동', () => {
     expect(await screen.findByLabelText('이기대 산책로 담김')).toBeTruthy();
   });
 
-  it('여행지 투표 후보로는 지금은 준비 중 안내', async () => {
+  it('여행지 투표 후보로는 그 여행지를 고른 채 지역 투표 열기 시트를 열고, 열리면 그 투표로 간다', async () => {
     await renderScreen();
     await fireEvent.press(await screen.findByLabelText('영도 흰여울 일대 투표 후보로'));
-    expect(toast.show).toHaveBeenCalledWith('준비 중이에요');
+    expect(toast.show).not.toHaveBeenCalledWith('준비 중이에요');
+    await fireEvent.press(screen.getByText(/^투표 열기 시트 REGION \S+ 영도 흰여울 일대$/));
+    expect(mockRouter.push).toHaveBeenCalledWith('/trips/trip-1/polls/poll-9');
   });
 
   it('재추천은 새 작업을 만든다', async () => {

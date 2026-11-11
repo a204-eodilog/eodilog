@@ -192,7 +192,11 @@ describe('S25 여행 중', () => {
     await fireEvent.press(await screen.findByLabelText('준비물, 3/6 챙김'));
     expect(mockRouter.push).toHaveBeenCalledWith('/trips/trip-1/checklist');
     await fireEvent.press(screen.getByLabelText('주변 편의시설, 코스 근처'));
-    expect(toast.show).toHaveBeenCalledWith('준비 중이에요');
+    expect(mockRouter.push).toHaveBeenLastCalledWith({
+      pathname: '/trips/[tripId]/facilities',
+      params: { tripId: 'trip-1', placeId: expect.any(String) },
+    });
+    expect(toast.show).not.toHaveBeenCalledWith('준비 중이에요');
   });
 
   it('이미 지난 일정은 비 영향 안내에서 뺀다', async () => {

@@ -4,6 +4,8 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import { SYSTEM_CARD_ROUTES } from '@/features/chat/system-card-routes';
 import { TripMenuGrid } from '@/features/trip/components/trip-menu-grid';
 
+import { pollRoutes } from './poll-routes';
+
 /** 다른 화면에서 투표 화면으로 들어오는 길(투표 명세 User Story 5) */
 
 const mockPush = jest.fn();
@@ -43,7 +45,18 @@ describe('투표 화면으로 들어오는 길', () => {
     expect(mockPush).toHaveBeenLastCalledWith('/trips/trip-1/polls');
   });
 
-  it('코스 카드는 코스 화면이 생길 때까지 비워 둔다', () => {
-    expect(SYSTEM_CARD_ROUTES.course).toBeUndefined();
+  it('채팅 코스 카드는 그 여행의 코스 화면으로 간다', () => {
+    SYSTEM_CARD_ROUTES.course?.({ type: 'ITINERARY', id: 'trip-1' }, 'trip-1');
+    expect(mockPush).toHaveBeenLastCalledWith('/trips/trip-1/course');
+  });
+});
+
+describe('투표 결과에서 나가는 길', () => {
+  it('동률은 코스 짜기의 날짜별로 나누기로, 여행지 확정은 그룹 즐겨찾기로 간다', () => {
+    pollRoutes.splitByDay('trip-1');
+    expect(mockPush).toHaveBeenLastCalledWith('/trips/trip-1/course/edit?split=1');
+    pollRoutes.collectPlaces('trip-1');
+    expect(mockPush).toHaveBeenLastCalledWith('/trips/trip-1/favorites');
+    expect(mockToast.show).not.toHaveBeenCalled();
   });
 });
