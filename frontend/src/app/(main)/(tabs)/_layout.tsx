@@ -16,7 +16,7 @@ const TAB_BY_ROUTE = Object.fromEntries(
 ) as Record<string, TabKey>;
 
 /** 탭이 겹쳐 바뀌는 시간(ms) */
-const TAB_FADE_MS = 150;
+const TAB_FADE_MS = 120;
 
 /** 하단 탭 5개. 탭 첫 화면만 여기 두고, 상세·입력 화면은 (main) Stack에 둬서 탭이 보이지 않게 한다 */
 export default function TabsLayout() {

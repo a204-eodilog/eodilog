@@ -1,4 +1,5 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 
 import { Button, Icon } from '@/components/ui';
 import { colors, layout, radius, spacing, typography } from '@/theme';
@@ -28,7 +29,7 @@ export function ChecklistEmpty({ onSuggest, suggesting, onAddDirect }: Props) {
           weight="medium"
           leading={
             suggesting ? (
-              <ActivityIndicator size="small" color={colors.text.inverse} />
+              <Spinner size="small" color={colors.text.inverse} />
             ) : (
               <Icon name="bulb" size={20} color={colors.text.inverse} />
             )

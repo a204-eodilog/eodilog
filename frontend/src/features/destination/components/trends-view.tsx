@@ -1,13 +1,6 @@
 import { Image } from 'expo-image';
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, ErrorState, Header, Icon } from '@/components/ui';
@@ -39,7 +32,7 @@ export function TrendsView(props: TrendsViewProps) {
           onRetry={props.onRetry}
         />
       ) : props.state === 'loading' || !board ? (
-        <ActivityIndicator style={styles.flex} color={colors.brand.primary} />
+        <Spinner style={styles.flex} color={colors.brand.primary} />
       ) : (
         <FlatList
           data={board.insufficient ? [] : board.rows}

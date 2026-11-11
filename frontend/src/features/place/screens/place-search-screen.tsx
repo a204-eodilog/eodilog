@@ -2,7 +2,6 @@ import { useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   Platform,
   Pressable,
@@ -12,6 +11,7 @@ import {
   type TextStyle,
   View,
 } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, ErrorState, Icon } from '@/components/ui';
@@ -179,7 +179,7 @@ export function PlaceSearchScreen() {
                 <Icon name="chevron-right" size={20} color={colors.brand.primaryDark} />
               </Pressable>
               {query && search.isFetching && !search.data ? (
-                <ActivityIndicator style={styles.loading} color={colors.brand.primary} />
+                <Spinner style={styles.loading} color={colors.brand.primary} />
               ) : query && results.length ? (
                 <Text style={[typography.captionMedium, styles.count]}>
                   검색 결과 {results.length}곳

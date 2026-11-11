@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { type LayoutChangeEvent, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, G, Path, Rect, Text as SvgText } from 'react-native-svg';
 
-import { KOREA_MAP, KOREA_MAP_CREDIT, projectLatLng } from '@/lib/korea-map';
+import { KOREA_MAP, projectLatLng } from '@/lib/korea-map';
 import { colors, radius, spacing, typography } from '@/theme';
 
 import type { FeedDay } from '../types';
@@ -130,9 +130,6 @@ export function RouteSketch({ days }: { days: readonly FeedDay[] }) {
           )}
         </Svg>
       ) : null}
-      <Text style={styles.credit} pointerEvents="none">
-        {KOREA_MAP_CREDIT}
-      </Text>
       {days.length > 1 ? (
         <View style={styles.legend}>
           {lines.map((l) => (
@@ -211,14 +208,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     overflow: 'hidden',
     backgroundColor: colors.surface.default,
-  },
-  credit: {
-    ...typography.micro,
-    fontFamily: typography.caption.fontFamily,
-    position: 'absolute',
-    right: spacing[10],
-    bottom: spacing[6],
-    color: colors.text.muted,
   },
   legend: {
     position: 'absolute',

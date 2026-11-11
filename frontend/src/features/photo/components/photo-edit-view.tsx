@@ -1,12 +1,5 @@
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, ErrorState, Header, Icon } from '@/components/ui';
@@ -71,7 +64,7 @@ export function PhotoEditView(props: PhotoEditViewProps) {
             style={({ pressed }) => [styles.done, pressed && styles.pressed]}
           >
             {props.saving ? (
-              <ActivityIndicator color={colors.brand.primaryDark} />
+              <Spinner color={colors.brand.primaryDark} />
             ) : (
               <Text style={[typography.bodyMedium, styles.link]}>완료</Text>
             )}
@@ -88,7 +81,7 @@ export function PhotoEditView(props: PhotoEditViewProps) {
         {props.state === 'error' ? (
           <ErrorState title="사진을 불러오지 못했어요" onRetry={props.onRetry} />
         ) : (
-          <ActivityIndicator style={styles.flex} color={colors.brand.primary} />
+          <Spinner style={styles.flex} color={colors.brand.primary} />
         )}
       </View>
     );

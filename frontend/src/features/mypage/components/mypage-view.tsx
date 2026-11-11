@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import {
-  ActivityIndicator,
   type LayoutChangeEvent,
   Pressable,
   ScrollView,
@@ -8,6 +7,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
@@ -35,7 +35,6 @@ export type MyPageViewProps = {
   state: 'loading' | 'error' | 'empty' | 'ready';
   summary?: MyPageSummary;
   onRetry: () => void;
-  onPreview: () => void;
   onTrips: () => void;
   onNewTrip: () => void;
   onTimeline: () => void;
@@ -60,7 +59,7 @@ export function MyPageView(props: MyPageViewProps) {
       {state === 'error' ? (
         <ErrorState title="마이페이지를 불러오지 못했어요" onRetry={props.onRetry} />
       ) : state === 'loading' || !summary ? (
-        <ActivityIndicator style={styles.flex} color={colors.brand.primary} />
+        <Spinner style={styles.flex} color={colors.brand.primary} />
       ) : (
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.profile}>
@@ -72,15 +71,6 @@ export function MyPageView(props: MyPageViewProps) {
               <Text style={styles.sub}>{profileLine(summary)}</Text>
             </View>
           </View>
-
-          <Pressable
-            onPress={props.onPreview}
-            style={({ pressed }) => [styles.preview, pressed && styles.pressed]}
-            accessibilityRole="button"
-          >
-            <Icon name="eye" size={18} color={colors.brand.primaryDark} />
-            <Text style={styles.previewText}>친구에게 보이는 모습</Text>
-          </Pressable>
 
           <MapCard {...props} summary={summary} />
 
@@ -338,18 +328,6 @@ const styles = StyleSheet.create({
   profileText: { flex: 1, minWidth: 0, gap: 2 },
   name: { ...typography.title2, color: colors.text.default },
   sub: { ...typography.caption, color: colors.text.sub },
-  preview: {
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[6],
-    height: 40,
-    paddingHorizontal: spacing[14],
-    borderRadius: radius.full,
-    backgroundColor: colors.brand.primaryBg,
-    marginTop: -spacing[4],
-  },
-  previewText: { ...typography.bodyBold, color: colors.brand.primaryDark },
   mapCard: {
     height: MAP_HEIGHT,
     borderRadius: radius.lg,

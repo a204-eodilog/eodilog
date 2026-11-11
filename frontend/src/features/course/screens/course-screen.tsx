@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { errorLook } from '@/api/error-look';
@@ -69,7 +70,7 @@ export function CourseView(props: CourseViewProps) {
 
   let body;
   if (props.status === 'loading' || (props.status === 'ready' && !draft)) {
-    body = <ActivityIndicator style={styles.loading} color={colors.brand.primary} />;
+    body = <Spinner style={styles.loading} color={colors.brand.primary} />;
   } else if (props.status === 'notFound') {
     body = (
       <ErrorState
@@ -271,7 +272,8 @@ export function CourseScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.surface.white },
-  loading: { marginTop: spacing[32] },
+  // 로딩 동그라미를 남은 화면의 정중앙에 둔다
+  loading: { flex: 1 },
   scroll: { paddingBottom: spacing[24] },
   content: {
     paddingHorizontal: layout.screenPaddingX,

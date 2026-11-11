@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { fitRegion, type MapBox, MapMarker, MapView, spreadMarkers } from '@/components/map';
@@ -134,7 +135,7 @@ export function FacilitiesView(props: FacilitiesViewProps) {
             <Text style={styles.noteDesc}>여행 일정의 장소에서 주변 편의시설을 열 수 있어요</Text>
           </View>
         ) : props.state === 'loading' ? (
-          <ActivityIndicator color={colors.brand.primary} style={styles.loading} />
+          <Spinner color={colors.brand.primary} style={styles.loading} />
         ) : props.state === 'error' ? (
           <View style={styles.note}>
             <Icon name="alert" size={22} color={colors.text.icon} />

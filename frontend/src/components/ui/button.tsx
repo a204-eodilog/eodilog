@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ActivityIndicator, Animated, StyleSheet, Text, type ViewStyle } from 'react-native';
+import { Animated, StyleSheet, Text, type ViewStyle } from 'react-native';
+import { Spinner } from './spinner';
 
 import { isReduceMotion } from '@/hooks/use-reduce-motion';
 import { haptic } from '@/lib/haptics';
@@ -118,7 +119,7 @@ export function Button({
     >
       <Animated.View style={[styles.content, { opacity: fade }]}>
         {loading ? (
-          <ActivityIndicator color={fg} />
+          <Spinner color={fg} />
         ) : (
           <>
             {leading}

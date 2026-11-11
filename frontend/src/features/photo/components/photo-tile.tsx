@@ -1,5 +1,6 @@
 import { Image } from 'expo-image';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 
 import { Icon } from '@/components/ui';
 import { colors, radius, spacing, typography } from '@/theme';
@@ -74,7 +75,7 @@ export function PhotoTile({
           <>
             <View style={styles.dim} />
             <View style={styles.busy}>
-              <ActivityIndicator color={colors.text.inverse} />
+              <Spinner color={colors.text.inverse} />
             </View>
           </>
         ) : null}

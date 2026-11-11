@@ -1,7 +1,8 @@
 import * as Clipboard from 'expo-clipboard';
 import { router } from 'expo-router';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, BackHandler, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { BackHandler, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, Button, ConfirmSheet, ErrorState, Header, Icon, toast } from '@/components/ui';
@@ -58,7 +59,7 @@ export function SettingsScreen() {
         {server.isError ? (
           <ErrorState title="설정을 불러오지 못했어요" onRetry={server.refetch} />
         ) : (
-          <ActivityIndicator style={styles.screen} color={colors.brand.primary} />
+          <Spinner style={styles.screen} color={colors.brand.primary} />
         )}
       </SafeAreaView>
     );

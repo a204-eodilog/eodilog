@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 
 import { Icon } from '@/components/ui';
 import { colors, radius, spacing, typography } from '@/theme';
@@ -42,7 +43,7 @@ export function RecommendLoading({ startedAt, progress, placeCount, peopleCount 
                 <Icon name="check" size={16} color={colors.status.success} />
               </View>
             ) : i === step ? (
-              <ActivityIndicator size="small" color={colors.brand.primary} style={styles.mark} />
+              <Spinner size="small" color={colors.brand.primary} style={styles.mark} />
             ) : (
               <View style={styles.mark}>
                 <View style={styles.dot} />

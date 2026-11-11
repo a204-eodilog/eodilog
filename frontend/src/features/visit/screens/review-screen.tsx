@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 
 import { CenterNotice, ConfirmSheet, Header, toast } from '@/components/ui';
 import { colors } from '@/theme';
@@ -47,7 +48,7 @@ export function ReviewScreen() {
       <View style={styles.screen}>
         <Header title="평가" />
         {board.isLoading ? (
-          <ActivityIndicator style={styles.loading} color={colors.brand.primary} />
+          <Spinner style={styles.loading} color={colors.brand.primary} />
         ) : board.error || !board.trip ? (
           <CenterNotice
             icon="alert"

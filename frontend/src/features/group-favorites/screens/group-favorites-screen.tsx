@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState, type ReactNode } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 
 import { errorLook } from '@/api/error-look';
 import { toApiError } from '@/api/errors';
@@ -102,7 +103,7 @@ export function GroupFavoritesView(props: GroupFavoritesViewProps) {
 
   let body: ReactNode;
   if (props.status === 'loading') {
-    body = <ActivityIndicator style={styles.loading} color={colors.brand.primary} />;
+    body = <Spinner style={styles.loading} color={colors.brand.primary} />;
   } else if (props.status === 'notFound') {
     body = (
       <ErrorState
@@ -156,7 +157,7 @@ export function GroupFavoritesView(props: GroupFavoritesViewProps) {
         onEndReachedThreshold={0.5}
         ListFooterComponent={
           props.loadingMore ? (
-            <ActivityIndicator style={styles.more} color={colors.brand.primary} />
+            <Spinner style={styles.more} color={colors.brand.primary} />
           ) : undefined
         }
       />
@@ -400,7 +401,8 @@ export function GroupFavoritesScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.surface.white },
   body: { flex: 1 },
-  loading: { marginTop: spacing[32] },
+  // 로딩 동그라미를 남은 화면의 정중앙에 둔다
+  loading: { flex: 1 },
   list: { paddingHorizontal: layout.screenPaddingX, paddingBottom: spacing[24] },
   order: { color: colors.text.sub, paddingTop: spacing[8], paddingBottom: spacing[4] },
   more: { marginVertical: spacing[16] },

@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CenterNotice, toast } from '@/components/ui';
@@ -46,7 +47,7 @@ export function SavedScreen() {
             onAction={() => void bookmarks.refetch()}
           />
         ) : (
-          <ActivityIndicator style={styles.loading} color={colors.brand.primary} />
+          <Spinner style={styles.loading} color={colors.brand.primary} />
         )}
       </View>
     );

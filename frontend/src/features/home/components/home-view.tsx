@@ -1,5 +1,6 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
@@ -105,7 +106,7 @@ export function HomeView(props: HomeViewProps) {
       </View>
 
       {state === 'loading' ? (
-        <ActivityIndicator style={styles.flex} color={colors.brand.primary} />
+        <Spinner style={styles.flex} color={colors.brand.primary} />
       ) : state === 'first-visit' ? (
         <EmptyState
           title="첫 여행을 만들어 볼까요?"

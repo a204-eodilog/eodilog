@@ -1,11 +1,12 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 
 import { errorLook } from '@/api/error-look';
 import { AvatarGroup, ErrorState, Header, toast } from '@/components/ui';
 import { useTrip } from '@/features/trip/hooks/use-trip';
-import { colors, spacing } from '@/theme';
+import { colors } from '@/theme';
 
 import { useMe } from '@/hooks/use-me';
 
@@ -75,7 +76,7 @@ export function PollScreen() {
 
   let body;
   if ((!pollId && list.isPending) || (targetId && detail.isPending && !poll)) {
-    body = <ActivityIndicator style={styles.loading} color={colors.brand.primary} />;
+    body = <Spinner style={styles.loading} color={colors.brand.primary} />;
   } else if (detail.notFound) {
     body = <PollNotFoundView onBack={() => router.back()} />;
   } else if (!poll && (list.isError || detail.isError)) {
@@ -338,5 +339,6 @@ function NoVotesSection({
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.surface.white },
-  loading: { marginTop: spacing[32] },
+  // 로딩 동그라미를 남은 화면의 정중앙에 둔다
+  loading: { flex: 1 },
 });

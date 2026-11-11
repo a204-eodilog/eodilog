@@ -1,7 +1,8 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { isWaitingOffline } from '@/api/query-focus';
@@ -115,7 +116,7 @@ export function TripSettingsScreen() {
     }
     return (
       <View style={styles.center}>
-        <ActivityIndicator color={colors.brand.primary} />
+        <Spinner color={colors.brand.primary} />
       </View>
     );
   }
@@ -253,7 +254,7 @@ export function TripSettingsScreen() {
             style={styles.doneButton}
           >
             {update.isPending ? (
-              <ActivityIndicator color={colors.brand.primary} />
+              <Spinner color={colors.brand.primary} />
             ) : (
               <Icon name="check" size={24} color={colors.brand.primaryDark} />
             )}

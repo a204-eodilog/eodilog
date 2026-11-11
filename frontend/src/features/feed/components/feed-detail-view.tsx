@@ -1,7 +1,6 @@
 import { Image } from 'expo-image';
 import { useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   type ScrollViewInstance,
@@ -11,6 +10,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AvatarGroup, Chip, ErrorState, Header, Icon, type IconName } from '@/components/ui';
@@ -56,7 +56,7 @@ export function FeedDetailView(props: FeedDetailViewProps) {
         props.state === 'error' ? (
           <ErrorState title="여행을 불러오지 못했어요" onRetry={props.onRetry} />
         ) : (
-          <ActivityIndicator style={styles.flex} color={colors.brand.primary} />
+          <Spinner style={styles.flex} color={colors.brand.primary} />
         )
       ) : (
         <Body {...props} detail={props.detail} />

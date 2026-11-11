@@ -1,4 +1,5 @@
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, Button, ErrorState, Header, KoreaMap } from '@/components/ui';
@@ -32,7 +33,7 @@ export function ProfileView(props: ProfileViewProps) {
       {props.state === 'error' ? (
         <ErrorState title="프로필을 불러오지 못했어요" onRetry={props.onRetry} />
       ) : props.state === 'loading' || !p ? (
-        <ActivityIndicator style={styles.flex} color={colors.brand.primary} />
+        <Spinner style={styles.flex} color={colors.brand.primary} />
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.profile}>
@@ -86,7 +87,7 @@ function FeedMap({
     return (
       <View style={[styles.map, styles.mapStatus]}>
         {state === 'loading' ? (
-          <ActivityIndicator color={colors.brand.primary} />
+          <Spinner color={colors.brand.primary} />
         ) : (
           <>
             <Text style={styles.lockedDesc}>공동 피드를 불러오지 못했어요</Text>

@@ -1,15 +1,8 @@
 import { router, useFocusEffect } from 'expo-router';
 import { setStatusBarStyle } from 'expo-status-bar';
 import { useCallback, useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmptyState, ErrorState, Icon, OfflineNotice } from '@/components/ui';
@@ -84,7 +77,7 @@ export function TripListScreen() {
   if (!sections || (!featured && sections.next.length === 0 && sections.past.length === 0)) {
     let body;
     if (listState.kind === 'loading') {
-      body = <ActivityIndicator style={styles.loading} color={colors.brand.primary} />;
+      body = <Spinner style={styles.loading} color={colors.brand.primary} />;
     } else if (listState.kind === 'offline') {
       body = <OfflineNotice onRetry={() => refetch()} />;
     } else if (listState.kind === 'error') {
@@ -240,7 +233,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   pressed: { opacity: 0.6 },
-  loading: { marginTop: spacing[32] },
+  // 로딩 동그라미를 남은 화면의 정중앙에 둔다
+  loading: { flex: 1 },
   section: { paddingTop: spacing[28], gap: spacing[12] },
   sectionHead: {
     flexDirection: 'row',

@@ -1,16 +1,8 @@
 import * as Clipboard from 'expo-clipboard';
 import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  Platform,
-  Pressable,
-  ScrollView,
-  Share,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { isWaitingOffline } from '@/api/query-focus';
@@ -62,7 +54,7 @@ export function TripInviteScreen() {
   if (isPending || linkLoading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color={colors.brand.primary} />
+        <Spinner color={colors.brand.primary} />
       </View>
     );
   }
@@ -183,7 +175,7 @@ export function TripInviteScreen() {
               링크가 없으면 더하기(바로 만들기), 있으면 새로고침(확인 뒤 새로 만들기) */}
           <View style={styles.linkBox}>
             {create.isPending ? (
-              <ActivityIndicator color={colors.brand.primary} style={styles.grow} />
+              <Spinner color={colors.brand.primary} style={styles.grow} />
             ) : (
               <Text
                 style={[typography.body, styles.grow, link ? styles.linkText : styles.linkEmpty]}

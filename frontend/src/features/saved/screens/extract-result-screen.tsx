@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { apiErrorCode } from '@/api/errors';
@@ -154,7 +155,7 @@ export function ExtractResultScreen() {
             onAction={() => void query.refetch()}
           />
         ) : (
-          <ActivityIndicator style={styles.flex} color={colors.brand.primary} />
+          <Spinner style={styles.flex} color={colors.brand.primary} />
         )}
       </View>
     );

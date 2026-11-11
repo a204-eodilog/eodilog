@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 
 import { ConfirmSheet, ErrorState, Header } from '@/components/ui';
 import { formatThousands } from '@/lib/format-number';
@@ -27,7 +28,7 @@ export function ExpenseFormScreen() {
       <View style={styles.screen}>
         <Header close title={expenseId ? '지출' : '지출 추가'} />
         {board.isLoading ? (
-          <ActivityIndicator style={styles.loading} color={colors.brand.primary} />
+          <Spinner style={styles.loading} color={colors.brand.primary} />
         ) : missing ? (
           <ErrorState
             title="지출을 찾을 수 없어요"

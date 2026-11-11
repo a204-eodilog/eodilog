@@ -17,7 +17,6 @@ export function MyPagePreviewScreen() {
       state={state === 'basic' ? 'ready' : state}
       summary={state === 'empty' ? PREVIEW_EMPTY : PREVIEW_SUMMARY}
       onRetry={say('다시 불러와요')}
-      onPreview={say('S40 친구에게 보이는 모습으로 가요')}
       onTrips={say('N4 내 여행 목록으로 가요')}
       onNewTrip={say('S16 새 여행으로 가요')}
       onTimeline={say('S41 타임라인으로 가요')}

@@ -1,7 +1,6 @@
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Pressable,
   StyleSheet,
@@ -10,6 +9,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 
 import { ErrorState, Header, Icon } from '@/components/ui';
 import { colors, layout, spacing, typography } from '@/theme';
@@ -136,7 +136,7 @@ export function ChatRoomView({
 
   let body: ReactNode;
   if (status === 'loading') {
-    body = <ActivityIndicator style={styles.loading} color={colors.brand.primary} />;
+    body = <Spinner style={styles.loading} color={colors.brand.primary} />;
   } else if (status === 'error') {
     body = <ErrorState onRetry={onRetry} />;
   } else {
@@ -293,7 +293,7 @@ function BlockedNotice({ onLeave }: { onLeave?: () => void }) {
 /** 목록 맨 위. 이전 메시지를 받는 중이면 동그라미, 실패하면 [다시 시도] 줄(FR-010) */
 function OlderHeader({ state, onRetry }: { state: OlderState; onRetry: () => void }) {
   if (state === 'loading') {
-    return <ActivityIndicator style={styles.older} color={colors.text.muted} />;
+    return <Spinner style={styles.older} color={colors.text.muted} />;
   }
   if (state === 'error') {
     return (
@@ -316,7 +316,8 @@ function OlderHeader({ state, onRetry }: { state: OlderState; onRetry: () => voi
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.surface.white },
   flex: { flex: 1 },
-  loading: { marginTop: spacing[32] },
+  // 로딩 동그라미를 남은 화면의 정중앙에 둔다
+  loading: { flex: 1 },
   // 피그마 Main Content: 좌우 16, 위 16, 줄 사이 14
   content: { paddingHorizontal: spacing[16], paddingTop: spacing[16] },
   // 입력 칸 자리. 배경 없이 목록 위 아래쪽에 붙인다

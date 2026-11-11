@@ -1,13 +1,6 @@
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { UserCard } from '@/api/types';
@@ -85,8 +78,7 @@ function Suggestions(props: FindFriendsViewProps) {
   const { state, items } = props.suggestions;
   if (state === 'error')
     return <ErrorState title="추천을 불러오지 못했어요" onRetry={props.onRetry} />;
-  if (state === 'loading')
-    return <ActivityIndicator style={styles.flex} color={colors.brand.primary} />;
+  if (state === 'loading') return <Spinner style={styles.flex} color={colors.brand.primary} />;
   if (items.length === 0) {
     return (
       <EmptyState title="아직 추천할 친구가 없어요" description="닉네임으로 찾아 팔로우해 보세요" />
@@ -146,8 +138,7 @@ function SearchResults(
   const { state, items, query } = props.search;
   if (state === 'error')
     return <ErrorState title="찾지 못했어요" onRetry={() => props.onSearch(query)} />;
-  if (state === 'loading')
-    return <ActivityIndicator style={styles.flex} color={colors.brand.primary} />;
+  if (state === 'loading') return <Spinner style={styles.flex} color={colors.brand.primary} />;
   if (items.length === 0) {
     return (
       <EmptyState

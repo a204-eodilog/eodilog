@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 import { Calendar, LocaleConfig, type DateData } from 'react-native-calendars';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -26,7 +27,7 @@ function CheckLine({ text, state = 'done' }: { text: string; state?: 'done' | 'd
           <Icon name="check" size={14} color={colors.status.success} />
         </View>
       ) : state === 'doing' ? (
-        <ActivityIndicator size="small" color={colors.brand.primary} style={styles.spinner} />
+        <Spinner size="small" color={colors.brand.primary} style={styles.spinner} />
       ) : (
         <View style={styles.todoDot} />
       )}
@@ -127,7 +128,7 @@ function Option(props: {
         <Text style={[typography.caption, styles.muted]}>{props.body}</Text>
       </View>
       {props.busy ? (
-        <ActivityIndicator size="small" color={colors.brand.primary} />
+        <Spinner size="small" color={colors.brand.primary} />
       ) : (
         <Icon name="chevron-right" size={20} color={colors.text.muted} />
       )}

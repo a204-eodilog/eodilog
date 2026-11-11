@@ -2,7 +2,6 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Keyboard,
   Platform,
@@ -14,6 +13,7 @@ import {
   type TextStyle,
   View,
 } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CenterPin, KOREA_REGION, MapHint, MapView, type MapViewRef } from '@/components/map';
@@ -242,7 +242,7 @@ export function PlacePickScreen() {
           {showResults ? (
             <View style={styles.results}>
               {search.isFetching && results.length === 0 ? (
-                <ActivityIndicator color={colors.brand.primary} style={styles.resultsNote} />
+                <Spinner color={colors.brand.primary} style={styles.resultsNote} />
               ) : search.isError ? (
                 <Text style={[styles.noteText, styles.resultsNote]}>
                   찾지 못했어요. 다시 시도해 주세요

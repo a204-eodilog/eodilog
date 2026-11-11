@@ -1,5 +1,6 @@
 import { Image } from 'expo-image';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, ErrorState, Header, Icon } from '@/components/ui';
@@ -36,7 +37,7 @@ export function DestinationView(props: DestinationViewProps) {
           onRetry={props.onRetry}
         />
       ) : props.state === 'loading' || !info ? (
-        <ActivityIndicator style={styles.flex} color={colors.brand.primary} />
+        <Spinner style={styles.flex} color={colors.brand.primary} />
       ) : (
         <>
           <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>

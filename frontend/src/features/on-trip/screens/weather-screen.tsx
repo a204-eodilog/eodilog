@@ -1,7 +1,8 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { errorLook } from '@/api/error-look';
@@ -75,7 +76,7 @@ export function WeatherView(props: WeatherViewProps) {
   } else if (props.phase === 'running' || props.phase === 'idle') {
     list = (
       <View style={styles.center}>
-        <ActivityIndicator color={colors.brand.primary} />
+        <Spinner color={colors.brand.primary} />
         <Text style={[typography.body, styles.sub]}>날씨 대안을 찾고 있어요</Text>
       </View>
     );
