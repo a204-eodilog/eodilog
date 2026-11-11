@@ -52,6 +52,29 @@ export function canFind(link: string, captureCount: number): boolean {
   return status === 'ok' || captureCount > 0;
 }
 
+/** S11을 어떤 입력으로 시작할지. S10 저장 없음의 [링크 붙여넣기]·[캡처 올리기]에서 넘긴다 */
+export type AddStart = 'link' | 'capture';
+
+/** 주소 값(?start=)을 읽는다. 모르는 값이면 보통으로 연다 */
+export function parseAddStart(value: string | string[] | undefined): AddStart | null {
+  const one = Array.isArray(value) ? value[0] : value;
+  return one === 'link' || one === 'capture' ? one : null;
+}
+
+/**
+ * S11에 링크 칸·캡처 칸 중 무엇을 보일지. 시작한 쪽은 늘 보이고, 다른 쪽은 [+ 캡처도 추가]·[+ 링크도 추가]를
+ * 눌렀거나 이미 값이 있을 때만 보인다. 시작 값이 없으면(S10 [+]·S20) 링크로 시작한다
+ */
+export function addSections(
+  begin: AddStart | null,
+  state: { linkOpened: boolean; captureOpened: boolean; link: string; captureCount: number },
+): { showLink: boolean; showCaptures: boolean } {
+  return {
+    showLink: begin !== 'capture' || state.linkOpened || state.link.length > 0,
+    showCaptures: begin === 'capture' || state.captureOpened || state.captureCount > 0,
+  };
+}
+
 /**
  * 고른 캡처를 더한다. 10장을 넘는 것과 JPG·PNG가 아닌 것은 빼고, 몇 장을 뺐는지 알려 준다
  */

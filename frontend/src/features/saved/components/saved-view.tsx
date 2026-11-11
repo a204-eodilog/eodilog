@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon, type IconName } from '@/components/ui';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
+import { type AddStart, MAX_CAPTURES } from '../extract-rules';
 import type { SavedView as ViewMode } from '../hooks/use-bookmarks';
 import { masonryColumns, type SavedItem } from '../saved-rules';
 
@@ -20,8 +21,8 @@ export type SavedViewProps = {
   onGroup: () => void;
   /** 장소 카드·핀 → S14 */
   onOpen: (item: SavedItem) => void;
-  /** [+] → S11 */
-  onAdd: () => void;
+  /** [+] → S11. 저장 없음의 두 카드는 S11을 링크 칸 / 사진 고르기로 바로 시작한다 */
+  onAdd: (start?: AddStart) => void;
 };
 
 const FAB = 56;
@@ -65,8 +66,8 @@ export function SavedView({
       </View>
 
       <View style={styles.kinds}>
-        <KindButton icon="person" label="개인 즐겨찾기" selected onPress={() => undefined} />
-        <KindButton icon="people" label="그룹 즐겨찾기" selected={false} onPress={onGroup} />
+        <KindButton icon="person" label="개인" selected onPress={() => undefined} />
+        <KindButton icon="people" label="그룹" selected={false} onPress={onGroup} />
       </View>
 
       {offlineSince ? (
@@ -83,28 +84,26 @@ export function SavedView({
 
       {empty ? (
         <View style={styles.empty}>
-          <View style={styles.art}>
-            <View style={styles.chip}>
-              <Icon name="link" size={16} color={colors.brand.primary} />
-              <Text style={[typography.captionMedium, styles.text]}>sns 링크</Text>
-            </View>
-            <Icon name="link" size={36} color={colors.brand.primary} />
-            <Icon name="image" size={34} color={colors.brand.primary} />
-          </View>
           <Text style={[typography.title1, styles.text, styles.center]}>
-            가고 싶은 곳 링크를 붙여 넣어 보세요
+            가고 싶은 곳을 모아 보세요
           </Text>
           <Text style={[typography.body, styles.sub, styles.center, styles.emptySub]}>
-            링크·캡처로 장소를 찾아요
+            링크나 캡처에서 장소를 찾아 줘요
           </Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="링크·캡처 등록"
-            onPress={onAdd}
-            style={({ pressed }) => [styles.bigAdd, pressed && styles.pressed]}
-          >
-            <Icon name="plus" size={28} color={colors.text.inverse} />
-          </Pressable>
+          <View style={styles.starts}>
+            <StartCard
+              icon="link"
+              title="링크 붙여넣기"
+              hint="SNS 게시물·블로그 글"
+              onPress={() => onAdd('link')}
+            />
+            <StartCard
+              icon="image"
+              title="캡처 올리기"
+              hint={`한 번에 ${MAX_CAPTURES}장까지`}
+              onPress={() => onAdd('capture')}
+            />
+          </View>
         </View>
       ) : view === 'list' ? (
         <ScrollView contentContainerStyle={styles.list}>
@@ -135,7 +134,7 @@ export function SavedView({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="링크·캡처 등록"
-          onPress={onAdd}
+          onPress={() => onAdd()}
           style={({ pressed }) => [styles.fab, pressed && styles.pressed]}
         >
           <Icon name="plus" size={28} color={colors.text.inverse} />
@@ -180,10 +179,11 @@ function KindButton({
   selected: boolean;
   onPress: () => void;
 }) {
+  const color = selected ? colors.brand.primaryDark : colors.text.icon;
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={`${label} 즐겨찾기`}
       accessibilityState={{ selected }}
       onPress={onPress}
       style={({ pressed }) => [
@@ -192,7 +192,40 @@ function KindButton({
         pressed && styles.pressed,
       ]}
     >
-      <Icon name={icon} size={20} color={selected ? colors.brand.primaryDark : colors.text.icon} />
+      <Icon name={icon} size={18} color={color} />
+      <Text style={[typography.captionMedium, { color }]}>{label}</Text>
+    </Pressable>
+  );
+}
+
+/** 저장 없음의 시작 카드. 누르면 S11을 그 입력으로 바로 시작한다 */
+function StartCard({
+  icon,
+  title,
+  hint,
+  onPress,
+}: {
+  icon: IconName;
+  title: string;
+  hint: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      accessibilityHint={hint}
+      onPress={onPress}
+      style={({ pressed }) => [styles.start, pressed && styles.pressed]}
+    >
+      <View style={styles.startIcon}>
+        <Icon name={icon} size={22} color={colors.brand.primary} />
+      </View>
+      <View style={styles.flex}>
+        <Text style={[typography.bodyBold, styles.text]}>{title}</Text>
+        <Text style={[typography.caption, styles.sub2]}>{hint}</Text>
+      </View>
+      <Icon name="chevron-right" size={20} color={colors.text.muted} />
     </Pressable>
   );
 }
@@ -236,9 +269,12 @@ const styles = StyleSheet.create({
     paddingTop: spacing[4],
     paddingBottom: spacing[12],
   },
+  // 아이콘만으로는 뜻을 알기 어려워 글자를 붙인다(피그마는 아이콘만, 52x36)
   kind: {
-    width: 52,
     height: 36,
+    flexDirection: 'row',
+    gap: spacing[4],
+    paddingHorizontal: spacing[14],
     borderRadius: radius.full,
     alignItems: 'center',
     justifyContent: 'center',
@@ -280,34 +316,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: spacing[32],
   },
-  art: {
-    width: 248,
+  // 피그마의 장식 그림(sns 링크 칩·아이콘)과 가운데 [+] 대신, 바로 누를 수 있는 시작 카드 두 개
+  starts: { alignSelf: 'stretch', gap: spacing[10], marginTop: spacing[24] },
+  start: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing[16],
-    paddingVertical: spacing[20],
-    borderRadius: radius.xl,
+    gap: spacing[14],
+    padding: spacing[16],
+    borderRadius: radius.lg,
     backgroundColor: colors.brand.primaryBg,
-    marginBottom: spacing[24],
   },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[4],
-    paddingHorizontal: spacing[10],
-    paddingVertical: spacing[6],
-    borderRadius: radius.full,
-    backgroundColor: colors.surface.white,
-  },
-  bigAdd: {
-    width: 64,
-    height: 64,
-    marginTop: spacing[24],
-    borderRadius: radius.full,
-    backgroundColor: colors.brand.primary,
+  startIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: colors.surface.white,
   },
   fab: {
     position: 'absolute',
