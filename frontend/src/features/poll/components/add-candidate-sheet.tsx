@@ -1,7 +1,8 @@
 import { useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { BottomSheet, Button, Icon } from '@/components/ui';
+import { BottomSheet, Button } from '@/components/ui';
+import { CheckMarkWhen } from '@/components/ui/check-mark';
 import { colors, fontFamily, layout, radius, spacing, typography } from '@/theme';
 
 import { buildCandidateOptions, regionCounts } from '../candidate-options';
@@ -99,7 +100,7 @@ export function AddCandidateSheet({
                   style={({ pressed }) => [styles.row, pressed && styles.pressed]}
                 >
                   <View style={[styles.box, checked && styles.boxOn]}>
-                    {checked ? <Icon name="check" size={14} color={colors.text.inverse} /> : null}
+                    <CheckMarkWhen checked={checked} size={14} />
                   </View>
                   <View style={styles.texts}>
                     <Text style={[styles.name, checked && styles.nameOn]} numberOfLines={1}>

@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/ui';
+import { Popup } from '@/components/ui/popup';
 import { colors, radius, spacing, typography } from '@/theme';
 
 import type { NotificationLine } from '../notification-rules';
@@ -45,18 +46,17 @@ function Dialog({
   children: ReactNode;
 }) {
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onDismiss}>
-      <View style={styles.backdrop}>
-        <Pressable
-          style={StyleSheet.absoluteFill}
-          onPress={onDismiss}
-          accessibilityLabel="알림 닫기"
-        />
-        <View style={[styles.card, wide ? styles.wide : styles.narrow]} accessibilityViewIsModal>
-          {children}
-        </View>
-      </View>
-    </Modal>
+    <Popup
+      visible={visible}
+      onRequestClose={onDismiss}
+      cardStyle={[styles.card, wide ? styles.wide : styles.narrow]}
+      accessibilityViewIsModal
+      // 카드 밖을 누르면 닫힌다
+      onBackdropPress={onDismiss}
+      backdropLabel="알림 닫기"
+    >
+      {children}
+    </Popup>
   );
 }
 

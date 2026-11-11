@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Icon, Tag, type IconName } from '@/components/ui';
+import { CheckMarkWhen } from '@/components/ui/check-mark';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 export type CandidateRowTone = 'mine' | 'plain' | 'winner' | 'muted';
@@ -57,7 +58,7 @@ export function CandidateRow({
       <View style={styles.top}>
         {showCheck ? (
           <View style={[styles.check, checked && styles.checkOn]}>
-            {checked ? <Icon name="check" size={14} color={colors.text.inverse} /> : null}
+            <CheckMarkWhen checked={checked} size={14} />
           </View>
         ) : null}
         <View style={styles.texts}>

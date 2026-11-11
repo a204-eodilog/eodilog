@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AvatarGroup, Icon, Tag } from '@/components/ui';
+import { CheckMarkWhen } from '@/components/ui/check-mark';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 import type { CandidateOption } from '../types';
@@ -30,7 +31,7 @@ export function OptionRow({ option, checked, disabled = false, onToggle }: Props
       style={({ pressed }) => [styles.row, pressed && styles.pressed, disabled && styles.disabled]}
     >
       <View style={[styles.check, checked && styles.checkOn]}>
-        {checked ? <Icon name="check" size={14} color={colors.text.inverse} /> : null}
+        <CheckMarkWhen checked={checked} size={14} />
       </View>
       {isPlace ? (
         <View style={styles.thumb}>

@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AvatarGroup, Icon, Tag } from '@/components/ui';
+import { CheckMarkWhen } from '@/components/ui/check-mark';
 import { colors, radius, spacing, typography } from '@/theme';
 
 import { overlapLabel, saverNames, shortAddress } from '../group-rules';
@@ -34,7 +35,7 @@ export function PlaceRow({ item, members, onPress, selecting = false, selected =
     >
       {selecting ? (
         <View style={[styles.box, selected ? styles.boxOn : styles.boxOff]}>
-          {selected ? <Icon name="check" size={16} color={colors.text.inverse} /> : null}
+          <CheckMarkWhen checked={selected} size={16} />
         </View>
       ) : null}
       <View style={styles.thumb}>
