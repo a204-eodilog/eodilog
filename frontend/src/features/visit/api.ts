@@ -1,7 +1,7 @@
 import { apiClient } from '@/api/client';
 import type { DataResponse, PageResponse } from '@/api/types';
 
-import type { ItineraryItem, Review, ReviewInput, Visit, VisitTrip } from './types';
+import type { ItineraryDoc, Review, ReviewInput, Visit, VisitTrip } from './types';
 
 /** 서버 최대 페이지 크기. 한 여행의 내 방문은 많지 않아 끝까지 읽는다 */
 const PAGE_LIMIT = 100;
@@ -11,12 +11,13 @@ export async function getVisitTrip(tripId: string): Promise<VisitTrip> {
   return data.data;
 }
 
-/** 여행의 현재 코스. 새 여행은 빈 코스다 */
-export async function getItineraryItems(tripId: string): Promise<ItineraryItem[]> {
-  const { data } = await apiClient.get<DataResponse<{ items: ItineraryItem[] }>>(
-    `/trips/${tripId}/itinerary`,
-  );
-  return data.data.items;
+/**
+ * 여행의 현재 코스. 새 여행은 빈 코스다.
+ * 코스 화면과 같은 쿼리 키에 두는 값이라 서버가 준 코스 전체를 그대로 돌려준다(항목만 잘라 두면 코스 화면이 멈춘다)
+ */
+export async function getItinerary(tripId: string): Promise<ItineraryDoc> {
+  const { data } = await apiClient.get<DataResponse<ItineraryDoc>>(`/trips/${tripId}/itinerary`);
+  return data.data;
 }
 
 /** 내 방문 전부(memberId를 보내지 않으면 나). 체크를 해제한 방문은 서버가 뺀다 */

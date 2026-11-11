@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 
 import { expenseKeys, getAllExpenses, getSettlementState } from '@/features/expense';
 import { getTripPhotos, photoKeys } from '@/features/photo';
-import { getItineraryItems, getMyVisits, visitKeys } from '@/features/visit';
+import { getMyVisits, itineraryItemsQuery, visitKeys } from '@/features/visit';
 import { useMe } from '@/hooks/use-me';
 
 import { getRecordTrip } from '../api';
@@ -13,10 +13,7 @@ import { getRecordTrip } from '../api';
  */
 export function useTripRecord(tripId: string) {
   const trip = useQuery({ queryKey: visitKeys.trip(tripId), queryFn: () => getRecordTrip(tripId) });
-  const itinerary = useQuery({
-    queryKey: visitKeys.itinerary(tripId),
-    queryFn: () => getItineraryItems(tripId),
-  });
+  const itinerary = useQuery(itineraryItemsQuery(tripId));
   const visits = useQuery({
     queryKey: visitKeys.myVisits(tripId),
     queryFn: () => getMyVisits(tripId),
