@@ -227,7 +227,7 @@ class ItineraryProposalApiTest {
 		expectValidationError(request(ownerId, "{\"expectedVersion\":1}"), "reason");
 		expectValidationError(request(ownerId, "{\"reason\":\"INITIAL\"}"), "expectedVersion");
 		// 아직 지원하지 않는 사유와 다른 사유용 필드
-		expectValidationError(request(ownerId, "{\"reason\":\"PLACE_REMOVED\",\"expectedVersion\":1}"), "reason");
+		expectValidationError(request(ownerId, "{\"reason\":\"PLACE_REMOVED\",\"expectedVersion\":1}"), "excludedPlaceIds");
 		expectValidationError(request(ownerId,
 				"{\"reason\":\"INITIAL\",\"expectedVersion\":1,\"excludedPlaceIds\":[]}"), "excludedPlaceIds");
 		request(ownerId, "{\"reason\":\"INITIAL\",\"expectedVersion\":1,\"memo\":\"x\"}")
@@ -478,7 +478,29 @@ class ItineraryProposalApiTest {
 	}
 
 	// AI spec §5 응답 모양. 입력 places 순서대로 1일차 2곳, 2일차 1곳. 현재 코스에 같은 장소가 있으면 그 항목 id를 유지한다
-	private ObjectNode proposal(JsonNode input) {
+	@Test void categoryIsOnlyInAiInputsAndRemovedPlacesCannotReturn() throws Exception {
+        jdbcTemplate.update("update places set category='카페' where id=?",placeA);
+        replaceCourse(ownerId,1,"[{\"placeId\":\""+placeA+"\",\"day\":1,\"order\":1}]","[]").andExpect(status().isOk());
+        UUID initial=request(ownerId,2);runUntil(initial,Set.of("SUCCEEDED"));
+        ArgumentCaptor<JsonNode> body=ArgumentCaptor.forClass(JsonNode.class);verify(aiServerClient).post(eq("/ai/v1/itinerary-proposals"),eq(initial),body.capture());
+        assertThat(body.getValue().path("places").get(0).path("category").asString()).isEqualTo("카페");
+        assertThat(body.getValue().path("places").get(1).path("category").isNull()).isTrue();
+        assertThat(body.getValue().path("current").path("items").get(0).path("place").path("category").asString()).isEqualTo("카페");
+        getProposal(ownerId,tripId,initial).andExpect(jsonPath("$.data.proposed.items[0].place.category").doesNotExist());
+        answerWith(input->{var out=jsonMapper.createObjectNode().put("baseVersion",2).put("reason","PLACE_REMOVED");var proposed=out.putObject("proposed");proposed.putArray("items").addObject().putNull("id").set("place",jsonMapper.createObjectNode().put("id",placeA.toString()));proposed.putArray("legs");out.putObject("diff").put("description","removed");return out;});
+        String removed="{\"reason\":\"PLACE_REMOVED\",\"expectedVersion\":2,\"excludedPlaceIds\":[\""+placeA+"\"]}";
+        UUID job=UUID.fromString(data(requestProposal(ownerId,tripId,UUID.randomUUID().toString(),removed).andExpect(status().isAccepted())).path("jobId").asString());runUntil(job,Set.of("FAILED"));
+    }
+    @Test void removingEveryPlaceProducesEmptyProposalThenApplyAndUndo() throws Exception {
+        replaceCourse(ownerId,1,"[{\"placeId\":\""+placeA+"\",\"day\":1,\"order\":1}]","[]").andExpect(status().isOk());
+        answerWith(input->{var out=jsonMapper.createObjectNode().put("baseVersion",2).put("reason","PLACE_REMOVED");var course=out.putObject("proposed");course.putArray("items");course.putArray("legs");out.putObject("diff").put("description","모든 장소 제외");return out;});
+        String key=UUID.randomUUID().toString(),body="{\"reason\":\"PLACE_REMOVED\",\"expectedVersion\":2,\"excludedPlaceIds\":[\""+placeA+"\"]}";
+        UUID job=UUID.fromString(data(requestProposal(ownerId,tripId,key,body).andExpect(status().isAccepted())).path("jobId").asString());runUntil(job,Set.of("SUCCEEDED"));
+        assertThat(count("select count(*) from itinerary_items where itinerary_id=(select id from itineraries where trip_id=?)",tripId)).isEqualTo(1);
+        mockMvc.perform(post("/api/v1/trips/{trip}/itinerary/proposals/{job}/apply",tripId,job).with(authUser(ownerId)).contentType(MediaType.APPLICATION_JSON).content("{\"expectedVersion\":2}")).andExpect(status().isOk()).andExpect(jsonPath("$.data.items.length()").value(0));
+        mockMvc.perform(post("/api/v1/trips/{trip}/itinerary/undo",tripId).with(authUser(ownerId)).contentType(MediaType.APPLICATION_JSON).content("{\"expectedVersion\":3,\"appliedJobId\":\""+job+"\"}")).andExpect(status().isOk()).andExpect(jsonPath("$.data.items.length()").value(1));
+    }
+    private ObjectNode proposal(JsonNode input) {
 		ObjectNode data = jsonMapper.createObjectNode();
 		data.put("baseVersion", input.get("expectedVersion").asLong());
 		data.put("reason", "INITIAL");

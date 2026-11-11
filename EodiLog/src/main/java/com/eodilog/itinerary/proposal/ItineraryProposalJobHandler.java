@@ -43,7 +43,7 @@ public class ItineraryProposalJobHandler implements JobHandler {
 		if (submission.tripId() == null || submission.baseVersion() == null || !fieldsMatch
 				|| !validReason(input)
 				|| input.get("expectedVersion").asLong() != submission.baseVersion()
-				|| !input.get("trip").isObject() || !input.get("places").isArray() || input.get("places").isEmpty()
+				|| !input.get("trip").isObject() || !input.get("places").isArray()
 				|| !input.get("current").isObject()) {
 			throw new IllegalArgumentException("Invalid ITINERARY_PROPOSAL submission");
 		}
@@ -53,6 +53,7 @@ public class ItineraryProposalJobHandler implements JobHandler {
 	private static boolean validReason(JsonNode input) {
 		String reason = input.get("reason").asString();
 		return ("INITIAL".equals(reason) && input.get("selectedAlternative").isNull())
+				|| ("PLACE_REMOVED".equals(reason) && input.get("selectedAlternative").isNull() && input.path("excludedPlaceIds").isArray() && !input.path("excludedPlaceIds").isEmpty())
 				|| ("WEATHER".equals(reason) && input.get("selectedAlternative").isObject());
 	}
 
