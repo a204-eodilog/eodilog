@@ -9,7 +9,10 @@
       "distribution": "internal"
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_KAKAO_REDIRECT_URI": "https://eodilog.example.com/oauth/kakao"
+      }
     },
     "mock": {
       "extends": "preview",
@@ -21,7 +24,10 @@
       }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_KAKAO_REDIRECT_URI": "https://eodilog.example.com/oauth/kakao"
+      }
     }
   },
   "submit": {
