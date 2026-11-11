@@ -396,8 +396,9 @@ class WeatherApiTest {
 		expectValidationError(requestProposal(ownerId, tripId, UUID.randomUUID().toString(),
 				"{\"reason\":\"WEATHER\",\"expectedVersion\":2,\"selectedAlternativeId\":\"%s\"}".formatted(PLACE_SWAP_ID)),
 				"sourceWeatherJobId");
+		// PLACE_REMOVED는 EODI-278부터 지원한다. 뺄 장소(excludedPlaceIds)가 없으면 400이다
 		expectValidationError(requestProposal(ownerId, tripId, UUID.randomUUID().toString(),
-				"{\"reason\":\"PLACE_REMOVED\",\"expectedVersion\":2}"), "reason");
+				"{\"reason\":\"PLACE_REMOVED\",\"expectedVersion\":2}"), "excludedPlaceIds");
 		requestProposal(ownerId, tripId, UUID.randomUUID().toString(), weatherProposal(2, UUID.randomUUID(), PLACE_SWAP_ID))
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.error.code").value("JOB_NOT_FOUND"));
