@@ -1,46 +1,56 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AvatarGroup, Icon } from '@/components/ui';
-import { daysBetween } from '@/lib/seoul-date';
 import { colors, layout, spacing, typography } from '@/theme';
 
 import { useRegionNames } from '../hooks/use-region-names';
-import { destinationLabel, stayLabel } from '../trip-rules';
+import { tripListLead, type TripListKind } from '../trip-list-rules';
+import { destinationLabel } from '../trip-rules';
 import type { Trip } from '../types';
 import { DateBlock } from './date-block';
 
-type Props = { trip: Trip; today: string; onPress: () => void };
+type Props = { trip: Trip; kind: TripListKind; today: string; onPress: () => void };
 
 /**
- * S15 다녀온 여행 한 줄(B안). 다음 계획 카드와 같은 달력 칸을 회색 띠로 써서 지난 여행임을 구분한다.
- * 오른쪽은 이름, 아래 "1박 2일 · 여수시". 올해가 아닌 여행은 앞에 연도를 붙인다
+ * S15 여행 한 줄. 세로로 늘어놓는다.
+ * 왼쪽 달력 칸, 가운데 이름과 둘째 줄(D-N이나 몇 박 며칠, 여행지), 오른쪽 동행 얼굴.
+ * 2026-11-11부터 다음 계획이 이 모양을 쓴다(파랑 달력 칸). 그전에는 다녀온 여행이 썼다(회색 달력 칸)
  */
-export function PastTripRow({ trip, today, onPress }: Props) {
+export function TripRow({ trip, kind, today, onPress }: Props) {
   const place = destinationLabel(useRegionNames(trip.destinationRegionIds));
-  const stay =
-    trip.startDate && trip.endDate ? stayLabel(daysBetween(trip.startDate, trip.endDate)) : null;
-  const year = trip.startDate && trip.startDate.slice(0, 4) !== today.slice(0, 4);
-  const when = [year ? trip.startDate?.slice(0, 4) : null, stay].filter(Boolean).join(' · ');
+  const lead = tripListLead(trip, kind, today);
+  const next = kind === 'next';
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${trip.title}${trip.startDate ? `, ${trip.startDate}` : ''}`}
+      accessibilityLabel={`${trip.title}, ${lead ?? '기간 미정'}, ${place ?? '여행지 미정'}`}
       onPress={onPress}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
     >
-      <DateBlock date={trip.startDate} tone="muted" />
+      <DateBlock date={trip.startDate} tone={next ? 'brand' : 'muted'} />
       <View style={styles.texts}>
         <Text style={[typography.bodyBold, styles.title]} numberOfLines={1}>
           {trip.title}
         </Text>
         <View style={styles.meta}>
-          {when ? <Text style={[typography.caption, styles.sub]}>{when}</Text> : null}
-          {place ? (
+          {lead ? (
+            <Text
+              style={
+                next ? [typography.captionBold, styles.badge] : [typography.caption, styles.sub]
+              }
+            >
+              {lead}
+            </Text>
+          ) : null}
+          {place || next ? (
             <>
-              <Icon name="map-pin" size={14} color={colors.text.sub} />
-              <Text style={[typography.caption, styles.place]} numberOfLines={1}>
-                {place}
+              <Icon name="map-pin" size={14} color={place ? colors.text.sub : colors.text.muted} />
+              <Text
+                style={[typography.caption, place ? styles.place : styles.placeEmpty]}
+                numberOfLines={1}
+              >
+                {place ?? '미정'}
               </Text>
             </>
           ) : null}
@@ -69,6 +79,8 @@ const styles = StyleSheet.create({
   texts: { flex: 1, gap: spacing[4] },
   title: { color: colors.text.strong },
   meta: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
+  badge: { color: colors.brand.primary, marginRight: spacing[6] },
   sub: { color: colors.text.sub, marginRight: spacing[6] },
   place: { flexShrink: 1, color: colors.text.sub },
+  placeEmpty: { color: colors.text.muted },
 });
