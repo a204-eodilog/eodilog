@@ -18,6 +18,7 @@ from app.features.checklist_suggestion.service import ChecklistSuggester
 from app.features.itinerary_proposal.router import router as itinerary_proposal_router
 from app.features.itinerary_proposal.service import ItineraryProposer
 from app.features.photo_classification.embedder import SiglipEmbedder
+from app.features.photo_classification.finetune import FINETUNE_PATH, load_finetune
 from app.features.photo_classification.router import router as photo_classification_router
 from app.features.photo_classification.service import (
     TOPIC_HEAD_PATH,
@@ -109,14 +110,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.weather_alternative_suggester = WeatherAlternativeSuggester(routing=routing)
     app.state.itinerary_proposer = ItineraryProposer(routing=routing)
     app.state.route_leg_calculator = RouteLegCalculator(routing=routing)
-    app.state.photo_classifier = PhotoClassifier(
-        embedder=SiglipEmbedder(
-            model_name=app.state.settings.clip_model,
-            pretrained=app.state.settings.clip_pretrained,
-        ),
-        similarity_threshold=app.state.settings.photo_similarity_threshold,
-        topic_head=load_topic_head(TOPIC_HEAD_PATH),
-    )
+    app.state.photo_classifier = build_photo_classifier(app.state.settings)
 
     # 뒤에 등록한 미들웨어가 바깥을 감싼다. 예산 초과 503에도 trace가 추적 ID를 붙인다
     app.add_middleware(RequestBudgetMiddleware, seconds=app.state.settings.request_budget_seconds)
@@ -155,6 +149,21 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(visit_detection_router)
 
     return app
+
+
+def build_photo_classifier(settings: Settings) -> PhotoClassifier:
+    """파인튜닝 파일이 맞으면 그 인코더와 분류기를 짝으로 쓴다. 아니면 기본 모델과 분류기."""
+    finetune = load_finetune(FINETUNE_PATH, model_name=settings.clip_model)
+    log.info("photo_topic_model=%s", "finetune" if finetune else "head")
+    return PhotoClassifier(
+        embedder=SiglipEmbedder(
+            model_name=settings.clip_model,
+            pretrained=settings.clip_pretrained,
+            visual_weights=finetune.visual if finetune else None,
+        ),
+        similarity_threshold=settings.photo_similarity_threshold,
+        topic_head=finetune.head if finetune else load_topic_head(TOPIC_HEAD_PATH),
+    )
 
 
 def _build_llm(settings: Settings, http: httpx.AsyncClient) -> GmsClient:

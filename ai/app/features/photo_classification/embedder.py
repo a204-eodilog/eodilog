@@ -27,9 +27,17 @@ class PhotoEmbedder(Protocol):
 
 
 class SiglipEmbedder:
-    def __init__(self, *, model_name: str, pretrained: str):
+    def __init__(
+        self,
+        *,
+        model_name: str,
+        pretrained: str,
+        visual_weights: dict[str, np.ndarray] | None = None,
+    ):
         self._model_name = model_name
         self._pretrained = pretrained
+        # 파인튜닝으로 바뀐 사진 인코더 텐서 (finetune.py). 없으면 기본 모델 그대로
+        self._visual_weights = visual_weights
         self._lock = threading.Lock()
         self._loaded: tuple[Any, Any, Any, str] | None = None
 
@@ -61,10 +69,19 @@ class SiglipEmbedder:
                 model, _, preprocess = open_clip.create_model_and_transforms(
                     self._model_name, pretrained=self._pretrained, device=device
                 )
+                if self._visual_weights:
+                    from app.features.photo_classification.finetune import apply_visual_weights
+
+                    apply_visual_weights(model.visual, self._visual_weights)
                 model.eval()
                 tokenizer = open_clip.get_tokenizer(self._model_name)
                 self._loaded = (model, preprocess, tokenizer, device)
-                log.info("photo_model_loaded model=%s device=%s", self._model_name, device)
+                log.info(
+                    "photo_model_loaded model=%s device=%s finetuned=%s",
+                    self._model_name,
+                    device,
+                    bool(self._visual_weights),
+                )
             return self._loaded
 
 
