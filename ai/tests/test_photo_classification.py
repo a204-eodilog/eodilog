@@ -20,7 +20,14 @@ from PIL import Image
 from app.clients import images as image_module
 from app.core.config import Settings
 from app.features.photo_classification import service as service_module
-from app.features.photo_classification.service import TOPICS, PhotoClassifier, group_similar
+from app.features.photo_classification.service import (
+    TOPIC_HEAD_PATH,
+    TOPICS,
+    PhotoClassifier,
+    TopicHead,
+    group_similar,
+    load_topic_head,
+)
 from app.main import create_app
 
 PATH = "/ai/v1/photo-classifications"
@@ -527,3 +534,85 @@ def test_large_jpeg_is_not_fully_decoded(client, monkeypatch):
     assert post(client, [encode(GREEN, size=(4000, 3000))]).status_code == 200
 
     assert sizes == [(1000, 750)]
+
+
+def head_client(weight, bias=(0, 0, 0, 0), embedder=None) -> TestClient:
+    app = create_app(Settings(_env_file=None, internal_api_token=TOKEN))
+    app.state.photo_classifier = PhotoClassifier(
+        embedder=embedder or FakeEmbedder(),
+        similarity_threshold=app.state.settings.photo_similarity_threshold,
+        topic_head=TopicHead(weight=np.asarray(weight, dtype=np.float64), bias=np.asarray(bias)),
+    )
+    client = TestClient(app, raise_server_exceptions=False)
+    client.headers["X-Internal-Token"] = TOKEN
+    return client
+
+
+def test_trained_head_decides_the_topic_instead_of_topic_sentences():
+    # 문장 비교라면 초록은 풍경이다. 학습한 분류기는 초록 축을 사람으로 보도록 만들었다
+    green_is_people = [[0, 0, 0, 0], [0, 0, 0, 0], [1, 0, 0, 0], [0, 0, 0, 0]]
+    embedder = FakeEmbedder()
+
+    result = photos(post(head_client(green_is_people, embedder=embedder), [encode(GREEN)]))
+
+    assert result[0]["topics"] == ["PEOPLE"]
+    assert embedder.text_calls == 0
+
+
+def test_trained_head_bias_can_change_the_topic():
+    no_preference = np.zeros((4, 4))
+
+    result = photos(post(head_client(no_preference, bias=(0, 0, 0, 1)), [encode(GREEN)]))
+
+    assert result[0]["topics"] == ["OTHER"]
+
+
+def test_trained_head_keeps_grouping_similar_photos():
+    client = head_client(np.eye(4))
+
+    result = photos(post(client, [encode(GREEN), encode(GREEN_NEAR), encode(RED)]))
+
+    assert result[0]["groupId"] is not None
+    assert result[0]["groupId"] == result[1]["groupId"]
+    assert result[2]["groupId"] is None
+
+
+def save_head(path, names, weight=None):
+    np.savez(
+        path,
+        names=np.array(names),
+        weight=np.eye(4) if weight is None else weight,
+        bias=np.zeros(4),
+    )
+
+
+def test_missing_head_file_means_no_head(tmp_path):
+    assert load_topic_head(tmp_path / "none.npz") is None
+
+
+def test_head_with_topics_in_another_order_is_rejected(tmp_path):
+    save_head(tmp_path / "head.npz", ["FOOD", "LANDSCAPE", "PEOPLE", "OTHER"])
+
+    assert load_topic_head(tmp_path / "head.npz") is None
+
+
+def test_head_with_wrong_shape_is_rejected(tmp_path):
+    save_head(tmp_path / "head.npz", list(TOPICS), weight=np.zeros((3, 4)))
+
+    assert load_topic_head(tmp_path / "head.npz") is None
+
+
+def test_head_file_loads(tmp_path):
+    save_head(tmp_path / "head.npz", list(TOPICS))
+
+    head = load_topic_head(tmp_path / "head.npz")
+
+    assert head.weight.shape == (4, 4)
+    assert head.bias.shape == (4,)
+
+
+def test_shipped_head_matches_the_topics_and_the_photo_model():
+    head = load_topic_head(TOPIC_HEAD_PATH)
+
+    assert head is not None
+    assert head.weight.shape == (len(TOPICS), 768)
