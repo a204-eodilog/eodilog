@@ -10,8 +10,8 @@ import java.util.*;
 
 /**
  * 장소 검색 커서. 마지막 줄의 위치와 검색 조건(검색어·near·지역)을 함께 담아 조건이 바뀐 커서를 거부한다.
- * rank는 {@link PlaceSearchReader}의 단계(0~2)다. near가 있으면 (단계, 거리, id)이고 2단계 거리는 0이다.
- * near가 없으면 (단계, 이름 키, id)이고 이름 키는 1단계(앞부분 일치)에만 있다.
+ * rank는 {@link PlaceSearchReader}의 단계다. near가 있으면 (단계 0~3, 거리, id)이고 3단계(id 순) 거리는 0이다.
+ * near가 없으면 (단계 0~2, 이름 키, id)이고 이름 키는 1단계(앞부분 일치)에만 있다.
  * 이름 키에 구분자가 있어도 되도록 마지막에 둔다.
  */
 record PlaceSearchCursor(String binding, int rank, Double distance, String name, UUID id) {
@@ -44,7 +44,7 @@ record PlaceSearchCursor(String binding, int rank, Double distance, String name,
 			PlaceSearchCursor cursor;
 			if (near) {
 				double distance = Double.parseDouble(parts[4]);
-				if (rank < 0 || rank > 2 || !Double.isFinite(distance) || distance < 0 || rank == 2 && distance != 0)
+				if (rank < 0 || rank > 3 || !Double.isFinite(distance) || distance < 0 || rank == 3 && distance != 0)
 					throw new IllegalArgumentException();
 				cursor = new PlaceSearchCursor(binding, rank, distance, null, id);
 			} else {

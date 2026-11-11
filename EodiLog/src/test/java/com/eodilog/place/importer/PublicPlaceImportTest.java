@@ -7,6 +7,8 @@ import static org.mockito.Mockito.*;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.RestClient;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -67,5 +69,20 @@ class PublicPlaceImportTest {
                 .doesNotContain("%252B");
         assertThat(KtoPlaceImporter.requestUri("abc+def/ghi=", 1).toString())
                 .contains("serviceKey=abc%2Bdef%2Fghi%3D");
+    }
+
+    // 수입이 끝나면 통계를 새로 만든다. 통계가 없으면 장소 검색이 느린 계획을 고른다(EODI-300)
+    @Test void runnerRefreshesPlaceStatisticsAfterImport() throws Exception {
+        var sbdc = mock(SbdcPlaceImporter.class);
+        var kto = mock(KtoPlaceImporter.class);
+        var jdbc = mock(JdbcTemplate.class);
+        var runner = new PublicPlaceImportRunner(sbdc, kto, jdbc);
+        ReflectionTestUtils.setField(runner, "sbdcPath", "");
+        ReflectionTestUtils.setField(runner, "ktoKey", "key");
+        ReflectionTestUtils.setField(runner, "ktoStartPage", 1);
+        runner.run(null);
+        var order = inOrder(kto, jdbc);
+        order.verify(kto).importAll("key", 1);
+        order.verify(jdbc).execute("ANALYZE places");
     }
 }

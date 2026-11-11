@@ -21,7 +21,8 @@ public class PlaceController {
     public PlaceController(PlaceCatalogService service) { this.service = service; }
 
     @Operation(summary = "장소 검색", description = "로그인. 전국 장소 목록에서 이름 부분 일치(대소문자 무시)로 찾는다. "
-            + "near가 있으면 이름 완전 일치 → near에서 가까운 순 → id, 없으면 완전 일치 → 앞부분 일치 → 포함 → 이름 짧은 순 → 이름순 → id로 정렬한다. "
+            + "near가 있으면 30km 안 이름 완전 일치(가까운 순) → 30km 안 나머지(가까운 순) → 30km 밖 완전 일치(가까운 순) → 30km 밖 나머지(id 순), "
+            + "없으면 완전 일치(id 순) → 앞부분 일치(이름순) → 그 밖의 포함(id 순)으로 정렬한다. "
             + "완전·앞부분 일치는 앞뒤 공백을 무시한다. 커서는 같은 query·near·regionId에서만 쓸 수 있고, 다르면 400 VALIDATION_ERROR")
     @GetMapping
     public PageResponse<PlaceView> search(

@@ -36,15 +36,17 @@ class PlaceSearchReaderTest {
 		q = shortQuery ? new String(new char[] { (char) (0xAC00 + random.nextInt(11172)), (char) (0xAC00 + random.nextInt(11172)) })
 				: "zq" + Long.toString(System.nanoTime(), 36) + "카페";
 		assertThat(PlaceSearchReader.nameMatch(q).contains("COLLATE")).isEqualTo(shortQuery);
-		UUID exactFar = place(q, 37.5547, 126.9707);                  // 완전 일치, 서울
+		UUID exactFar = place(q, 37.5547, 126.9707);                  // 완전 일치, 서울(반경 밖)
+		UUID exactMid = place(q, 35.8714, 128.6014);                  // 완전 일치, 대구(반경 밖, 서울보다 가깝다)
 		UUID exactNear = place(q, 35.1160, 129.0430);                 // 완전 일치, 부산
+		UUID exactNear2 = place(q, 35.2051, 129.0423);                // 완전 일치, 10km(1km 앞부분보다 앞)
 		UUID in1 = place(q + " a", 35.1240, 129.0423);                // 1km, 앞부분
 		UUID in2 = place("x " + q, 35.1601, 129.0423);                // 5km, 포함
 		UUID in3 = place(q + " b", 35.2951, 129.0423);                // 20km, 앞부분
 		UUID out1 = place("서울 " + q + "집", 37.5000, 127.0000);       // 반경 밖, 포함
 		UUID out2 = place("대전 " + q, 36.3504, 127.3845);             // 반경 밖, 포함
-		nearOrder = concat(List.of(exactNear, exactFar, in1, in2, in3), byId(out1, out2));
-		plainOrder = concat(byId(exactNear, exactFar), List.of(in1, in3));
+		nearOrder = concat(List.of(exactNear, exactNear2, in1, in2, in3, exactMid, exactFar), byId(out1, out2));
+		plainOrder = concat(byId(exactNear, exactNear2, exactMid, exactFar), List.of(in1, in3));
 		plainOrder = concat(plainOrder, byId(in2, out1, out2));
 	}
 
@@ -63,7 +65,7 @@ class PlaceSearchReaderTest {
 				"반경 밖을 두 곳만 id 순으로 읽고 전체 읽기", new PlaceSearchReader(named, 3, Long.MAX_VALUE, 2));
 		readers.forEach((label, reader) -> {
 			assertThat(ids(reader.read(search, null, 100))).as(label).containsExactlyElementsOf(nearOrder);
-			for (int size : List.of(1, 2, 3)) assertThat(walk(reader, search, size)).as(label + " " + size).containsExactlyElementsOf(nearOrder);
+			for (int size : List.of(1, 2, 3, 4)) assertThat(walk(reader, search, size)).as(label + " " + size).containsExactlyElementsOf(nearOrder);
 		});
 	}
 
