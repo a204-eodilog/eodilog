@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { assetSource } from '@/lib/asset-image';
@@ -26,15 +27,24 @@ export function Avatar({ name, imageUrl, size: sz = 'md', me = false }: AvatarPr
 
   // 서버 프로필 사진은 로그인해야 받는 경로라 주소와 토큰을 붙인다. 못 쓰는 주소면 첫 글자로 둔다
   const source = assetSource(imageUrl);
-  if (source) {
-    return <Image source={source} style={base} contentFit="cover" accessibilityLabel={name} />;
-  }
+  // 사진을 받지 못한 주소. 주소가 바뀌면 다시 받아 본다
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  const showPhoto = source !== null && failedUrl !== imageUrl;
 
+  // 글자 얼굴을 밑에 깔고 사진을 그 위에 올린다. 사진만 그리면 받는 동안과 받지 못했을 때 빈 동그라미가 남는다
   return (
     <View style={[styles.fallback, me && styles.fallbackMe, base]} accessibilityLabel={name}>
       <Text style={[letterStyle, me ? styles.letterMe : styles.letter]}>
         {name.trim().charAt(0)}
       </Text>
+      {showPhoto ? (
+        <Image
+          source={source}
+          style={[StyleSheet.absoluteFill, { borderRadius: radius.full }]}
+          contentFit="cover"
+          onError={() => setFailedUrl(imageUrl ?? null)}
+        />
+      ) : null}
     </View>
   );
 }
