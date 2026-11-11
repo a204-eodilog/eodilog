@@ -208,22 +208,49 @@ export const EXTRACTION_TIMEOUT_MS = 60_000;
 
 /** 처리 실패 안내. 보낸 입력(링크·캡처)에 맞춰 무엇을 읽지 못했는지 말한다 */
 export type FailedNotice = {
-  icon: 'link' | 'image' | 'alert';
+  icon: 'link' | 'image' | 'alert' | 'clock';
   title: string;
   description: string;
 };
 
 /**
- * S12 처리 실패 안내 글. sent가 없으면(앱을 다시 켜서 보낸 입력을 잊음) 무엇을 보냈는지 몰라 일반 문구.
- * 시간 초과면 설명을 "오래 걸려요"로 바꾼다
+ * S12 처리 실패가 왜 났는지.
+ * - late: 시간이 지났는데 서버는 아직 대기·처리 중
+ * - server: 작업 자체가 실패(일시 오류·시간 초과·처리 실패). 서버는 링크·캡처를 못 읽은 경우를
+ *   작업 실패가 아니라 성공 + resultStatus FAILED로 돌려주므로, 이건 링크·캡처 탓이 아니다
+ * - unreadable: AI가 보낸 자료를 읽지 못함(성공 + resultStatus FAILED)
+ */
+export type FailCause = 'late' | 'server' | 'unreadable';
+
+export function failCause(result: ExtractionResult | undefined, timedOut: boolean): FailCause {
+  const status = result?.job.status;
+  if (!result || status === 'QUEUED' || status === 'RUNNING') return timedOut ? 'late' : 'server';
+  return status === 'SUCCEEDED' ? 'unreadable' : 'server';
+}
+
+/**
+ * S12 처리 실패 안내 글. 링크·캡처를 못 읽은 때만 무엇을 못 읽었는지 말하고, 늦거나 서버가 실패한 때는
+ * 사용자가 넣은 것을 탓하지 않는다. sent가 없으면(앱을 다시 켜서 보낸 입력을 잊음) 일반 문구
  */
 export function failedNotice(
   sent: { link: string | null; captureCount: number } | null,
-  timedOut = false,
+  cause: FailCause = 'unreadable',
 ): FailedNotice {
-  const description = timedOut
-    ? '시간이 너무 오래 걸려요. 다시 시도해 주세요'
-    : '불러오지 못했어요';
+  if (cause === 'late') {
+    return {
+      icon: 'clock',
+      title: '장소 찾기가 늦어지고 있어요',
+      description: '시간이 너무 오래 걸려요. 다시 시도해 주세요',
+    };
+  }
+  if (cause === 'server') {
+    return {
+      icon: 'alert',
+      title: '장소 찾기를 마치지 못했어요',
+      description: '잠시 문제가 생겼어요. 다시 시도해 주세요',
+    };
+  }
+  const description = '불러오지 못했어요';
   if (!sent) return { icon: 'alert', title: '장소 찾기를 마치지 못했어요', description };
   if (sent.link && sent.captureCount > 0) {
     return { icon: 'link', title: '링크와 캡처를 읽지 못했어요', description };

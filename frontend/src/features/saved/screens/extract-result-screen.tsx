@@ -19,6 +19,7 @@ import {
   extractItems,
   extractRegion,
   extractionView,
+  failCause,
   failedNotice,
   FEATURE_OFF_MESSAGE,
   type GroupPick,
@@ -190,7 +191,7 @@ export function ExtractResultScreen() {
 
   if (view === 'notFound' || view === 'failed') {
     const failed = view === 'failed';
-    const notice = failedNotice(sent, stuck);
+    const notice = failedNotice(sent, failCause(data, timedOut));
     return (
       <View style={styles.screen}>
         <Header title="장소 찾기" largeTitle />

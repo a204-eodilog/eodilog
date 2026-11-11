@@ -8,6 +8,7 @@ import {
   extractRegion,
   extractItems,
   extractionView,
+  failCause,
   failedNotice,
   groupCandidates,
   isLink,
@@ -243,14 +244,51 @@ describe('failedNotice (S12 처리 실패 글)', () => {
     });
   });
 
-  it('보낸 입력을 모르면 일반 문구, 시간 초과면 설명이 바뀐다', () => {
+  it('보낸 입력을 모르면 일반 문구', () => {
     expect(failedNotice(null)).toMatchObject({
       icon: 'alert',
       title: '장소 찾기를 마치지 못했어요',
     });
-    expect(failedNotice({ link: null, captureCount: 1 }, true).description).toBe(
-      '시간이 너무 오래 걸려요. 다시 시도해 주세요',
-    );
+  });
+
+  it('늦거나 서버가 실패하면 보낸 것과 상관없이 링크·캡처를 탓하지 않는다', () => {
+    const inputs = [
+      { link: 'instagram.com/p/1', captureCount: 0 },
+      { link: null, captureCount: 1 },
+      { link: 'instagram.com/p/1', captureCount: 2 },
+      null,
+    ];
+    for (const sent of inputs) {
+      expect(failedNotice(sent, 'late')).toEqual({
+        icon: 'clock',
+        title: '장소 찾기가 늦어지고 있어요',
+        description: '시간이 너무 오래 걸려요. 다시 시도해 주세요',
+      });
+      expect(failedNotice(sent, 'server')).toEqual({
+        icon: 'alert',
+        title: '장소 찾기를 마치지 못했어요',
+        description: '잠시 문제가 생겼어요. 다시 시도해 주세요',
+      });
+    }
+  });
+});
+
+describe('failCause (S12 처리 실패 이유)', () => {
+  const result = (status: string, resultStatus: string | null) =>
+    ({ job: { status }, resultStatus, candidates: [] }) as unknown as ExtractionResult;
+
+  it('아직 대기·처리 중인데 시간이 지나면 늦어진 것', () => {
+    expect(failCause(result('QUEUED', null), true)).toBe('late');
+    expect(failCause(result('RUNNING', null), true)).toBe('late');
+  });
+
+  it('작업 실패(일시 오류·시간 초과 등)는 서버 문제', () => {
+    expect(failCause(result('FAILED', null), false)).toBe('server');
+    expect(failCause(result('FAILED', null), true)).toBe('server');
+  });
+
+  it('작업은 끝났는데 자료를 못 읽었으면 읽지 못한 것', () => {
+    expect(failCause(result('SUCCEEDED', 'FAILED'), false)).toBe('unreadable');
   });
 });
 
