@@ -7,6 +7,7 @@ import {
   conditionLabel,
   forecastLabel,
   hourKind,
+  amenityBase,
   nextIndex,
   rainChance,
   tempLine,
@@ -108,6 +109,13 @@ describe('오늘 코스', () => {
     expect(nextIndex(todayItems(), at('2026-11-14T09:40:00'))).toBe(0);
     expect(nextIndex(todayItems(), at('2026-11-14T11:00:00'))).toBe(1);
     expect(nextIndex(todayItems(), at('2026-11-14T20:00:00'))).toBeNull();
+  });
+
+  it('편의시설 기준은 다음 일정의 장소, 다음이 없으면 마지막 장소', () => {
+    const items = todayItems();
+    expect(amenityBase(items, 1)).toBe(items[1].place.id);
+    expect(amenityBase(items, null)).toBe(items[items.length - 1].place.id);
+    expect(amenityBase([], null)).toBeNull();
   });
 });
 
