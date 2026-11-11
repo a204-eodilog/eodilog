@@ -34,6 +34,7 @@ import tools.jackson.databind.json.JsonMapper;
 @AutoConfigureMockMvc
 @Import({TestcontainersConfiguration.class,InMemoryStorageConfiguration.class,DiscoveryApiTest.ClockConfig.class})
 class DiscoveryApiTest {
+    @org.springframework.test.context.bean.override.mockito.MockitoBean com.eodilog.global.ai.AiServerClient ai;
     @Autowired MockMvc mvc;
     @Autowired JdbcTemplate jdbc;
     @Autowired JsonMapper json;
@@ -313,6 +314,20 @@ class DiscoveryApiTest {
             assertThat(docs.path("components").path("schemas").path("DiscoveryItem").path("properties").has(field)).as(field).isTrue();
     }
 
+    @Test void aiPersonalizesWithinEachPageAndFallsBackOnInvalidOutput() throws Exception {
+        clock.now=Instant.parse("2090-01-01T00:00:00Z");UUID owner=user("PUBLIC"),viewer=user("PUBLIC");
+        UUID a=publish(trip(owner),owner),b=publish(trip(owner),owner),c=publish(trip(owner),owner);likeAs(a,viewer);
+        org.mockito.Mockito.doAnswer(call->{assertThat(org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive()).isFalse();JsonNode in=call.getArgument(2);assertThat(in.path("liked").size()).isEqualTo(1);assertThat(in.path("liked").get(0).path("id").asString()).isEqualTo(a.toString());var out=json.createObjectNode();var items=out.putArray("items");for(int k=in.path("candidates").size()-1;k>=0;k--){var n=in.path("candidates").get(k);items.addObject().put("type","FEED").put("feedId",n.path("id").asString()).putNull("placeId").put("reason","AI 개인화");}return out;}).when(ai).post(org.mockito.ArgumentMatchers.eq("/ai/v1/discovery-recommendations"),org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.any());
+        JsonNode first=read(viewer,null,2);assertThat(items(first.path("data")).get(0).reason()).isEqualTo("AI 개인화");
+        JsonNode second=read(viewer,first.path("page").path("nextCursor").asString(),2);Set<UUID> seen=new HashSet<>(ids(items(first.path("data"))));assertThat(seen.addAll(ids(items(second.path("data"))))).isTrue();assertThat(seen).containsExactlyInAnyOrder(a,b,c);
+        org.mockito.Mockito.doReturn(json.readTree("{\"items\":[{\"type\":\"PLACE\",\"placeId\":\""+a+"\",\"feedId\":null,\"reason\":\"wrong type\"}]}")).when(ai).post(org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.any());
+        assertThat(all(viewer,100).getFirst().reason()).isEqualTo("좋아요 1개");
+    }
+    @Test void aiResultsAreFilteredAgainAfterVisibilityChanges() throws Exception {
+        clock.now=Instant.parse("2091-01-01T00:00:00Z");UUID owner=user("PUBLIC"),viewer=user("PUBLIC"),p=place();Trip t=trip(owner);visit(t,owner,p);UUID feed=publish(t,owner);likeAs(feed,viewer);
+        org.mockito.Mockito.doAnswer(call->{jdbc.update("update users set account_visibility='PRIVATE' where id=?",owner);var out=json.createObjectNode();out.putArray("items");return out;}).when(ai).post(org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.any());
+        assertThat(all(viewer,100)).isEmpty();
+    }
     private List<Item> all(UUID viewer,int limit) throws Exception {
         JsonNode page=read(viewer,null,limit);
         assertThat(page.path("page").path("hasNext").asBoolean()).isFalse();
