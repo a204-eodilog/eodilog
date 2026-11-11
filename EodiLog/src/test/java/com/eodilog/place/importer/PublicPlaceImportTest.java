@@ -76,7 +76,7 @@ class PublicPlaceImportTest {
         var sbdc = mock(SbdcPlaceImporter.class);
         var kto = mock(KtoPlaceImporter.class);
         var jdbc = mock(JdbcTemplate.class);
-        var runner = new PublicPlaceImportRunner(sbdc, kto, jdbc);
+        var runner = new PublicPlaceImportRunner(sbdc, kto, mock(PublicToiletImporter.class), jdbc);
         ReflectionTestUtils.setField(runner, "sbdcPath", "");
         ReflectionTestUtils.setField(runner, "ktoKey", "key");
         ReflectionTestUtils.setField(runner, "ktoStartPage", 1);
@@ -84,5 +84,18 @@ class PublicPlaceImportTest {
         var order = inOrder(kto, jdbc);
         order.verify(kto).importAll("key", 1);
         order.verify(jdbc).execute("ANALYZE places");
+    }
+
+    // 화장실만 넣을 때는 화장실 통계만 새로 만든다(EODI-304)
+    @Test void runnerImportsToiletsOnly() throws Exception {
+        var toilets = mock(PublicToiletImporter.class);
+        var jdbc = mock(JdbcTemplate.class);
+        var runner = new PublicPlaceImportRunner(mock(SbdcPlaceImporter.class), mock(KtoPlaceImporter.class), toilets, jdbc);
+        ReflectionTestUtils.setField(runner, "toiletPath", "toilets.csv");
+        ReflectionTestUtils.setField(runner, "toiletCharset", "UTF-8");
+        runner.run(null);
+        verify(toilets).importPath(java.nio.file.Path.of("toilets.csv"), StandardCharsets.UTF_8);
+        verify(jdbc).execute("ANALYZE public_toilets");
+        verify(jdbc, never()).execute("ANALYZE places");
     }
 }

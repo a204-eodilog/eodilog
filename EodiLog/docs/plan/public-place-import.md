@@ -28,6 +28,18 @@ $env:APP_PLACE_IMPORT_KTO_KEY = '<data.go.kr service key>'
 
 수집 결과 수가 로그에 출력되면 실행한 `bootRun`을 종료한다. CSV가 CP949이면 `APP_PLACE_IMPORT_SBDC_CHARSET=MS949`로 설정한다. 중단된 관광 수집은 `APP_PLACE_IMPORT_KTO_START_PAGE`를 마지막 성공 페이지 다음 번호로 지정해 재실행할 수 있다. 이미 저장된 페이지를 다시 가져와도 공급자 ID 기준으로 갱신된다.
 
+## 공중화장실 넣기(EODI-304)
+
+주변 편의시설(S28)의 화장실은 `public_toilets`에서 찾는다. 공공데이터포털 공중화장실 정보는 2025년 2월부터 원본 좌표 제공이 중단되어, 받은 CSV(EUC-KR, 약 5.4만 행)의 주소를 좌표로 바꿔 `위도`·`경도` 열을 붙인 파일을 넣는다. 2026-11-11 카카오 로컬 주소 검색으로 바꾼 파일을 팀에 공유한다(도로명주소로 먼저, 없으면 지번주소로 찾았다). 옛 표준데이터의 `WGS84위도`·`WGS84경도` 열도 읽는다. 미개방 화장실과 좌표가 없는 행은 건너뛰고, 이름·좌표가 같으면 같은 화장실로 보고 다시 넣어도 늘지 않는다.
+
+```powershell
+$env:APP_PLACE_IMPORT_ENABLED = 'true'
+$env:APP_PLACE_IMPORT_TOILET_PATH = 'C:\Users\<me>\Downloads\공중화장실정보_좌표.csv'
+./gradlew.bat bootRun --args='--spring.profiles.active=local --server.port=0 --app.jobs.enabled=false --app.polls.auto-close-enabled=false --app.facilities.ev.sync-enabled=false'
+```
+
+`Toilet import processed N valid rows`가 로그에 나오면 종료한다. 파일이 UTF-8이면 `APP_PLACE_IMPORT_TOILET_CHARSET=UTF-8`(기본 MS949). 넣기 전에는 화장실 조회가 503 `FACILITY_UNAVAILABLE`이다. 충전소는 서버가 키(`EV_SERVICE_KEY`, 비면 `KMA_SERVICE_KEY`)로 직접 받으므로 따로 넣지 않는다.
+
 ## 앱 API
 
 - `GET /api/v1/places?query=카페&regionId={uuid}&limit=20&cursor={uuid}`: 로컬 전국 카탈로그 검색. `regionId`와 `cursor`는 선택값이다. 응답은 `data`와 `page.nextCursor`를 포함한다.

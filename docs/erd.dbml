@@ -184,6 +184,55 @@ Table places {
   Note: 'provider 두 필드는 함께 NULL 또는 함께 NOT NULL. 공급자 검색/추출에서 local UUID를 반환하기 전에 공급자 키로 upsert하고 동시 충돌은 기존 행 재조회. 공급자 ID가 없으면 자동 중복 병합하지 않음(D-6). 수동 장소 수정은 저장 메모 변경과 구분. 지역 코드를 주지 않는 공급자(NAVER) 장소는 주소의 "시·도 시·군·구" 전체 이름(줄임말·옛 이름 대응 포함)이 regions.name과 정확히 같을 때만 region_id를 채움(DB 함수 region_code_for_address, -246). 전체 이름은 지역마다 하나뿐이고, 시·군·구 이름만으로는 맞추지 않음.'
 }
 
+// 주변 편의시설(Q-8, EODI-304). 공급자 자료를 미리 넣은 표이고 사용자 자료와 관계가 없다
+Table ev_stations {
+  id varchar(20) [pk, note: '공급자 충전소 ID(statId)']
+  name varchar(200) [not null]
+  address varchar(500)
+  latitude double [not null]
+  longitude double [not null]
+  operator_name varchar(100)
+  use_time varchar(200)
+  seen_at timestamptz [not null, note: '마지막 전국 수신에서 본 시각. 끝까지 받은 수신에서 안 보이면 삭제']
+}
+
+Table ev_chargers {
+  station_id varchar(20) [not null, ref: > ev_stations.id]
+  charger_id varchar(10) [not null]
+  charger_type varchar(4) [note: '공급자 코드. 02는 AC 완속']
+  output_kw integer
+  status varchar(2) [note: '공급자 코드. 2 충전 대기, 3 충전 중, 4 운영 중지, 5 점검 중']
+  status_updated_at timestamptz [note: '이보다 오래된 변경은 덮어쓰지 않음']
+  seen_at timestamptz [not null]
+  indexes {
+    (station_id, charger_id) [pk]
+  }
+}
+
+Table ev_sync_state {
+  id smallint [pk, note: '행 하나(1)']
+  full_completed_at timestamptz [note: 'null이면 충전소 조회 503']
+  status_synced_at timestamptz
+  status_valid boolean [not null, default: false]
+  full_attempt_day date
+  full_attempts integer [not null, default: 0]
+  lease_owner uuid
+  lease_until timestamptz
+}
+
+Table public_toilets {
+  id uuid [pk]
+  name varchar(200) [not null]
+  address varchar(500)
+  latitude double [not null]
+  longitude double [not null]
+  open_time varchar(200)
+  updated_at timestamptz [not null]
+  indexes {
+    (name, latitude, longitude) [unique]
+  }
+}
+
 Table trip_destinations {
   trip_id uuid [not null, ref: > trips.id]
   region_id uuid [not null, ref: > regions.id]
@@ -680,7 +729,9 @@ Table idempotency_records {
 // 7. feed 사진/장소와 cover는 같은 여행 및 허용된 공개 표현이어야 한다.
 // 8. 실제 방문 집계·타임라인·정산·추천·트렌드는 원본에서 계산한다.
 //    실제 이동거리 수집·집계 기준은 Q-8이며 현재 계획 경로를 실제 거리로 저장하지 않는다.
-// 9. 지역 통계·날씨·시설 응답은 공급자 조회/캐시로 제안, 영속 테이블 확정은 Q-8·9·12.
+// 9. 지역 통계·날씨 응답은 공급자 조회/캐시로 제안, 영속 테이블 확정은 Q-9·12.
+//    시설(Q-8, 2026-11-11 EODI-304): 충전소는 ev_stations·ev_chargers에 미리 넣고 상태만 주기 갱신, 화장실은 public_toilets,
+//    약국·편의점·주유소는 places에서 찾는다.
 // 10. 본문/사진/이벤트 삭제·계정 탈퇴·공동자료 보존의 물리 삭제/익명화는 Q-11 합의 후 DDL에 반영한다.
 
 

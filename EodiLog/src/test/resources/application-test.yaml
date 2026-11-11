@@ -11,6 +11,11 @@ app:
     cleanup-enabled: false
   jobs:
     enabled: false
+  # 충전소 갱신은 끄고 테스트가 EvChargerSync를 가짜 공급자로 직접 부른다
+  facilities:
+    ev:
+      sync-enabled: false
+      service-key: ""
   polls:
     # 주기 마감은 끄고 테스트가 PollAutoCloser를 직접 부른다
     auto-close-enabled: false
