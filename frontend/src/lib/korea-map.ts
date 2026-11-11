@@ -101,3 +101,30 @@ export function mapFit(box: { width: number; height: number }, insetTop = 0, ins
   const visibleH = Math.max(1, box.height - insetTop - insetBottom);
   return Math.min(box.width / (b.x1 - b.x0), visibleH / (b.y1 - b.y0)) * 0.9;
 }
+
+/**
+ * 같은 모양·색은 경로 하나로 합쳐 그린다(KoreaMap). 시도·시군구를 따로 그리면 경로가 500개 가까이 되어,
+ * 탭을 오갈 때 홈 한 장면에 최대 125ms가 걸렸다(11/11 갤럭시, 개발 모드를 꺼도 같음).
+ * 지도 자료의 경로는 모두 같은 방향으로 돌고, 시도 안 구멍(광역시 자리)은 그 광역시 경로가 다시 채워서
+ * 기본 칠하기 규칙(nonzero)으로 합쳐도 모양이 같다
+ */
+export function joinPaths(list: readonly { d: string }[]): string {
+  return list.map((r) => r.d).join(' ');
+}
+export const SIDO_PATH = joinPaths(KOREA_MAP.sido);
+export const SIGUNGU_PATH = joinPaths(KOREA_MAP.sigungu);
+
+/** 시군구 면을 칠할 색끼리 묶는다([색, 합친 경로]). 대부분 기본색(fallback)이라 경로 몇 개로 끝난다 */
+export function sigunguPathsByColor(
+  fills: Readonly<Record<string, string>>,
+  fallback: string,
+): [string, string][] {
+  const groups = new Map<string, MapSigungu[]>();
+  for (const r of KOREA_MAP.sigungu) {
+    const color = fills[r.code] ?? fills[r.parent] ?? fallback;
+    const list = groups.get(color);
+    if (list) list.push(r);
+    else groups.set(color, [r]);
+  }
+  return [...groups].map(([color, list]) => [color, joinPaths(list)]);
+}

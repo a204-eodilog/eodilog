@@ -19,7 +19,7 @@ import Animated, {
   withDelay,
   withTiming,
 } from 'react-native-reanimated';
-import Svg, { Defs, G, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
+import Svg, { Defs, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 import {
   KOREA_MAP,
@@ -27,6 +27,9 @@ import {
   MAINLAND_BOUNDS,
   mapFit,
   type MapPoint,
+  SIDO_PATH,
+  SIGUNGU_PATH,
+  sigunguPathsByColor,
 } from '@/lib/korea-map';
 import { colors, spacing, typography } from '@/theme';
 
@@ -379,38 +382,28 @@ function MapCanvas({
           viewBox={`0 0 ${KOREA_MAP.width} ${KOREA_MAP.height}`}
         >
           {/* 땅 아래 옅은 그림자와 흰 빛 (Figma S05) */}
-          <G transform={`translate(0 ${px(2)})`}>
-            {KOREA_MAP.sido.map((r) => (
-              <Path key={r.code} d={r.d} fill={colors.shadow} />
-            ))}
-          </G>
-          {KOREA_MAP.sido.map((r) => (
-            <Path
-              key={r.code}
-              d={r.d}
-              fill={LAND}
-              stroke={LAND}
-              strokeWidth={px(5)}
-              strokeLinejoin="round"
-              strokeOpacity={0.8}
-            />
-          ))}
-          {KOREA_MAP.sigungu.map((r) => (
-            <Path key={r.code} d={r.d} fill={fills[r.code] ?? fills[r.parent] ?? LAND} />
+          <Path d={SIDO_PATH} fill={colors.shadow} transform={`translate(0 ${px(2)})`} />
+          <Path
+            d={SIDO_PATH}
+            fill={LAND}
+            stroke={LAND}
+            strokeWidth={px(5)}
+            strokeLinejoin="round"
+            strokeOpacity={0.8}
+          />
+          {sigunguPathsByColor(fills, LAND).map(([color, d]) => (
+            <Path key={color} d={d} fill={color} />
           ))}
           {/* 시군구 선은 칠한 면과 따로 그려, 단계가 바뀌어도 면은 다시 그리지 않는다 */}
           {/* 2~3단계는 옅게, 4단계부터 제대로 보인다 */}
           {detail ? (
-            <G
+            <Path
+              d={SIGUNGU_PATH}
               fill="none"
               stroke={colors.line.default}
               strokeWidth={px(0.6)}
               strokeOpacity={stage >= 3 ? 1 : 0.45}
-            >
-              {KOREA_MAP.sigungu.map((r) => (
-                <Path key={r.code} d={r.d} />
-              ))}
-            </G>
+            />
           ) : null}
         </Svg>
         <Svg
@@ -442,15 +435,12 @@ function MapCanvas({
           height={baseH}
           viewBox={`0 0 ${KOREA_MAP.width} ${KOREA_MAP.height}`}
         >
-          {KOREA_MAP.sido.map((r) => (
-            <Path
-              key={r.code}
-              d={r.d}
-              fill="none"
-              stroke={colors.line.default}
-              strokeWidth={px(detail ? 1 : 0.8)}
-            />
-          ))}
+          <Path
+            d={SIDO_PATH}
+            fill="none"
+            stroke={colors.line.default}
+            strokeWidth={px(detail ? 1 : 0.8)}
+          />
         </Svg>
       </>
     ),
