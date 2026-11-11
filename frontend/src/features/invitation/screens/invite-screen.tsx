@@ -1,11 +1,13 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { type Href, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, ErrorState, Header, Icon, type IconName, toast } from '@/components/ui';
 import { withRo } from '@/lib/korean';
+import { openOverTabs } from '@/lib/open-over-tabs';
+import { invalidateAfterJoin } from '@/features/trip/hooks/trip-cache';
 import { useSessionStore } from '@/stores/session-store';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -29,6 +31,7 @@ export function InviteScreen() {
 
 function InviteContent({ token, first }: { token: string; first: boolean }) {
   const setPendingInvite = useSessionStore((s) => s.setPendingInvite);
+  const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
 
   const preview = useQuery({
@@ -37,16 +40,20 @@ function InviteContent({ token, first }: { token: string; first: boolean }) {
     retry: false,
   });
 
-  const leave = (href: ReturnType<typeof tripHref>) => {
+  // replace를 쓰면 앱을 쓰던 중 링크를 열었을 때 탭 묶음이 하나 더 생긴다. 이미 있는 탭 화면 위로 돌아가 연다
+  const leave = (href: Href) => {
     setPendingInvite(null);
-    router.replace(href);
+    openOverTabs(href);
   };
 
   const accept = useMutation({
     mutationFn: () => acceptInvitation(token),
-    // 첫 가입은 S03으로. 어느 여행에 참여했는지 넘겨 두어 S17이 생기면 S03 뒤에 그 여행으로 갈 수 있게 한다
-    onSuccess: (trip) =>
-      leave(first ? { pathname: '/preferences', params: { tripId: trip.id } } : tripHref(trip.id)),
+    // 첫 가입은 S03으로 가고, 어느 여행에 참여했는지 넘겨 S03 뒤에 그 여행으로 간다. 그 밖에는 바로 그 여행(S17)으로
+    onSuccess: (trip) => {
+      // 참여하면 서버가 대화방에도 넣는다. 여행 목록·홈·채팅 탭이 새 여행을 바로 보이게 새로 받는다
+      void invalidateAfterJoin(queryClient);
+      leave(first ? { pathname: '/preferences', params: { tripId: trip.id } } : tripHref(trip.id));
+    },
     onError: (error) => {
       if (!invitationProblem(error)) toast.error('참여하지 못했어요. 다시 시도해 주세요');
     },
