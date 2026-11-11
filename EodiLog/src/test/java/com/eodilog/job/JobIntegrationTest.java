@@ -336,8 +336,9 @@ class JobIntegrationTest {
     @TestConfiguration(proxyBeanMethods = false)
     static class Fixtures {
         // This suite exercises generic worker mechanics with controllable fixtures.
-        // The real photo handler/policy are tested by PhotoUploadApiTest, and the real route recalculation
-        // handler/policy by RouteRecalculationApiTest, in separate contexts.
+        // The real photo handler/policy are tested by PhotoUploadApiTest, the real route recalculation
+        // handler/policy by RouteRecalculationApiTest, and the real trip recommendation handler/policy by
+        // TripRecommendationApiTest, in separate contexts. TRIP_RECOMMENDATION stays an unregistered kind here.
         @Bean static org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor isolatePhotoCleanupFixtures() {
             return new org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor() {
                 public void postProcessBeanDefinitionRegistry(org.springframework.beans.factory.support.BeanDefinitionRegistry registry) {
@@ -345,6 +346,8 @@ class JobIntegrationTest {
                     registry.removeBeanDefinition("photoDeleteJobAccessPolicy");
                     registry.removeBeanDefinition("routeRecalculationJobHandler");
                     registry.removeBeanDefinition("routeRecalculationJobAccessPolicy");
+                    registry.removeBeanDefinition("tripRecommendationJobHandler");
+                    registry.removeBeanDefinition("tripRecommendationJobAccessPolicy");
                 }
                 public void postProcessBeanFactory(org.springframework.beans.factory.config.ConfigurableListableBeanFactory factory) { }
             };
