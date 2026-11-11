@@ -113,9 +113,10 @@ class WeatherApiTest {
 		tripId = createTrip(ownerId, day1, day1.plusDays(1));
 		insertMember(tripId, friendId, 2);
 		// 대상 주변. 반경 2km 안: 저장한 실내 카페, KTO 박물관, SBDC 세탁소, 분류 없는 KTO / 밖: 5km 떨어진 KTO
-		// 테스트 DB를 공유하므로 다른 테스트가 남긴 장소와 섞이지 않게 국내 아무 곳이나 무작위로 고른다
-		double lat = 34.8 + ThreadLocalRandom.current().nextDouble(2.5);
-		double lon = 126.9 + ThreadLocalRandom.current().nextDouble(1.8);
+		// 테스트 DB를 공유하므로 다른 테스트가 남긴 장소와 섞이지 않게 주변에 장소가 없는 곳을 고른다
+		double[] spot = emptySpot();
+		double lat = spot[0];
+		double lon = spot[1];
 		beach = insertPlace("해운대해수욕장", lat, lon, null, "여행,명소>해수욕장");
 		cafe = insertPlace("바다 카페", lat + 0.0013, lon + 0.0016, null, "음식>커피점/카페>카페");
 		savedIndoor = insertPlace("저장한 실내 카페", lat + 0.0008, lon + 0.0011, null, "음식>커피점/카페>카페");
@@ -673,6 +674,23 @@ class WeatherApiTest {
 		jdbcTemplate.update("""
 				insert into trip_members (id, trip_id, user_id, status, join_order, joined_at)
 				values (?, ?, ?, 'ACTIVE', ?, now())""", UUID.randomUUID(), trip, userId, joinOrder);
+	}
+
+	// 국내 아무 곳이나 무작위로 고르되 10km 안에 장소가 하나라도 있으면 다시 고른다. 무작위만으로는 앞 테스트가 남긴
+	// 관광공사 장소가 가끔 대안 후보 반경(2km)에 들어와 후보 목록 검사가 실패했다(EODI-287). 5km 밖 장소도 이 안에 든다
+	private double[] emptySpot() {
+		for (int attempt = 0; attempt < 50; attempt++) {
+			double lat = 34.8 + ThreadLocalRandom.current().nextDouble(2.5);
+			double lon = 126.9 + ThreadLocalRandom.current().nextDouble(1.8);
+			Boolean taken = jdbcTemplate.queryForObject("""
+					select exists(select 1 from places where ST_DWithin(
+					  ST_SetSRID(ST_MakePoint(longitude::double precision, latitude::double precision), 4326)::geography,
+					  ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, 10000))""", Boolean.class, lon, lat);
+			if (!Boolean.TRUE.equals(taken)) {
+				return new double[] { lat, lon };
+			}
+		}
+		throw new IllegalStateException("주변에 장소가 없는 좌표를 찾지 못했습니다");
 	}
 
 	private UUID insertPlace(String name, double latitude, double longitude, String provider, String category) {
