@@ -41,6 +41,9 @@ function useFollowToggle() {
       void queryClient.invalidateQueries({ queryKey: ['me', 'following-count'] });
       void queryClient.invalidateQueries({ queryKey: SUGGESTIONS_KEY });
       void queryClient.invalidateQueries({ queryKey: ['users'] });
+      // 홈 지도·친구 유무·추천은 내가 팔로우한 사람으로 정해진다. 안 받으면 팔로우하고 돌아와도 "팔로우한 사람이 없어요"로 남는다.
+      // 여기서 바로 받으면 뒤에 떠 있는 홈이 혼자 물들어 버려, 표시만 해 두고 홈으로 돌아올 때 받는다(useHome)
+      void queryClient.invalidateQueries({ queryKey: ['home'], refetchType: 'none' });
     },
     onError: (_e, user) =>
       toast.show(
