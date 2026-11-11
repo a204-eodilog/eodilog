@@ -2,15 +2,18 @@ import { describe, expect, it } from '@jest/globals';
 
 import {
   addCaptures,
+  addSections,
   canFind,
   candidateLetter,
   extractRegion,
   extractItems,
   extractionView,
+  failCause,
   failedNotice,
   groupCandidates,
   isLink,
   nextToChoose,
+  parseAddStart,
   linkLabel,
   linkStatus,
   progressStep,
@@ -241,14 +244,51 @@ describe('failedNotice (S12 처리 실패 글)', () => {
     });
   });
 
-  it('보낸 입력을 모르면 일반 문구, 시간 초과면 설명이 바뀐다', () => {
+  it('보낸 입력을 모르면 일반 문구', () => {
     expect(failedNotice(null)).toMatchObject({
       icon: 'alert',
       title: '장소 찾기를 마치지 못했어요',
     });
-    expect(failedNotice({ link: null, captureCount: 1 }, true).description).toBe(
-      '시간이 너무 오래 걸려요. 다시 시도해 주세요',
-    );
+  });
+
+  it('늦거나 서버가 실패하면 보낸 것과 상관없이 링크·캡처를 탓하지 않는다', () => {
+    const inputs = [
+      { link: 'instagram.com/p/1', captureCount: 0 },
+      { link: null, captureCount: 1 },
+      { link: 'instagram.com/p/1', captureCount: 2 },
+      null,
+    ];
+    for (const sent of inputs) {
+      expect(failedNotice(sent, 'late')).toEqual({
+        icon: 'clock',
+        title: '장소 찾기가 늦어지고 있어요',
+        description: '시간이 너무 오래 걸려요. 다시 시도해 주세요',
+      });
+      expect(failedNotice(sent, 'server')).toEqual({
+        icon: 'alert',
+        title: '장소 찾기를 마치지 못했어요',
+        description: '잠시 문제가 생겼어요. 다시 시도해 주세요',
+      });
+    }
+  });
+});
+
+describe('failCause (S12 처리 실패 이유)', () => {
+  const result = (status: string, resultStatus: string | null) =>
+    ({ job: { status }, resultStatus, candidates: [] }) as unknown as ExtractionResult;
+
+  it('아직 대기·처리 중인데 시간이 지나면 늦어진 것', () => {
+    expect(failCause(result('QUEUED', null), true)).toBe('late');
+    expect(failCause(result('RUNNING', null), true)).toBe('late');
+  });
+
+  it('작업 실패(일시 오류·시간 초과 등)는 서버 문제', () => {
+    expect(failCause(result('FAILED', null), false)).toBe('server');
+    expect(failCause(result('FAILED', null), true)).toBe('server');
+  });
+
+  it('작업은 끝났는데 자료를 못 읽었으면 읽지 못한 것', () => {
+    expect(failCause(result('SUCCEEDED', 'FAILED'), false)).toBe('unreadable');
   });
 });
 
@@ -320,5 +360,47 @@ describe('extractRegion (S12)', () => {
   it('장소가 없거나 지도 크기를 모르면 null', () => {
     expect(extractRegion([], 0.5)).toBeNull();
     expect(extractRegion([{ latitude: 35, longitude: 129 }], 0)).toBeNull();
+  });
+});
+
+describe('parseAddStart', () => {
+  it('S10 시작 카드가 넘긴 값만 받는다', () => {
+    expect(parseAddStart('link')).toBe('link');
+    expect(parseAddStart('capture')).toBe('capture');
+    expect(parseAddStart(['capture', 'link'])).toBe('capture');
+  });
+
+  it('없거나 모르는 값이면 보통으로 연다', () => {
+    expect(parseAddStart(undefined)).toBeNull();
+    expect(parseAddStart('photo')).toBeNull();
+  });
+});
+
+describe('addSections', () => {
+  const none = { linkOpened: false, captureOpened: false, link: '', captureCount: 0 };
+
+  it('링크로 시작하면 링크 칸만, 시작 값이 없어도 링크로 시작한다', () => {
+    expect(addSections('link', none)).toEqual({ showLink: true, showCaptures: false });
+    expect(addSections(null, none)).toEqual({ showLink: true, showCaptures: false });
+  });
+
+  it('캡처로 시작하면 사진을 아직 안 골라도 캡처 칸만', () => {
+    expect(addSections('capture', none)).toEqual({ showLink: false, showCaptures: true });
+  });
+
+  it('[+ 캡처도 추가]·[+ 링크도 추가]를 누르면 둘 다 보인다', () => {
+    expect(addSections('link', { ...none, captureOpened: true })).toEqual({
+      showLink: true,
+      showCaptures: true,
+    });
+    expect(addSections('capture', { ...none, linkOpened: true })).toEqual({
+      showLink: true,
+      showCaptures: true,
+    });
+  });
+
+  it('이미 넣은 값이 있으면 칸을 숨기지 않는다', () => {
+    expect(addSections('capture', { ...none, link: 'https://a.com' }).showLink).toBe(true);
+    expect(addSections('link', { ...none, captureCount: 2 }).showCaptures).toBe(true);
   });
 });

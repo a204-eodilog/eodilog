@@ -61,7 +61,9 @@ export function SavedScreen() {
       offlineSince={online ? null : syncedAtLabel(bookmarks.dataUpdatedAt)}
       onGroup={notReady}
       onOpen={(item) => router.push({ pathname: '/saved/[key]', params: { key: item.key } })}
-      onAdd={() => router.push('/saved/add')}
+      onAdd={(start) =>
+        router.push(start ? { pathname: '/saved/add', params: { start } } : '/saved/add')
+      }
     />
   );
 }

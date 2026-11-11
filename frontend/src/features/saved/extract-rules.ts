@@ -52,6 +52,29 @@ export function canFind(link: string, captureCount: number): boolean {
   return status === 'ok' || captureCount > 0;
 }
 
+/** S11을 어떤 입력으로 시작할지. S10 저장 없음의 [링크 붙여넣기]·[캡처 올리기]에서 넘긴다 */
+export type AddStart = 'link' | 'capture';
+
+/** 주소 값(?start=)을 읽는다. 모르는 값이면 보통으로 연다 */
+export function parseAddStart(value: string | string[] | undefined): AddStart | null {
+  const one = Array.isArray(value) ? value[0] : value;
+  return one === 'link' || one === 'capture' ? one : null;
+}
+
+/**
+ * S11에 링크 칸·캡처 칸 중 무엇을 보일지. 시작한 쪽은 늘 보이고, 다른 쪽은 [+ 캡처도 추가]·[+ 링크도 추가]를
+ * 눌렀거나 이미 값이 있을 때만 보인다. 시작 값이 없으면(S10 [+]·S20) 링크로 시작한다
+ */
+export function addSections(
+  begin: AddStart | null,
+  state: { linkOpened: boolean; captureOpened: boolean; link: string; captureCount: number },
+): { showLink: boolean; showCaptures: boolean } {
+  return {
+    showLink: begin !== 'capture' || state.linkOpened || state.link.length > 0,
+    showCaptures: begin === 'capture' || state.captureOpened || state.captureCount > 0,
+  };
+}
+
 /**
  * 고른 캡처를 더한다. 10장을 넘는 것과 JPG·PNG가 아닌 것은 빼고, 몇 장을 뺐는지 알려 준다
  */
@@ -185,22 +208,49 @@ export const EXTRACTION_TIMEOUT_MS = 60_000;
 
 /** 처리 실패 안내. 보낸 입력(링크·캡처)에 맞춰 무엇을 읽지 못했는지 말한다 */
 export type FailedNotice = {
-  icon: 'link' | 'image' | 'alert';
+  icon: 'link' | 'image' | 'alert' | 'clock';
   title: string;
   description: string;
 };
 
 /**
- * S12 처리 실패 안내 글. sent가 없으면(앱을 다시 켜서 보낸 입력을 잊음) 무엇을 보냈는지 몰라 일반 문구.
- * 시간 초과면 설명을 "오래 걸려요"로 바꾼다
+ * S12 처리 실패가 왜 났는지.
+ * - late: 시간이 지났는데 서버는 아직 대기·처리 중
+ * - server: 작업 자체가 실패(일시 오류·시간 초과·처리 실패). 서버는 링크·캡처를 못 읽은 경우를
+ *   작업 실패가 아니라 성공 + resultStatus FAILED로 돌려주므로, 이건 링크·캡처 탓이 아니다
+ * - unreadable: AI가 보낸 자료를 읽지 못함(성공 + resultStatus FAILED)
+ */
+export type FailCause = 'late' | 'server' | 'unreadable';
+
+export function failCause(result: ExtractionResult | undefined, timedOut: boolean): FailCause {
+  const status = result?.job.status;
+  if (!result || status === 'QUEUED' || status === 'RUNNING') return timedOut ? 'late' : 'server';
+  return status === 'SUCCEEDED' ? 'unreadable' : 'server';
+}
+
+/**
+ * S12 처리 실패 안내 글. 링크·캡처를 못 읽은 때만 무엇을 못 읽었는지 말하고, 늦거나 서버가 실패한 때는
+ * 사용자가 넣은 것을 탓하지 않는다. sent가 없으면(앱을 다시 켜서 보낸 입력을 잊음) 일반 문구
  */
 export function failedNotice(
   sent: { link: string | null; captureCount: number } | null,
-  timedOut = false,
+  cause: FailCause = 'unreadable',
 ): FailedNotice {
-  const description = timedOut
-    ? '시간이 너무 오래 걸려요. 다시 시도해 주세요'
-    : '불러오지 못했어요';
+  if (cause === 'late') {
+    return {
+      icon: 'clock',
+      title: '장소 찾기가 늦어지고 있어요',
+      description: '시간이 너무 오래 걸려요. 다시 시도해 주세요',
+    };
+  }
+  if (cause === 'server') {
+    return {
+      icon: 'alert',
+      title: '장소 찾기를 마치지 못했어요',
+      description: '잠시 문제가 생겼어요. 다시 시도해 주세요',
+    };
+  }
+  const description = '불러오지 못했어요';
   if (!sent) return { icon: 'alert', title: '장소 찾기를 마치지 못했어요', description };
   if (sent.link && sent.captureCount > 0) {
     return { icon: 'link', title: '링크와 캡처를 읽지 못했어요', description };
