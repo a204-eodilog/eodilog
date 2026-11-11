@@ -128,11 +128,7 @@ function DevScreen({ state }: { state: string }) {
       onCancelSelect={() => setSelecting(null)}
       onConfirmSelect={noop}
       onRetry={noop}
-      empty={
-        all.length === 0 ? (
-          <FavoritesEmpty onAdd={() => setAdding(true)} onRecommend={noop} />
-        ) : undefined
-      }
+      empty={all.length === 0 ? <FavoritesEmpty onAdd={() => setAdding(true)} /> : undefined}
     >
       <MemberFilterSheet
         visible={memberSheet}

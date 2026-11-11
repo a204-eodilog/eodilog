@@ -427,14 +427,17 @@ function bookmark(p: ReturnType<typeof place>) {
 }
 
 describe('장소 없음', () => {
-  it('모은 장소가 없으면 빈 화면과 큰 추가 버튼, 아래 줄은 없다', async () => {
+  it('모은 장소가 없으면 안내와 장소 추가 버튼 하나만 보인다', async () => {
     mockList.mockResolvedValue(page([]));
     await renderScreen();
     expect(await screen.findByText('아직 모은 장소가 없어요')).toBeTruthy();
-    expect(screen.getByText('전체 0')).toBeTruthy();
-    expect(screen.queryByText('겹친 곳 0')).toBeNull();
-    expect(screen.getAllByLabelText('장소 추가')).toHaveLength(1);
-    await fireEvent.press(screen.getByLabelText('장소 추가'));
+    // 거를 장소가 없어 거르기 줄과 목록·지도 바꾸기, 아래 버튼 줄을 숨긴다
+    expect(screen.queryByText('전체 0')).toBeNull();
+    expect(screen.queryByLabelText('동행별로 보기')).toBeNull();
+    expect(screen.queryByLabelText('지도로 보기')).toBeNull();
+    expect(screen.queryByText('투표 열기')).toBeNull();
+    expect(screen.queryByText('추천 받기')).toBeNull();
+    await fireEvent.press(screen.getByText('장소 추가'));
     expect(screen.getByText('장소 검색')).toBeTruthy();
   });
 
@@ -493,17 +496,6 @@ describe('후보 고르기와 추천', () => {
       params: { tripId: 'trip-1' },
     });
     expect(toast.show).not.toHaveBeenCalledWith('준비 중이에요');
-  });
-
-  it('장소 없음의 추천 받기도 추천 결과를 연다', async () => {
-    mockList.mockResolvedValue(page([]));
-    await renderScreen();
-    await screen.findByText('아직 모은 장소가 없어요');
-    await fireEvent.press(screen.getByText('추천 받기'));
-    expect(mockRouter.push).toHaveBeenCalledWith({
-      pathname: '/trips/[tripId]/recommend',
-      params: { tripId: 'trip-1' },
-    });
   });
 });
 
