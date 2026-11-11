@@ -1,20 +1,12 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import {
-  ActivityIndicator,
-  Animated,
-  Pressable,
-  StyleSheet,
-  Text,
-  type ViewStyle,
-} from 'react-native';
+import { ActivityIndicator, Animated, StyleSheet, Text, type ViewStyle } from 'react-native';
 
 import { isReduceMotion } from '@/hooks/use-reduce-motion';
 import { colors, radius, size, spacing, typography } from '@/theme';
 import { motion } from '@/theme/motion';
 
+import { AnimatedPressable } from './animated-pressable';
 import { usePressScale } from './use-press-scale';
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 type Variant = 'primary' | 'secondary' | 'neutral' | 'danger' | 'text';
 type Size = 'sm' | 'md' | 'lg' | 'xl';

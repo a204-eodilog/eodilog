@@ -7,6 +7,7 @@ import { Easing, Platform } from 'react-native';
  * - 버튼 눌림: 0.96배로 줄었다가 스프링으로 돌아온다
  * - 체크 표시: 선이 220ms 동안 처음부터 끝까지 그려진다(ease in out)
  * - 팝업: 0.92배에서 1배로 180ms 동안 커지며 나온다(ease in)
+ * - 순서대로 나오는 글: 제목 → 설명 → 내용이 60ms 간격으로 한 줄씩 나온다
  *
  * 휴대폰의 "동작 줄이기"가 켜져 있으면 움직이지 않고 바로 끝 모양이 된다(hooks/use-reduce-motion)
  */
@@ -43,6 +44,8 @@ export const motion = {
     /** 굼뜨면 이 값만 줄인다 */
     duration: 180,
   },
+  /** 제목 → 설명 → 내용이 한 줄씩 나오는 간격(ms) */
+  stagger: { gap: 60 },
   /** 고른 탭 아이콘이 통 튀는 크기 */
   tab: { fromScale: 0.86 },
   /**
