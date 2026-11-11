@@ -34,9 +34,9 @@ it('여행 중 메뉴는 S25 여행 중 화면을 연다', async () => {
   expect(toast.show).not.toHaveBeenCalled();
 });
 
-it('화면이 아직 없는 메뉴는 준비 중 안내를 띄운다', async () => {
+it('게시 메뉴는 내 여행 기록을 연다', async () => {
   await render(<TripMenuGrid tripId="trip-1" />);
   await fireEvent.press(screen.getByLabelText('게시'));
-  expect(toast.show).toHaveBeenCalledWith('준비 중이에요');
-  expect(mockRouter.push).not.toHaveBeenCalled();
+  expect(mockRouter.push).toHaveBeenCalledWith('/trips/trip-1/record');
+  expect(toast.show).not.toHaveBeenCalled();
 });

@@ -14,7 +14,7 @@ import { TripHero } from '../components/trip-hero';
 import { TripMenuGrid } from '../components/trip-menu-grid';
 import { useRegionNames } from '../hooks/use-region-names';
 import { useTrip } from '../hooks/use-trip';
-import { todoHref } from '../trip-routes';
+import { publishHref, todoHref } from '../trip-routes';
 import { companionsLabel, tripDetailView } from '../trip-rules';
 
 const comingSoon = () => toast.show('준비 중이에요');
@@ -79,7 +79,7 @@ export function TripDetailScreen() {
               if (href) router.push(href as Href);
               else comingSoon();
             }}
-            onPublish={comingSoon}
+            onPublish={() => router.push(publishHref(trip.id) as Href)}
           />
           <TripMenuGrid tripId={trip.id} />
         </View>

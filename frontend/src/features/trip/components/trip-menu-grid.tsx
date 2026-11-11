@@ -1,8 +1,10 @@
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Icon, toast, type IconName } from '@/components/ui';
 import { colors, radius, spacing, typography } from '@/theme';
+
+import { publishHref } from '../trip-routes';
 
 type MenuItem = {
   key: string;
@@ -69,7 +71,13 @@ const MENU: MenuItem[] = [
     // 'index'가 지출 id로 읽혀 지출 상세가 열리므로 실제 주소로 보낸다
     open: (tripId) => router.push(`/trips/${tripId}/expenses`),
   },
-  { key: 'publish', label: '게시', icon: 'link' },
+  {
+    key: 'publish',
+    label: '게시',
+    icon: 'link',
+    // 내 여행 기록(S38)에서 게시한다. 게시 전·게시됨 상태와 게시 확인 시트가 그 화면에 있다
+    open: (tripId) => router.push(publishHref(tripId) as Href),
+  },
   {
     key: 'chat',
     label: '채팅',
