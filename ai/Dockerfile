@@ -11,12 +11,16 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --extra vision
 
 COPY app ./app
-# 모델을 이미지에 넣어 서버 시작 때 외부에서 받지 않는다
+# 모델을 이미지에 넣어 서버 시작 때 외부에서 받지 않는다.
+# 파인튜닝 파일이 모델과 맞지 않으면 여기서 빌드를 멈춘다 (spec AS-20)
 RUN .venv/bin/python -c "\
 from app.core.config import Settings; \
 from app.features.photo_classification.embedder import SiglipEmbedder; \
+from app.features.photo_classification.finetune import FINETUNE_PATH, load_finetune; \
 s = Settings(_env_file=None); \
-SiglipEmbedder(model_name=s.clip_model, pretrained=s.clip_pretrained).embed_texts(['ok'])"
+ft = load_finetune(FINETUNE_PATH, model_name=s.clip_model); \
+assert ft is not None, 'photo_finetune.safetensors not usable'; \
+SiglipEmbedder(model_name=s.clip_model, pretrained=s.clip_pretrained, visual_weights=ft.visual).embed_texts(['ok'])"
 
 
 FROM python:3.11-slim
