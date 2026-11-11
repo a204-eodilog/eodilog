@@ -181,14 +181,14 @@ export function toRegionTripCards(feeds: readonly FeedCard[]): RegionTripCard[] 
       title: f.title,
       period: formatPeriodShort(f.startDate, f.endDate),
       nights: nightsLabel(f.startDate, f.endDate),
-      coverUrl: null,
+      coverUrl: f.coverImageUrl ?? null,
     }));
 }
 
 /** "2박 3일", 하루면 "당일치기", 날짜가 없으면 null. 공통 formatTripNights와 같은 문구 */
 export const nightsLabel = formatTripNights;
 
-/** 추천 응답 → 시트 줄. 표지 사진 주소는 아직 만들 수 없어 비워 둔다 */
+/** 추천 응답 → 시트 줄. 사진 주소는 응답에 있을 때만 넘긴다(서버는 아직 주지 않는다) */
 export function toRecommendations(items: readonly DiscoveryItem[]): HomeRecommendation[] {
   return items.flatMap((item): HomeRecommendation[] => {
     if (item.type === 'FEED' && item.feed) {
@@ -201,7 +201,7 @@ export function toRecommendations(items: readonly DiscoveryItem[]): HomeRecommen
           title: item.feed.title,
           meta: region ? shortRegionName(region.name) : item.reason,
           nights: nightsLabel(item.feed.startDate, item.feed.endDate),
-          imageUrl: null,
+          imageUrl: item.feed.coverImageUrl ?? null,
         },
       ];
     }
@@ -214,7 +214,7 @@ export function toRecommendations(items: readonly DiscoveryItem[]): HomeRecommen
           title: item.place.name,
           meta: item.place.address ?? item.reason,
           nights: null,
-          imageUrl: null,
+          imageUrl: item.place.imageUrl ?? null,
         },
       ];
     }

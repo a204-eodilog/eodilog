@@ -61,6 +61,13 @@ describe('addressParts', () => {
 });
 
 describe('toSavedItem', () => {
+  it('장소 사진 주소가 오면 넘기고, 없으면 비운다', () => {
+    const withPhoto = bookmark('광안리 카페', null);
+    withPhoto.place = { ...withPhoto.place!, imageUrl: '/assets/sample-place-1/download' };
+    expect(toSavedItem(withPhoto).imageUrl).toBe('/assets/sample-place-1/download');
+    expect(toSavedItem(bookmark('강문 해변', null)).imageUrl).toBeNull();
+  });
+
   it('지역·출처를 붙인다', () => {
     const item = toSavedItem(bookmark('광안리 카페', '부산광역시 수영구 광안해변로', 1, 2, 'f1'));
     expect(item).toMatchObject({

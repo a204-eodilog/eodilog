@@ -17,6 +17,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { Icon } from '@/components/ui';
+import { assetSource } from '@/lib/asset-image';
 import { colors, layout, motion, radius, spacing, typography } from '@/theme';
 
 import type { HomeRecommendation } from '../types';
@@ -147,10 +148,12 @@ export function RecommendSheet({ items, status, initialExpanded = false, onPress
 }
 
 function Thumb({ item, size }: { item: HomeRecommendation; size: number }) {
+  // 같은 지역 여행 시트와 같은 방식. 서버 사진 경로에 주소와 로그인 토큰을 붙이고, 테스트 모드에서는 샘플 사진으로 그린다
+  const src = assetSource(item.imageUrl);
   return (
     <View style={{ width: size, height: size }}>
-      {item.imageUrl ? (
-        <Image source={{ uri: item.imageUrl }} style={styles.thumb} contentFit="cover" />
+      {src ? (
+        <Image source={src} style={styles.thumb} contentFit="cover" />
       ) : (
         <View style={[styles.thumb, styles.thumbEmpty]}>
           <Icon name="image" size={20} color={colors.brand.primary} />
