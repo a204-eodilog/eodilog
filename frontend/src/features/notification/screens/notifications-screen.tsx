@@ -4,7 +4,7 @@ import { Pressable, SectionList, StyleSheet, Text, View } from 'react-native';
 import { Spinner } from '@/components/ui/spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Header } from '@/components/ui';
+import { Header, Icon } from '@/components/ui';
 import { colors, layout, spacing, typography } from '@/theme';
 
 import { NotificationRow } from '../components/notification-row';
@@ -30,20 +30,16 @@ export type NotificationsViewProps = {
 /** S49 알림 목록 모양. 기본 201-25921 · 알림 없음 201-26140 · 불러오기 실패 201-32709 */
 export function NotificationsView(props: NotificationsViewProps) {
   const { status, sections } = props;
+  // 읽지 않은 알림이 있을 때만 보인다. 머리줄의 뒤로 버튼과 같은 44 크기 아이콘 버튼
   const readAll =
-    status === 'ready' && sections.length > 0 ? (
+    status === 'ready' && props.canReadAll ? (
       <Pressable
         onPress={props.onReadAll}
-        disabled={!props.canReadAll}
         accessibilityRole="button"
-        accessibilityState={{ disabled: !props.canReadAll }}
+        accessibilityLabel="모두 읽음"
         style={({ pressed }) => [styles.readAll, pressed && styles.pressed]}
       >
-        <Text
-          style={[typography.bodyMedium, props.canReadAll ? styles.readAllOn : styles.readAllOff]}
-        >
-          모두 읽음
-        </Text>
+        <Icon name="check-all" color={colors.text.default} />
       </Pressable>
     ) : undefined;
 
@@ -129,12 +125,11 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.surface.white },
   loading: { flex: 1 },
   readAll: {
-    minHeight: layout.minTouchTarget,
+    width: layout.minTouchTarget,
+    height: layout.minTouchTarget,
+    alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: spacing[12],
   },
-  readAllOn: { color: colors.brand.primaryDark },
-  readAllOff: { color: colors.text.muted },
   pressed: { opacity: 0.6 },
   list: { paddingHorizontal: layout.screenPaddingX, paddingTop: spacing[16] },
   sectionTitle: { color: colors.text.icon, marginBottom: spacing[8] },

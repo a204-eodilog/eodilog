@@ -110,17 +110,17 @@ describe('S49 알림 목록', () => {
 
   it('모두 읽음은 가장 최근 알림 시각까지 보내고 점을 지운다', async () => {
     await renderScreen();
-    await fireEvent.press(await screen.findByText('모두 읽음'));
+    await fireEvent.press(await screen.findByRole('button', { name: '모두 읽음' }));
     expect(mockReadAll).toHaveBeenCalledWith('2026-11-18T11:40:00Z');
     await waitFor(() => expect(screen.queryByRole('button', { name: /^읽지 않음/ })).toBeNull());
-    const button = screen.getByRole('button', { name: '모두 읽음' });
-    expect(button.props.accessibilityState).toMatchObject({ disabled: true });
+    // 읽지 않은 알림이 없으면 버튼을 숨긴다
+    expect(screen.queryByRole('button', { name: '모두 읽음' })).toBeNull();
   });
 
   it('모두 읽음이 실패하면 알리고 안 읽음으로 되돌린다', async () => {
     mockReadAll.mockRejectedValue(new Error('500'));
     await renderScreen();
-    await fireEvent.press(await screen.findByText('모두 읽음'));
+    await fireEvent.press(await screen.findByRole('button', { name: '모두 읽음' }));
     await waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith('읽음으로 바꾸지 못했어요. 다시 시도해 주세요'),
     );
@@ -132,7 +132,7 @@ describe('S49 알림 목록', () => {
     await renderScreen();
     expect(await screen.findByText('새 알림이 없어요')).toBeTruthy();
     expect(screen.getByText('여행 소식과 팔로우 요청이 여기에 모여요')).toBeTruthy();
-    expect(screen.queryByText('모두 읽음')).toBeNull();
+    expect(screen.queryByRole('button', { name: '모두 읽음' })).toBeNull();
   });
 
   it('불러오지 못하면 실패 안내와 다시 시도', async () => {
