@@ -62,11 +62,22 @@ type Trip = {
 
 const LATENCY_MS = 300;
 
+/**
+ * 시험 프로필 사진 주소. 다른 사람의 절반쯤만 사진을 줘서 사진 얼굴과 글자 얼굴이 섞인 모습을 본다.
+ * 나는 비워 둔다. 내 얼굴의 연파랑 구분과 프로필 사진 올리기(S02) 확인을 그대로 두기 위해서다.
+ * lib/mock-photo가 이 주소를 인터넷 샘플 사진으로 바꿔 그린다
+ */
+function sampleProfileImage(id: string): string | null {
+  if (id === 'user-me') return null;
+  const sum = [...id].reduce((n, ch) => n + ch.charCodeAt(0), 0);
+  return sum % 2 === 0 ? `/assets/sample-profile-${id}/download` : null;
+}
+
 function user(id: string, nickname: string): UserCard {
   return {
     id,
     nickname,
-    profileImageUrl: null,
+    profileImageUrl: sampleProfileImage(id),
     accountVisibility: 'PUBLIC',
     followingStatus: 'NONE',
     followedByStatus: 'NONE',
