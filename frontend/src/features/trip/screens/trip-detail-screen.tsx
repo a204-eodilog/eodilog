@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, type Href } from 'expo-router';
 import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -13,6 +13,7 @@ import { TripHero } from '../components/trip-hero';
 import { TripMenuGrid } from '../components/trip-menu-grid';
 import { useRegionNames } from '../hooks/use-region-names';
 import { useTrip } from '../hooks/use-trip';
+import { todoHref } from '../trip-routes';
 import { companionsLabel, tripDetailView } from '../trip-rules';
 
 const comingSoon = () => toast.show('준비 중이에요');
@@ -62,7 +63,11 @@ export function TripDetailScreen() {
           <TodoSteps
             nickname={me?.nickname ?? null}
             view={view}
-            onAction={comingSoon}
+            onAction={() => {
+              const href = view.action ? todoHref(view.action.target, trip.id) : null;
+              if (href) router.push(href as Href);
+              else comingSoon();
+            }}
             onPublish={comingSoon}
           />
           <TripMenuGrid tripId={trip.id} />
