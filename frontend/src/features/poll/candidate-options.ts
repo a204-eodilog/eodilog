@@ -53,3 +53,18 @@ export function buildCandidateOptions(
       input: { regionId: r.regionId },
     }));
 }
+
+/**
+ * 지역 후보 줄 앞에 그룹 즐겨찾기에 없는 지역을 더한다. 추천 결과의 여행지를 투표 후보로 넘길 때 쓴다.
+ * 이미 후보 줄에 있는 지역은 더하지 않는다
+ */
+export function withExtraRegions(
+  options: CandidateOption[],
+  extra: { id: string; name: string }[],
+): CandidateOption[] {
+  const have = new Set(options.map((o) => o.key));
+  const added = extra
+    .filter((r) => !have.has(r.id))
+    .map((r) => ({ key: r.id, title: r.name, subtitle: '추천 여행지', input: { regionId: r.id } }));
+  return [...added, ...options];
+}

@@ -37,6 +37,31 @@ jest.mock('../api', () => ({
   getCoursePlaces: jest.fn(),
 }));
 
+// N8 투표 열기 시트는 투표 쪽 테스트가 본다. 여기서는 무엇을 넘겨 여는지만 본다
+jest.mock('@/features/poll/components/open-poll-sheet', () => {
+  const { Pressable, Text } = jest.requireActual<typeof import('react-native')>('react-native');
+  return {
+    OpenPollSheet: (props: {
+      visible: boolean;
+      initialType?: string;
+      initialSelected?: string[];
+      extraRegions?: { id: string; name: string }[];
+      onOpened: (poll: { id: string }) => void;
+    }) =>
+      props.visible ? (
+        <Pressable onPress={() => props.onOpened({ id: 'poll-9' })}>
+          <Text>
+            {`투표 열기 시트 ${props.initialType} ${(props.initialSelected ?? []).join(',')} ${(
+              props.extraRegions ?? []
+            )
+              .map((r) => r.name)
+              .join(',')}`.trim()}
+          </Text>
+        </Pressable>
+      ) : null,
+  };
+});
+
 jest.mock('@/features/saved/api', () => ({ getAllBookmarks: jest.fn() }));
 jest.mock('@/features/place/place-picker', () => ({ pickPlace: jest.fn() }));
 
@@ -257,11 +282,12 @@ describe('담기와 빼기', () => {
     await waitFor(() => expect(mockList.mock.calls.length).toBeGreaterThan(1));
   });
 
-  it('링크나 캡처는 아직 준비 중이다', async () => {
+  it('링크나 캡처로는 링크·캡처 등록 화면을 연다', async () => {
     await renderScreen();
     await fireEvent.press(await screen.findByLabelText('장소 추가'));
     await fireEvent.press(screen.getByText('링크나 캡처로'));
-    expect(toast.show).toHaveBeenCalledWith('준비 중이에요');
+    expect(mockRouter.push).toHaveBeenCalledWith('/saved/add');
+    expect(toast.show).not.toHaveBeenCalledWith('준비 중이에요');
   });
 
   it('개인 즐겨찾기에서 여러 곳을 골라 담고, 내가 이미 담은 곳은 담김이다', async () => {
@@ -426,7 +452,7 @@ describe('장소 없음', () => {
 });
 
 describe('후보 고르기와 추천', () => {
-  it('투표 열기를 누르면 줄을 골라 개수가 버튼에 보이고 확정하면 준비 중 안내', async () => {
+  it('투표 열기를 누르면 줄을 골라 개수가 버튼에 보이고 확정하면 그 장소로 투표 열기 시트를 연다', async () => {
     mockList.mockResolvedValue(page(sampleSaved()));
     await renderScreen();
     await fireEvent.press(await screen.findByText('투표 열기'));
@@ -438,12 +464,24 @@ describe('후보 고르기와 추천', () => {
     await fireEvent.press(rows[1]);
     expect(screen.getByText('1곳으로 투표 열기')).toBeTruthy();
     await fireEvent.press(screen.getByText('1곳으로 투표 열기'));
-    expect(toast.show).toHaveBeenCalledWith('준비 중이에요');
+    expect(screen.getByText(/^투표 열기 시트 PLACE \S+$/)).toBeTruthy();
+    expect(toast.show).not.toHaveBeenCalledWith('준비 중이에요');
     // 고르는 중에는 장소 시트가 열리지 않는다
     expect(screen.queryByLabelText('내 메모')).toBeNull();
     await fireEvent.press(screen.getByText('취소'));
     expect(screen.queryAllByRole('checkbox')).toHaveLength(0);
     expect(screen.getByText('투표 열기')).toBeTruthy();
+  });
+
+  it('투표가 열리면 고르기를 끝내고 그 투표 화면으로 간다', async () => {
+    mockList.mockResolvedValue(page(sampleSaved()));
+    await renderScreen();
+    await fireEvent.press(await screen.findByText('투표 열기'));
+    await fireEvent.press(screen.getAllByRole('checkbox')[0]);
+    await fireEvent.press(screen.getByText('1곳으로 투표 열기'));
+    await fireEvent.press(screen.getByText(/^투표 열기 시트/));
+    expect(mockRouter.push).toHaveBeenCalledWith('/trips/trip-1/polls/poll-9');
+    expect(screen.queryAllByRole('checkbox')).toHaveLength(0);
   });
 
   it('추천 받기는 추천 결과를 연다', async () => {

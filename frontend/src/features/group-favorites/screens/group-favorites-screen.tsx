@@ -5,8 +5,9 @@ import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from '
 
 import { errorLook } from '@/api/error-look';
 import { toApiError } from '@/api/errors';
-import { ErrorState, Header, Icon, toast } from '@/components/ui';
+import { ErrorState, Header, Icon } from '@/components/ui';
 import { pickPlace } from '@/features/place/place-picker';
+import { OpenPollSheet } from '@/features/poll/components/open-poll-sheet';
 import { getAllBookmarks } from '@/features/saved/api';
 import { bookmarkKeys } from '@/features/saved/hooks/use-bookmarks';
 import { useTrip } from '@/features/trip/hooks/use-trip';
@@ -249,7 +250,8 @@ export function GroupFavoritesScreen() {
   const notFound = toApiError(list.error).status === 404 || toApiError(trip.error).status === 404;
   const status = notFound ? 'notFound' : list.data ? 'ready' : list.isError ? 'error' : 'loading';
 
-  const notReady = () => toast.show('준비 중이에요');
+  // 고른 장소로 여는 N8 투표 열기 시트
+  const [pollOpen, setPollOpen] = useState(false);
   const recommend = () =>
     router.push({ pathname: '/trips/[tripId]/recommend', params: { tripId } });
   const myMemberId = people.find((p) => p.me)?.id ?? null;
@@ -307,8 +309,8 @@ export function GroupFavoritesScreen() {
       }}
       onRecommend={recommend}
       onCancelSelect={() => setSelecting(null)}
-      // 투표 열기 시트는 투표 쪽 작업과 합칠 때 고른 장소로 연다. 그 전까지는 안내만 띄우고 고른 것은 둔다
-      onConfirmSelect={notReady}
+      // 고른 장소를 후보로 N8 투표 열기 시트를 연다. 시트를 닫아도 고른 것은 둔다
+      onConfirmSelect={() => setPollOpen(true)}
       onRetry={() => void list.refetch()}
       empty={
         list.totals?.allPlaceCount === 0 ? (
@@ -331,9 +333,23 @@ export function GroupFavoritesScreen() {
           setAdding(false);
           setPicking(true);
         }}
-        // S11 링크·캡처 등록은 FE B 담당이라 아직 없다(가정 Q-7-1)
-        onLink={notReady}
+        // S11 링크·캡처 등록. 등록한 장소는 내 즐겨찾기에 들어가고, 돌아와 내 즐겨찾기에서 담는다
+        onLink={() => {
+          setAdding(false);
+          router.push('/saved/add');
+        }}
         onSearch={() => void search()}
+      />
+      <OpenPollSheet
+        visible={pollOpen}
+        onClose={() => setPollOpen(false)}
+        tripId={tripId}
+        initialType="PLACE"
+        initialSelected={[...(selecting ?? [])]}
+        onOpened={(poll) => {
+          setSelecting(null);
+          router.push(`/trips/${tripId}/polls/${poll.id}`);
+        }}
       />
       <BookmarkPickSheet
         visible={picking}
