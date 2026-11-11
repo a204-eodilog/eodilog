@@ -3,6 +3,7 @@ import { useState } from 'react';
 
 import { toApiError } from '@/api/errors';
 import { toast } from '@/components/ui';
+import { haptic } from '@/lib/haptics';
 
 import { updateTrip } from '../api';
 import {
@@ -51,6 +52,7 @@ export function useUpdateTrip(tripId: string) {
     setTitleError(null);
     try {
       await mutation.mutateAsync(body);
+      haptic.success();
       return 'saved';
     } catch (e) {
       const kind = memberActionFailure(e);
@@ -92,6 +94,7 @@ export function useUpdateTrip(tripId: string) {
         } else {
           // 최신 여행이 이미 내 입력과 같다. 응답만 놓친 내 저장이었거나 같은 값으로 고친 것이다
           setFailure(null);
+          haptic.success();
           return 'saved';
         }
       } else if (kind === 'error') {

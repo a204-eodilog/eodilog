@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { toApiError, type ApiError } from '@/api/errors';
+import { haptic } from '@/lib/haptics';
 
 import { createPoll } from '../api';
 import { pollTitle } from '../poll-rules';
@@ -37,6 +38,7 @@ export function useOpenPoll(tripId: string) {
     onSuccess: (poll) => {
       queryClient.setQueryData(pollKey(tripId, poll.id), poll);
       void queryClient.invalidateQueries({ queryKey: pollsKey(tripId), exact: true });
+      haptic.success();
     },
   });
 }

@@ -1,6 +1,7 @@
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { haptic } from '@/lib/haptics';
 import { colors, radius, spacing, typography } from '@/theme';
 
 import { BottomSheet } from './bottom-sheet';
@@ -49,6 +50,11 @@ export function ConfirmSheet({
   errorDescription,
   children,
 }: ConfirmSheetProps) {
+  // 지우기·나가기처럼 되돌릴 수 없는 일을 묻는 시트라, 뜰 때 경고 진동을 한 번 울린다
+  useEffect(() => {
+    if (visible) haptic.warning();
+  }, [visible]);
+
   return (
     <BottomSheet
       visible={visible}

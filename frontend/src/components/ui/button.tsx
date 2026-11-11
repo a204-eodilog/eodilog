@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Animated, StyleSheet, Text, type ViewStyle } from 'react-native';
 
 import { isReduceMotion } from '@/hooks/use-reduce-motion';
+import { haptic } from '@/lib/haptics';
 import { colors, radius, size, spacing, typography } from '@/theme';
 import { motion } from '@/theme/motion';
 
@@ -70,6 +71,8 @@ export function Button({
         ? typography.bodyMedium
         : typography.bodyBold;
 
+  const major = (variant === 'primary' || variant === 'danger') && (sz === 'lg' || sz === 'xl');
+
   // 누르면 살짝 줄었다가 스프링으로 돌아온다(theme/motion). 예전에는 흐려지기만 했다
   const press = usePressScale();
 
@@ -96,7 +99,11 @@ export function Button({
       accessibilityRole="button"
       accessibilityState={{ disabled: inactive, busy: loading }}
       disabled={inactive}
-      onPress={onPress}
+      onPress={() => {
+        // 주요 버튼(큰 파랑·빨강)만 가볍게 울린다. 작은 버튼과 보조 버튼은 울리지 않는다
+        if (major) haptic.light();
+        onPress?.();
+      }}
       onPressIn={press.onPressIn}
       onPressOut={press.onPressOut}
       style={[

@@ -3,6 +3,7 @@ import { Animated } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 import { isReduceMotion } from '@/hooks/use-reduce-motion';
+import { haptic } from '@/lib/haptics';
 import { colors } from '@/theme';
 import { motion } from '@/theme/motion';
 
@@ -77,5 +78,9 @@ export function CheckMarkWhen({ checked, ...rest }: CheckMarkWhenProps) {
   // 처음부터 체크돼 있었으면 가만히 둔다. 한 번이라도 풀리면 그다음부터는 그린다
   const [still, setStill] = useState(checked);
   if (!checked && still) setStill(false);
+  // 방금 체크했을 때만 선택 진동. 화면을 열 때 이미 체크돼 있던 것은 울리지 않는다
+  useEffect(() => {
+    if (checked && !still) haptic.select();
+  }, [checked, still]);
   return checked ? <CheckMark {...rest} still={still} /> : null;
 }

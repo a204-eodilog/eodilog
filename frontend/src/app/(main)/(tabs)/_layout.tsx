@@ -15,6 +15,9 @@ const TAB_BY_ROUTE = Object.fromEntries(
   Object.entries(ROUTE_BY_TAB).map(([tab, route]) => [route, tab as TabKey]),
 ) as Record<string, TabKey>;
 
+/** 탭이 겹쳐 바뀌는 시간(ms) */
+const TAB_FADE_MS = 150;
+
 /** 하단 탭 5개. 탭 첫 화면만 여기 두고, 상세·입력 화면은 (main) Stack에 둬서 탭이 보이지 않게 한다 */
 export default function TabsLayout() {
   return (
@@ -22,7 +25,12 @@ export default function TabsLayout() {
       // 탭 화면은 처음 누를 때 만든다(lazy 기본값). 다섯 개를 처음부터 띄우면 앱 시작 때 요청 13개가
       // 한꺼번에 나가고(여행 목록만 3번) 화면이 끊겼다. 기본값으로 바꾸자 실기기에서 시작 요청 6개,
       // 끊긴 화면 비율 26~28% → 15~17%였고 탭을 바꿀 때 빈 화면은 보이지 않았다(11/10 갤럭시, 개발 빌드)
-      screenOptions={{ headerShown: false }}
+      // 탭 사이는 짧게 겹쳐 바뀐다(2026-11-11 사용자 결정). 길면 탭이 굼떠 보여 빠름 기준값 가까이로 둔다
+      screenOptions={{
+        headerShown: false,
+        animation: 'fade',
+        transitionSpec: { animation: 'timing', config: { duration: TAB_FADE_MS } },
+      }}
       tabBar={({ state, navigateToTab }) => (
         <TabBar
           active={TAB_BY_ROUTE[state.routes[state.index].name] ?? 'home'}

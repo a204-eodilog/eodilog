@@ -2,6 +2,7 @@ import { Easing, withTiming, type EntryExitAnimationFunction } from 'react-nativ
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Toaster, toast as sonner } from 'sonner-native';
 
+import { haptic } from '@/lib/haptics';
 import { colors, radius, spacing, typography } from '@/theme';
 
 import {
@@ -46,8 +47,11 @@ export const toast = {
   success: (message: string, opts?: ToastOptions) =>
     sonner.success(message, options('success', message, opts)),
   /** 안 됐을 때. 다시 시도가 필요하면 화면 안 오류 상태를 쓰고, 여기는 가벼운 실패에만 */
-  error: (message: string, opts?: ToastOptions) =>
-    sonner.error(message, options('error', message, opts)),
+  error: (message: string, opts?: ToastOptions) => {
+    // 실패 안내가 뜰 때 실패 진동
+    haptic.error();
+    return sonner.error(message, options('error', message, opts));
+  },
 };
 
 /** 스낵바가 내려오는 시간과 출발 높이. 라이브러리 기본은 20px만 움직여 내려오는 느낌이 없다 */

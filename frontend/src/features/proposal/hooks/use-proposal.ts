@@ -7,6 +7,7 @@ import { getAutoCourse, getItinerary } from '@/features/course/api';
 import { itineraryKey } from '@/features/course/hooks/course-keys';
 import type { ItineraryProposal } from '@/features/course/types';
 import { JobStopped, waitForJob } from '@/features/course/wait-job';
+import { haptic } from '@/lib/haptics';
 
 import { applyProposal, requestRemoval } from '../api';
 
@@ -114,6 +115,7 @@ export function useProposal(tripId: string, source: ProposalSource) {
     try {
       const itinerary = await applyProposal(tripId, jobId, proposal.baseVersion);
       queryClient.setQueryData(itineraryKey(tripId), itinerary);
+      haptic.success();
       return 'applied';
     } catch (e) {
       const { code } = toApiError(e);
