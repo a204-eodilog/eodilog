@@ -3,7 +3,7 @@ import { Keyboard, Platform, Pressable, StyleSheet, Text, TextInput, View } from
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon } from '@/components/ui';
-import { colors, fontFamily, radius, spacing, typography } from '@/theme';
+import { caret, colors, fontFamily, radius, spacing, typography } from '@/theme';
 
 import { MESSAGE_MAX_LENGTH, validateMessageText } from '../chat-rules';
 
@@ -63,6 +63,7 @@ export function Composer({ onSend, disabled = false, initialText = '' }: Props) 
       ) : null}
       <View style={styles.row}>
         <TextInput
+          {...caret}
           value={text}
           onChangeText={setText}
           placeholder="메시지 보내기"

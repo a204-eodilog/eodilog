@@ -165,17 +165,18 @@ export function GroupFavoritesView(props: GroupFavoritesViewProps) {
   }
 
   const ready = props.status === 'ready';
+  // 모은 장소가 하나도 없을 때. 빈 화면이 [장소 추가] 하나만 보이게 거르기 줄, 목록·지도 바꾸기, 아래 줄을 모두 숨긴다
+  const nothing = ready && items.length === 0 && Boolean(props.empty);
   // 필터를 바꿔 받다가 실패해도 다른 필터로 돌아갈 수 있게 필터 줄은 남긴다
-  const showFilters = ready || props.status === 'error';
-  // 장소가 하나도 없으면 빈 화면이 버튼을 갖고 있어 아래 줄을 숨긴다(Figma 201-9686)
-  const showBottom = ready && !(items.length === 0 && props.empty);
+  const showFilters = (ready || props.status === 'error') && !nothing;
+  const showBottom = ready && !nothing;
   return (
     <View style={styles.screen}>
       <Header
         title="그룹 즐겨찾기"
         subtitle={props.tripTitle}
         subtitleIcon="trip"
-        right={<ViewToggle view={props.view} onChange={props.onToggleView} />}
+        right={nothing ? undefined : <ViewToggle view={props.view} onChange={props.onToggleView} />}
       />
       {showFilters ? (
         <FilterBar
@@ -316,7 +317,7 @@ export function GroupFavoritesScreen() {
       onRetry={() => void list.refetch()}
       empty={
         list.totals?.allPlaceCount === 0 ? (
-          <FavoritesEmpty onAdd={() => setAdding(true)} onRecommend={recommend} />
+          <FavoritesEmpty onAdd={() => setAdding(true)} />
         ) : undefined
       }
     >

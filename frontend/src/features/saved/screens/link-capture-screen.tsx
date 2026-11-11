@@ -17,7 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { apiErrorCode } from '@/api/errors';
 import { Button, Header, Icon, type IconName, toast } from '@/components/ui';
-import { colors, layout, radius, spacing, typography } from '@/theme';
+import { caret, colors, layout, radius, spacing, typography } from '@/theme';
 
 import type { CaptureFile } from '../api';
 import {
@@ -209,9 +209,10 @@ export function LinkCaptureScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="복사한 링크 붙여넣기"
                 onPress={() => void paste(copied)}
+                hitSlop={4}
                 style={({ pressed }) => [styles.copiedPaste, pressed && styles.pressed]}
               >
-                <Text style={[typography.bodyMedium, styles.dark]}>붙여넣기</Text>
+                <Icon name="clipboard" size={20} color={colors.brand.primaryDark} />
               </Pressable>
             </View>
           ) : null}
@@ -221,6 +222,7 @@ export function LinkCaptureScreen() {
               <SectionLabel icon="link" label="링크" />
               <View>
                 <TextInput
+                  {...caret}
                   accessibilityLabel="링크"
                   value={link}
                   onChangeText={setLink}
@@ -232,7 +234,7 @@ export function LinkCaptureScreen() {
                   autoCorrect={false}
                   keyboardType="url"
                   returnKeyType="done"
-                  style={[typography.body, styles.input, styles.linkInput]}
+                  style={[styles.inputText, styles.input, styles.linkInput]}
                 />
                 {link.length > 0 ? (
                   <Pressable
@@ -252,8 +254,8 @@ export function LinkCaptureScreen() {
                     onPress={() => void paste()}
                     style={({ pressed }) => [styles.pasteButton, pressed && styles.pressed]}
                   >
-                    {/* 복사 아이콘은 "복사"로 읽혀 글자로 쓴다 */}
-                    <Text style={[typography.captionMedium, styles.dark]}>붙여넣기</Text>
+                    {/* 복사 아이콘은 "복사"로 읽혀 집게판 아이콘을 따로 쓴다 */}
+                    <Icon name="clipboard" size={18} color={colors.brand.primaryDark} />
                   </Pressable>
                 )}
               </View>
@@ -338,6 +340,7 @@ export function LinkCaptureScreen() {
                 <Text style={[typography.captionMedium, styles.sub]}>메모</Text>
               </View>
               <TextInput
+                {...caret}
                 accessibilityLabel="메모"
                 value={memo}
                 onChangeText={setMemo}
@@ -347,7 +350,7 @@ export function LinkCaptureScreen() {
                 multiline
                 autoFocus
                 textAlignVertical="top"
-                style={[typography.body, styles.input, styles.memo]}
+                style={[styles.inputText, styles.input, styles.memo]}
               />
             </View>
           ) : (
@@ -436,6 +439,12 @@ const styles = StyleSheet.create({
   copiedPaste: { height: 36, paddingHorizontal: spacing[12], justifyContent: 'center' },
   section: { gap: spacing[12] },
   labelRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
+  // 입력칸 글자. 줄 높이(lineHeight)를 주면 안드로이드가 커서를 칸 높이만큼 길게 그려서 주지 않는다(TextField와 같다)
+  inputText: {
+    fontFamily: typography.body.fontFamily,
+    fontSize: typography.body.fontSize,
+    includeFontPadding: false,
+  },
   // 회색 상자 입력칸(값 문서: 공통 TextField는 밑줄이라 모양이 다르다)
   input: {
     color: colors.text.default,

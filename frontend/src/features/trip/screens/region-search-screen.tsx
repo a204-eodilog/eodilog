@@ -6,7 +6,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, Chip, EmptyState, ErrorState, Header, Icon } from '@/components/ui';
-import { colors, layout, radius, spacing, typography } from '@/theme';
+import { caret, colors, layout, radius, spacing, typography } from '@/theme';
 
 import { useNewTripDraft } from '../hooks/use-new-trip-draft';
 import { primeRegion } from '../hooks/use-region-names';
@@ -41,6 +41,7 @@ export function RegionSearchScreen({ draft = 'new' }: { draft?: 'new' | 'edit' }
       <View style={styles.searchBox}>
         <Icon name="search" size={20} color={colors.text.muted} />
         <TextInput
+          {...caret}
           autoFocus
           value={input}
           onChangeText={setInput}

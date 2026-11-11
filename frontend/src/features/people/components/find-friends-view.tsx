@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { UserCard } from '@/api/types';
 import { Avatar, EmptyState, ErrorState, Header, Icon } from '@/components/ui';
-import { colors, layout, radius, spacing, typography } from '@/theme';
+import { caret, colors, layout, radius, spacing, typography } from '@/theme';
 
 import { followButtonState, suggestionReason } from '../people-rules';
 import type { FriendSuggestion } from '../types';
@@ -43,6 +43,7 @@ export function FindFriendsView(props: FindFriendsViewProps) {
       <View style={styles.searchBox}>
         <Icon name="search" size={20} color={colors.text.icon} />
         <TextInput
+          {...caret}
           value={text}
           onChangeText={(v) => {
             setText(v);
@@ -59,9 +60,11 @@ export function FindFriendsView(props: FindFriendsViewProps) {
         <Pressable
           onPress={submit}
           style={({ pressed }) => [styles.searchButton, pressed && styles.pressed]}
+          hitSlop={4}
           accessibilityRole="button"
+          accessibilityLabel="찾기"
         >
-          <Text style={styles.searchButtonText}>찾기</Text>
+          <Icon name="search" size={18} color={colors.text.default} />
         </Pressable>
       </View>
 
@@ -215,7 +218,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface.white,
     justifyContent: 'center',
   },
-  searchButtonText: { ...typography.captionBold, color: colors.text.default },
   list: {
     paddingHorizontal: layout.screenPaddingX,
     paddingTop: spacing[24],

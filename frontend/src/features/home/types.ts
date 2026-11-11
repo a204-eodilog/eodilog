@@ -29,6 +29,11 @@ export type FeedCard = {
   tripId: string;
   title: string;
   coverPhotoId: string | null;
+  /**
+   * 표지 사진 주소(`/assets/{assetId}/download`). 서버 FeedCard에는 아직 없고 사진 번호만 온다(백엔드 요청).
+   * 지금은 테스트 모드의 시험 데이터만 채운다. 서버가 주기 시작하면 그대로 그려진다
+   */
+  coverImageUrl?: string | null;
   regions: HomeRegion[];
   startDate: string | null;
   endDate: string | null;
@@ -42,6 +47,8 @@ export type HomePlace = {
   name: string;
   address: string | null;
   regionId: string | null;
+  /** 장소 사진 주소. 서버 응답에는 아직 없다(백엔드 요청). 시험 데이터만 채운다 */
+  imageUrl?: string | null;
 };
 
 /** GET /me/discovery-recommendations (DiscoveryItem). 좋아요 기반 추천 */
@@ -107,7 +114,7 @@ export type RegionTripCard = {
   period: string | null;
   /** "1박 2일" */
   nights: string | null;
-  /** 표지. FeedCard에는 사진 ID만 있어 지금은 비어 있다(백엔드 요청) */
+  /** 표지 사진 주소. 서버 FeedCard에는 사진 번호만 있어 진짜 서버에서는 비어 있다(백엔드 요청) */
   coverUrl: string | null;
 };
 

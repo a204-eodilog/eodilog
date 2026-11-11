@@ -224,8 +224,9 @@ export function createPollMock({ getTrips, ok, fail }: Helpers) {
     const placeMatch = /^\/places\/([^/]+)$/.exec(url);
     if (method === 'get' && placeMatch) {
       const place = PLACES.find((p) => p[0] === placeMatch[1]);
-      if (!place) throw fail(config, 404, 'PLACE_NOT_FOUND', '장소를 찾을 수 없습니다.');
-      return ok(config, { data: placeView(place) });
+      // 그룹 즐겨찾기 예시 장소만 답한다. 그 밖의 장소(홈 추천, 피드 예시)는 dev-mock.ts의 장소 정보가 답하게 넘긴다.
+      // 여기서 404를 내면 홈 추천 카드를 눌렀을 때 장소 정보를 불러오지 못했다고 나온다
+      if (place) return ok(config, { data: placeView(place) });
     }
 
     const savedMatch = /^\/trips\/([^/]+)\/saved-places$/.exec(url);

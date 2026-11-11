@@ -181,9 +181,10 @@ export function ExpenseFormView({
                 accessibilityRole="button"
                 onPress={onDelete}
                 disabled={saving}
+                accessibilityLabel="삭제"
                 style={({ pressed }) => [styles.delete, pressed && styles.pressed]}
               >
-                <Text style={[typography.bodyMedium, styles.deleteText]}>삭제</Text>
+                <Icon name="trash" size={22} color={colors.status.danger} />
               </Pressable>
             ) : null}
             <Button
@@ -286,7 +287,6 @@ const styles = StyleSheet.create({
     paddingTop: spacing[12],
   },
   delete: { paddingHorizontal: spacing[16], paddingVertical: spacing[12] },
-  deleteText: { color: colors.status.danger },
   pressed: { opacity: 0.6 },
   text: { color: colors.text.default },
   sub: { color: colors.text.icon },

@@ -66,7 +66,7 @@ export function PhotoEditView(props: PhotoEditViewProps) {
             {props.saving ? (
               <Spinner color={colors.brand.primaryDark} />
             ) : (
-              <Text style={[typography.bodyMedium, styles.link]}>완료</Text>
+              <Icon name="check" size={24} color={colors.brand.primaryDark} />
             )}
           </Pressable>
         ) : undefined
@@ -162,10 +162,12 @@ export function PhotoEditView(props: PhotoEditViewProps) {
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="장소 바꾸기"
+                // 보이는 높이는 32, 누르는 자리는 위아래 6씩 넓혀 44
+                hitSlop={6}
                 onPress={props.onChangePlace}
                 style={({ pressed }) => [styles.whitePill, pressed && styles.pressed]}
               >
-                <Text style={[typography.captionMedium, styles.text]}>바꾸기</Text>
+                <Icon name="pencil" size={16} color={colors.text.default} />
               </Pressable>
             </View>
           </View>

@@ -415,7 +415,7 @@ describe('직접 추가, 고치기, 지우기', () => {
     mockDelete.mockResolvedValue(undefined);
     await renderScreen();
     await fireEvent.press(await screen.findByLabelText('손난로 고치기'));
-    await fireEvent.press(screen.getByText('지우기'));
+    await fireEvent.press(screen.getByLabelText('지우기'));
 
     expect(mockDelete).toHaveBeenCalledWith('trip-1', 'warmer');
     expect(await screen.findByText('2개 중 1개 챙겼어요')).toBeTruthy();
@@ -428,7 +428,7 @@ describe('지우기 충돌', () => {
     mockDelete.mockRejectedValue(httpError(404, 'CHECKLIST_ITEM_NOT_FOUND'));
     await renderScreen();
     await fireEvent.press(await screen.findByLabelText('손난로 고치기'));
-    await fireEvent.press(screen.getByText('지우기'));
+    await fireEvent.press(screen.getByLabelText('지우기'));
     await waitFor(() => expect(toast.show).toHaveBeenCalledWith('이미 지워진 준비물이에요'));
     expect(screen.queryByLabelText('손난로')).toBeNull();
     expect(toast.error).not.toHaveBeenCalled();
@@ -464,7 +464,7 @@ describe('항목 없음', () => {
     mockDelete.mockResolvedValue(undefined);
     await renderScreen();
     await fireEvent.press(await screen.findByLabelText('손난로 고치기'));
-    await fireEvent.press(screen.getByText('지우기'));
+    await fireEvent.press(screen.getByLabelText('지우기'));
     expect(await screen.findByText('준비물이 없어요')).toBeTruthy();
   });
 });

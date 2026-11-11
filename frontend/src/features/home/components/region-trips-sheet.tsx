@@ -132,8 +132,14 @@ export function RegionTripsSheet({ groups, onClose, onTrip, onRetry }: RegionTri
                 : `${groups[0]?.mark.name ?? ''} 여행을 불러오지 못했어요`}
             </Text>
             <Text style={styles.noteText}>지도는 그대로 볼 수 있어요</Text>
-            <Pressable onPress={onRetry} accessibilityRole="button" style={styles.retry}>
-              <Text style={styles.retryText}>다시 시도</Text>
+            <Pressable
+              onPress={onRetry}
+              hitSlop={4}
+              accessibilityRole="button"
+              accessibilityLabel="다시 시도"
+              style={styles.retry}
+            >
+              <Icon name="refresh" size={18} color={colors.text.default} />
             </Pressable>
           </View>
         ) : null}
@@ -250,5 +256,4 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
     backgroundColor: colors.surface.default,
   },
-  retryText: { ...typography.captionBold, color: colors.text.default },
 });

@@ -183,11 +183,12 @@ export function TripPhotosView(props: TripPhotosViewProps) {
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={`${section.name ?? '장소'} 사진 수정`}
-                    hitSlop={8}
+                    // 아이콘 18에 사방 13씩 넓혀 누르는 자리 44
+                    hitSlop={13}
                     onPress={() => props.onEditSection(section.placeId)}
                     style={({ pressed }) => pressed && styles.pressed}
                   >
-                    <Text style={[typography.captionMedium, styles.link]}>수정</Text>
+                    <Icon name="pencil" size={18} color={colors.brand.primaryDark} />
                   </Pressable>
                 ) : null}
               </View>
