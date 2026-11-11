@@ -22,7 +22,7 @@ export function useMyTrips() {
     getNextPageParam: (last) => (last.page.hasNext ? last.page.nextCursor : undefined),
   });
 
-  const { data, hasNextPage, isFetchingNextPage, isError, fetchNextPage } = query;
+  const { data, hasNextPage, isFetchingNextPage, isError, fetchNextPage, fetchStatus } = query;
 
   // 실패하면 더 받지 않고 다시 시도(refetch)를 기다린다. 계속 실패하는 요청을 되풀이하지 않게
   useEffect(() => {
@@ -47,6 +47,7 @@ export function useMyTrips() {
   const listState = tripListState({
     complete,
     failed: isError,
+    paused: fetchStatus === 'paused',
     lastSections: last?.sections ?? null,
     today,
     trips,

@@ -28,6 +28,8 @@ export type { IconName } from './icon';
 export { KoreaMap, MAP_MOTION, MAP_STAGES, pinEnterStartMs } from './korea-map';
 export type { KoreaMapFillStep, KoreaMapPin, KoreaMapProps, MapStage } from './korea-map';
 export { MascotTraveler } from './mascot';
+export { OfflineNotice } from './offline-notice';
+export type { OfflineNoticeProps } from './offline-notice';
 export { RoundCheck } from './round-check';
 export type { RoundCheckProps } from './round-check';
 export { TABS, TabBar } from './tab-bar';

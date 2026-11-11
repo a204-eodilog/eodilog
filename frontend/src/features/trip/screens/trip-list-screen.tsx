@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from 'expo-router';
 import { setStatusBarStyle } from 'expo-status-bar';
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -12,7 +12,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { EmptyState, ErrorState, Icon } from '@/components/ui';
+import { EmptyState, ErrorState, Icon, OfflineNotice } from '@/components/ui';
+import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 import { NextTripCard } from '../components/next-trip-card';
@@ -37,15 +38,7 @@ export function TripListScreen() {
   const { listState, today, refetch } = useMyTrips();
   // 당겨서 새로고침 표시는 사람이 당겼을 때만 켠다. 탭 복귀·앱 복귀 때 조용히 다시 받는 동안에는
   // 화면 위 동그라미(RefreshControl)를 띄우지 않는다
-  const [pulling, setPulling] = useState(false);
-  const onPullRefresh = async () => {
-    setPulling(true);
-    try {
-      await refetch();
-    } finally {
-      setPulling(false);
-    }
-  };
+  const { refreshing: pulling, onRefresh: onPullRefresh } = usePullRefresh(refetch);
 
   const sections = listState.kind === 'ready' ? listState.sections : null;
   const featured = sections?.featured ?? null;
@@ -88,6 +81,8 @@ export function TripListScreen() {
     let body;
     if (listState.kind === 'loading') {
       body = <ActivityIndicator style={styles.loading} color={colors.brand.primary} />;
+    } else if (listState.kind === 'offline') {
+      body = <OfflineNotice onRetry={() => refetch()} />;
     } else if (listState.kind === 'error') {
       body = <ErrorState onRetry={() => refetch()} />;
     } else {

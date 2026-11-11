@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, ErrorState, Header, Icon, type IconName, TextField, toast } from '@/components/ui';
+import { openJoinedTrip } from '@/features/invitation/open-joined-trip';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 import {
@@ -43,7 +44,7 @@ const ADD_PROBLEM: Record<'empty' | 'duplicate' | 'full', string> = {
 /**
  * S03 취향 입력. 세 곳에서 연다.
  * - 가입 흐름: S02 저장 뒤, 또는 S04 참여 뒤(첫 가입, `?tripId=`). [완료]·[나중에] 모두 홈(S05)으로.
- *   초대로 왔으면 그 여행(S17)으로 가야 하지만 아직 화면이 없어 홈으로 간다. 생기면 `tripId`로 보낸다
+ *   초대로 왔으면(`tripId`) 참여한 그 여행(S17)으로 간다
  * - 추천 직전: `?from=recommendation&tripId=…`. 동행 추천에 쓸지도 고르고 [추천 보기]로 돌아간다
  * - 설정(S45): `?from=settings`. 끝나면 설정으로 돌아간다
  * 상태: 기본 / 추천 직전 / 불러오기 실패 / 저장 실패(토스트 + [다시 시도])
@@ -113,9 +114,10 @@ function PreferencesForm({
   const [shareWithCompanions, setShareWithCompanions] = useState(true);
 
   // 추천 직전·설정이면 온 화면으로 돌아간다. 링크로 바로 열어 돌아갈 곳이 없으면 홈으로.
-  // 가입 흐름은 홈. 초대로 왔으면(tripId) S17 여행 상세가 생길 때 그 여행으로 바꾼다
+  // 가입 흐름은 홈. 초대로 왔으면(tripId) 참여한 그 여행(S17)으로 간다
   const leave = () => {
     if (returnsBack && router.canGoBack()) router.back();
+    else if (tripId) openJoinedTrip(tripId);
     else router.replace('/home');
   };
 

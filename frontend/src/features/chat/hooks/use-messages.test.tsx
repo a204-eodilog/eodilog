@@ -70,6 +70,31 @@ describe('메시지 창', () => {
     expect(result.current.window!.hasOlder).toBe(true);
   });
 
+  it('받아 둔 메시지가 있으면 다시 받기에 실패해도 오류로 보지 않고 메시지를 남긴다', async () => {
+    // 앱 복귀 때 다시 받다 실패하면 대화가 통째로 오류 화면에 가려졌다(2026-11-10 점검)
+    mockGet.mockImplementation(serverPage(45));
+    const { wrapper } = setup();
+    const { result } = await renderHook(() => useMessages('trip-1', 'room-1'), { wrapper });
+    await waitFor(() => expect(result.current.window).toBeDefined());
+
+    mockGet.mockRejectedValue(httpError(500, 'INTERNAL_ERROR'));
+    await act(async () => {
+      await result.current.refetch();
+    });
+
+    expect(result.current.isError).toBe(false);
+    expect(result.current.window!.messages).toHaveLength(30);
+  });
+
+  it('처음 받기부터 실패하면 오류다', async () => {
+    mockGet.mockRejectedValue(httpError(500, 'INTERNAL_ERROR'));
+    const { wrapper } = setup();
+    const { result } = await renderHook(() => useMessages('trip-1', 'room-1'), { wrapper });
+    // 이 쿼리는 두 번 더 시도한다(1초·2초 뒤). 그 뒤에 오류가 된다
+    await waitFor(() => expect(result.current.isError).toBe(true), { timeout: 8000 });
+    expect(result.current.window).toBeUndefined();
+  }, 10_000);
+
   it('loadOlder는 가장 작은 sequence 앞을 50개 받고, 처음까지 받으면 더 부르지 않는다', async () => {
     mockGet.mockImplementation(serverPage(45));
     const { wrapper } = setup();

@@ -107,6 +107,12 @@ function resendRoom(roomId: string): Promise<void> {
         .items[roomId]?.find((i) => i.clientMessageId === clientMessageId);
       // 그사이 실시간·빈칸 채우기로 서버 메시지가 들어와 지워졌거나, 사용자가 지웠다
       if (!current?.waiting) return;
+      // 자동으로 다시 보낼 시간이 지났다. 몇 시간 전 메시지가 연결되는 순간 단톡방에 올라가지 않게
+      // [다시 보내기]로 넘겨 사용자가 고르게 한다(2026-11-10 점검). 이 확인은 실패 뒤에만 했었다
+      if (!canWait(current.retryingSince)) {
+        useChatOutbox.getState().markFailed(roomId, clientMessageId, 'retry');
+        return;
+      }
       useChatOutbox.getState().resume(roomId, clientMessageId);
       await deliver(ctx.queryClient, ctx.tripId, roomId, clientMessageId, ctx.onBlocked);
     });

@@ -6,7 +6,7 @@ import { createIdempotencyKeyStore } from '@/api/idempotency';
 
 import { createTrip } from '../api';
 import type { CreateTripBody, Trip } from '../types';
-import { invalidateTripLists } from './trip-cache';
+import { invalidateAfterJoin } from './trip-cache';
 import { tripKey } from './use-trip';
 
 const IN_PROGRESS_RETRY_MS = 1_000;
@@ -43,12 +43,12 @@ export function useCreateTrip({ onCreated }: { onCreated: (trip: Trip) => void }
         return createTrip(body, key);
       }
     },
+    // 화면을 닫아도 여행은 만들어졌으므로 캐시는 여기서(화면과 관계없이) 맞춘다. 목록에 새 여행이 보인다
     onSuccess: (trip) => {
       keys.clear();
       setProblem(null);
       queryClient.setQueryData(tripKey(trip.id), trip);
-      invalidateTripLists(queryClient);
-      onCreated(trip);
+      invalidateAfterJoin(queryClient);
     },
     onError: (e) => {
       const error = toApiError(e);
@@ -64,6 +64,10 @@ export function useCreateTrip({ onCreated }: { onCreated: (trip: Trip) => void }
       sending.current = true;
       setProblem(null);
       mutation.mutate(body, {
+        // 만든 여행으로 이동은 이 화면이 열려 있을 때만 한다. mutate에 넘긴 콜백은 화면이 닫히면 불리지 않는다
+        // (TanStack MutationObserver: hasListeners일 때만). 예전에는 만드는 중 X로 닫아도 잠시 뒤 새 여행 화면이
+        // 갑자기 열렸다(2026-11-10 점검)
+        onSuccess: (trip) => onCreated(trip),
         onSettled: () => {
           sending.current = false;
         },

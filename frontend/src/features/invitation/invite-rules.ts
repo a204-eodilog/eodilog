@@ -55,7 +55,7 @@ export function inviteHref(token: string, options?: { first?: boolean }): Href {
   };
 }
 
-/** 여행 상세(S17). 아직 화면이 없어 홈으로 보낸다. S17이 생기면 /trips/[tripId]로 바꾼다 */
-export function tripHref(_tripId: string): Href {
-  return '/home';
+/** 여행 상세(S17) 주소 */
+export function tripHref(tripId: string): Href {
+  return { pathname: '/trips/[tripId]', params: { tripId } };
 }

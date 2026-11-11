@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, Header, Icon, TextField } from '@/components/ui';
@@ -67,7 +67,11 @@ export function NewTripScreen() {
   return (
     <View style={styles.screen}>
       <Header close onBack={close} />
-      <View style={styles.flex}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        // 안드로이드도 화면 끝까지 그리는 모드라 키보드만큼 직접 띄운다(채팅 화면과 같다). 그래야 [여행 만들기]가 키보드에 가리지 않는다
+        behavior="padding"
+      >
         <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
           {/* 피그마 S16: 큰 질문 28, 아래 8 안내 15 */}
           <View style={styles.questionBlock}>
@@ -128,7 +132,7 @@ export function NewTripScreen() {
             onPress={submit}
           />
         </View>
-      </View>
+      </KeyboardAvoidingView>
 
       <DateRangeSheet
         visible={rangeOpen}

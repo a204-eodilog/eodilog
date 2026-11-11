@@ -13,7 +13,16 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ConfirmSheet, ErrorState, Header, Icon, toast, type IconName } from '@/components/ui';
+import { isWaitingOffline } from '@/api/query-focus';
+import {
+  ConfirmSheet,
+  ErrorState,
+  Header,
+  Icon,
+  OfflineNotice,
+  toast,
+  type IconName,
+} from '@/components/ui';
 import { useMe } from '@/hooks/use-me';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -35,11 +44,20 @@ const systemShowsCopyNotice = Platform.OS === 'android' && Number(Platform.Versi
 export function TripInviteScreen() {
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
   const insets = useSafeAreaInsets();
-  const { data: trip, isPending, isError, notFound, refetch } = useTrip(tripId);
+  const { data: trip, isPending, isError, notFound, refetch, fetchStatus } = useTrip(tripId);
   const { data: me } = useMe();
   // 링크 취소는 화면에서 뺐다(2026-11-05 사용자 요청). 새로 만들면 전 링크가 무효가 되어 같은 일을 한다
   const { link, isLoading: linkLoading, create } = useInviteLink(tripId);
   const [confirm, setConfirm] = useState(false);
+
+  if (isWaitingOffline({ data: trip, fetchStatus })) {
+    return (
+      <View style={styles.screen}>
+        <Header title="동행 초대" largeTitle />
+        <OfflineNotice onRetry={() => refetch()} />
+      </View>
+    );
+  }
 
   if (isPending || linkLoading) {
     return (

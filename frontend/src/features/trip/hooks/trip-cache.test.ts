@@ -1,7 +1,13 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { QueryClient } from '@tanstack/react-query';
 
-import { dropFromTripLists, exitTrip, forgetTrip, invalidateTripLists } from './trip-cache';
+import {
+  dropFromTripLists,
+  exitTrip,
+  forgetTrip,
+  invalidateAfterJoin,
+  invalidateTripLists,
+} from './trip-cache';
 
 jest.mock('expo-router', () => ({
   router: { canDismiss: () => false, dismissAll: jest.fn(), navigate: jest.fn() },
@@ -39,6 +45,20 @@ describe('invalidateTripLists', () => {
     await invalidateTripLists(queryClient);
     expect(queryClient.getQueryState(['trips', 'mine'])?.isInvalidated).toBe(true);
     expect(queryClient.getQueryState(['me', 'trips'])?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(['trips', 't2'])?.isInvalidated).toBe(false);
+  });
+});
+
+describe('invalidateAfterJoin', () => {
+  it('새 여행에 들어가면 여행 목록·홈의 여행 있음·채팅 탭 대화방 목록을 모두 새로 받게 한다', async () => {
+    queryClient.setQueryData(['me', 'trips', 'home-has-trip'], true);
+    queryClient.setQueryData(['chat', 'rooms'], { pages: [] });
+
+    await invalidateAfterJoin(queryClient);
+
+    expect(queryClient.getQueryState(['trips', 'mine'])?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(['me', 'trips', 'home-has-trip'])?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(['chat', 'rooms'])?.isInvalidated).toBe(true);
     expect(queryClient.getQueryState(['trips', 't2'])?.isInvalidated).toBe(false);
   });
 });

@@ -142,7 +142,7 @@ describe('다시 동기화', () => {
     resyncChat(qc, quiet);
     await new Promise((r) => setTimeout(r, 0));
     close();
-    expect(spy).toHaveBeenCalledWith({ queryKey: CHAT_ROOMS_KEY });
+    expect(spy).toHaveBeenCalledWith({ queryKey: CHAT_ROOMS_KEY }, { cancelRefetch: false });
     expect(mockGet).toHaveBeenCalledTimes(1);
     expect(mockGet.mock.calls[0][0]).toBe('room-1');
     expect(qc.getQueryData<MessageWindow>(chatMessagesKey('trip-closed'))!.stale).toBe(true);

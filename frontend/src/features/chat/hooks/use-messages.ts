@@ -111,7 +111,9 @@ export function useMessages(tripId: string, roomId: string | undefined) {
   return {
     window: query.data,
     isLoading: query.isPending && !!roomId,
-    isError: query.isError,
+    // 받아 둔 메시지가 있으면 다시 받기에 실패해도 오류 화면으로 가리지 않는다(TanStack v5는 실패해도 data를 남긴다).
+    // 앱 복귀 때 다시 받다 실패하면 대화가 통째로 오류 화면이 되고 읽던 자리를 잃었다(2026-11-10 점검)
+    isError: query.isError && query.data === undefined,
     blocked: alreadyBlocked || blocked,
     refetch: query.refetch,
     olderState,

@@ -394,6 +394,31 @@ describe('앱을 다시 켰을 때(보내는 중 메시지를 기기에 저장)'
     expect(windowOf(queryClient).messages.map((m) => m.text)).toContain('꺼지기 전에 쓴 글');
   });
 
+  it('되살릴 때 기다린 시간은 보내기를 누른 때부터 센다', () => {
+    const restored = restoreOutbox({ [ROOM]: [item({ sentAt: 400 })] }, 1_000);
+    expect(restored[ROOM][0]).toMatchObject({ waiting: true, retryingSince: 400 });
+  });
+
+  it('몇 시간 전에 쓴 메시지는 연결이 돌아와도 자동으로 보내지 않고 [다시 보내기]로 둔다', async () => {
+    // 끊긴 채 써 두고 앱을 껐다가 몇 시간 뒤 연결되면 단톡방에 그대로 올라갔다(2026-11-10 점검)
+    const { queryClient } = setup();
+    attachSendEngine(queryClient);
+    rememberRooms([{ id: ROOM, tripId: TRIP }]);
+    const hoursAgo = autoResend.now() - 3 * 60 * 60_000;
+    useChatOutbox
+      .getState()
+      .replace(
+        ROOM,
+        restoreOutbox({ [ROOM]: [item({ sentAt: hoursAgo })] }, autoResend.now())[ROOM],
+      );
+    mockSend.mockImplementation(fakeServer());
+
+    await resendWaitingNow();
+
+    expect(mockSend).not.toHaveBeenCalled();
+    expect(outbox()[0]).toMatchObject({ status: 'failed', failure: 'retry', waiting: false });
+  });
+
   it('방이 어느 여행인지 아직 모르면(대화방 목록을 받는 중) 조금 뒤 다시 시도한다', async () => {
     autoResend.delaysMs = [10];
     const { queryClient } = setup();

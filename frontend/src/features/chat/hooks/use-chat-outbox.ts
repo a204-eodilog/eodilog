@@ -32,14 +32,16 @@ let order = 0;
 /**
  * 저장돼 있던 보내는 중 메시지를 되살린다.
  * 보내는 도중(응답을 기다리다) 앱이 꺼졌으면 서버가 받았는지 모르므로 "연결되면 보내요"로 두어 같은 번호표로 다시 보낸다.
- * 서버가 이미 받았으면 같은 번호표라 저장해 둔 메시지를 돌려준다(멱등)
+ * 서버가 이미 받았으면 같은 번호표라 저장해 둔 메시지를 돌려준다(멱등).
+ * 기다린 시간은 보내기를 누른 때(sentAt)부터 센다. 지금(now)부터 세면 몇 시간 전 메시지도 방금 실패한 것처럼
+ * 자동으로 보내졌다(2026-11-10 점검). 정해진 시간이 지났으면 다시 연결될 때 [다시 보내기]로 넘어간다
  */
 export function restoreOutbox(items: Record<string, OutboxItem[]>, now: number) {
   const restored: Record<string, OutboxItem[]> = {};
   for (const [roomId, list] of Object.entries(items)) {
     restored[roomId] = list.map((i) =>
       i.status === 'sending' && !i.waiting
-        ? { ...i, waiting: true, retryingSince: i.retryingSince ?? now }
+        ? { ...i, waiting: true, retryingSince: i.retryingSince ?? i.sentAt ?? now }
         : i,
     );
     for (const i of list) order = Math.max(order, i.queuedAt);
@@ -78,6 +80,7 @@ export const useChatOutbox = create<OutboxState>()(
           status: 'sending',
           failure: null,
           queuedAt: order,
+          sentAt: Date.now(),
         };
         set((s) => ({ items: update(s.items, roomId, (list) => [...list, item]) }));
         return item;
@@ -95,7 +98,14 @@ export const useChatOutbox = create<OutboxState>()(
           items: update(s.items, roomId, (list) =>
             list.map((i) =>
               i.clientMessageId === id
-                ? { ...i, status: 'sending', failure: null, waiting: false, retryingSince: null }
+                ? {
+                    ...i,
+                    status: 'sending',
+                    failure: null,
+                    waiting: false,
+                    retryingSince: null,
+                    sentAt: Date.now(),
+                  }
                 : i,
             ),
           ),
