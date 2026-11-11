@@ -72,12 +72,11 @@ export function ClosesAtPicker({ value, onChange, now }: Props) {
             accessibilityRole="button"
             accessibilityLabel="마감 시각 바꾸기"
             onPress={open}
-            // 글자 줄 20에 위아래 12씩 넓혀 누르는 자리 44
-            hitSlop={spacing[12]}
+            // 아이콘 18에 사방 13씩 넓혀 누르는 자리 44
+            hitSlop={13}
             style={styles.linkRow}
           >
-            <Icon name="pencil" size={14} color={colors.brand.primary} />
-            <Text style={styles.link}>바꾸기</Text>
+            <Icon name="pencil" size={18} color={colors.brand.primary} />
           </Pressable>
           {error ? <Text style={styles.error}>{error}</Text> : null}
         </View>
@@ -125,6 +124,5 @@ const styles = StyleSheet.create({
     gap: spacing[4],
     paddingTop: spacing[2],
   },
-  link: { ...typography.captionMedium, color: colors.brand.primary },
   error: { ...typography.caption, color: colors.status.danger },
 });

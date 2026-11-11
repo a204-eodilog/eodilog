@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { BottomSheet, Button, Icon, TextField } from '@/components/ui';
-import { colors, layout, spacing, typography } from '@/theme';
+import { colors, layout, spacing } from '@/theme';
 
 import { LABEL_MAX, validateLabel } from '../checklist-rules';
 import type { ChecklistItem } from '../types';
@@ -78,14 +78,14 @@ export function EditItemSheet({ item, onClose, onSave, onDelete }: Props) {
           <Pressable
             style={styles.delete}
             accessibilityRole="button"
+            accessibilityLabel="지우기"
             onPress={() => {
               if (!item) return;
               onDelete(item);
               onClose();
             }}
           >
-            <Icon name="trash" size={18} color={colors.status.danger} />
-            <Text style={[typography.bodyBold, styles.deleteText]}>지우기</Text>
+            <Icon name="trash" size={22} color={colors.status.danger} />
           </Pressable>
         </View>
       </View>
@@ -103,5 +103,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing[6],
   },
-  deleteText: { color: colors.status.danger },
 });

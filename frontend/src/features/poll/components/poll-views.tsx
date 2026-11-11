@@ -123,11 +123,11 @@ export function PollOpenView({
           {onAddCandidate && !failLines && poll.candidates.length < MAX_CANDIDATES ? (
             <Pressable
               accessibilityRole="button"
+              accessibilityLabel="후보 추가"
               onPress={onAddCandidate}
               style={({ pressed }) => [styles.add, pressed && styles.pressed]}
             >
-              <Icon name="plus" size={18} color={colors.brand.primary} />
-              <Text style={styles.addText}>후보 추가</Text>
+              <Icon name="plus" size={22} color={colors.brand.primary} />
             </Pressable>
           ) : null}
         </View>
@@ -188,7 +188,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing[6],
   },
-  addText: { ...typography.subBold, color: colors.brand.primary },
   pressed: { opacity: 0.6 },
   // 피그마 201-29384: 어두운 안내, 둥글기 12, 화면 좌우 20, 아래 쪽에 뜬다
   failBar: {
@@ -439,11 +438,11 @@ export function PollNotFoundView({ onBack }: { onBack: () => void }) {
       </Text>
       <Pressable
         accessibilityRole="button"
+        accessibilityLabel="돌아가기"
         onPress={onBack}
         style={({ pressed }) => [styles.decide, pressed && styles.pressed]}
       >
-        <Icon name="back" size={18} color={colors.text.icon} />
-        <Text style={styles.decideText}>돌아가기</Text>
+        <Icon name="back" size={22} color={colors.text.icon} />
       </Pressable>
     </View>
   );

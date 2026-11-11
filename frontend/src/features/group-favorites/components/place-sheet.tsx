@@ -89,8 +89,7 @@ export function PlaceSheet({ item, members, myMemberId, onClose, ...props }: Pro
                 accessibilityRole="button"
                 accessibilityLabel="내 저장 빼기"
               >
-                <Icon name="trash" size={18} color={colors.status.danger} />
-                <Text style={[typography.bodyBold, styles.removeText]}>빼기</Text>
+                <Icon name="trash" size={22} color={colors.status.danger} />
               </Pressable>
             </>
           ) : (
@@ -122,5 +121,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing[6],
   },
-  removeText: { color: colors.status.danger },
 });

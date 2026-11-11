@@ -46,10 +46,9 @@ export function MyVoteBar({ myName, summary, highlight = false, onCancel, onChan
         accessibilityRole="button"
         accessibilityLabel="투표 바꾸기"
         onPress={onChange}
-        style={({ pressed }) => [styles.changeButton, pressed && styles.pressed]}
+        style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
       >
-        <Icon name="refresh" size={16} color={colors.text.default} />
-        <Text style={styles.change}>바꾸기</Text>
+        <Icon name="refresh" size={20} color={colors.text.default} />
       </Pressable>
     </View>
   );

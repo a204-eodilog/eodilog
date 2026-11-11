@@ -59,9 +59,11 @@ export function FindFriendsView(props: FindFriendsViewProps) {
         <Pressable
           onPress={submit}
           style={({ pressed }) => [styles.searchButton, pressed && styles.pressed]}
+          hitSlop={4}
           accessibilityRole="button"
+          accessibilityLabel="찾기"
         >
-          <Text style={styles.searchButtonText}>찾기</Text>
+          <Icon name="search" size={18} color={colors.text.default} />
         </Pressable>
       </View>
 
@@ -215,7 +217,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface.white,
     justifyContent: 'center',
   },
-  searchButtonText: { ...typography.captionBold, color: colors.text.default },
   list: {
     paddingHorizontal: layout.screenPaddingX,
     paddingTop: spacing[24],

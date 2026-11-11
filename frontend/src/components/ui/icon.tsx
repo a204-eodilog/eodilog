@@ -55,6 +55,7 @@ export type IconName =
   | 'car'
   | 'bus'
   | 'eye'
+  | 'clipboard'
   | 'list'
   | 'send'
   | 'eye-off'
@@ -80,6 +81,9 @@ type IconProps = {
 };
 
 const PATHS: Record<IconName, string> = {
+  // 집게판. 붙여넣기(S11). 복사 아이콘은 복사로 읽혀 따로 둔다
+  clipboard:
+    'M9 5H7A1 1 0 0 0 6 6V20A1 1 0 0 0 7 21H17A1 1 0 0 0 18 20V6A1 1 0 0 0 17 5H15M9 3.5H15V6.5H9V3.5Z',
   back: 'M15 5L8 12L15 19',
   close: 'M6 6L18 18M18 6L6 18',
   plus: 'M12 5V19M5 12H19',

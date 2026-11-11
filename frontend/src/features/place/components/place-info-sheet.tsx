@@ -39,8 +39,14 @@ export function PlaceInfoSheetView(props: PlaceInfoSheetViewProps) {
       ) : props.state === 'error' || !info ? (
         <View style={styles.error}>
           <Text style={styles.sub}>장소 정보를 불러오지 못했어요</Text>
-          <Pressable onPress={props.onRetry} style={styles.retry} accessibilityRole="button">
-            <Text style={styles.retryText}>다시 시도</Text>
+          <Pressable
+            onPress={props.onRetry}
+            style={styles.retry}
+            hitSlop={4}
+            accessibilityRole="button"
+            accessibilityLabel="다시 시도"
+          >
+            <Icon name="refresh" size={18} color={colors.text.default} />
           </Pressable>
         </View>
       ) : (
@@ -164,7 +170,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
     backgroundColor: colors.surface.default,
   },
-  retryText: { ...typography.captionBold, color: colors.text.default },
   body: { gap: spacing[14] },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing[6], marginTop: -spacing[8] },
   sub: { ...typography.caption, color: colors.text.sub },

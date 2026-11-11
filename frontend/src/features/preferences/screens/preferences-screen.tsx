@@ -280,10 +280,11 @@ function PreferencesForm({
                 </View>
                 <Pressable
                   accessibilityRole="button"
+                  accessibilityLabel="추가"
                   onPress={() => add(draft) && setDraft('')}
                   style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}
                 >
-                  <Text style={[typography.bodyMedium, styles.addText]}>추가</Text>
+                  <Icon name="plus" size={20} color={colors.text.inverse} />
                 </Pressable>
               </View>
 
@@ -421,7 +422,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.text.default,
     justifyContent: 'center',
   },
-  addText: { color: colors.text.inverse },
   section: { gap: spacing[12] },
   sectionWide: { gap: spacing[18] },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[10] },

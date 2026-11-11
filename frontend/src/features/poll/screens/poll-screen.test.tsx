@@ -332,7 +332,7 @@ describe('후보 추가', () => {
       ],
     });
     await renderScreen();
-    await fireEvent.press(await screen.findByText('후보 추가'));
+    await fireEvent.press(await screen.findByLabelText('후보 추가'));
     expect(await screen.findByText('후보에 넣기')).toBeTruthy();
     expect(screen.queryByLabelText('부산')).toBeNull();
     await fireEvent.press(await screen.findByLabelText('여수시'));

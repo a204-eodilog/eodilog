@@ -141,8 +141,14 @@ export function FacilitiesView(props: FacilitiesViewProps) {
             <Icon name="alert" size={22} color={colors.text.icon} />
             <Text style={styles.noteTitle}>편의시설을 불러오지 못했어요</Text>
             <Text style={styles.noteDesc}>다시 시도해 주세요</Text>
-            <Pressable onPress={props.onRetry} style={styles.retry} accessibilityRole="button">
-              <Text style={styles.retryText}>다시 시도</Text>
+            <Pressable
+              onPress={props.onRetry}
+              style={styles.retry}
+              hitSlop={4}
+              accessibilityRole="button"
+              accessibilityLabel="다시 시도"
+            >
+              <Icon name="refresh" size={18} color={colors.text.default} />
             </Pressable>
           </View>
         ) : props.rows.length === 0 ? (

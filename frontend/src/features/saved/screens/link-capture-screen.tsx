@@ -209,9 +209,10 @@ export function LinkCaptureScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="복사한 링크 붙여넣기"
                 onPress={() => void paste(copied)}
+                hitSlop={4}
                 style={({ pressed }) => [styles.copiedPaste, pressed && styles.pressed]}
               >
-                <Text style={[typography.bodyMedium, styles.dark]}>붙여넣기</Text>
+                <Icon name="clipboard" size={20} color={colors.brand.primaryDark} />
               </Pressable>
             </View>
           ) : null}
@@ -252,8 +253,8 @@ export function LinkCaptureScreen() {
                     onPress={() => void paste()}
                     style={({ pressed }) => [styles.pasteButton, pressed && styles.pressed]}
                   >
-                    {/* 복사 아이콘은 "복사"로 읽혀 글자로 쓴다 */}
-                    <Text style={[typography.captionMedium, styles.dark]}>붙여넣기</Text>
+                    {/* 복사 아이콘은 "복사"로 읽혀 집게판 아이콘을 따로 쓴다 */}
+                    <Icon name="clipboard" size={18} color={colors.brand.primaryDark} />
                   </Pressable>
                 )}
               </View>
