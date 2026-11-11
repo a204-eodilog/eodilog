@@ -315,6 +315,8 @@ export function RecommendScreen() {
         onClose={() => setVotePick(null)}
         tripId={tripId}
         initialType="REGION"
+        // 추천 결과가 보이면 [투표 후보로]도 보인다
+        prefetch={state === 'success' || state === 'noOverlap'}
         initialSelected={votePick ? [votePick.id] : []}
         extraRegions={votePick ? [votePick] : []}
         onOpened={(poll) => router.push(`/trips/${tripId}/polls/${poll.id}`)}

@@ -6,8 +6,6 @@ import { isReduceMotion } from '@/hooks/use-reduce-motion';
 import { colors } from '@/theme';
 import { motion } from '@/theme/motion';
 
-const AnimatedPath = Animated.createAnimatedComponent(Path);
-
 /** 공통 아이콘의 check와 같은 선(24 칸 기준) */
 const CHECK_PATH = 'M5 12.5L9.5 17L19 7';
 /** 그 선의 길이보다 조금 긴 값. 선을 이만큼 밀어 두었다가 0으로 당기며 그린다 */
@@ -33,9 +31,13 @@ export function CheckMark({
 }: CheckMarkProps) {
   const skip = still || isReduceMotion();
   const offset = useState(() => new Animated.Value(skip ? 0 : CHECK_LENGTH))[0];
+  // 선을 얼마나 감췄는지. 움직이는 값을 선에 바로 물리면(Animated 부품) 웹에서 선에 모르는 속성이 붙어
+  // 개발 화면에 경고 띠가 뜬다. 그래서 값이 바뀔 때마다 숫자로 받아 넘긴다. 220ms라 열몇 번 그린다
+  const [dash, setDash] = useState(skip ? 0 : CHECK_LENGTH);
 
   useEffect(() => {
     if (skip) return;
+    const listening = offset.addListener(({ value }) => setDash(value));
     const drawing = Animated.timing(offset, {
       toValue: 0,
       duration: motion.check.duration,
@@ -44,19 +46,22 @@ export function CheckMark({
       useNativeDriver: false,
     });
     drawing.start();
-    return () => drawing.stop();
+    return () => {
+      drawing.stop();
+      offset.removeListener(listening);
+    };
   }, [offset, skip]);
 
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <AnimatedPath
+      <Path
         d={CHECK_PATH}
         stroke={color}
         strokeWidth={1.8}
         strokeLinecap="round"
         strokeLinejoin="round"
         strokeDasharray={CHECK_LENGTH}
-        strokeDashoffset={offset}
+        strokeDashoffset={skip ? 0 : dash}
       />
     </Svg>
   );

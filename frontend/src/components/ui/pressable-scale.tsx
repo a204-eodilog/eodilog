@@ -1,15 +1,12 @@
 import {
-  Animated,
-  Pressable,
   type GestureResponderEvent,
   type PressableProps,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
 
+import { AnimatedPressable } from './animated-pressable';
 import { usePressScale } from './use-press-scale';
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export type PressableScaleProps = Omit<PressableProps, 'style'> & {
   /** 눌림에 따라 바뀌는 모양은 받지 않는다. 눌림은 크기로 보인다 */

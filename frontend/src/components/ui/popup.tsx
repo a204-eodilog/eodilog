@@ -14,6 +14,8 @@ import { isReduceMotion } from '@/hooks/use-reduce-motion';
 import { colors } from '@/theme';
 import { motion } from '@/theme/motion';
 
+import { Stagger } from './stagger';
+
 export type PopupProps = {
   visible: boolean;
   /** 안드로이드 뒤로 가기를 눌렀을 때. 골라야만 닫히는 창이면 아무 일도 하지 않는 함수를 넘긴다 */
@@ -91,7 +93,8 @@ export function Popup({
           accessibilityRole={accessibilityRole}
           accessibilityViewIsModal={accessibilityViewIsModal}
         >
-          {children}
+          {/* 카드가 커지는 동안 안의 줄(제목, 설명, 버튼)이 한 줄씩 나타난다 */}
+          <Stagger active={visible}>{children}</Stagger>
         </Animated.View>
       </View>
     </Modal>

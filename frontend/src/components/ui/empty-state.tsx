@@ -5,6 +5,7 @@ import { colors, layout, spacing, typography } from '@/theme';
 
 import { Button } from './button';
 import { Icon, type IconName } from './icon';
+import { Stagger } from './stagger';
 
 export type EmptyStateProps = {
   /** "아직 여행이 없어요" */
@@ -31,23 +32,26 @@ export function EmptyState({
 }: EmptyStateProps) {
   return (
     <View style={styles.wrap}>
-      {illustration ?? (
-        <View style={styles.iconCircle}>
-          <Icon name={icon} size={32} color={colors.text.icon} />
-        </View>
-      )}
-      <Text style={[typography.title1, styles.title]}>{title}</Text>
-      {description ? (
-        <Text style={[typography.body, styles.description]}>{description}</Text>
-      ) : null}
-      {actionLabel ? (
-        <Button
-          label={actionLabel}
-          onPress={onAction}
-          leading={<Icon name="plus" size={20} color={colors.text.inverse} />}
-          style={styles.action}
-        />
-      ) : null}
+      {/* 그림 → 제목 → 설명 → 버튼이 한 줄씩 나타난다 */}
+      <Stagger itemStyle={styles.line}>
+        {illustration ?? (
+          <View style={styles.iconCircle}>
+            <Icon name={icon} size={32} color={colors.text.icon} />
+          </View>
+        )}
+        <Text style={[typography.title1, styles.title]}>{title}</Text>
+        {description ? (
+          <Text style={[typography.body, styles.description]}>{description}</Text>
+        ) : null}
+        {actionLabel ? (
+          <Button
+            label={actionLabel}
+            onPress={onAction}
+            leading={<Icon name="plus" size={20} color={colors.text.inverse} />}
+            style={styles.action}
+          />
+        ) : null}
+      </Stagger>
     </View>
   );
 }
@@ -73,16 +77,18 @@ export function ErrorState({
 }: ErrorStateProps) {
   return (
     <View style={styles.wrap}>
-      <View style={styles.errorIcon}>
-        <Icon name={icon} size={32} color={colors.status.danger} />
-      </View>
-      <Text style={[typography.title3, styles.title]}>{title}</Text>
-      {description ? (
-        <Text style={[typography.body, styles.description]}>{description}</Text>
-      ) : null}
-      {onRetry ? (
-        <Button label={retryLabel} variant="secondary" onPress={onRetry} style={styles.action} />
-      ) : null}
+      <Stagger itemStyle={styles.line}>
+        <View style={styles.errorIcon}>
+          <Icon name={icon} size={32} color={colors.status.danger} />
+        </View>
+        <Text style={[typography.title3, styles.title]}>{title}</Text>
+        {description ? (
+          <Text style={[typography.body, styles.description]}>{description}</Text>
+        ) : null}
+        {onRetry ? (
+          <Button label={retryLabel} variant="secondary" onPress={onRetry} style={styles.action} />
+        ) : null}
+      </Stagger>
     </View>
   );
 }
@@ -95,6 +101,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: layout.screenPaddingX,
     gap: spacing[8],
   },
+  // 순서대로 나오게 하려고 줄마다 한 겹 감싼다. 감싼 칸도 가운데로 모은다
+  line: { alignItems: 'center' },
   title: { color: colors.text.default, textAlign: 'center', marginTop: spacing[16] },
   description: { color: colors.text.icon, textAlign: 'center' },
   // Button은 기본이 왼쪽 붙음(alignSelf flex-start)이라 가운데로 다시 맞춘다

@@ -10,6 +10,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, radius, spacing, typography } from '@/theme';
 
+import { Stagger } from './stagger';
+
 export type BottomSheetProps = {
   visible: boolean;
   onClose: () => void;
@@ -114,15 +116,18 @@ export function BottomSheet({
           { paddingBottom: Math.max(insets.bottom + spacing[20], spacing[24]) },
         ]}
       >
-        {title ? <Text style={[typography[titleVariant], styles.title]}>{title}</Text> : null}
-        {description ? (
-          <Text style={[typography[descriptionVariant], styles.description]}>{description}</Text>
-        ) : null}
-        {children ? (
-          // 제목이 없는 시트(기간 시트처럼 내용 안에 제목 줄이 있는 시트)는 손잡이 아래 16에서 바로 시작한다
-          <View style={title || description ? styles.body : undefined}>{children}</View>
-        ) : null}
-        {footer ? <View style={styles.footer}>{footer}</View> : null}
+        {/* 시트가 올라오는 동안 제목 → 설명 → 내용 → 버튼 줄이 한 줄씩 나타난다. 열릴 때마다 다시 한다 */}
+        <Stagger active={visible}>
+          {title ? <Text style={[typography[titleVariant], styles.title]}>{title}</Text> : null}
+          {description ? (
+            <Text style={[typography[descriptionVariant], styles.description]}>{description}</Text>
+          ) : null}
+          {children ? (
+            // 제목이 없는 시트(기간 시트처럼 내용 안에 제목 줄이 있는 시트)는 손잡이 아래 16에서 바로 시작한다
+            <View style={title || description ? styles.body : undefined}>{children}</View>
+          ) : null}
+          {footer ? <View style={styles.footer}>{footer}</View> : null}
+        </Stagger>
       </BottomSheetView>
     </BottomSheetModal>
   );

@@ -38,6 +38,8 @@ export { Popup } from './popup';
 export type { PopupProps } from './popup';
 export { RoundCheck } from './round-check';
 export type { RoundCheckProps } from './round-check';
+export { Stagger } from './stagger';
+export type { StaggerProps } from './stagger';
 export { TABS, TabBar } from './tab-bar';
 export type { TabBarProps, TabKey } from './tab-bar';
 export { Tag } from './tag';
