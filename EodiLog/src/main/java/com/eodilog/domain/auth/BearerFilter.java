@@ -33,7 +33,8 @@ public class BearerFilter extends OncePerRequestFilter {
                 var claims=tokens.verify(header.substring(7)); var profile=auth.authenticate(claims);
                 request.setAttribute(SESSION_CLAIMS_ATTRIBUTE,claims);
                 SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(new AuthUser(claims.userId()),null,List.of()));
-                boolean me=request.getRequestURI().equals(request.getContextPath()+"/api/v1/me") && (request.getMethod().equals("GET") || request.getMethod().equals("PATCH"));
+                // 가입 대기 중에도 본인 조회·가입 완료·탈퇴(EODI-310)는 할 수 있다
+                boolean me=request.getRequestURI().equals(request.getContextPath()+"/api/v1/me") && (request.getMethod().equals("GET") || request.getMethod().equals("PATCH") || request.getMethod().equals("DELETE"));
                 boolean logout=request.getMethod().equals("DELETE") && request.getRequestURI().equals(request.getContextPath()+"/api/v1/auth/session");
                 if(!profile.profileCompleted() && !me && !logout) throw new BusinessException(AuthErrorCode.PROFILE_INCOMPLETE);
             } catch(BusinessException e) { SecurityContextHolder.clearContext(); errors.write(response,e.getErrorCode()); return; }
