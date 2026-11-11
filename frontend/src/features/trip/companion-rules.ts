@@ -156,3 +156,70 @@ export function buildTripUpdate(base: Trip, draft: TripDraftValues): UpdateTripB
 
   return changed ? body : null;
 }
+
+/** S19에서 고치는 칸 */
+export type TripEditField = 'title' | 'range' | 'regions';
+
+/** 안내에 쓰는 칸 이름 */
+export const TRIP_EDIT_FIELD_LABEL: Record<TripEditField, string> = {
+  title: '이름',
+  range: '기간',
+  regions: '여행지',
+};
+
+export type ConflictMerge = {
+  /** 다시 채울 입력값 */
+  values: TripDraftValues;
+  /** 칸마다 내 입력을 남겼는지(true) 최신 여행 값을 썼는지(false) */
+  keptMine: Record<TripEditField, boolean>;
+  /** 나와 다른 동행이 같은 칸을 서로 다르게 고쳐 최신 값으로 바꾼 칸 */
+  overlapped: TripEditField[];
+  /** 최신 여행과 비교해 아직 저장할 내 변경이 남았는가 */
+  leftToSave: boolean;
+};
+
+function fieldValues(trip: Trip): TripDraftValues {
+  return {
+    title: trip.title,
+    range: trip.startDate && trip.endDate ? { start: trip.startDate, end: trip.endDate } : null,
+    regionIds: trip.destinationRegionIds,
+  };
+}
+
+function sameField(field: TripEditField, a: TripDraftValues, b: TripDraftValues): boolean {
+  if (field === 'title') return a.title.trim() === b.title.trim();
+  if (field === 'range') return a.range?.start === b.range?.start && a.range?.end === b.range?.end;
+  return (
+    a.regionIds.length === b.regionIds.length && a.regionIds.every((id, i) => id === b.regionIds[i])
+  );
+}
+
+/**
+ * 저장이 409(다른 동행이 먼저 고침)를 받은 뒤 입력값을 칸마다 다시 정한다.
+ * base는 수정을 시작한 때의 여행, mine은 내 입력, latest는 다시 받은 최신 여행이다.
+ * - 내가 안 고친 칸은 최신 값을 쓴다
+ * - 다른 동행이 안 고친 칸은 내 입력을 남긴다(다시 입력하지 않게)
+ * - 둘 다 고쳤는데 값이 같으면 최신 값과 같으므로 그대로다
+ * - 둘 다 서로 다르게 고쳤으면 최신 값을 보여 주고 겹친 칸으로 알린다. 내 값으로 덮으면 그 변경이 사라지므로
+ *   사용자가 보고 다시 고르게 한다
+ * 자동으로 다시 보내지 않는다(research R4). leftToSave면 사용자가 [완료]를 다시 누른다
+ */
+export function mergeAfterConflict(base: Trip, mine: TripDraftValues, latest: Trip): ConflictMerge {
+  const before = fieldValues(base);
+  const theirs = fieldValues(latest);
+  const keptMine: Record<TripEditField, boolean> = { title: false, range: false, regions: false };
+  const overlapped: TripEditField[] = [];
+
+  for (const field of ['title', 'range', 'regions'] as const) {
+    if (sameField(field, mine, before)) continue;
+    if (sameField(field, theirs, before)) keptMine[field] = true;
+    else if (!sameField(field, mine, theirs)) overlapped.push(field);
+  }
+
+  const values: TripDraftValues = {
+    title: keptMine.title ? mine.title : theirs.title,
+    range: keptMine.range ? mine.range : theirs.range,
+    regionIds: keptMine.regions ? mine.regionIds : theirs.regionIds,
+  };
+  return { values, keptMine, overlapped, leftToSave: buildTripUpdate(latest, values) !== null };
+}

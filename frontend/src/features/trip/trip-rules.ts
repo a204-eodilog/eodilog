@@ -82,6 +82,8 @@ export function groupTrips(trips: Trip[], today: string): TripSections {
 
 export type TripListState =
   | { kind: 'loading' }
+  /** 다 받은 묶음 없이 연결이 끊겨 받기가 멈췄다. 연결되면 자동으로 이어 받는다 */
+  | { kind: 'offline' }
   | { kind: 'error' }
   /** stale: 새로 받지 못해 이전 묶음을 보이는 중. 화면에 "연결이 불안정해요" 줄을 띄운다 */
   | { kind: 'ready'; sections: TripSections; stale: boolean };
@@ -95,14 +97,18 @@ export function tripListState(input: {
   complete: boolean;
   /** 마지막 요청이 실패했는가 */
   failed: boolean;
+  /** 연결이 끊겨 받기가 멈췄는가(fetchStatus 'paused'). 오류로 끝나지 않아 그대로면 로딩만 돈다 */
+  paused?: boolean;
   lastSections: TripSections | null;
   today: string;
   trips: Trip[];
 }): TripListState {
-  const { complete, failed, lastSections, today, trips } = input;
-  if (complete) return { kind: 'ready', sections: groupTrips(trips, today), stale: failed };
-  if (lastSections) return { kind: 'ready', sections: lastSections, stale: failed };
-  return failed ? { kind: 'error' } : { kind: 'loading' };
+  const { complete, failed, paused = false, lastSections, today, trips } = input;
+  const stale = failed || paused;
+  if (complete) return { kind: 'ready', sections: groupTrips(trips, today), stale };
+  if (lastSections) return { kind: 'ready', sections: lastSections, stale };
+  if (failed) return { kind: 'error' };
+  return paused ? { kind: 'offline' } : { kind: 'loading' };
 }
 
 /** 여행 카드의 '지금 할 일' 한 줄 */

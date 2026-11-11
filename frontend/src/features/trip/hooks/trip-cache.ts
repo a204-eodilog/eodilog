@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 
 import type { PageResponse } from '@/api/types';
 import { forgetChatForTrip } from '@/features/chat/hooks/chat-forget';
+import { CHAT_ROOMS_KEY } from '@/features/chat/hooks/chat-keys';
 
 import { getTrip } from '../api';
 import { forgetInviteLink } from '../invite-storage';
@@ -19,6 +20,19 @@ export function invalidateTripLists(queryClient: QueryClient) {
   return Promise.all([
     queryClient.invalidateQueries({ queryKey: MY_TRIPS_KEY }),
     queryClient.invalidateQueries({ queryKey: N4_MY_TRIPS_KEY }),
+  ]);
+}
+
+/**
+ * 새 여행에 들어간 뒤(만들기·초대 수락) 부른다. 여행 목록과 함께 채팅 탭 대화방 목록도 새로 받게 한다.
+ * 서버는 여행을 만들거나 초대를 수락할 때 대화방에도 함께 넣는데, 채팅 탭은 앱을 켤 때부터 떠 있어
+ * 탭을 옮겨도 다시 받지 않는다. 그래서 그대로 두면 새 대화방이 당겨서 새로고침하기 전까지 보이지 않는다.
+ * 다시 받은 목록에 나타난 방은 예전에 내보내져 생긴 차단 표시도 풀린다(use-chat-rooms)
+ */
+export function invalidateAfterJoin(queryClient: QueryClient) {
+  return Promise.all([
+    invalidateTripLists(queryClient),
+    queryClient.invalidateQueries({ queryKey: CHAT_ROOMS_KEY }),
   ]);
 }
 

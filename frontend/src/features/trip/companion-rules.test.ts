@@ -7,6 +7,7 @@ import {
   isAlone,
   memberActionFailure,
   memberLabel,
+  mergeAfterConflict,
   myMember,
   nextOwner,
   pickableMembers,
@@ -219,5 +220,79 @@ describe('수정 본문', () => {
       expectedVersion: 5,
       destinationRegionIds: ['r-gangneung', 'r-busan'],
     });
+  });
+});
+
+describe('충돌 뒤 입력값 다시 정하기', () => {
+  const base: Trip = {
+    ...trip([A], 'm-a'),
+    title: '겨울 여행',
+    startDate: '2026-11-14',
+    endDate: '2026-11-15',
+    destinationRegionIds: ['r-busan'],
+    version: 5,
+  };
+  const untouched = {
+    title: '겨울 여행',
+    range: { start: '2026-11-14', end: '2026-11-15' },
+    regionIds: ['r-busan'],
+  };
+
+  it('다른 동행이 기간만 바꿨으면 내가 고친 이름은 남기고 기간은 최신 값을 쓴다', () => {
+    const latest = { ...base, startDate: '2026-11-20', endDate: '2026-11-22', version: 6 };
+    const merged = mergeAfterConflict(base, { ...untouched, title: '부산 바다' }, latest);
+
+    expect(merged.values).toEqual({
+      title: '부산 바다',
+      range: { start: '2026-11-20', end: '2026-11-22' },
+      regionIds: ['r-busan'],
+    });
+    expect(merged.keptMine).toEqual({ title: true, range: false, regions: false });
+    expect(merged.overlapped).toEqual([]);
+    expect(merged.leftToSave).toBe(true);
+  });
+
+  it('같은 칸을 서로 다르게 고쳤으면 최신 값을 보이고 겹친 칸으로 알린다', () => {
+    const latest = { ...base, title: '친구가 바꾼 이름', version: 6 };
+    const merged = mergeAfterConflict(
+      base,
+      { ...untouched, title: '내가 바꾼 이름', regionIds: [] },
+      latest,
+    );
+
+    expect(merged.values.title).toBe('친구가 바꾼 이름');
+    expect(merged.values.regionIds).toEqual([]);
+    expect(merged.overlapped).toEqual(['title']);
+    // 여행지는 내 변경이 남아 있다
+    expect(merged.leftToSave).toBe(true);
+  });
+
+  it('최신 여행이 이미 내 입력과 같으면 저장할 것이 남지 않는다(응답만 놓친 내 저장 포함)', () => {
+    const latest = { ...base, title: '부산 바다', version: 6 };
+    const merged = mergeAfterConflict(base, { ...untouched, title: '  부산 바다 ' }, latest);
+
+    expect(merged.overlapped).toEqual([]);
+    expect(merged.leftToSave).toBe(false);
+  });
+
+  it('내가 아무것도 안 고쳤으면 모두 최신 값이다', () => {
+    const latest = { ...base, title: '새 이름', destinationRegionIds: [], version: 6 };
+    const merged = mergeAfterConflict(base, untouched, latest);
+
+    expect(merged.values).toEqual({
+      title: '새 이름',
+      range: { start: '2026-11-14', end: '2026-11-15' },
+      regionIds: [],
+    });
+    expect(merged.leftToSave).toBe(false);
+  });
+
+  it('기간을 비운 것도 내 변경으로 남긴다', () => {
+    const latest = { ...base, title: '새 이름', version: 6 };
+    const merged = mergeAfterConflict(base, { ...untouched, range: null }, latest);
+
+    expect(merged.values.range).toBeNull();
+    expect(merged.values.title).toBe('새 이름');
+    expect(merged.leftToSave).toBe(true);
   });
 });

@@ -1,15 +1,17 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { router, useLocalSearchParams, useNavigation } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { isWaitingOffline } from '@/api/query-focus';
 import {
   Avatar,
   ConfirmSheet,
   ErrorState,
   Header,
   Icon,
+  OfflineNotice,
   TextField,
   toast,
   type IconName,
@@ -36,7 +38,7 @@ import { leaveTripFailure, useLeaveTrip } from '../hooks/use-leave-trip';
 import { useDeleteTrip, useRemoveMember, useTransferOwner } from '../hooks/use-member-actions';
 import { useRegions } from '../hooks/use-region-names';
 import { useTrip } from '../hooks/use-trip';
-import { useTripEditDraft } from '../hooks/use-trip-edit-draft';
+import { useSyncEditDraft, useTripEditDraft } from '../hooks/use-trip-edit-draft';
 import { useUpdateTrip } from '../hooks/use-update-trip';
 import { shortRegionName } from '../trip-rules';
 import type { TripMember } from '../types';
@@ -50,13 +52,17 @@ const TITLE_MAX = 200;
 export function TripSettingsScreen() {
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
   const insets = useSafeAreaInsets();
-  const { data: trip, isPending, isError, notFound, refetch } = useTrip(tripId);
+  const { data: trip, isPending, isError, notFound, refetch, fetchStatus } = useTrip(tripId);
   const { data: me } = useMe();
-  const { regions: tripRegions, ready: regionsReady } = useRegions(
-    trip?.destinationRegionIds ?? [],
-  );
+  const {
+    regions: tripRegions,
+    ready: regionsReady,
+    waitingOffline: regionsOffline,
+    failed: regionsFailed,
+    retry: retryRegions,
+  } = useRegions(trip?.destinationRegionIds ?? []);
   const draft = useTripEditDraft();
-  const { fill, reset } = draft;
+  const { reset } = draft;
   const update = useUpdateTrip(tripId);
   const transfer = useTransferOwner(tripId);
   const kick = useRemoveMember(tripId);
@@ -70,19 +76,43 @@ export function TripSettingsScreen() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [leaveOpen, setLeaveOpen] = useState(false);
   const leave = useLeaveTrip();
+  const navigation = useNavigation();
+  /** [완료] 저장 중. 두 번째 누름을 막는다 */
+  const saving = useRef(false);
 
-  // 처음 열 때 한 번만 채운다. 수정 중 여행을 새로 받아도 다시 채우지 않아야 고치던 값과
-  // 비교 기준(base)이 바뀌지 않는다(research R6). 409 뒤에는 useUpdateTrip이 다시 채운다
-  const filledFor = draft.base?.id;
+  // 처음 열 때 한 번만 채운다. 수정 중 여행을 새로 받아도 다시 채우지 않아야 고치던 값이 남는다(research R6).
+  // 다만 버전만 오른 여행(동행이 들어오거나 나감)을 받으면 기준만 옮긴다. 409 뒤에는 useUpdateTrip이 다시 채운다
+  useSyncEditDraft(tripId, trip, tripRegions, regionsReady);
+
+  // 상세에서 받아 둔 여행이 30초 안이면 다시 받지 않는다. 그사이 동행이 들어와 버전이 올랐으면 [완료]가 409를 받으므로
+  // 설정을 열 때 한 번 새로 받는다. 받은 여행은 위에서 기준만 옮긴다
   useEffect(() => {
-    if (!trip || !regionsReady || filledFor === tripId) return;
-    fill(trip, tripRegions);
-  }, [trip, regionsReady, tripRegions, filledFor, tripId, fill]);
+    void refetch();
+  }, [refetch]);
 
   // 화면이 닫히면(뒤로 가기 포함) 고친 값을 버린다. 여행지 검색은 이 화면 위에 쌓여 값이 남는다
   useEffect(() => reset, [reset]);
 
   if (isPending || (trip && draft.base?.id !== tripId)) {
+    // 여행이나 여행지 이름을 아직 못 받았는데 연결이 끊겼다. 다 받아야 입력 칸을 채우므로 로딩만 돌지 않게 안내한다.
+    // 연결되면 자동으로 다시 받아 채운다
+    if (isWaitingOffline({ data: trip, fetchStatus }) || (trip && regionsOffline)) {
+      return (
+        <View style={styles.screen}>
+          <Header title="여행 설정" largeTitle />
+          <OfflineNotice />
+        </View>
+      );
+    }
+    // 여행지 이름 하나를 잠깐 못 받았다. 빼고 채우면 [완료]가 그 여행지를 지우므로 채우지 않고 다시 받게 한다
+    if (trip && regionsFailed) {
+      return (
+        <View style={styles.screen}>
+          <Header title="여행 설정" largeTitle />
+          <ErrorState onRetry={retryRegions} />
+        </View>
+      );
+    }
     return (
       <View style={styles.center}>
         <ActivityIndicator color={colors.brand.primary} />
@@ -109,13 +139,21 @@ export function TripSettingsScreen() {
   const shownTitleError = titleError ?? update.titleError ?? undefined;
 
   const done = async () => {
+    // 빨리 두 번 누르면 저장이 끝난 뒤 뒤로 가기가 두 번 되어 여행 상세까지 닫혔다
+    if (saving.current) return;
     if (draft.title.trim().length === 0) {
       setTitleError('여행 이름을 입력해 주세요');
       return;
     }
     setTitleError(null);
-    const result = await update.save();
-    if (result !== 'failed') router.back();
+    saving.current = true;
+    try {
+      const result = await update.save();
+      // 저장하는 사이 사용자가 먼저 뒤로 갔으면 이 화면은 이미 닫혔다. 그때 또 뒤로 가면 여행 상세까지 닫힌다(2026-11-10 점검)
+      if (result !== 'failed' && navigation.isFocused()) router.back();
+    } finally {
+      saving.current = false;
+    }
   };
 
   const my = myMember(trip, me?.id);

@@ -1,5 +1,5 @@
 import NetInfo from '@react-native-community/netinfo';
-import { focusManager, onlineManager } from '@tanstack/react-query';
+import { focusManager, onlineManager, type FetchStatus } from '@tanstack/react-query';
 import { AppState } from 'react-native';
 
 /**
@@ -17,4 +17,13 @@ export function setupQueryFocus() {
     // 앱 시작 직후에는 isConnected가 null일 수 있다. 그때 오프라인으로 보면 첫 요청이 멈추므로 false일 때만 끊김으로 본다
     NetInfo.addEventListener((state) => setOnline(state.isConnected !== false)),
   );
+}
+
+/**
+ * 받아 둔 데이터 없이 연결이 끊겨 조회가 멈췄는가(fetchStatus 'paused').
+ * 이때 TanStack Query는 오류로 끝내지 않고 기다리므로 화면이 로딩만 돈다. 연결 안내를 보여 줄 때 쓴다.
+ * 연결이 돌아오면 멈춘 조회를 자동으로 다시 보낸다
+ */
+export function isWaitingOffline(query: { data: unknown; fetchStatus: FetchStatus }): boolean {
+  return query.data === undefined && query.fetchStatus === 'paused';
 }

@@ -214,6 +214,15 @@ describe('tripListState', () => {
     ).toEqual({ kind: 'loading' });
   });
 
+  it('다 받은 묶음 없이 연결이 끊겨 멈췄으면 offline, 묶음이 있으면 그 묶음 + stale', () => {
+    expect(
+      tripListState({ ...base, complete: false, failed: false, paused: true, lastSections: null }),
+    ).toEqual({ kind: 'offline' });
+    expect(
+      tripListState({ ...base, complete: false, failed: false, paused: true, lastSections: last }),
+    ).toEqual({ kind: 'ready', sections: last, stale: true });
+  });
+
   it('1쪽은 받았지만 2쪽이 실패했고 이전 묶음이 없으면 error', () => {
     expect(tripListState({ ...base, complete: false, failed: true, lastSections: null })).toEqual({
       kind: 'error',

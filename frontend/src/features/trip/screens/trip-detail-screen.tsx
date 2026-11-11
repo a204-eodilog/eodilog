@@ -2,7 +2,8 @@ import { router, useLocalSearchParams, type Href } from 'expo-router';
 import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ErrorState, Header, toast } from '@/components/ui';
+import { isWaitingOffline } from '@/api/query-focus';
+import { ErrorState, Header, OfflineNotice, toast } from '@/components/ui';
 import { useMe } from '@/hooks/use-me';
 import { useSeoulToday } from '@/hooks/use-seoul-today';
 import { colors, layout, spacing } from '@/theme';
@@ -21,12 +22,22 @@ const comingSoon = () => toast.show('준비 중이에요');
 /** S17 여행 상세(허브). 상태에 맞는 지금 할 일과 여행 메뉴 */
 export function TripDetailScreen() {
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
-  const { data: trip, isPending, isError, notFound, refetch } = useTrip(tripId);
+  const { data: trip, isPending, isError, notFound, refetch, fetchStatus } = useTrip(tripId);
   const { data: me } = useMe();
   const regionNames = useRegionNames(trip?.destinationRegionIds ?? []);
   // 앱이 다시 앞으로 오면 새로 구한다. 자정을 넘기면 제목·단계가 바뀐다
   const today = useSeoulToday();
   const insets = useSafeAreaInsets();
+
+  // 링크·알림으로 처음 열어 받아 둔 여행이 없는데 연결이 끊겼다. 로딩만 돌지 않게 안내한다
+  if (isWaitingOffline({ data: trip, fetchStatus })) {
+    return (
+      <SafeAreaView edges={['bottom']} style={styles.screen}>
+        <Header />
+        <OfflineNotice onRetry={() => refetch()} />
+      </SafeAreaView>
+    );
+  }
 
   if (isPending) {
     return (
