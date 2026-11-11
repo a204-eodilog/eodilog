@@ -9,6 +9,8 @@ export type IconName =
   | 'plus'
   | 'check'
   | 'chevron-right'
+  | 'chevron-down'
+  | 'chevron-up'
   | 'search'
   | 'home'
   | 'trip'
@@ -82,6 +84,9 @@ const PATHS: Record<IconName, string> = {
   plus: 'M12 5V19M5 12H19',
   check: 'M5 12.5L9.5 17L19 7',
   'chevron-right': 'M9 5L16 12L9 19',
+  // 펼치기·접기(S15 다음 계획 더 보기)
+  'chevron-down': 'M5 9L12 16L19 9',
+  'chevron-up': 'M5 15L12 8L19 15',
   search: 'M20 20L16.5 16.5M18 10.5A7.5 7.5 0 1 1 3 10.5A7.5 7.5 0 0 1 18 10.5Z',
   home: 'M4 10.5L12 4L20 10.5V19A1 1 0 0 1 19 20H15V14H9V20H5A1 1 0 0 1 4 19V10.5Z',
   trip: 'M4 8H20V19A1 1 0 0 1 19 20H5A1 1 0 0 1 4 19V8Z',
