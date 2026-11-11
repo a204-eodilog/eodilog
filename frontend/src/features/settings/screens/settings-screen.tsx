@@ -16,6 +16,7 @@ import {
 import { SettingsEditPreview } from '@/features/settings/components/settings-edit-preview';
 import { useServerSettings } from '@/features/settings/hooks/use-server-settings';
 import type { AiMode, SettingsData, UserSettings } from '@/features/settings/types';
+import { KOREA_MAP_CREDIT } from '@/lib/korea-map';
 import { colors, layout, radius, size, spacing, typography } from '@/theme';
 
 const AI_OPTIONS = [
@@ -301,6 +302,8 @@ export function SettingsView({
                 trailing={<View />}
               />
             </SettingsSection>
+            {/* 지도 경계(공공누리 1유형)는 출처를 적어야 쓸 수 있다. 지도 위에서는 뺐으니 여기 맨 아래에 둔다 */}
+            <Text style={styles.credit}>{KOREA_MAP_CREDIT}</Text>
           </ScrollView>
         </>
       ) : null}
@@ -424,4 +427,5 @@ const styles = StyleSheet.create({
   copy: { backgroundColor: colors.surface.white, borderRadius: radius.full },
   preferences: { paddingVertical: spacing[12], gap: spacing[12] },
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[8] },
+  credit: { ...typography.caption, color: colors.text.muted, textAlign: 'center' },
 });
