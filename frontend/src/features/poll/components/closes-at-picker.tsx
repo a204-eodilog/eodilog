@@ -72,9 +72,12 @@ export function ClosesAtPicker({ value, onChange, now }: Props) {
             accessibilityRole="button"
             accessibilityLabel="마감 시각 바꾸기"
             onPress={open}
-            hitSlop={spacing[8]}
+            // 글자 줄 20에 위아래 12씩 넓혀 누르는 자리 44
+            hitSlop={spacing[12]}
+            style={styles.linkRow}
           >
-            <Text style={styles.link}>눌러서 마감 시각 바꾸기</Text>
+            <Icon name="pencil" size={14} color={colors.brand.primary} />
+            <Text style={styles.link}>바꾸기</Text>
           </Pressable>
           {error ? <Text style={styles.error}>{error}</Text> : null}
         </View>
@@ -115,6 +118,13 @@ const styles = StyleSheet.create({
   // 피그마 14 Bold·20은 subBold와 같다. 안내 13·20과 링크 12·24는 가장 가까운 토큰 caption·captionMedium(12·20)을 쓴다
   when: { ...typography.subBold, color: colors.text.default, marginBottom: spacing[2] },
   note: { ...typography.caption, color: colors.text.icon },
-  link: { ...typography.captionMedium, color: colors.brand.primary, paddingTop: spacing[2] },
+  linkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: spacing[4],
+    paddingTop: spacing[2],
+  },
+  link: { ...typography.captionMedium, color: colors.brand.primary },
   error: { ...typography.caption, color: colors.status.danger },
 });

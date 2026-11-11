@@ -126,7 +126,8 @@ export function PollOpenView({
               onPress={onAddCandidate}
               style={({ pressed }) => [styles.add, pressed && styles.pressed]}
             >
-              <Text style={styles.addText}>+ 후보 추가</Text>
+              <Icon name="plus" size={18} color={colors.brand.primary} />
+              <Text style={styles.addText}>후보 추가</Text>
             </Pressable>
           ) : null}
         </View>
@@ -148,8 +149,13 @@ export function PollOpenView({
           >
             <Icon name="info" size={20} color={colors.brand.primarySoft} />
           </View>
-          <Pressable accessibilityRole="button" onPress={onRetry} style={styles.retryButton}>
-            <Text style={styles.retry}>다시 시도</Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="다시 시도"
+            onPress={onRetry}
+            style={({ pressed }) => [styles.retryButton, pressed && styles.pressed]}
+          >
+            <Icon name="refresh" size={22} color={colors.brand.primarySoft} />
           </Pressable>
         </View>
       ) : null}
@@ -177,7 +183,10 @@ const styles = StyleSheet.create({
     borderColor: colors.gray[300],
     borderRadius: radius.lg,
     padding: spacing[16],
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing[6],
   },
   addText: { ...typography.subBold, color: colors.brand.primary },
   pressed: { opacity: 0.6 },
@@ -195,7 +204,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.text.default,
   },
   failTexts: { flex: 1 },
-  retry: { ...typography.subBold, color: colors.brand.primarySoft },
   // 누르는 자리 44 이상
   retryButton: {
     minWidth: layout.minTouchTarget,
@@ -434,6 +442,7 @@ export function PollNotFoundView({ onBack }: { onBack: () => void }) {
         onPress={onBack}
         style={({ pressed }) => [styles.decide, pressed && styles.pressed]}
       >
+        <Icon name="back" size={18} color={colors.text.icon} />
         <Text style={styles.decideText}>돌아가기</Text>
       </Pressable>
     </View>

@@ -15,7 +15,7 @@ type Props = {
 };
 
 /**
- * S22 하단 내 선택 요약(Figma 201-11042). 요약 문구, [취소], [바꾸기].
+ * S22 하단 내 선택 요약(Figma 201-11042). 요약 문구, 취소(닫기 아이콘), [바꾸기].
  * 누르면 바로 저장되므로 [바꾸기]는 후보 목록 맨 위로 가게 한다 (가정 — 사용자 확인 필요, Q-4-3)
  */
 export function MyVoteBar({ myName, summary, highlight = false, onCancel, onChange }: Props) {
@@ -37,9 +37,9 @@ export function MyVoteBar({ myName, summary, highlight = false, onCancel, onChan
           accessibilityRole="button"
           accessibilityLabel="내 투표 취소"
           onPress={onCancel}
-          style={({ pressed }) => [styles.textButton, pressed && styles.pressed]}
+          style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
         >
-          <Text style={styles.cancel}>취소</Text>
+          <Icon name="close" size={20} color={colors.text.icon} />
         </Pressable>
       )}
       <Pressable
@@ -67,15 +67,13 @@ const styles = StyleSheet.create({
   },
   hint: { ...typography.body, color: colors.text.sub },
   summary: { ...typography.body, color: colors.text.default, flex: 1 },
-  textButton: {
-    height: 36,
-    minWidth: layout.minTouchTarget,
-    paddingHorizontal: spacing[12],
-    borderRadius: radius.full,
+  // 내 투표 취소. 닫기 아이콘만, 누르는 자리 44
+  iconButton: {
+    width: layout.minTouchTarget,
+    height: layout.minTouchTarget,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cancel: { ...typography.bodyMedium, color: colors.text.icon },
   changeButton: {
     flexDirection: 'row',
     alignItems: 'center',

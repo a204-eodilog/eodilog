@@ -371,7 +371,7 @@ describe('담기와 빼기', () => {
   it('코스에 없는 장소는 바로 내 저장을 뺀다', async () => {
     await renderScreen();
     await fireEvent.press(await screen.findByLabelText('서면 돼지국밥집'));
-    await fireEvent.press(screen.getByText('내 저장 빼기'));
+    await fireEvent.press(screen.getByLabelText('내 저장 빼기'));
     await waitFor(() => expect(mockDelete).toHaveBeenCalledWith('trip-1', 'p-seomyeon'));
     expect(toast.show).toHaveBeenCalledWith('내 저장을 뺐어요');
   });
@@ -395,7 +395,7 @@ describe('담기와 빼기', () => {
     );
     await renderScreen();
     await fireEvent.press(await screen.findByLabelText('해운대 해변'));
-    await fireEvent.press(screen.getByText('내 저장 빼기'));
+    await fireEvent.press(screen.getByLabelText('내 저장 빼기'));
     expect(await screen.findByText('코스에 들어 있는 장소예요')).toBeTruthy();
     expect(mockDelete).not.toHaveBeenCalled();
     await fireEvent.press(screen.getByText('그래도 빼기'));
@@ -408,7 +408,7 @@ describe('담기와 빼기', () => {
     );
     await renderScreen();
     await fireEvent.press(await screen.findByLabelText('해운대 해변'));
-    await fireEvent.press(screen.getByText('내 저장 빼기'));
+    await fireEvent.press(screen.getByLabelText('내 저장 빼기'));
     await fireEvent.press(await screen.findByText('최신 목록 보기'));
     expect(mockDelete).not.toHaveBeenCalled();
     await waitFor(() => expect(mockList.mock.calls.length).toBeGreaterThan(1));

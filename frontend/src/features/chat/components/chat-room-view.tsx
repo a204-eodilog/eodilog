@@ -281,9 +281,11 @@ function BlockedNotice({ onLeave }: { onLeave?: () => void }) {
         <Pressable
           accessibilityRole="button"
           onPress={onLeave}
+          accessibilityLabel="대화방 목록으로"
           style={({ pressed }) => [styles.blockedButton, pressed && styles.pressed]}
         >
-          <Text style={[typography.bodyMedium, styles.blockedButtonText]}>대화방 목록으로</Text>
+          <Icon name="back" size={18} color={colors.text.icon} />
+          <Text style={[typography.bodyMedium, styles.blockedButtonText]}>목록</Text>
         </Pressable>
       ) : null}
     </View>
@@ -356,7 +358,10 @@ const styles = StyleSheet.create({
   blockedBody: { color: colors.text.icon, textAlign: 'center', marginTop: spacing[8] },
   blockedButton: {
     height: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'center',
+    gap: spacing[6],
     paddingHorizontal: spacing[16],
     marginTop: spacing[24],
   },

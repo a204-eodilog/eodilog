@@ -301,14 +301,14 @@ describe('진행 중 투표', () => {
     expect(screen.getByText('부산에 투표했어요')).toBeTruthy();
 
     mockReplace.mockResolvedValueOnce({ ...OPEN, version: 2, myCandidateIds: ['c1', 'c2'] });
-    await fireEvent.press(screen.getByText('다시 시도'));
+    await fireEvent.press(screen.getByLabelText('다시 시도'));
     expect(mockReplace).toHaveBeenLastCalledWith('trip-1', 'poll-1', ['c1', 'c2'], 2);
   });
 
   it('취소를 누르면 내 선택을 모두 비운다', async () => {
     mockReplace.mockResolvedValue({ ...OPEN, myCandidateIds: [], votedMemberCount: 1 });
     await renderScreen();
-    await fireEvent.press(await screen.findByText('취소'));
+    await fireEvent.press(await screen.findByLabelText('내 투표 취소'));
     expect(mockReplace).toHaveBeenCalledWith('trip-1', 'poll-1', [], 1);
     expect(await screen.findByText('후보를 눌러 투표해요')).toBeTruthy();
   });
@@ -332,8 +332,8 @@ describe('후보 추가', () => {
       ],
     });
     await renderScreen();
-    await fireEvent.press(await screen.findByText('+ 후보 추가'));
-    expect(await screen.findByText('후보 추가')).toBeTruthy();
+    await fireEvent.press(await screen.findByText('후보 추가'));
+    expect(await screen.findByText('후보에 넣기')).toBeTruthy();
     expect(screen.queryByLabelText('부산')).toBeNull();
     await fireEvent.press(await screen.findByLabelText('여수시'));
     await fireEvent.press(screen.getByText('후보에 넣기'));
