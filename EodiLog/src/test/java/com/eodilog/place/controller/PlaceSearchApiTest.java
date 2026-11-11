@@ -48,9 +48,9 @@ class PlaceSearchApiTest {
 		containsHaeundae = place("해운대 " + query, 35.1631, 129.1635);    // 포함, 부산에서 12km
 	}
 
-	// near: 완전 일치 → 30km 안 가까운 순 → 30km 밖 id 순
+	// near(부산): 30km 안 완전 일치(없음) → 30km 안 나머지 가까운 순 → 30km 밖 완전 일치 → 30km 밖 나머지 id 순
 	private List<UUID> nearOrder() {
-		return concat(List.of(exactSeoul, containsBusan, containsHaeundae), byId(shortPrefix, longPrefix));
+		return concat(List.of(containsBusan, containsHaeundae, exactSeoul), byId(shortPrefix, longPrefix));
 	}
 
 	// near 없음: 완전 일치 → 앞부분 일치 이름순(C 정렬이라 공백이 '점'보다 앞) → 그 밖의 포함 id 순
@@ -59,11 +59,11 @@ class PlaceSearchApiTest {
 	}
 
 	@Test
-	void nearPutsExactNameFirstThenNearestInsideRadiusThenTheRest() throws Exception {
+	void nearPutsFarExactNameAfterEverythingInsideRadius() throws Exception {
 		assertThat(ids(search(query.toLowerCase(Locale.ROOT)).param("near", BUSAN).param("limit", "20")))
 				.containsExactlyElementsOf(nearOrder());
-		// 쉼표 앞뒤 공백도 받는다
-		assertThat(ids(search(query).param("near", "35.1151 , 129.0423"))).first().isEqualTo(exactSeoul);
+		// 30km 안의 완전 일치는 더 가까운 포함보다 앞이다. 쉼표 앞뒤 공백도 받는다
+		assertThat(ids(search(query).param("near", "37.5600 , 126.9750"))).first().isEqualTo(exactSeoul);
 	}
 
 	@Test

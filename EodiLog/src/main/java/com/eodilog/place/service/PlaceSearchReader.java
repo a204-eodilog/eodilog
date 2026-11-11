@@ -10,8 +10,10 @@ import org.springframework.stereotype.Repository;
 /**
  * 장소 검색 단계별 조회(EODI-270). 일치하는 장소 전체를 줄 세우지 않고, 단계마다 인덱스 순서로 읽다가 남은 자리만큼만 가져온다.
  *
- * <p>near 있음: 0 이름 완전 일치(가까운 순) → 1 반경 안 포함(가까운 순) → 2 반경 밖 포함(id 순).
- * 1단계는 near에서 가까운 장소 {@code probeSize}곳만 거리순으로 훑어 채운다. 그 안에서 다 채우면 그것이 정확한 가까운 순이다.
+ * <p>near 있음: 0 반경 안 이름 완전 일치(가까운 순) → 1 반경 안 포함(가까운 순) → 2 반경 밖 완전 일치(가까운 순)
+ * → 3 반경 밖 포함(id 순)(EODI-300). 먼 완전 일치가 가까운 포함보다 앞서지 않게 한다.
+ * 1단계는 near에서 가까운 장소 {@code probeSize}곳만 거리순으로 훑어 채운다(2쪽 이후도 커서 뒤의 줄만 골라 같은 방법으로).
+ * 그 안에서 다 채우면 그것이 정확한 가까운 순이다.
  * 못 채우면 훑은 범위가 반경을 다 덮었는지, 반경 안 장소가 많은 밀집 지역인지 보고 이어서 읽을 방법을 고른다.
  *
  * <p>near 없음: 0 완전 일치(id 순) → 1 앞부분 일치(이름 키 순) → 2 그 밖의 포함(id 순).
@@ -82,42 +84,61 @@ class PlaceSearchReader {
 		List<Hit> hits = new ArrayList<>();
 		int tier = after == null ? 0 : after.rank();
 		if (tier == 0) {
-			String seek = after == null ? "" : " AND (" + DISTANCE + ", id) > (:afterDistance, :afterId)";
-			hits.addAll(query(SELECT_NEAR + KEY + " = :exact" + f.region() + seek + " ORDER BY distance, id LIMIT :n",
-					seekParams(params, after), want, 0));
+			hits.addAll(exact(params, f, after, want, true));
 			if (hits.size() >= want) return hits;
 			after = null;
 			tier = 1;
 		}
 		if (tier == 1) {
-			if (after != null) return concat(hits, rest(params, f, after, want - hits.size()));
-			Probe probe = probe(params, f, want - hits.size());
+			// 2쪽 이후도 가까운 곳부터 훑는다. 커서가 훑은 범위 안이면 여기서 끝나고(흔한 검색어), 아니면 아래에서 커서부터 이어 읽는다
+			Probe probe = probe(params, f, after, want - hits.size());
 			hits.addAll(probe.hits());
 			if (hits.size() >= want) return hits;
-			PlaceSearchCursor last = probe.hits().isEmpty() ? null : position(probe.hits().getLast());
+			PlaceSearchCursor last = probe.hits().isEmpty() ? after : position(probe.hits().getLast());
 			Double reach = probe.reach();
 			if (reach != null && reach <= RADIUS_METERS) {
 				double estimate = probeSize * Math.pow(RADIUS_METERS / Math.max(reach, 1.0), 2);
-				if (estimate > denseEstimate) return concat(hits, rest(params, f, last, want - hits.size()));
+				if (estimate > denseEstimate) {
+					hits.addAll(rest(params, f, last, want - hits.size()));
+					return hits;
+				}
 				hits.addAll(radius(params, f, last, want - hits.size()));
 				if (hits.size() >= want) return hits;
 			}
 			after = null;
+			tier = 2;
 		}
-		hits.addAll(byId(f, f.match() + " AND " + NOT_EXACT + " AND NOT (" + INSIDE + ")" + f.region(), params, after, want - hits.size()));
+		if (tier == 2) {
+			hits.addAll(exact(params, f, after, want - hits.size(), false));
+			if (hits.size() >= want) return hits;
+			after = null;
+		}
+		hits.addAll(byId(f, f.match() + " AND " + NOT_EXACT + " AND NOT (" + INSIDE + ")" + f.region(), params, after,
+				want - hits.size(), 3));
 		return hits;
 	}
 
-	// 2단계(id 순)를 읽는다. trigram 인덱스를 쓸 수 있는 검색어는 DB가 흔한 정도를 알아 id 순 읽기와 인덱스 중 알맞게 고른다.
+	// 이름 완전 일치(0단계는 반경 안, 2단계는 반경 밖)를 가까운 순으로 읽는다. 안쪽 조회를 울타리(OFFSET 0)로 막아
+	// 이름 키 인덱스로 일치한 장소만 먼저 찾고 바깥에서 거리순으로 줄 세운다. 울타리가 없으면 통계가 없을 때 DB가 일치 건수를
+	// 크게 잡고 좌표 순으로 전체를 읽다 멈추는 계획을 골라, 일치가 몇 건뿐인 이름("CU")이 전체 280만 곳을 읽었다(측정 9~13초)
+	private List<Hit> exact(MapSqlParameterSource params, Filter f, PlaceSearchCursor after, int want, boolean inside) {
+		String sql = "SELECT * FROM (SELECT " + JdbcPlaceReader.COLUMNS + ", " + DISTANCE + " AS distance FROM places WHERE "
+				+ KEY + " = :exact" + f.region() + " OFFSET 0) e WHERE e.distance " + (inside ? "<=" : ">") + " :radius"
+				+ (after == null ? "" : " AND (e.distance, e.id) > (:afterDistance, :afterId)")
+				+ " ORDER BY e.distance, e.id LIMIT :n";
+		return query(sql, seekParams(params, after), want, inside ? 0 : 2);
+	}
+
+	// id 순 단계(near 3단계, near 없음 2단계)를 읽는다. trigram 인덱스를 쓸 수 있는 검색어는 DB가 흔한 정도를 알아 id 순 읽기와 인덱스 중 알맞게 고른다.
 	// 짧은 검색어는 DB가 흔한 정도를 몰라 일찍 멈출 줄 알고 기본 키 순 전체 읽기를 고르므로(드문 검색어 측정 2.1초) 나눠 읽는다.
 	// 먼저 id 순으로 idBudget곳만 읽으며 채운다. 흔한 검색어는 여기서 끝난다. 못 채우면 읽은 곳 다음부터는 id 순 읽기를 막고
 	// (OFFSET 0 울타리) 병렬 전체 읽기로 고른 뒤 id로 줄 세운다(측정 0.3초)
-	private List<Hit> byId(Filter f, String condition, MapSqlParameterSource params, PlaceSearchCursor after, int want) {
+	private List<Hit> byId(Filter f, String condition, MapSqlParameterSource params, PlaceSearchCursor after, int want, int tier) {
 		if (want <= 0) return List.of();
 		if (!SCAN_MATCH.equals(f.match())) {
 			String seek = after == null ? "" : " AND id > :afterId";
 			return query("SELECT " + JdbcPlaceReader.COLUMNS + " FROM places WHERE " + condition + seek + " ORDER BY id LIMIT :n",
-					seekParams(params, after), want, 2);
+					seekParams(params, after), want, tier);
 		}
 		String scan = "SELECT * FROM (SELECT b.*, row_number() OVER () AS rn FROM (SELECT " + JdbcPlaceReader.COLUMNS + ", ("
 				+ condition + ") AS hit FROM places" + (after == null ? "" : " WHERE id > :afterId") + " ORDER BY id LIMIT :budget) b) w"
@@ -128,13 +149,13 @@ class PlaceSearchReader {
 		jdbc.query(scan, p, rs -> {
 			PlaceView place = JdbcPlaceReader.map(rs, 0);
 			if (rs.getLong("rn") == idBudget) scanned[0] = place.id();
-			if (rs.getBoolean("hit")) hits.add(new Hit(place, 2, 0.0, null));
+			if (rs.getBoolean("hit")) hits.add(new Hit(place, tier, 0.0, null));
 		});
 		if (hits.size() >= want || scanned[0] == null) return hits.subList(0, Math.min(hits.size(), want));
 		String full = "SELECT * FROM (SELECT " + JdbcPlaceReader.COLUMNS + " FROM places WHERE " + condition
 				+ " AND id > :scanned OFFSET 0) s ORDER BY id LIMIT :n";
 		var rest = new MapSqlParameterSource(params.getValues()).addValue("scanned", scanned[0]).addValue("n", want - hits.size());
-		hits.addAll(jdbc.query(full, rest, (rs, row) -> new Hit(JdbcPlaceReader.map(rs, row), 2, 0.0, null)));
+		hits.addAll(jdbc.query(full, rest, (rs, row) -> new Hit(JdbcPlaceReader.map(rs, row), tier, 0.0, null)));
 		return hits;
 	}
 
@@ -143,14 +164,15 @@ class PlaceSearchReader {
 	}
 
 	// 가까운 probeSize곳을 거리순으로 읽으며 반경 안·이름 포함을 고른다. 자리가 차면 그 자리에서 멈춘다.
-	// 못 채우면 probeSize번째 줄(rn)까지 읽게 되므로 그 줄을 함께 받아 훑은 거리를 안다
-	private Probe probe(MapSqlParameterSource params, Filter f, int want) {
+	// 못 채우면 probeSize번째 줄(rn)까지 읽게 되므로 그 줄을 함께 받아 훑은 거리를 안다. after가 있으면 그 뒤의 줄만 고른다
+	private Probe probe(MapSqlParameterSource params, Filter f, PlaceSearchCursor after, int want) {
 		String hit = "lower(k.name) LIKE :contains AND (lower(btrim(k.name)) COLLATE \"C\") <> :exact AND k.distance <= :radius"
-				+ f.region().replace("region_id", "k.region_id");
+				+ f.region().replace("region_id", "k.region_id")
+				+ (after == null ? "" : " AND (k.distance, k.id) > (:afterDistance, :afterId)");
 		String sql = "SELECT * FROM (SELECT k.*, (" + hit + ") AS hit, row_number() OVER () AS rn FROM (SELECT "
 				+ JdbcPlaceReader.COLUMNS + ", " + DISTANCE + " AS distance FROM places ORDER BY " + DISTANCE + ", id LIMIT :probe) k) w"
 				+ " WHERE w.hit OR w.rn = :probe LIMIT :n";
-		var p = new MapSqlParameterSource(params.getValues()).addValue("probe", probeSize).addValue("n", want);
+		var p = seekParams(params, after).addValue("probe", probeSize).addValue("n", want);
 		List<Hit> hits = new ArrayList<>();
 		Double[] reach = { null };
 		jdbc.query(sql, p, rs -> {
@@ -168,17 +190,19 @@ class PlaceSearchReader {
 				+ " ORDER BY distance, id LIMIT :n", seekParams(params, after), want, 1);
 	}
 
-	// 밀집 지역의 드문 검색어, 그리고 2쪽 이후: 반경 안·밖을 한 번에 읽고 일치한 행만 줄 세운다.
-	// 거리를 한 번만 계산하도록 안쪽 조회를 울타리(OFFSET 0)로 막고 바깥에서 단계를 정한다
+	// 밀집 지역의 드문 검색어: 1~3단계 남은 줄을 이름 조건으로 한 번에 읽고 일치한 행만 줄 세운다.
+	// 완전 일치도 이름을 포함하므로 같은 읽기에서 2단계(반경 밖 완전 일치)가 나온다. 0단계는 앞에서 읽었으니 뺀다.
+	// 거리를 한 번만 계산하고 좌표 순 읽기를 고르지 않도록 안쪽 조회를 울타리(OFFSET 0)로 막고 바깥에서 단계를 정한다
 	private List<Hit> rest(MapSqlParameterSource params, Filter f, PlaceSearchCursor after, int want) {
-		String sql = "SELECT * FROM (SELECT d.*, CASE WHEN d.distance <= :radius THEN 1 ELSE 2 END AS tier FROM (SELECT "
-				+ JdbcPlaceReader.COLUMNS + ", " + DISTANCE + " AS distance FROM places WHERE " + f.match() + " AND " + NOT_EXACT
-				+ f.region() + " OFFSET 0) d) s"
-				+ (after == null ? "" : " WHERE (s.tier, CASE WHEN s.tier = 1 THEN s.distance ELSE 0 END, s.id)"
-						+ " > (:afterTier, :afterDistance, :afterId)")
-				+ " ORDER BY s.tier, CASE WHEN s.tier = 1 THEN s.distance ELSE 0 END, s.id LIMIT :n";
+		String order = "s.tier, CASE WHEN s.tier = 3 THEN 0 ELSE s.distance END, s.id";
+		String sql = "SELECT * FROM (SELECT d.*, CASE WHEN d.distance <= :radius THEN (CASE WHEN d.is_exact THEN 0 ELSE 1 END)"
+				+ " ELSE (CASE WHEN d.is_exact THEN 2 ELSE 3 END) END AS tier FROM (SELECT " + JdbcPlaceReader.COLUMNS + ", "
+				+ DISTANCE + " AS distance, " + KEY + " = :exact AS is_exact FROM places WHERE " + f.match() + f.region()
+				+ " OFFSET 0) d) s WHERE s.tier >= 1"
+				+ (after == null ? "" : " AND (" + order + ") > (:afterTier, :afterDistance, :afterId)")
+				+ " ORDER BY " + order + " LIMIT :n";
 		var p = seekParams(params, after);
-		if (after != null) p.addValue("afterTier", after.rank()).addValue("afterDistance", after.rank() == 1 ? after.distance() : 0.0);
+		if (after != null) p.addValue("afterTier", after.rank());
 		return query(sql, p, want, -1);
 	}
 
@@ -204,7 +228,7 @@ class PlaceSearchReader {
 			if (hits.size() >= want) return hits;
 			after = null;
 		}
-		hits.addAll(byId(f, f.match() + " AND NOT (" + KEY + " LIKE :prefix)" + f.region(), params, after, want - hits.size()));
+		hits.addAll(byId(f, f.match() + " AND NOT (" + KEY + " LIKE :prefix)" + f.region(), params, after, want - hits.size(), 2));
 		return hits;
 	}
 
@@ -212,10 +236,12 @@ class PlaceSearchReader {
 		if (want <= 0) return List.of();
 		params.addValue("n", want);
 		boolean near = sql.contains(" AS distance");
+		boolean named = sql.contains(" AS name_key");
 		return jdbc.query(sql, params, (rs, row) -> {
-			PlaceView place = JdbcPlaceReader.map(rs, row);
 			int t = tier >= 0 ? tier : rs.getInt("tier");
-			return new Hit(place, t, near && t != 2 ? rs.getDouble("distance") : 0.0, !near && t == 1 ? rs.getString("name_key") : null);
+			// near 3단계(id 순)는 거리를 커서에 싣지 않는다
+			return new Hit(JdbcPlaceReader.map(rs, row), t, near && t != 3 ? rs.getDouble("distance") : 0.0,
+					named && t == 1 ? rs.getString("name_key") : null);
 		});
 	}
 
@@ -253,11 +279,6 @@ class PlaceSearchReader {
 
 	private static PlaceSearchCursor position(Hit hit) {
 		return new PlaceSearchCursor(null, hit.tier(), hit.distance(), hit.nameKey(), hit.place().id());
-	}
-
-	private static List<Hit> concat(List<Hit> head, List<Hit> tail) {
-		head.addAll(tail);
-		return head;
 	}
 
 	/** 앞부분이 query인 이름 키의 상한(C 정렬). 마지막 글자 코드값에 1을 더한다. 더할 수 없으면 null */
