@@ -8,10 +8,16 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Spinner } from '@/components/ui/spinner';
 // 시트 안 가로 목록은 제스처 핸들러 스크롤이어야 시트 끌기와 손가락을 나눠 가진다(안드로이드)
 import { ScrollView } from 'react-native-gesture-handler';
-import Animated, { Easing, FadeInDown } from 'react-native-reanimated';
+import Animated, {
+  Easing,
+  Extrapolation,
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+} from 'react-native-reanimated';
 
 import { Icon } from '@/components/ui';
-import { colors, layout, radius, spacing, typography } from '@/theme';
+import { colors, layout, motion, radius, spacing, typography } from '@/theme';
 
 import type { HomeRecommendation } from '../types';
 
@@ -26,32 +32,27 @@ type Props = {
   onPress: (item: HomeRecommendation) => void;
 };
 
-/**
- * 시트 펼침 모션. 시트가 0.32초 동안 올라오는 사이 목록이 위에서부터 한 줄씩(0.05초 간격)
- * 아래에서 살짝 올라오며 나타난다. '동작 줄이기'가 켜져 있으면 reanimated가 바로 보여 준다
- */
-const SHEET_MOTION = {
-  sheetMs: 320,
-  rowStartMs: 60,
-  rowGapMs: 50,
-  rowMs: 260,
-  maxRows: 8,
-} as const;
-
-const rowEntering = (i: number) =>
-  FadeInDown.duration(SHEET_MOTION.rowMs)
-    .delay(SHEET_MOTION.rowStartMs + Math.min(i, SHEET_MOTION.maxRows) * SHEET_MOTION.rowGapMs)
-    .easing(Easing.out(Easing.cubic));
-
 /** S05 아래 시트 "좋아요한 여행과 비슷해요". 접으면 가로 카드, 펼치면 세로 목록 */
 export function RecommendSheet({ items, status, initialExpanded = false, onPress }: Props) {
   const snapPoints = useMemo(() => [SHEET_COLLAPSED, '80%'], []);
+  // 어느 쪽을 누를 수 있는지. 올라가기 시작할 때 바로 바꾼다(다 올라온 뒤에 바꾸면 그동안 목록을 못 누른다)
   const [expanded, setExpanded] = useState(initialExpanded);
-  // 시트가 튕기지 않고 목록 모션과 같은 속도로 올라오게 한다
+  // 시트가 튕기지 않고 기준 속도(느림)로 올라오게 한다
   const animationConfigs = useBottomSheetTimingConfigs({
-    duration: SHEET_MOTION.sheetMs,
+    duration: motion.duration.slow,
     easing: Easing.out(Easing.cubic),
   });
+  /**
+   * 시트 위치(0 접힘 ~ 1 펼침). 세로 목록을 처음부터 그려 두고 이 값에 맞춰 가로 카드와 바꿔 보인다.
+   * 전에는 시트가 다 올라왔다는 신호를 받은 뒤에야 목록을 그리기 시작해, 올라오는 동안 시트가 비어 보였다
+   */
+  const position = useSharedValue(initialExpanded ? 1 : 0);
+  const cardsStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(position.value, [0, 0.35], [1, 0], Extrapolation.CLAMP),
+  }));
+  const listStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(position.value, [0.1, 0.6], [0, 1], Extrapolation.CLAMP),
+  }));
 
   return (
     <BottomSheet
@@ -59,6 +60,8 @@ export function RecommendSheet({ items, status, initialExpanded = false, onPress
       snapPoints={snapPoints}
       enableDynamicSizing={false}
       animationConfigs={animationConfigs}
+      animatedIndex={position}
+      onAnimate={(_from, to) => setExpanded(to > 0)}
       onChange={(i) => setExpanded(i > 0)}
       // 시트는 위아래로 끌 때만 움직인다. 옆으로 밀면 시트 끌기를 포기해 가로 카드가 넘어간다
       activeOffsetY={[-10, 10]}
@@ -76,54 +79,68 @@ export function RecommendSheet({ items, status, initialExpanded = false, onPress
         <Text style={styles.empty}>추천을 불러오지 못했어요</Text>
       ) : items.length === 0 ? (
         <Text style={styles.empty}>여행에 좋아요를 누르면 비슷한 곳을 추천해 드려요</Text>
-      ) : expanded ? (
-        <BottomSheetScrollView
-          contentContainerStyle={styles.list}
-          showsVerticalScrollIndicator={false}
-        >
-          {items.map((item, i) => (
-            <Animated.View key={item.id} entering={initialExpanded ? undefined : rowEntering(i)}>
-              <Pressable
-                onPress={() => onPress(item)}
-                style={styles.row}
-                accessibilityRole="button"
-              >
-                <Thumb item={item} size={64} />
-                <View style={styles.rowText}>
-                  <Text style={styles.name} numberOfLines={1}>
-                    {item.title}
-                  </Text>
-                  <Meta item={item} />
-                </View>
-                <Icon name="chevron-right" size={20} color={colors.text.muted} />
-              </Pressable>
-            </Animated.View>
-          ))}
-        </BottomSheetScrollView>
       ) : (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.cardsScroll}
-          contentContainerStyle={styles.cards}
-        >
-          {items.map((item) => (
-            <Pressable
-              key={item.id}
-              onPress={() => onPress(item)}
-              style={styles.card}
-              accessibilityRole="button"
+        <View style={styles.body}>
+          <Animated.View
+            style={[styles.fill, listStyle]}
+            pointerEvents={expanded ? 'auto' : 'none'}
+            accessibilityElementsHidden={!expanded}
+            importantForAccessibility={expanded ? 'auto' : 'no-hide-descendants'}
+          >
+            <BottomSheetScrollView
+              contentContainerStyle={styles.list}
+              showsVerticalScrollIndicator={false}
             >
-              <Thumb item={item} size={56} />
-              <View style={styles.rowText}>
-                <Text style={styles.name} numberOfLines={1}>
-                  {item.title}
-                </Text>
-                <Meta item={item} />
-              </View>
-            </Pressable>
-          ))}
-        </ScrollView>
+              {items.map((item) => (
+                <Pressable
+                  key={item.id}
+                  onPress={() => onPress(item)}
+                  style={styles.row}
+                  accessibilityRole="button"
+                >
+                  <Thumb item={item} size={64} />
+                  <View style={styles.rowText}>
+                    <Text style={styles.name} numberOfLines={1}>
+                      {item.title}
+                    </Text>
+                    <Meta item={item} />
+                  </View>
+                  <Icon name="chevron-right" size={20} color={colors.text.muted} />
+                </Pressable>
+              ))}
+            </BottomSheetScrollView>
+          </Animated.View>
+          <Animated.View
+            style={[styles.cardsLayer, cardsStyle]}
+            pointerEvents={expanded ? 'none' : 'auto'}
+            accessibilityElementsHidden={expanded}
+            importantForAccessibility={expanded ? 'no-hide-descendants' : 'auto'}
+          >
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.cardsScroll}
+              contentContainerStyle={styles.cards}
+            >
+              {items.map((item) => (
+                <Pressable
+                  key={item.id}
+                  onPress={() => onPress(item)}
+                  style={styles.card}
+                  accessibilityRole="button"
+                >
+                  <Thumb item={item} size={56} />
+                  <View style={styles.rowText}>
+                    <Text style={styles.name} numberOfLines={1}>
+                      {item.title}
+                    </Text>
+                    <Meta item={item} />
+                  </View>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </Animated.View>
+        </View>
       )}
     </BottomSheet>
   );
@@ -185,6 +202,10 @@ const styles = StyleSheet.create({
     color: colors.text.icon,
     paddingHorizontal: layout.screenPaddingX,
   },
+  body: { flex: 1 },
+  fill: { flex: 1 },
+  // 가로 카드는 세로 목록 위에 겹쳐 둔다. 시트가 올라가면 흐려지며 목록이 드러난다
+  cardsLayer: { position: 'absolute', top: 0, left: 0, right: 0 },
   cardsScroll: { flexGrow: 0 },
   cards: { paddingHorizontal: layout.screenPaddingX, gap: spacing[12], alignItems: 'flex-start' },
   card: {
