@@ -51,7 +51,9 @@ export function useChatRoom(tripId: string) {
     room: query.data,
     title: trip?.title ?? FALLBACK_ROOM_TITLE,
     isLoading: query.isPending,
-    isError: query.isError,
+    // 받아 둔 방 정보가 있으면 다시 받기에 실패해도 오류로 보지 않는다. 앱 복귀·새 동행 알림으로 다시 받다
+    // 실패하면 메시지까지 오류 화면에 가려졌다(2026-11-10 점검). 볼 수 없게 된 방(blocked)은 따로 본다
+    isError: query.isError && query.data === undefined,
     blocked: alreadyBlocked || blocked,
     refetch: query.refetch,
   };

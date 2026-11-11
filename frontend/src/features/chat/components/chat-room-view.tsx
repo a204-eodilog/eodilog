@@ -48,8 +48,14 @@ type Props = {
   previewNewMessage?: boolean;
 };
 
-/** 맨 아래에서 이 거리 안이면 새 메시지가 올 때 따라 내려간다(FR-019) */
-const FOLLOW_THRESHOLD = 80;
+/**
+ * 맨 아래로 보는 범위. 목록 높이에 대한 비율이다. 이 안이면 새 메시지가 올 때 따라 내려가고,
+ * 벗어나면 따라가지 않고 "새 메시지" 버튼을 띄운다(FR-019).
+ * FlashList의 autoscrollToBottomThreshold는 거리가 아니라 이 비율로 읽는다(FlashList 2.3 useBoundDetection: 비율 × 보이는 높이).
+ * 예전에 거리 80(px)을 그대로 넣었더니 화면 80개 높이 안이 모두 "맨 아래 근처"가 되어, 위로 올리며 말풍선 높이를 잴 때마다
+ * 맨 아래로 끌려갔다(2026-11-10 기기 확인). 버튼을 띄우는 판단도 같은 비율로 해야 "따라 내려가지도 않고 버튼도 없는" 틈이 없다
+ */
+const BOTTOM_RATIO = 0.1;
 
 /** 목록 맨 끝 빈 줄. 떠 있는 입력 칸 높이만큼 자리를 비운다 */
 type Row = ChatItem | { kind: 'bottom-space'; key: string };
@@ -90,7 +96,7 @@ export function ChatRoomView({
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
     const distance = contentSize.height - (contentOffset.y + layoutMeasurement.height);
-    const nowBottom = distance < FOLLOW_THRESHOLD;
+    const nowBottom = distance <= BOTTOM_RATIO * layoutMeasurement.height;
     if (nowBottom === atBottom) return;
     setAtBottom(nowBottom);
     // 맨 아래를 떠나는 순간까지 본 메시지를 기억한다
@@ -146,7 +152,7 @@ export function ChatRoomView({
         }
         maintainVisibleContentPosition={{
           startRenderingFromBottom: true,
-          autoscrollToBottomThreshold: FOLLOW_THRESHOLD,
+          autoscrollToBottomThreshold: BOTTOM_RATIO,
         }}
         onStartReached={hasOlder && olderState === 'idle' ? onLoadOlder : undefined}
         onStartReachedThreshold={0.5}

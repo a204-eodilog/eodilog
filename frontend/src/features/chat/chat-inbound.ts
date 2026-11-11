@@ -356,7 +356,8 @@ export function watchLatest(
  * 캐시에만 있는 방은 stale로 두어 다음에 열 때 이어 받는다(요청 0번)
  */
 export function resyncChat(queryClient: QueryClient, options: Options = defaults) {
-  void queryClient.invalidateQueries({ queryKey: CHAT_ROOMS_KEY });
+  // 앱 복귀로 이미 목록을 다시 받고 있으면 끊지 않고 그 결과를 쓴다. 끊으면 같은 목록을 두 번 받는다
+  void queryClient.invalidateQueries({ queryKey: CHAT_ROOMS_KEY }, { cancelRefetch: false });
   const windows = queryClient.getQueriesData<MessageWindow>({
     predicate: (q) => q.queryKey[0] === 'trips' && q.queryKey[2] === 'chat-messages',
   });

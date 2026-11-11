@@ -115,6 +115,5 @@ export function useChatRooms() {
     meId,
     status,
     refetch: query.refetch,
-    isRefetching: query.isRefetching,
   };
 }
