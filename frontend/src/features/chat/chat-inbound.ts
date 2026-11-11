@@ -176,8 +176,27 @@ function handleError(queryClient: QueryClient, tripId: string, error: unknown, o
   );
 }
 
+/** 창은 있는데 메시지가 없다. 처음 받기가 빈 응답으로 끝난 방이다 */
+function isEmptyWindow(w: MessageWindow) {
+  return w.messages.length === 0;
+}
+
 /**
- * 다시 연결·앱 복귀·방 열기 때 이어 받기. 처음 받기 전(창이 비어 있음)이면 할 일이 없다.
+ * 빈 창을 처음 받기처럼 다시 채운다. 최신 페이지 하나를 받아, 더 오래된 메시지가 있는지와 함께 입구로 넣는다.
+ * 메시지가 없는 창은 "어디까지 받았나"가 없어 이어 받기와 마지막 메시지 확인을 건너뛰었다. 그래서 처음 열 때
+ * 비어 있던 방은 앱을 내려 두었다 돌아오거나 실시간 알림을 놓치면, 다시 열 때까지 새 메시지를 받지 않았다(2026-11-10 점검).
+ * 기준 순번을 0으로 보는 방법은 쓰지 않는다. 나중에 들어온 동행에게 서버가 이전 메시지를 주지 않으면 채워지지 않는
+ * 빈칸을 메시지마다 다시 요청하게 된다
+ */
+async function refillEmpty(queryClient: QueryClient, tripId: string, roomId: string) {
+  const page = await getMessages(roomId, { limit: CATCH_UP_LIMIT });
+  // 받는 사이 실시간으로 채워졌어도 입구가 합친다. 더 오래된 것이 있는지는 이 응답이 가장 잘 안다
+  receive(queryClient, tripId, roomId, page.data, 'catch-up', { hasOlder: page.page.hasNext });
+}
+
+/**
+ * 다시 연결·앱 복귀·방 열기 때 이어 받기. 처음 받기 전(창이 없음)이면 할 일이 없다.
+ * 창이 비어 있으면 최신 페이지를 받아 처음 받기처럼 채운다.
  * 최신 페이지를 받고, 커서(빈틈없이 받은 마지막 순번)까지 beforeSequence로 거슬러 받는다.
  * 아직 시작하지 않은 이어 받기가 줄에 있으면 그것을 같이 기다린다(같은 요청을 두 번 하지 않음)
  */
@@ -187,12 +206,21 @@ export function catchUp(queryClient: QueryClient, tripId: string, options: Optio
   const job = enqueue(tripId, async () => {
     if (waitingCatchUps.get(tripId) === job) waitingCatchUps.delete(tripId);
     const start = windowOf(queryClient, tripId);
-    const known = start ? syncedUpTo(start) : null;
-    if (!start || known === null) return;
+    if (!start) return;
     const log = options.log ?? devLog;
     let requests = 0;
     let lastAsked = '';
     try {
+      if (isEmptyWindow(start)) {
+        requests += 1;
+        await refillEmpty(queryClient, tripId, start.roomId);
+        queryClient.setQueryData<MessageWindow>(chatMessagesKey(tripId), (w) =>
+          w ? { ...w, stale: false } : w,
+        );
+        return;
+      }
+      const known = syncedUpTo(start);
+      if (known === null) return;
       const latest = await getMessages(start.roomId, { limit: CATCH_UP_LIMIT });
       requests += 1;
       receive(queryClient, tripId, start.roomId, latest.data, 'catch-up');
@@ -319,7 +347,13 @@ export function checkLatest(
   return enqueue(tripId, async () => {
     try {
       const w = windowOf(queryClient, tripId);
-      if (!w || w.newestSequence === null) return;
+      if (!w) return;
+      // 빈 방은 최신 1개만 보면 그 앞에 놓친 메시지를 알 수 없다. 처음 받기처럼 한 페이지를 받는다(요청은 똑같이 1번)
+      if (isEmptyWindow(w)) {
+        await refillEmpty(queryClient, tripId, roomId);
+        return;
+      }
+      if (w.newestSequence === null) return;
       const page = await getMessages(roomId, { limit: 1 });
       const latest = page.data[0];
       const newest = windowOf(queryClient, tripId)?.newestSequence ?? null;
