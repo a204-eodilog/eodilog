@@ -5,8 +5,7 @@ import type { MessageTarget } from './types';
 
 /**
  * 시스템 카드 이동 버튼이 갈 화면(research R13, Clarifications 2026-11-05).
- * 투표(S22)는 투표 명세에서 연결했다. 코스 화면은 아직 없어 비어 있고, 비어 있으면 버튼이 '준비 중이에요'를 띄운다.
- * 코스 명세에서 이 표에 course만 채운다
+ * 표에 없는 종류는 버튼이 '준비 중이에요'를 띄운다
  */
 export const SYSTEM_CARD_ROUTES: Partial<
   Record<SystemCardKind, (target: MessageTarget, tripId: string) => void>
@@ -16,4 +15,6 @@ export const SYSTEM_CARD_ROUTES: Partial<
     router.push(
       target.type === 'POLL' ? `/trips/${tripId}/polls/${target.id}` : `/trips/${tripId}/polls`,
     ),
+  // 코스 카드. 코스가 비어 있으면 S24가 S23 코스 짜기로 바꿔 연다
+  course: (_target, tripId) => router.push(`/trips/${tripId}/course`),
 };
