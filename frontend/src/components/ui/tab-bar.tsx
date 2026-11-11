@@ -1,7 +1,10 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { isReduceMotion } from '@/hooks/use-reduce-motion';
 import { colors, spacing, typography } from '@/theme';
+import { motion } from '@/theme/motion';
 
 import { Dot, Icon, type IconName } from './icon';
 
@@ -40,20 +43,40 @@ export function TabBar({ active, onChange, badges = {} }: TabBarProps) {
             onPress={() => onChange(tab.key)}
             style={styles.item}
           >
-            <View>
+            <TabIcon on={on}>
               <Icon name={tab.icon} color={color} filled={on} />
               {badges[tab.key] ? (
                 <View style={styles.dot}>
                   <Dot />
                 </View>
               ) : null}
-            </View>
+            </TabIcon>
             <Text style={[typography.captionMedium, { color }]}>{tab.label}</Text>
           </Pressable>
         );
       })}
     </View>
   );
+}
+
+/** 탭을 고르면 아이콘이 작아졌다가 스프링으로 돌아오며 통 튄다(theme/motion). 처음 그릴 때는 움직이지 않는다 */
+function TabIcon({ on, children }: { on: boolean; children: ReactNode }) {
+  const scale = useState(() => new Animated.Value(1))[0];
+  const wasOn = useRef(on);
+  useEffect(() => {
+    if (wasOn.current === on) return;
+    wasOn.current = on;
+    if (!on || isReduceMotion()) return;
+    scale.setValue(motion.tab.fromScale);
+    const popping = Animated.spring(scale, {
+      toValue: 1,
+      ...motion.press.spring,
+      useNativeDriver: motion.native,
+    });
+    popping.start();
+    return () => popping.stop();
+  }, [on, scale]);
+  return <Animated.View style={{ transform: [{ scale }] }}>{children}</Animated.View>;
 }
 
 const styles = StyleSheet.create({

@@ -1,7 +1,20 @@
-import type { ReactNode } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, type ViewStyle } from 'react-native';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  ActivityIndicator,
+  Animated,
+  Pressable,
+  StyleSheet,
+  Text,
+  type ViewStyle,
+} from 'react-native';
 
+import { isReduceMotion } from '@/hooks/use-reduce-motion';
 import { colors, radius, size, spacing, typography } from '@/theme';
+import { motion } from '@/theme/motion';
+
+import { usePressScale } from './use-press-scale';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 type Variant = 'primary' | 'secondary' | 'neutral' | 'danger' | 'text';
 type Size = 'sm' | 'md' | 'lg' | 'xl';
@@ -65,31 +78,56 @@ export function Button({
         ? typography.bodyMedium
         : typography.bodyBold;
 
+  // 누르면 살짝 줄었다가 스프링으로 돌아온다(theme/motion). 예전에는 흐려지기만 했다
+  const press = usePressScale();
+
+  // 글자와 돌아가는 표시가 서로 바뀔 때 툭 바뀌지 않게 서서히 나타난다. 처음 그릴 때는 움직이지 않는다
+  const fade = useState(() => new Animated.Value(1))[0];
+  const wasLoading = useRef(loading);
+  useEffect(() => {
+    if (wasLoading.current === loading) return;
+    wasLoading.current = loading;
+    if (isReduceMotion()) return;
+    fade.setValue(0);
+    const showing = Animated.timing(fade, {
+      toValue: 1,
+      duration: motion.duration.fast,
+      easing: motion.easing.out,
+      useNativeDriver: motion.native,
+    });
+    showing.start();
+    return () => showing.stop();
+  }, [loading, fade]);
+
   return (
-    <Pressable
+    <AnimatedPressable
       accessibilityRole="button"
       accessibilityState={{ disabled: inactive, busy: loading }}
       disabled={inactive}
       onPress={onPress}
-      style={({ pressed }) => [
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
+      style={[
         styles.base,
         { height: size.button[sz], backgroundColor: BG[variant] },
         sz === 'sm' && styles.sm,
         block && styles.block,
-        pressed && styles.pressed,
         inactive && styles.inactive,
         style,
+        { transform: [{ scale: press.scale }] },
       ]}
     >
-      {loading ? (
-        <ActivityIndicator color={fg} />
-      ) : (
-        <>
-          {leading}
-          <Text style={[labelStyle, { color: fg }]}>{label}</Text>
-        </>
-      )}
-    </Pressable>
+      <Animated.View style={[styles.content, { opacity: fade }]}>
+        {loading ? (
+          <ActivityIndicator color={fg} />
+        ) : (
+          <>
+            {leading}
+            <Text style={[labelStyle, { color: fg }]}>{label}</Text>
+          </>
+        )}
+      </Animated.View>
+    </AnimatedPressable>
   );
 }
 
@@ -105,6 +143,12 @@ const styles = StyleSheet.create({
   },
   sm: { paddingHorizontal: spacing[14] },
   block: { alignSelf: 'stretch' },
-  pressed: { opacity: 0.8 },
+  // 글자와 아이콘을 한 줄로. 바깥 칸의 간격을 그대로 따른다
+  content: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing[6],
+  },
   inactive: { opacity: 0.4 },
 });

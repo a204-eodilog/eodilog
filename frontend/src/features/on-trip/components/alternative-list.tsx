@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { BottomSheet, Button, Icon } from '@/components/ui';
+import { CheckMarkWhen } from '@/components/ui/check-mark';
 import { colors, radius, spacing, typography } from '@/theme';
 
 import { alternativeView } from '../on-trip-rules';
@@ -56,7 +57,7 @@ export function AlternativeList(props: {
             accessibilityLabel={view.title}
           >
             <View style={[styles.radio, on && styles.radioOn]}>
-              {on ? <Icon name="check" size={14} color={colors.text.inverse} /> : null}
+              <CheckMarkWhen checked={on} size={14} />
             </View>
             <View style={styles.flex}>
               <Text style={[typography.bodyBold, styles.title]}>{view.title}</Text>

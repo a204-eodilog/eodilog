@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Icon, Tag } from '@/components/ui';
+import { CheckMarkWhen } from '@/components/ui/check-mark';
 import { colors, spacing, typography } from '@/theme';
 
 import { metaLine, sourceTag } from '../checklist-rules';
@@ -36,7 +37,7 @@ export function ChecklistRow({ item, members, onToggle, onMore }: Props) {
         hitSlop={{ top: 4, bottom: 4 }}
       >
         <View style={[styles.box, item.checked ? styles.boxOn : styles.boxOff]}>
-          {item.checked ? <Icon name="check" size={16} color={colors.text.inverse} /> : null}
+          <CheckMarkWhen checked={item.checked} size={16} />
         </View>
         <View style={styles.texts}>
           <View style={styles.titleRow}>

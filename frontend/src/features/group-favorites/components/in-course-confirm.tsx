@@ -1,4 +1,6 @@
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+
+import { Popup } from '@/components/ui/popup';
 
 import { colors, radius, spacing, typography } from '@/theme';
 
@@ -16,24 +18,26 @@ type Props = {
  */
 export function InCourseConfirm({ visible, onRemoveAnyway, onRefresh }: Props) {
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onRefresh}>
-      <View style={styles.dim}>
-        <View style={styles.card} accessibilityRole="alert">
-          <Text style={[typography.title2, styles.title]}>코스에 들어 있는 장소예요</Text>
-          <Text style={[typography.body, styles.body]}>
-            이 장소가 코스에 있어요.{'\n'}빼도 코스에는 그대로 남아요
-          </Text>
-          <View style={styles.actions}>
-            <Pressable style={styles.ghost} onPress={onRemoveAnyway} accessibilityRole="button">
-              <Text style={[typography.bodyMedium, styles.ghostText]}>그래도 빼기</Text>
-            </Pressable>
-            <Pressable style={styles.primary} onPress={onRefresh} accessibilityRole="button">
-              <Text style={[typography.bodyBold, styles.primaryText]}>최신 목록 보기</Text>
-            </Pressable>
-          </View>
-        </View>
+    <Popup
+      visible={visible}
+      onRequestClose={onRefresh}
+      backdropStyle={styles.dim}
+      cardStyle={styles.card}
+      accessibilityRole="alert"
+    >
+      <Text style={[typography.title2, styles.title]}>코스에 들어 있는 장소예요</Text>
+      <Text style={[typography.body, styles.body]}>
+        이 장소가 코스에 있어요.{'\n'}빼도 코스에는 그대로 남아요
+      </Text>
+      <View style={styles.actions}>
+        <Pressable style={styles.ghost} onPress={onRemoveAnyway} accessibilityRole="button">
+          <Text style={[typography.bodyMedium, styles.ghostText]}>그래도 빼기</Text>
+        </Pressable>
+        <Pressable style={styles.primary} onPress={onRefresh} accessibilityRole="button">
+          <Text style={[typography.bodyBold, styles.primaryText]}>최신 목록 보기</Text>
+        </Pressable>
       </View>
-    </Modal>
+    </Popup>
   );
 }
 

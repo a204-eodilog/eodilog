@@ -1,4 +1,6 @@
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+
+import { Popup } from '@/components/ui/popup';
 
 import { Button } from '@/components/ui';
 import { colors, layout, radius, spacing, typography } from '@/theme';
@@ -25,41 +27,38 @@ export function CoeditConflict({ editor, busy, onOverwrite, onLatest }: Props) {
   // 부르는 말은 늘 받침으로 끝나 '이'를 붙인다
   const title = `${editor ?? ''}이 먼저 코스를 바꿨어요`;
   return (
-    <Modal
+    <Popup
       testID="coedit-conflict"
       visible={editor !== null}
-      transparent
-      animationType="fade"
+      backdropStyle={styles.dim}
+      cardStyle={styles.box}
+      accessibilityRole="alert"
       // 안드로이드 뒤로 가기로 묻지 않고 내 변경을 버리지 않게, 둘 중 하나를 누를 때까지 닫지 않는다
       onRequestClose={noop}
     >
-      <View style={styles.dim}>
-        <View style={styles.box} accessibilityRole="alert">
-          <Text style={[typography.title2, styles.title]}>{title}</Text>
-          <Text style={[typography.body, styles.body]}>
-            {'같은 곳을 고쳤어요.\n최신 코스를 확인해 주세요'}
-          </Text>
-          <View style={styles.actions}>
-            <Pressable
-              style={styles.overwrite}
-              onPress={onOverwrite}
-              disabled={busy}
-              accessibilityRole="button"
-              accessibilityState={{ disabled: busy }}
-            >
-              <Text style={[typography.bodyMedium, styles.overwriteText]}>내 것으로 덮기</Text>
-            </Pressable>
-            <Button
-              label="최신 코스 보기"
-              weight="medium"
-              onPress={onLatest}
-              disabled={busy}
-              style={styles.latest}
-            />
-          </View>
-        </View>
+      <Text style={[typography.title2, styles.title]}>{title}</Text>
+      <Text style={[typography.body, styles.body]}>
+        {'같은 곳을 고쳤어요.\n최신 코스를 확인해 주세요'}
+      </Text>
+      <View style={styles.actions}>
+        <Pressable
+          style={styles.overwrite}
+          onPress={onOverwrite}
+          disabled={busy}
+          accessibilityRole="button"
+          accessibilityState={{ disabled: busy }}
+        >
+          <Text style={[typography.bodyMedium, styles.overwriteText]}>내 것으로 덮기</Text>
+        </Pressable>
+        <Button
+          label="최신 코스 보기"
+          weight="medium"
+          onPress={onLatest}
+          disabled={busy}
+          style={styles.latest}
+        />
       </View>
-    </Modal>
+    </Popup>
   );
 }
 

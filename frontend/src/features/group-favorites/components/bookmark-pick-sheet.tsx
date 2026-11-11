@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { BottomSheet, Button, Icon, Tag } from '@/components/ui';
+import { BottomSheet, Button, Tag } from '@/components/ui';
+import { CheckMarkWhen } from '@/components/ui/check-mark';
 import type { Bookmark } from '@/features/saved/types';
 import { colors, spacing, typography } from '@/theme';
 
@@ -75,9 +76,7 @@ export function BookmarkPickSheet({
                 accessibilityLabel={b.place?.name ?? b.retainedPlace.name}
               >
                 <View style={[styles.box, on || already ? styles.boxOn : styles.boxOff]}>
-                  {on || already ? (
-                    <Icon name="check" size={16} color={colors.text.inverse} />
-                  ) : null}
+                  <CheckMarkWhen checked={on || already} size={16} />
                 </View>
                 <Text style={[typography.bodyMedium, styles.name]} numberOfLines={1}>
                   {b.place?.name ?? b.retainedPlace.name}
