@@ -55,6 +55,8 @@ function InviteContent({ token, first }: { token: string; first: boolean }) {
       leave(first ? { pathname: '/preferences', params: { tripId: trip.id } } : tripHref(trip.id));
     },
     onError: (error) => {
+      // 이미 동행이면 화면이 이동 실패 안내로 바뀐다. 참여하지 못했다는 띠까지 겹쳐 띄우지 않는다
+      if (preview.data?.alreadyMember) return;
       if (!invitationProblem(error)) toast.error('참여하지 못했어요. 다시 시도해 주세요');
     },
   });
@@ -119,6 +121,20 @@ function InviteContent({ token, first }: { token: string; first: boolean }) {
   }
 
   const { tripTitle, startDate, endDate, inviter } = preview.data;
+
+  // 자동 참여가 실패했다. 예전에는 "이동하는 중"에 머물렀고 이 화면에는 뒤로 갈 길도 없었다(2026-11-10 점검).
+  // 자동 요청은 한 번만 보내므로 다시 시도는 사용자가 누른다
+  if (alreadyMember && accept.isError) {
+    return (
+      <Notice
+        icon="alert"
+        title="여행으로 이동하지 못했어요"
+        description="연결을 확인하고 다시 시도해 주세요"
+        onRetry={() => accept.mutate()}
+        onHome={() => leave('/home')}
+      />
+    );
+  }
 
   if (alreadyMember) {
     return (
@@ -192,16 +208,18 @@ function InviteContent({ token, first }: { token: string; first: boolean }) {
   );
 }
 
-/** 가운데 안내 화면(무효·만료, 인원 가득 참). 회색 동그라미 아이콘 + 제목 + 설명 + 홈으로 */
+/** 가운데 안내 화면(무효·만료, 인원 가득 참, 이동 실패). 회색 동그라미 아이콘 + 제목 + 설명 + 홈으로. onRetry가 있으면 다시 시도가 위에 붙는다 */
 function Notice({
   icon,
   title,
   description,
+  onRetry,
   onHome,
 }: {
   icon: IconName;
   title: string;
   description: string;
+  onRetry?: () => void;
   onHome: () => void;
 }) {
   return (
@@ -213,7 +231,16 @@ function Notice({
         </View>
         <Text style={[typography.title1, styles.noticeTitle]}>{title}</Text>
         <Text style={[typography.body, styles.noticeDescription]}>{description}</Text>
-        <Button label="홈으로" variant="neutral" size="lg" onPress={onHome} style={styles.home} />
+        {onRetry ? (
+          <Button label="다시 시도" size="lg" onPress={onRetry} style={styles.home} />
+        ) : null}
+        <Button
+          label="홈으로"
+          variant="neutral"
+          size="lg"
+          onPress={onHome}
+          style={onRetry ? styles.homeAfterRetry : styles.home}
+        />
       </View>
     </SafeAreaView>
   );
@@ -275,4 +302,5 @@ const styles = StyleSheet.create({
   moving: { flexDirection: 'row', alignItems: 'center', gap: spacing[10], marginTop: spacing[24] },
   // Button은 기본이 왼쪽 붙음(alignSelf flex-start)이라 가운데로 다시 맞춘다
   home: { alignSelf: 'center', marginTop: spacing[24] },
+  homeAfterRetry: { alignSelf: 'center', marginTop: spacing[8] },
 });
