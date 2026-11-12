@@ -93,8 +93,8 @@ export function ExpenseListView({
               <View style={styles.top}>
                 {changed ? <SettlementChangedBox onPrevious={onPreviousSettlement} /> : null}
                 <Card variant="filled" rounded="xl" style={styles.total}>
-                  <Text style={[typography.caption, styles.sub]}>함께 쓴 돈</Text>
-                  <Text style={[typography.title1, styles.text]}>
+                  <Text style={[typography.captionMedium, styles.onBrandSoft]}>함께 쓴 돈</Text>
+                  <Text style={[typography.display, styles.onBrand]}>
                     {changed ? formatWon(total) : formatTotalShort(total)}
                   </Text>
                 </Card>
@@ -130,15 +130,9 @@ export function ExpenseListView({
           >
             <Button
               label={changed ? '다시 계산' : '정산 계산'}
+              icon={changed ? 'refresh' : 'calculator'}
               weight="medium"
               onPress={onCalculate}
-              leading={
-                <Icon
-                  name={changed ? 'refresh' : 'calculator'}
-                  size={20}
-                  color={colors.text.inverse}
-                />
-              }
               style={styles.calculate}
             />
           </View>
@@ -166,7 +160,10 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: layout.screenPaddingX, paddingTop: spacing[16] },
   top: { gap: spacing[20] },
   // 합계 상자 안쪽 여백 20, 글자 사이는 붙여 둔다
-  total: { padding: spacing[20], gap: 0 },
+  // 합계는 파랑 카드에 큰 숫자로. 이 화면에서 가장 먼저 읽히는 값이다
+  total: { padding: spacing[20], gap: spacing[2], backgroundColor: colors.brand.primary },
+  onBrand: { color: colors.text.inverse },
+  onBrandSoft: { color: colors.onBrand.textSoft },
   // 합계 상자와 목록 제목 사이 24(top의 gap 20 + 4), 제목과 목록 사이 8
   listTitle: { marginTop: spacing[4], marginBottom: spacing[8] },
   rowGap: { height: spacing[6] },

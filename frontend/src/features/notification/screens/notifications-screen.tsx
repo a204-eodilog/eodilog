@@ -136,8 +136,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   pressed: { opacity: 0.6 },
-  list: { paddingHorizontal: layout.screenPaddingX, paddingTop: spacing[16] },
-  sectionTitle: { color: colors.text.icon, marginBottom: spacing[8] },
+  // 줄이 카드라 카드 안쪽 12를 뺀 8만 띄운다. 글자는 예전처럼 화면 끝에서 20에 선다
+  list: { paddingHorizontal: layout.screenPaddingX - spacing[12], paddingTop: spacing[16] },
+  sectionTitle: {
+    color: colors.text.icon,
+    marginBottom: spacing[8],
+    paddingHorizontal: spacing[12],
+  },
   gap: { height: spacing[4] },
   // Figma 묶음 사이 24
   laterSection: { marginTop: spacing[24] },

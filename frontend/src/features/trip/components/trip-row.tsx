@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { AvatarGroup, Icon } from '@/components/ui';
 import { PressableScale } from '@/components/ui/pressable-scale';
-import { colors, layout, spacing, typography } from '@/theme';
+import { colors, spacing, typography } from '@/theme';
 
 import { useRegionNames } from '../hooks/use-region-names';
 import { tripListLead, type TripListKind } from '../trip-list-rules';
@@ -73,14 +73,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[14],
-    paddingVertical: spacing[10],
-    paddingHorizontal: layout.screenPaddingX,
+    paddingVertical: spacing[12],
+    paddingHorizontal: spacing[16],
   },
   pressed: { backgroundColor: colors.surface.subtle },
   texts: { flex: 1, gap: spacing[4] },
   title: { color: colors.text.strong },
   meta: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
-  badge: { color: colors.brand.primary, marginRight: spacing[6] },
+  // D-day는 연파랑 알약으로 띄운다
+  badge: {
+    color: colors.brand.primary,
+    marginRight: spacing[6],
+    paddingHorizontal: spacing[8],
+    borderRadius: 11,
+    overflow: 'hidden',
+    backgroundColor: colors.brand.primaryBg,
+  },
   sub: { color: colors.text.sub, marginRight: spacing[6] },
   place: { flexShrink: 1, color: colors.text.sub },
   placeEmpty: { color: colors.text.muted },

@@ -2,17 +2,17 @@ import { Image } from 'expo-image';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Button, Card, Header, Icon, Tag } from '@/components/ui';
+import { Stagger } from '@/components/ui/stagger';
+import { Button, Card, Header, Icon, type IconName } from '@/components/ui';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { photoPath } from '@/features/photo';
 import { assetSource } from '@/lib/asset-image';
-import { colors, layout, spacing, typography } from '@/theme';
+import { colors, layout, radius, spacing, typography } from '@/theme';
 
 import { type PhotoCardInfo, PHOTO_CARD_THUMBS } from '../photo-card-rules';
 import type { RecordSummary } from '../record-rules';
 
 import { OutlinePillButton } from './outline-pill-button';
-import { RecordSummaryCard } from './record-summary-card';
 
 /** 공동 피드 상태. 게시됨이면 노출 줄("전체 공개 · 하늘에게 숨김")과 숨긴 친구 안내 */
 export type RecordFeed =
@@ -70,95 +70,118 @@ export function TripRecordView({
 
   return (
     <View style={styles.screen}>
-      <Header onBack={onBack} />
+      <Header onBack={onBack} title="내 여행 기록" />
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={[typography.title1, styles.text]}>내 여행 기록</Text>
-
-        <View style={styles.head}>
-          {feed.status === 'published' ? (
-            <View style={styles.tagRow}>
-              <Tag label="게시됨" tone="brand" icon="check" />
-              <Text style={[typography.caption, styles.visibility]}>{feed.visibility}</Text>
-            </View>
-          ) : (
-            <View style={styles.tagRow}>
-              <Tag label="게시 전" />
-            </View>
-          )}
-          <Text style={[typography.title1, styles.text]}>{tripTitle}</Text>
-          {period || companions ? (
-            <View style={styles.info}>
-              {period ? (
-                <View style={styles.infoItem}>
-                  <Icon name="calendar" size={16} color={colors.text.icon} />
-                  <Text style={[typography.caption, styles.sub]}>{period}</Text>
-                </View>
-              ) : null}
-              {companions ? (
-                <View style={[styles.infoItem, styles.shrink]}>
-                  <Icon name="people" size={16} color={colors.text.icon} />
-                  <Text style={[typography.caption, styles.sub, styles.shrink]} numberOfLines={1}>
-                    {companions}
-                  </Text>
-                </View>
+        <Stagger itemStyle={styles.staggerItem}>
+          {/* 머리 카드. 여행 상세와 같은 파랑 블록에 여행 이름을 크게, 기간과 동행은 반투명 칩으로 */}
+          <View style={styles.hero}>
+            <View style={styles.heroTop}>
+              <View style={styles.status}>
+                <Icon name={published ? 'check' : 'pencil'} size={14} color={colors.text.inverse} />
+                <Text style={[typography.captionBold, styles.onBrand]}>
+                  {published ? '게시됨' : '게시 전'}
+                </Text>
+              </View>
+              {feed.status === 'published' ? (
+                <Text
+                  style={[typography.caption, styles.onBrandSoft, styles.shrink]}
+                  numberOfLines={1}
+                >
+                  {feed.visibility}
+                </Text>
               ) : null}
             </View>
-          ) : null}
-          {feed.status === 'draft' ? (
-            <Text style={[typography.caption, styles.sub]}>게시하면 모두에게 공개돼요</Text>
-          ) : feed.hiddenNote ? (
-            <Text style={[typography.caption, styles.sub]}>{feed.hiddenNote}</Text>
-          ) : null}
-        </View>
-
-        <Card
-          onPress={onPhotos}
-          accessibilityLabel={[photos.title, photos.sub].filter(Boolean).join(', ')}
-          style={styles.photoCard}
-        >
-          <View style={styles.photoHead}>
-            <Icon name="image" size={20} color={colors.text.default} />
-            <Text style={[typography.bodyBold, styles.text]}>{photos.title}</Text>
-            <Text style={[typography.caption, styles.sub, styles.grow]} numberOfLines={1}>
-              {photos.sub ?? ''}
+            <Text style={[typography.hero, styles.onBrand]} numberOfLines={2}>
+              {tripTitle}
             </Text>
-            <Icon name="chevron-right" size={16} color={colors.text.icon} />
+            {period || companions ? (
+              <View style={styles.chips}>
+                {period ? (
+                  <View style={styles.chip}>
+                    <Icon name="calendar" size={14} color={colors.text.inverse} />
+                    <Text style={[typography.captionMedium, styles.onBrand]}>{period}</Text>
+                  </View>
+                ) : null}
+                {companions ? (
+                  <View style={[styles.chip, styles.shrink]}>
+                    <Icon name="people" size={14} color={colors.text.inverse} />
+                    <Text
+                      style={[typography.captionMedium, styles.onBrand, styles.shrink]}
+                      numberOfLines={1}
+                    >
+                      {companions}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
+            {feed.status === 'draft' ? (
+              <Text style={[typography.caption, styles.onBrandSoft]}>
+                게시하면 모두에게 공개돼요
+              </Text>
+            ) : feed.hiddenNote ? (
+              <Text style={[typography.caption, styles.onBrandSoft]}>{feed.hiddenNote}</Text>
+            ) : null}
           </View>
-          {photos.thumbAssetIds.length > 0 ? (
-            <View style={styles.thumbs}>
-              {photos.thumbAssetIds.map((assetId) => (
-                <PhotoThumb key={assetId} assetId={assetId} />
-              ))}
-              {/* 4장보다 적어도 칸 크기를 같게 둔다 */}
-              {Array.from({ length: PHOTO_CARD_THUMBS - photos.thumbAssetIds.length }, (_, i) => (
-                <View key={`empty-${i}`} style={styles.thumbSlot} />
-              ))}
+
+          {/* 사진. 썸네일을 크게 보여 준다 */}
+          <PressableScale
+            onPress={onPhotos}
+            accessibilityRole="button"
+            accessibilityLabel={[photos.title, photos.sub].filter(Boolean).join(', ')}
+            style={styles.photoBlock}
+          >
+            <View style={styles.sectionHead}>
+              <Text style={[typography.title3, styles.text]}>{photos.title}</Text>
+              <Text style={[typography.caption, styles.sub, styles.grow]} numberOfLines={1}>
+                {photos.sub ?? ''}
+              </Text>
+              <Icon name="chevron-right" size={18} color={colors.text.icon} />
             </View>
-          ) : null}
-        </Card>
+            {photos.thumbAssetIds.length > 0 ? (
+              <View style={styles.thumbs}>
+                {photos.thumbAssetIds.map((assetId) => (
+                  <PhotoThumb key={assetId} assetId={assetId} />
+                ))}
+                {/* 4장보다 적어도 칸 크기를 같게 둔다 */}
+                {Array.from({ length: PHOTO_CARD_THUMBS - photos.thumbAssetIds.length }, (_, i) => (
+                  <View key={`empty-${i}`} style={[styles.thumbSlot, styles.thumb]} />
+                ))}
+              </View>
+            ) : null}
+          </PressableScale>
 
-        <View style={styles.summaries}>
-          <RecordSummaryCard icon="map-pin" label="코스" {...course} onPress={onCourse} />
-          <RecordSummaryCard icon="star" label="평가" {...review} onPress={onReview} />
-          <RecordSummaryCard icon="card" label="경비" {...expense} onPress={onExpense} />
-        </View>
+          {/* 요약. 좁은 세 칸 대신 한 카드에 세 줄로 둬 값이 꺾이지 않는다 */}
+          <Card style={styles.summaryCard}>
+            <SummaryRow icon="map-pin" label="코스" {...course} onPress={onCourse} />
+            <View style={styles.rule} />
+            <SummaryRow icon="star" label="평가" {...review} onPress={onReview} />
+            <View style={styles.rule} />
+            <SummaryRow icon="card" label="경비" {...expense} onPress={onExpense} />
+          </Card>
 
-        <View style={styles.manage}>
-          <OutlinePillButton label="장소 위치 바꾸기" icon="map-pin" onPress={onMovePin} />
-          <OutlinePillButton
-            label="기록 삭제"
-            icon="trash"
-            color={colors.status.danger}
-            onPress={onDelete}
-          />
-        </View>
+          <View style={styles.manage}>
+            <OutlinePillButton label="장소 위치 바꾸기" icon="map-pin" onPress={onMovePin} />
+            <OutlinePillButton
+              label="기록 삭제"
+              icon="trash"
+              color={colors.status.danger}
+              onPress={onDelete}
+            />
+          </View>
+        </Stagger>
       </ScrollView>
 
       <View style={[styles.bottom, { paddingBottom: Math.max(insets.bottom, BOTTOM_GAP) }]}>
         {published ? (
           <>
-            <PressableScale accessibilityRole="button" hitSlop={8} onPress={onDeleteFeed}>
-              <Text style={[typography.bodyMedium, styles.sub]}>공동 피드 삭제</Text>
+            <PressableScale
+              accessibilityLabel="공동 피드 삭제"
+              accessibilityRole="button"
+              hitSlop={8}
+              onPress={onDeleteFeed}
+            >
+              <Icon name="trash" size={20} color={colors.text.icon} />
             </PressableScale>
             <OutlinePillButton
               label="내 노출 설정"
@@ -170,14 +193,46 @@ export function TripRecordView({
         ) : (
           <Button
             label="공동 피드 게시"
+            icon="upload"
             weight="medium"
             onPress={onPublish}
-            leading={<Icon name="upload" size={20} color={colors.text.inverse} />}
             style={styles.publish}
           />
         )}
       </View>
     </View>
+  );
+}
+
+/** 요약 한 줄. 연파랑 동그라미 아이콘, 이름과 보조 글, 오른쪽에 큰 값 */
+function SummaryRow({
+  icon,
+  label,
+  value,
+  sub: note,
+  onPress,
+}: RecordSummary & { icon: IconName; label: string; onPress: () => void }) {
+  return (
+    <PressableScale
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${label}, ${value}, ${note}`}
+      style={({ pressed }) => [styles.summaryRow, pressed && styles.pressed]}
+    >
+      <View style={styles.summaryIcon}>
+        <Icon name={icon} size={20} color={colors.brand.primary} />
+      </View>
+      <View style={styles.grow}>
+        <Text style={[typography.bodyBold, styles.text]}>{label}</Text>
+        <Text style={[typography.caption, styles.sub]} numberOfLines={1}>
+          {note}
+        </Text>
+      </View>
+      <Text style={[typography.title3, styles.value]} numberOfLines={1}>
+        {value}
+      </Text>
+      <Icon name="chevron-right" size={18} color={colors.text.muted} />
+    </PressableScale>
   );
 }
 
@@ -195,6 +250,8 @@ function PhotoThumb({ assetId }: { assetId: string }) {
 const BOTTOM_GAP = 34;
 
 const styles = StyleSheet.create({
+  // 차례로 나타나는 구역을 감싼 칸. 한 구역이 여러 줄이면 그 사이 간격을 스크롤 내용과 같게 둔다
+  staggerItem: { gap: spacing[20] },
   screen: { flex: 1, backgroundColor: colors.surface.white },
   content: {
     paddingTop: spacing[16],
@@ -202,22 +259,64 @@ const styles = StyleSheet.create({
     paddingBottom: spacing[24],
     gap: spacing[20],
   },
-  head: { gap: spacing[10] },
-  tagRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[10] },
-  visibility: { color: colors.brand.primaryDark, flexShrink: 1 },
-  info: { flexDirection: 'row', alignItems: 'center', gap: spacing[12] },
-  infoItem: { flexDirection: 'row', alignItems: 'center', gap: spacing[6] },
+  // 머리 카드(파랑 블록). 여행 상세 머리와 같은 색과 칩을 쓴다
+  hero: {
+    padding: spacing[20],
+    borderRadius: radius.xxl,
+    backgroundColor: colors.brand.primary,
+    gap: spacing[12],
+  },
+  heroTop: { flexDirection: 'row', alignItems: 'center', gap: spacing[10] },
+  status: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[4],
+    height: 26,
+    paddingHorizontal: spacing[10],
+    borderRadius: radius.full,
+    backgroundColor: colors.onBrand.chip,
+  },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[8] },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[6],
+    height: 30,
+    paddingHorizontal: spacing[12],
+    borderRadius: radius.full,
+    backgroundColor: colors.onBrand.chip,
+  },
+  onBrand: { color: colors.text.inverse },
+  onBrandSoft: { color: colors.onBrand.textSoft },
   shrink: { flexShrink: 1 },
   grow: { flex: 1 },
-  photoCard: { gap: spacing[16] },
-  photoHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[6] },
-  // 값 문서: 썸네일 4개 73x52, 둥글기 10. 기기 폭에 맞춰 넷이 나눠 서고 높이는 52
-  thumbs: { flexDirection: 'row', gap: spacing[4] },
-  thumbSlot: { flex: 1, height: 52 },
-  thumb: { borderRadius: 10, overflow: 'hidden', backgroundColor: colors.surface.default },
+  photoBlock: { gap: spacing[12] },
+  sectionHead: { flexDirection: 'row', alignItems: 'baseline', gap: spacing[8] },
+  // 썸네일 넷이 폭을 나눠 서고 높이는 88. 예전 52는 사진이 띠처럼 보였다
+  thumbs: { flexDirection: 'row', gap: spacing[6] },
+  thumbSlot: { flex: 1, height: 88 },
+  thumb: { borderRadius: radius.lg, overflow: 'hidden', backgroundColor: colors.surface.default },
   thumbImage: { width: '100%', height: '100%' },
-  summaries: { flexDirection: 'row', gap: spacing[8] },
-  manage: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[10] },
+  summaryCard: { paddingVertical: spacing[6], paddingHorizontal: spacing[16], gap: 0 },
+  summaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[12],
+    minHeight: 68,
+    paddingVertical: spacing[10],
+  },
+  summaryIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.brand.primaryBg,
+  },
+  value: { color: colors.text.default },
+  rule: { height: 1, backgroundColor: colors.line.default, marginLeft: 52 },
+  pressed: { opacity: 0.6 },
+  manage: { flexDirection: 'row', justifyContent: 'flex-end', gap: spacing[10] },
   bottom: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
