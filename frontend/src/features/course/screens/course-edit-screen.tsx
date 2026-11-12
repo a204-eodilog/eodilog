@@ -588,9 +588,8 @@ export function CourseEditScreen() {
     if (trip.data.destinationRegionIds.length === 0) {
       body = (
         <NoRegionView
-          onPickRegion={() =>
-            router.push({ pathname: '/trips/[tripId]/settings-region', params: { tripId } })
-          }
+          // 고르면 바로 저장하는 화면. 설정용 검색(settings-region)은 설정의 [완료]가 있어야 저장된다
+          onPickRegion={() => router.push(`/trips/${tripId}/region`)}
         />
       );
     } else if (!trip.data.startDate || !trip.data.endDate) {
