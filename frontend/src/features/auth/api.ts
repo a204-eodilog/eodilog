@@ -49,6 +49,14 @@ export async function updateProfile(patch: ProfilePatch): Promise<MyProfile> {
   return data.data;
 }
 
+/**
+ * 회원 탈퇴(DELETE /me, 202). 즉시 탈퇴하고 되돌릴 수 없다. 모든 기기의 세션이 끊기고,
+ * 남는 여행 기록의 작성자는 "탈퇴한 사용자"로 보인다. 나머지 정리는 서버가 뒤에서 한다
+ */
+export async function deleteAccount(): Promise<void> {
+  await apiClient.delete('/me');
+}
+
 /** 현재 기기의 서버 세션만 끊는다. 다른 기기 로그인은 남는다 */
 export async function deleteCurrentSession(): Promise<void> {
   await apiClient.delete('/auth/session', { timeout: 5_000 });
