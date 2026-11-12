@@ -1,9 +1,9 @@
 import { router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
-import { Spinner } from '@/components/ui/spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CenterNotice, toast } from '@/components/ui';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { colors } from '@/theme';
 
 import { SavedView } from '../components/saved-view';
@@ -47,7 +47,7 @@ export function SavedScreen() {
             onAction={() => void bookmarks.refetch()}
           />
         ) : (
-          <Spinner style={styles.loading} color={colors.brand.primary} />
+          <SkeletonList style={styles.loading} />
         )}
       </View>
     );

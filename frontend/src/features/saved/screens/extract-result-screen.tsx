@@ -1,12 +1,13 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Spinner } from '@/components/ui/spinner';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { apiErrorCode } from '@/api/errors';
 import { MapMarker, MapView } from '@/components/map';
 import { Button, CenterNotice, Header, Icon, toast } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { pickPlace } from '@/features/place';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -156,7 +157,7 @@ export function ExtractResultScreen() {
             onAction={() => void query.refetch()}
           />
         ) : (
-          <Spinner style={styles.flex} color={colors.brand.primary} />
+          <SkeletonList style={styles.flex} />
         )}
       </View>
     );
@@ -176,7 +177,7 @@ export function ExtractResultScreen() {
           <ExtractSteps steps={EXTRACTION_STEPS} current={step} detail={stepDetail(step, sent)} />
         </View>
         <View style={[styles.progressBottom, { paddingBottom: Math.max(insets.bottom + 12, 34) }]}>
-          <Pressable
+          <PressableScale
             accessibilityRole="button"
             accessibilityLabel="취소"
             disabled={cancelling}
@@ -184,7 +185,7 @@ export function ExtractResultScreen() {
             style={({ pressed }) => [styles.cancel, (pressed || cancelling) && styles.pressed]}
           >
             <Text style={[typography.bodyMedium, styles.sub]}>취소</Text>
-          </Pressable>
+          </PressableScale>
         </View>
       </View>
     );
@@ -293,7 +294,7 @@ export function ExtractResultScreen() {
               {options.map((o, i) => {
                 const selected = i === choiceIndex;
                 return (
-                  <Pressable
+                  <PressableScale
                     key={o.candidateId}
                     accessibilityRole="radio"
                     accessibilityLabel={[candidateLetter(i), o.place.name, areaOf(o.place)]
@@ -324,7 +325,7 @@ export function ExtractResultScreen() {
                     <View style={[styles.radio, selected && styles.radioOn]}>
                       {selected ? <View style={styles.radioDot} /> : null}
                     </View>
-                  </Pressable>
+                  </PressableScale>
                 );
               })}
             </ScrollView>
@@ -375,7 +376,7 @@ export function ExtractResultScreen() {
               {items.map((item) => {
                 const itemPlace = item.place;
                 return (
-                  <Pressable
+                  <PressableScale
                     key={item.key}
                     disabled={!itemPlace}
                     onPress={() => setFocused(item.key)}
@@ -433,7 +434,7 @@ export function ExtractResultScreen() {
                         onPress={() => removeItem(item.key)}
                       />
                     </View>
-                  </Pressable>
+                  </PressableScale>
                 );
               })}
             </ScrollView>
@@ -514,7 +515,7 @@ function RoundButton({
   onPress: () => void;
 }) {
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={label}
       hitSlop={4}
@@ -522,7 +523,7 @@ function RoundButton({
       style={({ pressed }) => [styles.round, pressed && styles.pressed]}
     >
       <Icon name={icon} size={18} color={colors.text.icon} />
-    </Pressable>
+    </PressableScale>
   );
 }
 

@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { AvatarGroup, Icon, Tag } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { CheckMarkWhen } from '@/components/ui/check-mark';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -21,7 +22,7 @@ export function OptionRow({ option, checked, disabled = false, onToggle }: Props
   const isPlace = 'placeId' in option.input;
   const overlap = option.savedCount !== undefined && option.savedCount >= 2;
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="checkbox"
       accessibilityLabel={option.title}
       accessibilityState={{ checked, disabled }}
@@ -67,7 +68,7 @@ export function OptionRow({ option, checked, disabled = false, onToggle }: Props
           </View>
         ) : null}
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }
 

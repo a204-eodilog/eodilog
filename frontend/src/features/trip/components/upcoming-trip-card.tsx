@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { AvatarGroup, Icon, type IconName } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { formatRange } from '@/lib/seoul-date';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -35,7 +36,7 @@ export function UpcomingTripCard({ trip, today, onPress }: Props) {
     : `다가오는 여행${d !== null ? ` · D-${d}` : ''}`;
 
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={`${kicker} ${trip.title}`}
       onPress={onPress}
@@ -81,7 +82,7 @@ export function UpcomingTripCard({ trip, today, onPress }: Props) {
           <View key={s.key} style={[styles.stage, i <= stageIndex && styles.stageOn]} />
         ))}
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }
 

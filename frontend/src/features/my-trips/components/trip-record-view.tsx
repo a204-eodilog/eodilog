@@ -1,8 +1,9 @@
 import { Image } from 'expo-image';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, Card, Header, Icon, Tag } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { photoPath } from '@/features/photo';
 import { assetSource } from '@/lib/asset-image';
 import { colors, layout, spacing, typography } from '@/theme';
@@ -156,9 +157,9 @@ export function TripRecordView({
       <View style={[styles.bottom, { paddingBottom: Math.max(insets.bottom, BOTTOM_GAP) }]}>
         {published ? (
           <>
-            <Pressable accessibilityRole="button" hitSlop={8} onPress={onDeleteFeed}>
+            <PressableScale accessibilityRole="button" hitSlop={8} onPress={onDeleteFeed}>
               <Text style={[typography.bodyMedium, styles.sub]}>공동 피드 삭제</Text>
-            </Pressable>
+            </PressableScale>
             <OutlinePillButton
               label="내 노출 설정"
               icon="settings"

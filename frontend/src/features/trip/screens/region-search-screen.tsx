@@ -2,10 +2,11 @@ import { useQueryClient } from '@tanstack/react-query';
 import { FlashList } from '@shopify/flash-list';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, Chip, EmptyState, ErrorState, Header, Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { caret, colors, layout, radius, spacing, typography } from '@/theme';
 
 import { useNewTripDraft } from '../hooks/use-new-trip-draft';
@@ -98,7 +99,7 @@ export function RegionSearchScreen({ draft = 'new' }: { draft?: 'new' | 'edit' }
               renderItem={({ item }) => {
                 const selected = picked.some((p) => p.id === item.id);
                 return (
-                  <Pressable
+                  <PressableScale
                     accessibilityRole="button"
                     accessibilityState={{ selected }}
                     onPress={() => (selected ? removeRegion(item.id) : pick(item))}
@@ -112,7 +113,7 @@ export function RegionSearchScreen({ draft = 'new' }: { draft?: 'new' | 'edit' }
                       <Text style={[typography.caption, styles.full]}>{item.name}</Text>
                     </View>
                     {selected ? <Icon name="check" size={20} color={colors.brand.primary} /> : null}
-                  </Pressable>
+                  </PressableScale>
                 );
               }}
             />

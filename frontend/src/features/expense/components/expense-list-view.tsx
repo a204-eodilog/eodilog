@@ -1,7 +1,8 @@
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, Card, CenterNotice, Header, Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { formatTotalShort, formatWon } from '@/lib/format-number';
 import { colors, layout, spacing, typography } from '@/theme';
 
@@ -58,7 +59,7 @@ export function ExpenseListView({
         subtitle={tripTitle}
         subtitleIcon="trip"
         right={
-          <Pressable
+          <PressableScale
             accessibilityRole="button"
             accessibilityLabel="지출 추가"
             hitSlop={8}
@@ -66,7 +67,7 @@ export function ExpenseListView({
             style={styles.headerButton}
           >
             <Icon name="plus" color={colors.text.default} />
-          </Pressable>
+          </PressableScale>
         }
       />
 

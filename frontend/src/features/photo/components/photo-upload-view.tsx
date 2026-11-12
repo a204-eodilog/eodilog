@@ -1,7 +1,8 @@
-import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, CenterNotice, Header, Icon, type IconName } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 import type { UploadPhase } from '../hooks/use-photo-upload';
@@ -78,7 +79,7 @@ export function PhotoUploadView(props: PhotoUploadViewProps) {
         <ScrollView contentContainerStyle={styles.body}>
           <View style={styles.titleRow}>
             <Text style={[typography.title3, styles.text]}>고른 사진</Text>
-            <Pressable
+            <PressableScale
               accessibilityRole="button"
               accessibilityLabel="사진 더 고르기"
               hitSlop={8}
@@ -87,7 +88,7 @@ export function PhotoUploadView(props: PhotoUploadViewProps) {
             >
               <Icon name="plus" size={16} color={colors.brand.primaryDark} />
               <Text style={[typography.bodyMedium, styles.link]}>더 고르기</Text>
-            </Pressable>
+            </PressableScale>
           </View>
           <Hint icon="info" text="사진을 누르면 올리지 않을 사진으로 빠져요" />
           <View style={styles.grid}>
@@ -201,14 +202,14 @@ export function PhotoUploadView(props: PhotoUploadViewProps) {
 /** 회색 글자 버튼(값 문서: `typography.bodyMedium` `colors.text.icon`, 높이 48, 좌우 16) */
 function TextButton({ label, onPress }: { label: string; onPress: () => void }) {
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={label}
       onPress={onPress}
       style={({ pressed }) => [styles.textButton, pressed && styles.pressed]}
     >
       <Text style={[typography.bodyMedium, styles.sub]}>{label}</Text>
-    </Pressable>
+    </PressableScale>
   );
 }
 

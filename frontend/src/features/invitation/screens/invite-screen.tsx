@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type Href, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Spinner } from '@/components/ui/spinner';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, ErrorState, Header, Icon, type IconName, toast } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { withRo } from '@/lib/korean';
 import { openOverTabs } from '@/lib/open-over-tabs';
 import { invalidateAfterJoin } from '@/features/trip/hooks/trip-cache';
@@ -190,13 +191,13 @@ function InviteContent({ token, first }: { token: string; first: boolean }) {
           { paddingBottom: Math.max(insets.bottom + spacing[16], spacing[24]) },
         ]}
       >
-        <Pressable
+        <PressableScale
           accessibilityRole="button"
           onPress={() => leave('/home')}
           style={({ pressed }) => [styles.cancel, pressed && styles.pressed]}
         >
           <Text style={[typography.bodyMedium, styles.cancelLabel]}>취소</Text>
-        </Pressable>
+        </PressableScale>
         <Button
           label="참여하기"
           size="xl"

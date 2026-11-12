@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
-import { Spinner } from '@/components/ui/spinner';
 
 import { EmptyState, ErrorState } from '@/components/ui';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { colors, layout, spacing, typography } from '@/theme';
 
 import type { ChatRoomRow, ChatRoomsStatus, FeaturedChatRoom } from '../hooks/use-chat-rooms';
@@ -51,7 +51,7 @@ export function ChatRoomListView({
 }: Props) {
   let body: ReactNode;
   if (status === 'loading') {
-    body = <Spinner style={styles.loading} color={colors.brand.primary} />;
+    body = <SkeletonList style={styles.loading} />;
   } else if (status === 'error') {
     body = <ErrorState onRetry={onRetry} />;
   } else if (status === 'empty') {

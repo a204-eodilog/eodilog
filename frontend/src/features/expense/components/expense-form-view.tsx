@@ -1,16 +1,9 @@
 import type { ReactNode } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, Header, Icon, TextField } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { AMOUNT_MAX_LENGTH, formatThousands } from '@/lib/format-number';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -177,7 +170,7 @@ export function ExpenseFormView({
             ]}
           >
             {onDelete ? (
-              <Pressable
+              <PressableScale
                 accessibilityRole="button"
                 onPress={onDelete}
                 disabled={saving}
@@ -185,7 +178,7 @@ export function ExpenseFormView({
                 style={({ pressed }) => [styles.delete, pressed && styles.pressed]}
               >
                 <Icon name="trash" size={22} color={colors.status.danger} />
-              </Pressable>
+              </PressableScale>
             ) : null}
             <Button
               label={failed ? '다시 저장' : '저장'}

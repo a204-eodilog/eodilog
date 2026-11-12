@@ -2,10 +2,9 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
-  KeyboardAvoidingView,
   Keyboard,
+  KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -18,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CenterPin, KOREA_REGION, MapHint, MapView, type MapViewRef } from '@/components/map';
 import { Button, Header, Icon, TextField, toast } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { caret, colors, layout, radius, spacing, typography } from '@/theme';
 
 import { createManualPlace, searchPlaces } from '../api';
@@ -226,7 +226,7 @@ export function PlacePickScreen() {
               style={styles.searchInput}
             />
             {text ? (
-              <Pressable
+              <PressableScale
                 accessibilityRole="button"
                 accessibilityLabel="지우기"
                 onPress={() => {
@@ -236,7 +236,7 @@ export function PlacePickScreen() {
                 style={styles.clear}
               >
                 <Icon name="close" size={14} color={colors.text.inverse} />
-              </Pressable>
+              </PressableScale>
             ) : null}
           </View>
 
@@ -255,7 +255,7 @@ export function PlacePickScreen() {
               ) : (
                 <ScrollView keyboardShouldPersistTaps="handled" style={styles.resultsScroll}>
                   {results.map(({ place, meters }) => (
-                    <Pressable
+                    <PressableScale
                       key={place.id}
                       onPress={() => choose(place)}
                       style={({ pressed }) => [styles.result, pressed && styles.pressed]}
@@ -274,7 +274,7 @@ export function PlacePickScreen() {
                         ) : null}
                       </View>
                       <Text style={styles.resultDistance}>{distanceLabel(meters)}</Text>
-                    </Pressable>
+                    </PressableScale>
                   ))}
                 </ScrollView>
               )}

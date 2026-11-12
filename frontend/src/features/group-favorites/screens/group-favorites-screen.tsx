@@ -1,12 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState, type ReactNode } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { Spinner } from '@/components/ui/spinner';
 
 import { errorLook } from '@/api/error-look';
 import { toApiError } from '@/api/errors';
 import { ErrorState, Header, Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { pickPlace } from '@/features/place/place-picker';
 import { OpenPollSheet } from '@/features/poll/components/open-poll-sheet';
 import { getAllBookmarks } from '@/features/saved/api';
@@ -77,7 +79,7 @@ function ViewToggle({
   return (
     <View style={styles.toggle} accessibilityRole="tablist">
       {(['list', 'map'] as const).map((v) => (
-        <Pressable
+        <PressableScale
           key={v}
           style={[styles.toggleItem, view === v && styles.toggleOn]}
           onPress={() => onChange(v)}
@@ -90,7 +92,7 @@ function ViewToggle({
             size={18}
             color={view === v ? colors.text.default : colors.text.muted}
           />
-        </Pressable>
+        </PressableScale>
       ))}
     </View>
   );
@@ -103,7 +105,7 @@ export function GroupFavoritesView(props: GroupFavoritesViewProps) {
 
   let body: ReactNode;
   if (props.status === 'loading') {
-    body = <Spinner style={styles.loading} color={colors.brand.primary} />;
+    body = <SkeletonList style={styles.loading} />;
   } else if (props.status === 'notFound') {
     body = (
       <ErrorState

@@ -1,11 +1,12 @@
 import { router, useFocusEffect } from 'expo-router';
 import { setStatusBarStyle } from 'expo-status-bar';
 import { useCallback, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Spinner } from '@/components/ui/spinner';
+import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmptyState, ErrorState, Icon, OfflineNotice } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -62,7 +63,7 @@ export function TripListScreen() {
         여행
       </Text>
       {/* 글 버튼 대신 더하기 아이콘(2026-11-05 사용자 요청: 글보다 아이콘) */}
-      <Pressable
+      <PressableScale
         accessibilityRole="button"
         accessibilityLabel="새 여행"
         onPress={openNew}
@@ -70,14 +71,14 @@ export function TripListScreen() {
         style={({ pressed }) => [styles.newButton, pressed && styles.pressed]}
       >
         <Icon name="plus" size={26} color={onBrand ? colors.text.inverse : colors.text.default} />
-      </Pressable>
+      </PressableScale>
     </View>
   );
 
   if (!sections || (!featured && sections.next.length === 0 && sections.past.length === 0)) {
     let body;
     if (listState.kind === 'loading') {
-      body = <Spinner style={styles.loading} color={colors.brand.primary} />;
+      body = <SkeletonList style={styles.loading} />;
     } else if (listState.kind === 'offline') {
       body = <OfflineNotice onRetry={() => refetch()} />;
     } else if (listState.kind === 'error') {
@@ -131,14 +132,14 @@ export function TripListScreen() {
           <View style={styles.offline}>
             <Icon name="alert" size={16} color={colors.status.warning} />
             <Text style={[typography.caption, styles.offlineText]}>연결이 불안정해요</Text>
-            <Pressable
+            <PressableScale
               accessibilityRole="button"
               accessibilityLabel="다시 불러오기"
               onPress={() => refetch()}
               hitSlop={spacing[8]}
             >
               <Icon name="refresh" size={18} color={colors.status.warning} />
-            </Pressable>
+            </PressableScale>
           </View>
         ) : null}
 
@@ -154,7 +155,7 @@ export function TripListScreen() {
               ))}
             </View>
             {next.canToggle ? (
-              <Pressable
+              <PressableScale
                 accessibilityRole="button"
                 accessibilityLabel={
                   nextExpanded ? '다음 계획 접기' : `다음 계획 ${next.hiddenCount}개 더 보기`
@@ -170,7 +171,7 @@ export function TripListScreen() {
                   size={18}
                   color={colors.text.icon}
                 />
-              </Pressable>
+              </PressableScale>
             ) : null}
           </View>
         ) : null}

@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Spinner } from '@/components/ui/spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -12,11 +12,12 @@ import {
   ErrorState,
   Header,
   Icon,
+  type IconName,
   OfflineNotice,
   TextField,
   toast,
-  type IconName,
 } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { useMe } from '@/hooks/use-me';
 import { formatRange } from '@/lib/seoul-date';
 import { colors, layout, radius, spacing, typography } from '@/theme';
@@ -244,7 +245,7 @@ export function TripSettingsScreen() {
         title="여행 설정"
         largeTitle
         right={
-          <Pressable
+          <PressableScale
             accessibilityRole="button"
             accessibilityLabel="완료"
             accessibilityState={{ disabled: update.isPending }}
@@ -258,7 +259,7 @@ export function TripSettingsScreen() {
             ) : (
               <Icon name="check" size={24} color={colors.brand.primaryDark} />
             )}
-          </Pressable>
+          </PressableScale>
         }
       />
       <ScrollView
@@ -417,7 +418,7 @@ function FieldRow({
   onPress: () => void;
 }) {
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={`${label}, ${value}`}
       onPress={onPress}
@@ -428,7 +429,7 @@ function FieldRow({
         {value}
       </Text>
       <Icon name="chevron-right" size={16} color={colors.text.muted} />
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -443,7 +444,7 @@ const MENU_ICON: Record<SettingsAction['key'], IconName> = {
 function MenuRow({ action, onPress }: { action: SettingsAction; onPress: () => void }) {
   const color = action.danger ? colors.status.danger : colors.text.default;
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={action.label}
       accessibilityHint={action.reason}
@@ -459,7 +460,7 @@ function MenuRow({ action, onPress }: { action: SettingsAction; onPress: () => v
           <Text style={[typography.caption, styles.sub]}>{action.reason}</Text>
         ) : null}
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }
 

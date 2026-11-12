@@ -1,16 +1,10 @@
 import { useRef, type ReactNode } from 'react';
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-  type ScrollViewInstance,
-} from 'react-native';
+import { ScrollView, type ScrollViewInstance, StyleSheet, Text, View } from 'react-native';
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, EmptyState, Icon, type IconName } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 import { UNKNOWN_NAME } from '../candidate-options';
@@ -121,14 +115,14 @@ export function PollOpenView({
           })}
           {/* 투표 바꾸기 실패 안내 중에는 후보 추가를 숨긴다(Figma 201-29384) */}
           {onAddCandidate && !failLines && poll.candidates.length < MAX_CANDIDATES ? (
-            <Pressable
+            <PressableScale
               accessibilityRole="button"
               accessibilityLabel="후보 추가"
               onPress={onAddCandidate}
               style={({ pressed }) => [styles.add, pressed && styles.pressed]}
             >
               <Icon name="plus" size={22} color={colors.brand.primary} />
-            </Pressable>
+            </PressableScale>
           ) : null}
         </View>
         <MyVoteBar
@@ -149,14 +143,14 @@ export function PollOpenView({
           >
             <Icon name="info" size={20} color={colors.brand.primarySoft} />
           </View>
-          <Pressable
+          <PressableScale
             accessibilityRole="button"
             accessibilityLabel="다시 시도"
             onPress={onRetry}
             style={({ pressed }) => [styles.retryButton, pressed && styles.pressed]}
           >
             <Icon name="refresh" size={22} color={colors.brand.primarySoft} />
-          </Pressable>
+          </PressableScale>
         </View>
       ) : null}
     </View>
@@ -410,14 +404,14 @@ export function PollNoVotesView({
         onPress={onReopen}
         style={styles.zeroButton}
       />
-      <Pressable
+      <PressableScale
         accessibilityRole="button"
         onPress={onDecide}
         style={({ pressed }) => [styles.decide, pressed && styles.pressed]}
       >
         <Icon name="map-pin" size={20} color={colors.text.icon} />
         <Text style={styles.decideText}>직접 정하기</Text>
-      </Pressable>
+      </PressableScale>
       <Text style={styles.zeroNote}>다시 열면 마감은 24시간 뒤예요</Text>
     </View>
   );
@@ -436,14 +430,14 @@ export function PollNotFoundView({ onBack }: { onBack: () => void }) {
       <Text style={styles.zeroTitle} accessibilityRole="header" lineBreakStrategyIOS="hangul-word">
         볼 수 없는 투표예요
       </Text>
-      <Pressable
+      <PressableScale
         accessibilityRole="button"
         accessibilityLabel="돌아가기"
         onPress={onBack}
         style={({ pressed }) => [styles.decide, pressed && styles.pressed]}
       >
         <Icon name="back" size={22} color={colors.text.icon} />
-      </Pressable>
+      </PressableScale>
     </View>
   );
 }

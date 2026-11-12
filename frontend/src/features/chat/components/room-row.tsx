@@ -1,7 +1,8 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import type { UserCard } from '@/api/types';
 import { AvatarGroup } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, layout, spacing, typography } from '@/theme';
 
 type Props = {
@@ -23,7 +24,7 @@ export const ROOM_FACES_WIDTH = 64;
  */
 export function RoomRow({ title, preview, time, participants, meId, onPress }: Props) {
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={`${title} 대화방, ${preview}${time ? `, ${time}` : ''}`}
       onPress={onPress}
@@ -48,7 +49,7 @@ export function RoomRow({ title, preview, time, participants, meId, onPress }: P
         </Text>
       </View>
       {time ? <Text style={[typography.caption, styles.time]}>{time}</Text> : null}
-    </Pressable>
+    </PressableScale>
   );
 }
 

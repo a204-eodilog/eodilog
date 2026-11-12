@@ -1,7 +1,7 @@
 import * as Clipboard from 'expo-clipboard';
 import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { Platform, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { Spinner } from '@/components/ui/spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -11,10 +11,11 @@ import {
   ErrorState,
   Header,
   Icon,
+  type IconName,
   OfflineNotice,
   toast,
-  type IconName,
 } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { useMe } from '@/hooks/use-me';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -184,7 +185,7 @@ export function TripInviteScreen() {
                 {link ? link.url : '아직 만든 링크가 없어요'}
               </Text>
             )}
-            <Pressable
+            <PressableScale
               accessibilityRole="button"
               accessibilityLabel={link ? '새 링크 만들기' : '링크 만들기'}
               accessibilityState={{ disabled: busy || full }}
@@ -194,7 +195,7 @@ export function TripInviteScreen() {
               style={({ pressed }) => [styles.linkIcon, (pressed || busy || full) && styles.dim]}
             >
               <Icon name={link ? 'refresh' : 'plus'} size={20} color={colors.brand.primary} />
-            </Pressable>
+            </PressableScale>
           </View>
         </View>
 
@@ -243,7 +244,7 @@ function ShareButton({
   onPress: () => void;
 }) {
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled }}
@@ -255,7 +256,7 @@ function ShareButton({
         <Icon name={icon} size={22} color={iconColor} />
       </View>
       <Text style={[typography.captionMedium, styles.shareLabel]}>{label}</Text>
-    </Pressable>
+    </PressableScale>
   );
 }
 

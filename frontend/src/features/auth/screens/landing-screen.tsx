@@ -1,6 +1,8 @@
 import { router } from 'expo-router';
 import { useEffect } from 'react';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
+
+import { PressableScale } from '@/components/ui/pressable-scale';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -33,7 +35,7 @@ export function LandingScreen() {
 
   return (
     <SafeAreaView style={styles.screen}>
-      <Pressable
+      <PressableScale
         accessibilityRole="button"
         accessibilityLabel="시작하기"
         onPress={next}
@@ -46,7 +48,7 @@ export function LandingScreen() {
           <Text style={[typography.title1, styles.title]}>어디로그</Text>
           <Text style={[typography.body, styles.tagline]}>친구의 여행에서 다음 여행을 찾아요</Text>
         </Animated.View>
-      </Pressable>
+      </PressableScale>
     </SafeAreaView>
   );
 }

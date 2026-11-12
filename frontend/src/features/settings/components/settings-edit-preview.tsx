@@ -1,8 +1,9 @@
 import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Avatar, Button, Header, Icon, TextField, toast } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import {
   addKeyword,
   KEYWORD_MAX_LENGTH,
@@ -89,7 +90,7 @@ export function SettingsEditPreview({ kind, data, simulateFailure, onClose, onSa
         {isProfile ? (
           <>
             <View style={styles.photoBlock}>
-              <Pressable
+              <PressableScale
                 accessibilityRole="button"
                 accessibilityLabel="프로필 사진 변경"
                 onPress={pickPhoto}
@@ -104,10 +105,14 @@ export function SettingsEditPreview({ kind, data, simulateFailure, onClose, onSa
                 <View style={styles.camera}>
                   <Icon name="camera" size={size.icon.md} color={colors.text.inverse} />
                 </View>
-              </Pressable>
-              <Pressable accessibilityRole="button" onPress={pickPhoto} style={styles.photoLabel}>
+              </PressableScale>
+              <PressableScale
+                accessibilityRole="button"
+                onPress={pickPhoto}
+                style={styles.photoLabel}
+              >
                 <Text style={styles.photoLabelText}>사진 변경</Text>
-              </Pressable>
+              </PressableScale>
             </View>
             <TextField
               label="닉네임"

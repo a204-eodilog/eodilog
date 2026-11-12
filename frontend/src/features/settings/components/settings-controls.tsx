@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
-import { Platform, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { Platform, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { Card, Icon, type IconName } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, layout, radius, size, spacing, typography } from '@/theme';
 
 export function SettingsSection({
@@ -66,7 +67,7 @@ export function SettingsRow({
     </>
   );
   return onPress ? (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={[label, value, description].filter(Boolean).join(', ')}
       accessibilityState={{ disabled }}
@@ -75,7 +76,7 @@ export function SettingsRow({
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
     >
       {content}
-    </Pressable>
+    </PressableScale>
   ) : (
     <View style={styles.row}>{content}</View>
   );
@@ -136,7 +137,7 @@ export function AiModeSelector<T extends string>({
       </View>
       <View accessibilityRole="radiogroup" accessibilityLabel={label} style={styles.segments}>
         {options.map((option) => (
-          <Pressable
+          <PressableScale
             key={option.value}
             accessibilityRole="radio"
             accessibilityLabel={label + ', ' + option.label}
@@ -158,7 +159,7 @@ export function AiModeSelector<T extends string>({
             <Text style={[styles.option, value === option.value && styles.optionSelected]}>
               {option.label}
             </Text>
-          </Pressable>
+          </PressableScale>
         ))}
       </View>
     </View>

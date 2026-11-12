@@ -1,7 +1,8 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { errorLook } from '@/api/error-look';
 import { Button, Icon, type IconName } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, layout, spacing, typography } from '@/theme';
 
 type Action = { label: string; icon: IconName; onPress: () => void };
@@ -37,14 +38,14 @@ function Notice({ icon, title, description, primary, secondary }: NoticeProps) {
         />
       ) : null}
       {secondary ? (
-        <Pressable
+        <PressableScale
           onPress={secondary.onPress}
           accessibilityRole="button"
           style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}
         >
           <Icon name={secondary.icon} size={18} color={colors.text.icon} />
           <Text style={[typography.bodyMedium, styles.secondaryText]}>{secondary.label}</Text>
-        </Pressable>
+        </PressableScale>
       ) : null}
     </View>
   );

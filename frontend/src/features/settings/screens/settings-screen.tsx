@@ -2,10 +2,10 @@ import * as Clipboard from 'expo-clipboard';
 import { router } from 'expo-router';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { BackHandler, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Spinner } from '@/components/ui/spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, Button, ConfirmSheet, ErrorState, Header, Icon, toast } from '@/components/ui';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { signOut } from '@/features/auth/logout';
 import {
   AiModeSelector,
@@ -60,7 +60,7 @@ export function SettingsScreen() {
         {server.isError ? (
           <ErrorState title="설정을 불러오지 못했어요" onRetry={server.refetch} />
         ) : (
-          <Spinner style={styles.screen} color={colors.brand.primary} />
+          <SkeletonList style={styles.screen} />
         )}
       </SafeAreaView>
     );

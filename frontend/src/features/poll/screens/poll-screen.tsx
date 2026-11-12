@@ -1,10 +1,10 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Spinner } from '@/components/ui/spinner';
 
 import { errorLook } from '@/api/error-look';
 import { AvatarGroup, ErrorState, Header, toast } from '@/components/ui';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { useTrip } from '@/features/trip/hooks/use-trip';
 import { colors } from '@/theme';
 
@@ -76,7 +76,7 @@ export function PollScreen() {
 
   let body;
   if ((!pollId && list.isPending) || (targetId && detail.isPending && !poll)) {
-    body = <Spinner style={styles.loading} color={colors.brand.primary} />;
+    body = <SkeletonList style={styles.loading} />;
   } else if (detail.notFound) {
     body = <PollNotFoundView onBack={() => router.back()} />;
   } else if (!poll && (list.isError || detail.isError)) {

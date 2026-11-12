@@ -1,19 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import { Spinner } from '@/components/ui/spinner';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, ErrorState, Header, Icon, type IconName, TextField, toast } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { openJoinedTrip } from '@/features/invitation/open-joined-trip';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -67,7 +60,7 @@ export function PreferencesScreen() {
     return (
       <SafeAreaView style={styles.screen} edges={['left', 'right', 'bottom']}>
         <Header title="취향 입력" />
-        <Spinner style={styles.flex} color={colors.brand.primary} />
+        <SkeletonList style={styles.flex} />
       </SafeAreaView>
     );
   }
@@ -178,7 +171,7 @@ function PreferencesForm({
       <Header
         title="취향 입력"
         right={
-          <Pressable
+          <PressableScale
             accessibilityRole="button"
             onPress={leave}
             style={({ pressed }) => [styles.later, pressed && styles.pressed]}
@@ -186,7 +179,7 @@ function PreferencesForm({
             <Text style={[typography.bodyMedium, styles.laterText]} numberOfLines={1}>
               나중에
             </Text>
-          </Pressable>
+          </PressableScale>
         }
       />
       <KeyboardAvoidingView
@@ -278,14 +271,14 @@ function PreferencesForm({
                     accessibilityLabel="취향 직접 쓰기"
                   />
                 </View>
-                <Pressable
+                <PressableScale
                   accessibilityRole="button"
                   accessibilityLabel="추가"
                   onPress={() => add(draft) && setDraft('')}
                   style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}
                 >
                   <Icon name="plus" size={20} color={colors.text.inverse} />
-                </Pressable>
+                </PressableScale>
               </View>
 
               <View style={styles.section}>
@@ -363,7 +356,7 @@ function RadioRow({
   onPress: () => void;
 }) {
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="radio"
       accessibilityState={{ checked: selected }}
       aria-checked={selected}
@@ -380,7 +373,7 @@ function RadioRow({
         </View>
         <Text style={[typography.caption, styles.sub]}>{description}</Text>
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }
 

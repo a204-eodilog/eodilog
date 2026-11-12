@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { BottomSheet, Button, Icon, RoundCheck } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, radius, spacing, typography } from '@/theme';
 
 export type DeleteFeedChoice = 'feed' | 'record';
@@ -61,7 +62,7 @@ export function DeleteFeedSheet(props: DeleteFeedSheetProps) {
         {CHOICES.map((c) => {
           const on = choice === c.key;
           return (
-            <Pressable
+            <PressableScale
               key={c.key}
               onPress={() => setChoice(c.key)}
               style={[styles.choice, on && styles.choiceOn]}
@@ -77,7 +78,7 @@ export function DeleteFeedSheet(props: DeleteFeedSheetProps) {
                 <Text style={[styles.choiceTitle, c.danger && styles.danger]}>{c.title}</Text>
                 <Text style={styles.choiceDesc}>{c.desc}</Text>
               </View>
-            </Pressable>
+            </PressableScale>
           );
         })}
       </View>

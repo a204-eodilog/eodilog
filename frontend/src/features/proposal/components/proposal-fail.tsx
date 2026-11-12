@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Button, Icon, type IconName } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, radius, spacing, typography } from '@/theme';
 
 /**
@@ -21,10 +22,10 @@ export function ProposalUnsupported({ onEdit, onCourse }: { onEdit(): void; onCo
         onPress={onEdit}
         style={styles.retry}
       />
-      <Pressable style={styles.course} onPress={onCourse} accessibilityRole="button">
+      <PressableScale style={styles.course} onPress={onCourse} accessibilityRole="button">
         <Icon name="route" size={18} color={colors.text.icon} />
         <Text style={[typography.bodyMedium, styles.body]}>코스 보기</Text>
-      </Pressable>
+      </PressableScale>
     </View>
   );
 }
@@ -58,10 +59,10 @@ export function ProposalFail({
         onPress={onRetry}
         style={styles.retry}
       />
-      <Pressable style={styles.course} onPress={onCourse} accessibilityRole="button">
+      <PressableScale style={styles.course} onPress={onCourse} accessibilityRole="button">
         <Icon name="route" size={18} color={colors.text.icon} />
         <Text style={[typography.bodyMedium, styles.body]}>코스 보기</Text>
-      </Pressable>
+      </PressableScale>
     </View>
   );
 }

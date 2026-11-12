@@ -1,7 +1,8 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Spinner } from '@/components/ui/spinner';
 
 import { Button, Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 type Props = {
@@ -39,10 +40,10 @@ export function ChecklistEmpty({ onSuggest, suggesting, onAddDirect }: Props) {
           style={styles.suggest}
         />
         {/* 공통 Button의 글자 버튼은 파랑이라 디자인의 회색 글자 버튼을 따로 그린다 */}
-        <Pressable style={styles.direct} onPress={onAddDirect} accessibilityRole="button">
+        <PressableScale style={styles.direct} onPress={onAddDirect} accessibilityRole="button">
           <Icon name="plus" size={20} color={colors.text.icon} />
           <Text style={[typography.bodyMedium, styles.directText]}>직접 추가</Text>
-        </Pressable>
+        </PressableScale>
       </View>
     </View>
   );

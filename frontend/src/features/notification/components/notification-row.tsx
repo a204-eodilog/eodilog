@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, radius, spacing, typography } from '@/theme';
 
 import type { NotificationLine } from '../notification-rules';
@@ -19,7 +20,7 @@ type Props = {
 export function NotificationRow({ line, onPress, compact = false }: Props) {
   const state = line.unread ? '읽지 않음, ' : '';
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`${state}${line.title}, ${line.label}, ${line.time}${line.leftTrip ? ', 나간 여행' : ''}`}
@@ -53,7 +54,7 @@ export function NotificationRow({ line, onPress, compact = false }: Props) {
         </View>
       </View>
       <View style={[styles.dot, line.unread && styles.dotOn]} />
-    </Pressable>
+    </PressableScale>
   );
 }
 

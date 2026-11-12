@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { AvatarGroup, Icon, Tag } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { CheckMarkWhen } from '@/components/ui/check-mark';
 import { colors, radius, spacing, typography } from '@/theme';
 
@@ -25,7 +26,7 @@ export function PlaceRow({ item, members, onPress, selecting = false, selected =
   const overlap = overlapLabel(item);
   const address = shortAddress(item.place.address);
   return (
-    <Pressable
+    <PressableScale
       style={styles.row}
       onPress={() => onPress(item)}
       accessibilityRole={selecting ? 'checkbox' : 'button'}
@@ -72,7 +73,7 @@ export function PlaceRow({ item, members, onPress, selecting = false, selected =
           ) : null}
         </View>
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }
 

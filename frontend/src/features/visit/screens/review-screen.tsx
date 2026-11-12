@@ -1,9 +1,9 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Spinner } from '@/components/ui/spinner';
 
 import { CenterNotice, ConfirmSheet, Header, toast } from '@/components/ui';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { colors } from '@/theme';
 
 import { DeleteReviewSheet } from '../components/delete-review-sheet';
@@ -48,7 +48,7 @@ export function ReviewScreen() {
       <View style={styles.screen}>
         <Header title="평가" />
         {board.isLoading ? (
-          <Spinner style={styles.loading} color={colors.brand.primary} />
+          <SkeletonList style={styles.loading} />
         ) : board.error || !board.trip ? (
           <CenterNotice
             icon="alert"

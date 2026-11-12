@@ -1,8 +1,8 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
-import { Spinner } from '@/components/ui/spinner';
 
 import { CenterNotice, Header } from '@/components/ui';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { colors } from '@/theme';
 
 import { TripSummaryView } from '../components/trip-summary-view';
@@ -39,7 +39,7 @@ export function TripSummaryScreen() {
           coverAssetId={data.coverAssetId}
         />
       ) : (
-        <Spinner style={styles.loading} color={colors.brand.primary} />
+        <SkeletonList style={styles.loading} />
       )}
     </View>
   );

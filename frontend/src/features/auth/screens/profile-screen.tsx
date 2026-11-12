@@ -3,18 +3,11 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, Card, Chip, Header, Icon, Tag, TextField, toast } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { inviteHref } from '@/features/invitation/invite-rules';
 import { assetSource } from '@/lib/asset-image';
 import { useSessionStore } from '@/stores/session-store';
@@ -140,14 +133,14 @@ export function ProfileScreen() {
         title={editing ? '프로필 수정' : '프로필 만들기'}
         right={
           editing ? undefined : (
-            <Pressable
+            <PressableScale
               accessibilityRole="button"
               accessibilityLabel="로그아웃"
               onPress={signOut}
               style={({ pressed }) => [styles.logout, pressed && styles.pressed]}
             >
               <Icon name="leave" size={22} color={colors.text.sub} />
-            </Pressable>
+            </PressableScale>
           )
         }
       />
@@ -186,7 +179,7 @@ export function ProfileScreen() {
                   <Icon name="person" size={40} color={colors.text.sub} />
                 </View>
               )}
-              <Pressable
+              <PressableScale
                 accessibilityRole="button"
                 accessibilityLabel={photoSource ? '프로필 사진 바꾸기' : '프로필 사진 추가'}
                 onPress={pickPhoto}
@@ -194,7 +187,7 @@ export function ProfileScreen() {
                 style={styles.photoButton}
               >
                 <Icon name="camera" size={20} color={colors.text.inverse} />
-              </Pressable>
+              </PressableScale>
             </View>
             <View style={styles.labelRow}>
               <Text style={[typography.caption, styles.sub]}>프로필 사진</Text>

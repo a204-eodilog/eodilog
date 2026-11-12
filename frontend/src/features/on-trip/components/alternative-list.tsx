@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { BottomSheet, Button, Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { CheckMarkWhen } from '@/components/ui/check-mark';
 import { colors, radius, spacing, typography } from '@/theme';
 
@@ -47,7 +48,7 @@ export function AlternativeList(props: {
         const view = alternativeView(alt, props.weather);
         const on = props.selectedId === alt.alternativeId;
         return (
-          <Pressable
+          <PressableScale
             key={alt.alternativeId}
             style={[styles.option, on && styles.optionOn, !view.selectable && styles.optionOff]}
             onPress={() => props.onSelect(alt.alternativeId)}
@@ -70,7 +71,7 @@ export function AlternativeList(props: {
                 ))}
               </View>
             </View>
-          </Pressable>
+          </PressableScale>
         );
       })}
     </View>
@@ -130,9 +131,9 @@ export function ProposalSheet(props: {
           </Text>
         </View>
         <View style={styles.actions}>
-          <Pressable style={styles.close} onPress={props.onClose} accessibilityRole="button">
+          <PressableScale style={styles.close} onPress={props.onClose} accessibilityRole="button">
             <Text style={[typography.bodyMedium, styles.closeText]}>닫기</Text>
-          </Pressable>
+          </PressableScale>
           <Button label="변경안 보기" weight="medium" onPress={props.onView} style={styles.flex} />
         </View>
       </View>

@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 
 import { Icon, type IconName } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, radius, spacing, typography } from '@/theme';
 
 type OutlinePillButtonProps = {
@@ -26,7 +27,7 @@ export function OutlinePillButton({
 }: OutlinePillButtonProps) {
   const lg = size === 'lg';
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={label}
       onPress={onPress}
@@ -36,7 +37,7 @@ export function OutlinePillButton({
       <Text style={[lg ? typography.bodyMedium : typography.captionMedium, { color }]}>
         {label}
       </Text>
-    </Pressable>
+    </PressableScale>
   );
 }
 

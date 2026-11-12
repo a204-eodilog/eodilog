@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { Popup } from '@/components/ui/popup';
 import { colors, radius, spacing, typography } from '@/theme';
 
@@ -15,20 +16,20 @@ type Choice = { label: string; onPress: () => void };
 function Choices({ left, right }: { left: Choice; right: Choice }) {
   return (
     <View style={styles.choices}>
-      <Pressable
+      <PressableScale
         onPress={left.onPress}
         accessibilityRole="button"
         style={({ pressed }) => [styles.choice, pressed && styles.pressed]}
       >
         <Text style={[typography.bodyMedium, styles.leftText]}>{left.label}</Text>
-      </Pressable>
-      <Pressable
+      </PressableScale>
+      <PressableScale
         onPress={right.onPress}
         accessibilityRole="button"
         style={({ pressed }) => [styles.choice, styles.primary, pressed && styles.pressed]}
       >
         <Text style={[typography.bodyMedium, styles.primaryText]}>{right.label}</Text>
-      </Pressable>
+      </PressableScale>
     </View>
   );
 }

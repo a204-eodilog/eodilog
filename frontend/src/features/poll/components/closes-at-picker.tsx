@@ -1,8 +1,9 @@
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 
 import { Icon, toast } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, radius, spacing, typography } from '@/theme';
 
 import { CLOSES_AT_ERROR_TEXT, closesAtLabel, validateClosesAt } from '../poll-rules';
@@ -68,7 +69,7 @@ export function ClosesAtPicker({ value, onChange, now }: Props) {
         <View style={styles.texts}>
           <Text style={styles.when}>{closesAtLabel(value, now ?? new Date())}</Text>
           <Text style={styles.note}>가장 많이 받은 곳으로 자동 확정돼요</Text>
-          <Pressable
+          <PressableScale
             accessibilityRole="button"
             accessibilityLabel="마감 시각 바꾸기"
             onPress={open}
@@ -77,7 +78,7 @@ export function ClosesAtPicker({ value, onChange, now }: Props) {
             style={styles.linkRow}
           >
             <Icon name="pencil" size={18} color={colors.brand.primary} />
-          </Pressable>
+          </PressableScale>
           {error ? <Text style={styles.error}>{error}</Text> : null}
         </View>
       </View>

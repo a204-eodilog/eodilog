@@ -1,9 +1,10 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Spinner } from '@/components/ui/spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MapMarker, MapView } from '@/components/map';
 import { Button, Header, Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 type SavedPlaceViewProps = {
@@ -55,7 +56,7 @@ export function SavedPlaceView({
         onBack={onBack}
         right={
           editable ? (
-            <Pressable
+            <PressableScale
               accessibilityRole="button"
               accessibilityLabel="저장 해제"
               accessibilityState={{ disabled: busy, busy }}
@@ -69,7 +70,7 @@ export function SavedPlaceView({
               ) : (
                 <Icon name="bookmark" color={colors.brand.primary} filled />
               )}
-            </Pressable>
+            </PressableScale>
           ) : undefined
         }
       />
@@ -119,7 +120,7 @@ export function SavedPlaceView({
               {memo || '메모가 없어요'}
             </Text>
             {editable ? (
-              <Pressable
+              <PressableScale
                 accessibilityRole="button"
                 accessibilityLabel="메모 고치기"
                 accessibilityState={{ disabled: busy }}
@@ -128,7 +129,7 @@ export function SavedPlaceView({
                 style={({ pressed }) => [styles.memoButton, pressed && styles.pressed]}
               >
                 <Icon name="pencil" size={18} color={colors.text.default} />
-              </Pressable>
+              </PressableScale>
             ) : null}
           </View>
         </View>
@@ -148,7 +149,7 @@ export function SavedPlaceView({
               </View>
             ) : (
               // 즐겨찾기 응답에 피드 제목·올린 사람이 없어 이름 대신 "공동 피드"로 보여 준다
-              <Pressable
+              <PressableScale
                 accessibilityRole="button"
                 accessibilityLabel="가져온 공동 피드 열기"
                 onPress={onOpenSource}
@@ -162,7 +163,7 @@ export function SavedPlaceView({
                   <Text style={[typography.caption, styles.sub]}>이 피드에서 담았어요</Text>
                 </View>
                 <Icon name="chevron-right" size={20} color={colors.text.icon} />
-              </Pressable>
+              </PressableScale>
             )}
           </View>
         ) : null}

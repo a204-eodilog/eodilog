@@ -1,7 +1,8 @@
 import { Fragment } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Button, Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { MODE_ICON } from '@/features/course/components/course-day-list';
 import { legLabel, type DayLeg, type DraftItem } from '@/features/course/course-rules';
 import { colors, radius, spacing, typography } from '@/theme';
@@ -22,10 +23,15 @@ export function TodayCourse({ items, legs, next, computedAt, onCourse }: Props) 
     <View style={styles.section}>
       <View style={styles.head}>
         <Text style={[typography.title3, styles.title]}>오늘 코스</Text>
-        <Pressable style={styles.link} onPress={onCourse} accessibilityRole="button" hitSlop={8}>
+        <PressableScale
+          style={styles.link}
+          onPress={onCourse}
+          accessibilityRole="button"
+          hitSlop={8}
+        >
           <Text style={[typography.captionMedium, styles.linkText]}>코스</Text>
           <Icon name="chevron-right" size={14} color={colors.brand.primaryDark} />
-        </Pressable>
+        </PressableScale>
       </View>
       {computedAt ? (
         <View style={styles.line}>

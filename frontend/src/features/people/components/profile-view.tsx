@@ -3,6 +3,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, Button, ErrorState, Header, KoreaMap } from '@/components/ui';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { useTripPinMap } from '@/features/mypage';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -33,7 +34,7 @@ export function ProfileView(props: ProfileViewProps) {
       {props.state === 'error' ? (
         <ErrorState title="프로필을 불러오지 못했어요" onRetry={props.onRetry} />
       ) : props.state === 'loading' || !p ? (
-        <Spinner style={styles.flex} color={colors.brand.primary} />
+        <SkeletonList style={styles.flex} />
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.profile}>

@@ -1,9 +1,10 @@
 import { Image } from 'expo-image';
-import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
-import { Spinner } from '@/components/ui/spinner';
+import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, ErrorState, Header, Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { assetSource } from '@/lib/asset-image';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -32,7 +33,7 @@ export function TrendsView(props: TrendsViewProps) {
           onRetry={props.onRetry}
         />
       ) : props.state === 'loading' || !board ? (
-        <Spinner style={styles.flex} color={colors.brand.primary} />
+        <SkeletonList style={styles.flex} />
       ) : (
         <FlatList
           data={board.insufficient ? [] : board.rows}
@@ -87,7 +88,7 @@ function Row({ row, onPress }: { row: TrendRow; onPress: () => void }) {
   const src = assetSource(row.coverUrl);
   const top = row.rank <= 3;
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
       accessibilityRole="button"
@@ -115,7 +116,7 @@ function Row({ row, onPress }: { row: TrendRow; onPress: () => void }) {
         </View>
       </View>
       <Move move={row.move} />
-    </Pressable>
+    </PressableScale>
   );
 }
 

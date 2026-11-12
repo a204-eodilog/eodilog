@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Dot, Icon, Tag } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, spacing, typography } from '@/theme';
 
 import type { PlaceRow, TripTag } from '../timeline-rules';
@@ -18,7 +19,7 @@ type TimelineTripProps = {
 export function TimelineTrip({ title, period, tag, rows, onOpen }: TimelineTripProps) {
   return (
     <View style={styles.group}>
-      <Pressable
+      <PressableScale
         accessibilityRole="button"
         accessibilityLabel={`${title}, ${period}, ${tag.label}, 여행 요약 보기`}
         onPress={onOpen}
@@ -37,7 +38,7 @@ export function TimelineTrip({ title, period, tag, rows, onOpen }: TimelineTripP
           </View>
         </View>
         <Icon name="chevron-right" size={16} color={colors.text.icon} />
-      </Pressable>
+      </PressableScale>
       {rows.length === 0 ? (
         <Text style={[typography.caption, styles.icon]}>아직 담은 장소가 없어요</Text>
       ) : (

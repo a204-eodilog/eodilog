@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { Icon, Tag, type IconName } from '@/components/ui';
+import { Icon, type IconName, Tag } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { CheckMarkWhen } from '@/components/ui/check-mark';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -108,7 +109,7 @@ export function CandidateRow({
   const box = [styles.row, BG[tone]];
   if (!onPress) return <View style={box}>{content}</View>;
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="checkbox"
       accessibilityLabel={`${name} ${votes}표`}
       accessibilityState={{ checked, disabled }}
@@ -118,7 +119,7 @@ export function CandidateRow({
       style={({ pressed }) => [...box, pressed && styles.pressed]}
     >
       {content}
-    </Pressable>
+    </PressableScale>
   );
 }
 

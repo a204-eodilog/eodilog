@@ -1,10 +1,11 @@
 import { useMemo } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Spinner } from '@/components/ui/spinner';
 import { Calendar, LocaleConfig, type DateData } from 'react-native-calendars';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Button, Chip, Icon, Tag, type IconName } from '@/components/ui';
+import { Button, Chip, Icon, type IconName, Tag } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { formatTripNights, formatTripPeriod } from '@/lib/format-date';
 import { addDays, seoulToday } from '@/lib/seoul-date';
 import { colors, layout, radius, spacing, typography } from '@/theme';
@@ -106,7 +107,7 @@ function Option(props: {
   disabled?: boolean;
 }) {
   return (
-    <Pressable
+    <PressableScale
       style={[styles.option, props.disabled && !props.busy && styles.optionOff]}
       onPress={props.onPress}
       disabled={props.disabled}
@@ -132,7 +133,7 @@ function Option(props: {
       ) : (
         <Icon name="chevron-right" size={20} color={colors.text.muted} />
       )}
-    </Pressable>
+    </PressableScale>
   );
 }
 

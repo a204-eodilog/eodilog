@@ -1,7 +1,8 @@
 import { Image } from 'expo-image';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { Avatar, Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { assetSource } from '@/lib/asset-image';
 import { colors, radius, spacing } from '@/theme';
 
@@ -35,7 +36,7 @@ export function TripPhotoTile({
   const source = assetSource(photoPath(assetId));
   const picking = selected !== undefined;
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole={picking ? 'checkbox' : 'button'}
       accessibilityState={picking ? { checked: selected, disabled } : { disabled }}
       accessibilityLabel={`${label}, ${uploader}${mine ? '(나)' : ''}님이 올림`}
@@ -60,7 +61,7 @@ export function TripPhotoTile({
       <View style={styles.face}>
         <Avatar name={uploader} size={22} me={mine} />
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }
 

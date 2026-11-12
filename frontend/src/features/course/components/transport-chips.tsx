@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, radius, spacing, typography } from '@/theme';
 
 import { MODE_LABEL } from '../course-rules';
@@ -26,7 +27,7 @@ export function TransportChips({ value, onChange }: Props) {
       {MODES.map((m) => {
         const on = value === m;
         return (
-          <Pressable
+          <PressableScale
             key={m}
             disabled={value === null}
             onPress={() => onChange(m)}
@@ -42,7 +43,7 @@ export function TransportChips({ value, onChange }: Props) {
             <Text style={[typography.captionMedium, on ? styles.onText : styles.offText]}>
               {MODE_LABEL[m]}
             </Text>
-          </Pressable>
+          </PressableScale>
         );
       })}
     </View>

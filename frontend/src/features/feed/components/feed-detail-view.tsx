@@ -3,17 +3,17 @@ import { useRef, useState } from 'react';
 import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
-  type ScrollViewInstance,
-  Pressable,
   ScrollView,
+  type ScrollViewInstance,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { Spinner } from '@/components/ui/spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AvatarGroup, Chip, ErrorState, Header, Icon, type IconName } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { assetSource } from '@/lib/asset-image';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -56,7 +56,7 @@ export function FeedDetailView(props: FeedDetailViewProps) {
         props.state === 'error' ? (
           <ErrorState title="여행을 불러오지 못했어요" onRetry={props.onRetry} />
         ) : (
-          <Spinner style={styles.flex} color={colors.brand.primary} />
+          <SkeletonList style={styles.flex} />
         )
       ) : (
         <Body {...props} detail={props.detail} />
@@ -116,7 +116,7 @@ function Body({ detail, ...props }: FeedDetailViewProps & { detail: FeedDetail }
           <Text style={styles.title} numberOfLines={2}>
             {detail.title}
           </Text>
-          <Pressable
+          <PressableScale
             onPress={props.onLike}
             style={({ pressed }) => [styles.like, pressed && styles.pressed]}
             accessibilityRole="button"
@@ -130,7 +130,7 @@ function Body({ detail, ...props }: FeedDetailViewProps & { detail: FeedDetail }
               filled={detail.likedByMe}
             />
             <Text style={styles.likeCount}>{detail.likeCount}</Text>
-          </Pressable>
+          </PressableScale>
         </View>
         <View style={styles.meta}>
           {who ? (
@@ -175,7 +175,7 @@ function Body({ detail, ...props }: FeedDetailViewProps & { detail: FeedDetail }
               const src = assetSource(p.url);
               const last = i === detail.photos.length - 1 && detail.morePhotos > 0;
               return (
-                <Pressable
+                <PressableScale
                   key={p.id}
                   onPress={props.onPhotos}
                   style={styles.photo}
@@ -191,7 +191,7 @@ function Body({ detail, ...props }: FeedDetailViewProps & { detail: FeedDetail }
                       <Text style={styles.moreText}>+{detail.morePhotos}</Text>
                     </View>
                   ) : null}
-                </Pressable>
+                </PressableScale>
               );
             })}
           </View>
@@ -274,7 +274,7 @@ function StopRow({
   const src = assetSource(stop.photoUrl);
   return (
     <View style={styles.stop}>
-      <Pressable
+      <PressableScale
         onPress={onPress}
         style={({ pressed }) => [styles.stopMain, pressed && styles.pressed]}
         accessibilityRole="button"
@@ -310,15 +310,15 @@ function StopRow({
             </Text>
           ) : null}
         </View>
-      </Pressable>
-      <Pressable
+      </PressableScale>
+      <PressableScale
         onPress={onSave}
         style={({ pressed }) => [styles.save, pressed && styles.pressed]}
         accessibilityRole="button"
         accessibilityLabel={`${stop.name} 저장`}
       >
         <Icon name="bookmark" size={20} color={colors.text.default} />
-      </Pressable>
+      </PressableScale>
     </View>
   );
 }

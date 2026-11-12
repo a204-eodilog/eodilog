@@ -6,7 +6,6 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -17,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { apiErrorCode } from '@/api/errors';
 import { Button, Header, Icon, type IconName, toast } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { caret, colors, layout, radius, spacing, typography } from '@/theme';
 
 import type { CaptureFile } from '../api';
@@ -205,7 +205,7 @@ export function LinkCaptureScreen() {
                   {copied}
                 </Text>
               </View>
-              <Pressable
+              <PressableScale
                 accessibilityRole="button"
                 accessibilityLabel="복사한 링크 붙여넣기"
                 onPress={() => void paste(copied)}
@@ -213,7 +213,7 @@ export function LinkCaptureScreen() {
                 style={({ pressed }) => [styles.copiedPaste, pressed && styles.pressed]}
               >
                 <Icon name="clipboard" size={20} color={colors.brand.primaryDark} />
-              </Pressable>
+              </PressableScale>
             </View>
           ) : null}
 
@@ -237,7 +237,7 @@ export function LinkCaptureScreen() {
                   style={[styles.inputText, styles.input, styles.linkInput]}
                 />
                 {link.length > 0 ? (
-                  <Pressable
+                  <PressableScale
                     accessibilityRole="button"
                     accessibilityLabel="링크 지우기"
                     hitSlop={8}
@@ -245,9 +245,9 @@ export function LinkCaptureScreen() {
                     style={({ pressed }) => [styles.clearLink, pressed && styles.pressed]}
                   >
                     <Icon name="close" size={14} color={colors.text.inverse} />
-                  </Pressable>
+                  </PressableScale>
                 ) : (
-                  <Pressable
+                  <PressableScale
                     accessibilityRole="button"
                     accessibilityLabel="붙여넣기"
                     hitSlop={4}
@@ -256,7 +256,7 @@ export function LinkCaptureScreen() {
                   >
                     {/* 복사 아이콘은 "복사"로 읽혀 집게판 아이콘을 따로 쓴다 */}
                     <Icon name="clipboard" size={18} color={colors.brand.primaryDark} />
-                  </Pressable>
+                  </PressableScale>
                 )}
               </View>
               {unsupported ? (
@@ -303,7 +303,7 @@ export function LinkCaptureScreen() {
                 {captures.map((c, i) => (
                   <View key={c.key} style={styles.thumb}>
                     <Image source={{ uri: c.uri }} style={styles.thumbImage} />
-                    <Pressable
+                    <PressableScale
                       accessibilityRole="button"
                       accessibilityLabel={`캡처 ${i + 1} 빼기`}
                       hitSlop={8}
@@ -313,18 +313,18 @@ export function LinkCaptureScreen() {
                       style={styles.removeCapture}
                     >
                       <Icon name="close" size={14} color={colors.text.inverse} />
-                    </Pressable>
+                    </PressableScale>
                   </View>
                 ))}
                 {full ? null : (
-                  <Pressable
+                  <PressableScale
                     accessibilityRole="button"
                     accessibilityLabel={`캡처 더 고르기, 최대 ${MAX_CAPTURES}장`}
                     onPress={() => void pick()}
                     style={({ pressed }) => [styles.addCapture, pressed && styles.pressed]}
                   >
                     <Icon name="plus" size={22} color={colors.text.icon} />
-                  </Pressable>
+                  </PressableScale>
                 )}
               </ScrollView>
               {showLink ? null : (
@@ -354,7 +354,7 @@ export function LinkCaptureScreen() {
               />
             </View>
           ) : (
-            <Pressable
+            <PressableScale
               accessibilityRole="button"
               accessibilityLabel="메모 남기기"
               onPress={() => setMemoOpen(true)}
@@ -366,7 +366,7 @@ export function LinkCaptureScreen() {
               <View style={styles.down}>
                 <Icon name="chevron-right" size={18} color={colors.text.muted} />
               </View>
-            </Pressable>
+            </PressableScale>
           )}
         </ScrollView>
 
@@ -399,7 +399,7 @@ function SectionLabel({ icon, label }: { icon: IconName; label: string }) {
 /** 다른 자료를 더 넣는 작은 보조 버튼([+ 캡처도 추가]·[+ 링크도 추가]) */
 function AddMore({ label, onPress }: { label: string; onPress: () => void }) {
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={label}
       hitSlop={8}
@@ -408,7 +408,7 @@ function AddMore({ label, onPress }: { label: string; onPress: () => void }) {
     >
       <Icon name="plus" size={16} color={colors.brand.primaryDark} />
       <Text style={[typography.captionMedium, styles.dark]}>{label}</Text>
-    </Pressable>
+    </PressableScale>
   );
 }
 

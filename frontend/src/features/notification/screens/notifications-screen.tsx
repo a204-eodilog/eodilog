@@ -1,10 +1,12 @@
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Pressable, SectionList, StyleSheet, Text, View } from 'react-native';
+import { SectionList, StyleSheet, Text, View } from 'react-native';
 import { Spinner } from '@/components/ui/spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Header, Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { colors, layout, spacing, typography } from '@/theme';
 
 import { NotificationRow } from '../components/notification-row';
@@ -33,21 +35,21 @@ export function NotificationsView(props: NotificationsViewProps) {
   // 읽지 않은 알림이 있을 때만 보인다. 머리줄의 뒤로 버튼과 같은 44 크기 아이콘 버튼
   const readAll =
     status === 'ready' && props.canReadAll ? (
-      <Pressable
+      <PressableScale
         onPress={props.onReadAll}
         accessibilityRole="button"
         accessibilityLabel="모두 읽음"
         style={({ pressed }) => [styles.readAll, pressed && styles.pressed]}
       >
         <Icon name="check-all" color={colors.text.default} />
-      </Pressable>
+      </PressableScale>
     ) : undefined;
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <Header title="알림" largeTitle onBack={props.onBack} right={readAll} />
       {status === 'loading' ? (
-        <Spinner style={styles.loading} color={colors.brand.primary} />
+        <SkeletonList style={styles.loading} />
       ) : status === 'error' ? (
         <NotificationsError onRetry={props.onRetry} error={props.error} />
       ) : sections.length === 0 ? (

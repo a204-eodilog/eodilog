@@ -1,8 +1,9 @@
 import { useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Spinner } from '@/components/ui/spinner';
 
 import { BottomSheet, Button } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { CheckMarkWhen } from '@/components/ui/check-mark';
 import { colors, fontFamily, layout, radius, spacing, typography } from '@/theme';
 
@@ -94,7 +95,7 @@ export function AddCandidateSheet({
             {options.map((o) => {
               const checked = selected.includes(o.key);
               return (
-                <Pressable
+                <PressableScale
                   key={o.key}
                   accessibilityRole="checkbox"
                   accessibilityLabel={o.title}
@@ -116,7 +117,7 @@ export function AddCandidateSheet({
                       </Text>
                     ) : null}
                   </View>
-                </Pressable>
+                </PressableScale>
               );
             })}
           </ScrollView>

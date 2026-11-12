@@ -2,9 +2,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Spinner } from '@/components/ui/spinner';
 
 import { CenterNotice, Header, toast } from '@/components/ui';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { colors } from '@/theme';
 
 import { AddToTripSheet } from '../components/add-to-trip-sheet';
@@ -54,7 +54,7 @@ export function SavedPlaceScreen() {
       <View style={styles.screen}>
         <Header />
         {bookmarks.isPending ? (
-          <Spinner style={styles.loading} color={colors.brand.primary} />
+          <SkeletonList style={styles.loading} />
         ) : bookmarks.isError ? (
           <CenterNotice
             icon="alert"

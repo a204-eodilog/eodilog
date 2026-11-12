@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Spinner } from '@/components/ui/spinner';
 
 import { Avatar, BottomSheet, Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { assetSource } from '@/lib/asset-image';
 import { colors, radius, spacing, typography } from '@/theme';
 
@@ -39,7 +40,7 @@ export function PlaceInfoSheetView(props: PlaceInfoSheetViewProps) {
       ) : props.state === 'error' || !info ? (
         <View style={styles.error}>
           <Text style={styles.sub}>장소 정보를 불러오지 못했어요</Text>
-          <Pressable
+          <PressableScale
             onPress={props.onRetry}
             style={styles.retry}
             hitSlop={4}
@@ -47,7 +48,7 @@ export function PlaceInfoSheetView(props: PlaceInfoSheetViewProps) {
             accessibilityLabel="다시 시도"
           >
             <Icon name="refresh" size={18} color={colors.text.default} />
-          </Pressable>
+          </PressableScale>
         </View>
       ) : (
         <View style={styles.body}>
@@ -86,14 +87,14 @@ export function PlaceInfoSheetView(props: PlaceInfoSheetViewProps) {
             </View>
           ) : null}
           <View style={styles.saveRow}>
-            <Pressable
+            <PressableScale
               onPress={props.onSave}
               style={({ pressed }) => [styles.save, pressed && styles.pressed]}
               accessibilityRole="button"
               accessibilityLabel={`${info.name} 저장`}
             >
               <Icon name="bookmark" size={22} color={colors.text.inverse} />
-            </Pressable>
+            </PressableScale>
           </View>
         </View>
       )}

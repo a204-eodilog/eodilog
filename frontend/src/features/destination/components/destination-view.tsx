@@ -1,9 +1,10 @@
 import { Image } from 'expo-image';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Spinner } from '@/components/ui/spinner';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, ErrorState, Header, Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { assetSource } from '@/lib/asset-image';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -37,7 +38,7 @@ export function DestinationView(props: DestinationViewProps) {
           onRetry={props.onRetry}
         />
       ) : props.state === 'loading' || !info ? (
-        <Spinner style={styles.flex} color={colors.brand.primary} />
+        <SkeletonList style={styles.flex} />
       ) : (
         <>
           <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -66,7 +67,7 @@ export function DestinationView(props: DestinationViewProps) {
               ) : (
                 info.places.map((p) => (
                   <View key={p.id} style={styles.place}>
-                    <Pressable
+                    <PressableScale
                       onPress={() => props.onPlace(p.id)}
                       style={({ pressed }) => [styles.placeMain, pressed && styles.pressed]}
                       accessibilityRole="button"
@@ -88,15 +89,15 @@ export function DestinationView(props: DestinationViewProps) {
                           </View>
                         ) : null}
                       </View>
-                    </Pressable>
-                    <Pressable
+                    </PressableScale>
+                    <PressableScale
                       onPress={() => props.onSavePlace({ id: p.id, name: p.name })}
                       style={({ pressed }) => [styles.save, pressed && styles.pressed]}
                       accessibilityRole="button"
                       accessibilityLabel={`${p.name} 저장`}
                     >
                       <Icon name="bookmark" size={20} color={colors.text.default} />
-                    </Pressable>
+                    </PressableScale>
                   </View>
                 ))
               )}

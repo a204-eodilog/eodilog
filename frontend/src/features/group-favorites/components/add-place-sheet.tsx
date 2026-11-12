@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { BottomSheet, Icon, type IconName } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, radius, spacing, typography } from '@/theme';
 
 type Props = {
@@ -51,7 +52,7 @@ export function AddPlaceSheet({
 
 function Option(props: { icon: IconName; title: string; body: string; onPress(): void }) {
   return (
-    <Pressable style={styles.option} onPress={props.onPress} accessibilityRole="button">
+    <PressableScale style={styles.option} onPress={props.onPress} accessibilityRole="button">
       <View style={styles.iconBox}>
         <Icon name={props.icon} size={18} color={colors.text.icon} />
       </View>
@@ -60,7 +61,7 @@ function Option(props: { icon: IconName; title: string; body: string; onPress():
         <Text style={[typography.caption, styles.body]}>{props.body}</Text>
       </View>
       <Icon name="chevron-right" size={18} color={colors.text.muted} />
-    </Pressable>
+    </PressableScale>
   );
 }
 

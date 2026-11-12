@@ -1,9 +1,9 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Spinner } from '@/components/ui/spinner';
 
 import { ErrorState } from '@/components/ui';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { colors } from '@/theme';
 
 import { SettlementFailedView } from '../components/settlement-failed-view';
@@ -72,7 +72,7 @@ export function SettlementScreen() {
     return (
       <View style={styles.screen}>
         {header}
-        <Spinner style={styles.loading} color={colors.brand.primary} />
+        <SkeletonList style={styles.loading} />
       </View>
     );
   }

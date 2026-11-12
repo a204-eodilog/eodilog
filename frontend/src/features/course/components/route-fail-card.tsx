@@ -1,7 +1,8 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Spinner } from '@/components/ui/spinner';
 
 import { Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, radius, spacing, typography } from '@/theme';
 
 type Props = {
@@ -27,7 +28,7 @@ export function RouteFailCard({ basis, onRecalculate, busy }: Props) {
         <Icon name="clock" size={22} color={colors.text.icon} />
       </View>
       <View style={styles.actionRow}>
-        <Pressable
+        <PressableScale
           style={styles.action}
           onPress={onRecalculate}
           disabled={busy}
@@ -42,7 +43,7 @@ export function RouteFailCard({ basis, onRecalculate, busy }: Props) {
           <Text style={[typography.bodyMedium, styles.actionText]}>
             {busy ? '계산하는 중…' : '다시 계산'}
           </Text>
-        </Pressable>
+        </PressableScale>
       </View>
     </View>
   );

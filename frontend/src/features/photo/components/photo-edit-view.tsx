@@ -1,8 +1,10 @@
-import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Spinner } from '@/components/ui/spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, ErrorState, Header, Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 import { TOPICS } from '../photo-list-rules';
@@ -54,7 +56,7 @@ export function PhotoEditView(props: PhotoEditViewProps) {
       onBack={props.onBack}
       right={
         props.state === 'ready' ? (
-          <Pressable
+          <PressableScale
             accessibilityRole="button"
             accessibilityLabel="완료"
             accessibilityState={{ disabled: props.saving }}
@@ -68,7 +70,7 @@ export function PhotoEditView(props: PhotoEditViewProps) {
             ) : (
               <Icon name="check" size={24} color={colors.brand.primaryDark} />
             )}
-          </Pressable>
+          </PressableScale>
         ) : undefined
       }
     />
@@ -81,7 +83,7 @@ export function PhotoEditView(props: PhotoEditViewProps) {
         {props.state === 'error' ? (
           <ErrorState title="사진을 불러오지 못했어요" onRetry={props.onRetry} />
         ) : (
-          <Spinner style={styles.flex} color={colors.brand.primary} />
+          <SkeletonList style={styles.flex} />
         )}
       </View>
     );
@@ -134,7 +136,7 @@ export function PhotoEditView(props: PhotoEditViewProps) {
                 {TOPICS.map((t) => {
                   const on = props.topic === t.key;
                   return (
-                    <Pressable
+                    <PressableScale
                       key={t.key}
                       accessibilityRole="button"
                       accessibilityState={{ selected: on }}
@@ -149,7 +151,7 @@ export function PhotoEditView(props: PhotoEditViewProps) {
                       <Text style={[typography.captionMedium, on ? styles.link : styles.sub]}>
                         {t.label}
                       </Text>
-                    </Pressable>
+                    </PressableScale>
                   );
                 })}
               </View>
@@ -159,7 +161,7 @@ export function PhotoEditView(props: PhotoEditViewProps) {
               <Text style={[typography.body, styles.text, styles.flex]} numberOfLines={1}>
                 {props.selectedPlaceName ?? '없음'}
               </Text>
-              <Pressable
+              <PressableScale
                 accessibilityRole="button"
                 accessibilityLabel="장소 바꾸기"
                 // 보이는 높이는 32, 누르는 자리는 위아래 6씩 넓혀 44
@@ -168,7 +170,7 @@ export function PhotoEditView(props: PhotoEditViewProps) {
                 style={({ pressed }) => [styles.whitePill, pressed && styles.pressed]}
               >
                 <Icon name="pencil" size={16} color={colors.text.default} />
-              </Pressable>
+              </PressableScale>
             </View>
           </View>
         ) : null}

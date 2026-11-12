@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Avatar, BottomSheet, Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, spacing, typography } from '@/theme';
 
 type Props = {
@@ -43,7 +44,7 @@ export function MemberFilterSheet({ visible, onClose, members, value, onChange }
 
 function Option(props: { label: string; selected: boolean; onPress(): void; avatar?: ReactNode }) {
   return (
-    <Pressable
+    <PressableScale
       style={styles.option}
       onPress={props.onPress}
       accessibilityRole="radio"
@@ -56,7 +57,7 @@ function Option(props: { label: string; selected: boolean; onPress(): void; avat
       )}
       <Text style={[typography.bodyMedium, styles.label]}>{props.label}</Text>
       {props.selected ? <Icon name="check" size={20} color={colors.brand.primary} /> : null}
-    </Pressable>
+    </PressableScale>
   );
 }
 

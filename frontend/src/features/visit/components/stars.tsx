@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, layout } from '@/theme';
 
 const SCORES = [1, 2, 3, 4, 5] as const;
@@ -23,7 +24,7 @@ export function StarInput({ value, onChange, disabled = false }: StarInputProps)
       {SCORES.map((score) => {
         const on = value !== null && score <= value;
         return (
-          <Pressable
+          <PressableScale
             key={score}
             accessibilityRole="radio"
             accessibilityLabel={`${score}점`}
@@ -33,7 +34,7 @@ export function StarInput({ value, onChange, disabled = false }: StarInputProps)
             style={styles.cell}
           >
             <Icon name="star" size={36} color={on ? FILLED : EMPTY} filled={on} />
-          </Pressable>
+          </PressableScale>
         );
       })}
     </View>

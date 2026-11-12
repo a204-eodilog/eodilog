@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Spinner } from '@/components/ui/spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -13,6 +13,7 @@ import {
   Icon,
   Tag,
 } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { requestDate, type FriendsAction } from '@/features/friends/friends-rules';
 import type { Follow, FriendsBoard } from '@/features/friends/types';
 import { colors, layout, radius, size, spacing, typography } from '@/theme';
@@ -110,7 +111,7 @@ export function FriendsView({
               <Text style={styles.heading}>받은 팔로우 요청 {board.requests.length}</Text>
               {board.requests.map((follow) => (
                 <View key={follow.id} style={styles.request}>
-                  <Pressable
+                  <PressableScale
                     accessibilityRole="button"
                     accessibilityLabel={follow.follower.nickname + ' 프로필'}
                     onPress={() => onPerson(follow.follower)}
@@ -130,7 +131,7 @@ export function FriendsView({
                         팔로우 요청 · {requestDate(follow.requestedAt)}
                       </Text>
                     </View>
-                  </Pressable>
+                  </PressableScale>
                   <View style={styles.actions}>
                     <Button
                       label="거절"
@@ -174,7 +175,7 @@ export function FriendsView({
           ) : null}
           <View accessibilityRole="tablist" style={styles.tabs}>
             {(['following', 'followers'] as const).map((key) => (
-              <Pressable
+              <PressableScale
                 key={key}
                 accessibilityRole="tab"
                 accessibilityState={{ selected: tab === key }}
@@ -185,7 +186,7 @@ export function FriendsView({
                   {key === 'following' ? '팔로잉' : '팔로워'}{' '}
                   <Text style={styles.caption}>{board[key].length}</Text>
                 </Text>
-              </Pressable>
+              </PressableScale>
             ))}
           </View>
           <View style={styles.peopleSection}>
@@ -222,7 +223,7 @@ export function FriendsView({
                 const blocked = pendingIds.includes(person.id);
                 return (
                   <View key={follow.id} style={styles.row}>
-                    <Pressable
+                    <PressableScale
                       style={[styles.person, styles.flex]}
                       accessibilityRole="button"
                       accessibilityLabel={person.nickname + ' 프로필'}
@@ -246,8 +247,8 @@ export function FriendsView({
                           <Text style={styles.caption}>{previewTrips[person.id]}</Text>
                         ) : null}
                       </View>
-                    </Pressable>
-                    <Pressable
+                    </PressableScale>
+                    <PressableScale
                       style={styles.more}
                       accessibilityRole="button"
                       accessibilityLabel={
@@ -264,7 +265,7 @@ export function FriendsView({
                       ) : (
                         <Icon name="more" size={22} color={colors.text.default} />
                       )}
-                    </Pressable>
+                    </PressableScale>
                   </View>
                 );
               })

@@ -1,16 +1,10 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useRef, useState, type ReactNode } from 'react';
-import {
-  Pressable,
-  ScrollView,
-  type ScrollViewInstance,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ScrollView, type ScrollViewInstance, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Chip, Header, Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { isMine } from '@/features/group-favorites/group-rules';
 import { useFavoriteMutations } from '@/features/group-favorites/hooks/use-favorite-mutations';
 import { useGroupFavorites } from '@/features/group-favorites/hooks/use-group-favorites';
@@ -172,14 +166,14 @@ export function RecommendView(props: RecommendViewProps) {
             </View>
           ) : null}
         </ScrollView>
-        <Pressable
+        <PressableScale
           style={[styles.redo, { bottom: insets.bottom + spacing[16] }]}
           onPress={props.onRedo}
           accessibilityRole="button"
         >
           <Icon name="refresh" size={18} color={colors.text.default} />
           <Text style={[typography.bodyMedium, styles.redoText]}>재추천</Text>
-        </Pressable>
+        </PressableScale>
       </>
     );
   }

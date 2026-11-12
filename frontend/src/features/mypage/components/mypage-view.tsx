@@ -1,13 +1,5 @@
 import { useState } from 'react';
-import {
-  type LayoutChangeEvent,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import { Spinner } from '@/components/ui/spinner';
+import { type LayoutChangeEvent, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
@@ -19,6 +11,8 @@ import {
   KoreaMap,
   type KoreaMapPin,
 } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { findMapRegion, MAINLAND_BOUNDS, mapFit } from '@/lib/korea-map';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -59,7 +53,7 @@ export function MyPageView(props: MyPageViewProps) {
       {state === 'error' ? (
         <ErrorState title="마이페이지를 불러오지 못했어요" onRetry={props.onRetry} />
       ) : state === 'loading' || !summary ? (
-        <Spinner style={styles.flex} color={colors.brand.primary} />
+        <SkeletonList style={styles.flex} />
       ) : (
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.profile}>
@@ -88,7 +82,7 @@ export function MyPageView(props: MyPageViewProps) {
           ) : null}
 
           {summary.tripCount > 0 ? (
-            <Pressable
+            <PressableScale
               onPress={props.onTrips}
               style={({ pressed }) => [styles.trips, pressed && styles.pressed]}
               accessibilityRole="button"
@@ -102,7 +96,7 @@ export function MyPageView(props: MyPageViewProps) {
                 <Text style={styles.sub}>{tripListLine(summary)}</Text>
               </View>
               <Icon name="chevron-right" size={20} color={colors.text.muted} />
-            </Pressable>
+            </PressableScale>
           ) : null}
 
           <View style={styles.tiles}>
@@ -261,7 +255,7 @@ export function TripPin({
     />
   );
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
       style={[styles.pinWrap, move]}
       accessibilityRole="button"
@@ -279,7 +273,7 @@ export function TripPin({
         </Text>
       </View>
       {below ? null : dot}
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -295,7 +289,7 @@ function Tile({
   onPress: () => void;
 }) {
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
       style={({ pressed }) => [styles.tile, pressed && styles.pressed]}
       accessibilityRole="button"
@@ -308,7 +302,7 @@ function Tile({
         {label}
         {count ? <Text style={styles.tileCount}> {count}</Text> : null}
       </Text>
-    </Pressable>
+    </PressableScale>
   );
 }
 

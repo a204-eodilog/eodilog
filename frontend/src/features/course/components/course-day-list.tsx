@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Icon, type IconName } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, radius, spacing, typography } from '@/theme';
 
 import {
@@ -61,7 +62,7 @@ export function CourseDayList(props: Props) {
               </Text>
             </View>
             {mode === 'view' ? (
-              <Pressable
+              <PressableScale
                 style={styles.remove}
                 hitSlop={HIT}
                 onPress={() => props.onRemove?.(i)}
@@ -70,16 +71,16 @@ export function CourseDayList(props: Props) {
               >
                 <Icon name="close" size={14} color={colors.text.icon} />
                 <Text style={[typography.captionMedium, styles.removeText]}>빼기</Text>
-              </Pressable>
+              </PressableScale>
             ) : (
-              <Pressable
+              <PressableScale
                 style={styles.more}
                 onPress={() => props.onMore?.(i)}
                 accessibilityRole="button"
                 accessibilityLabel={`${item.place.name} 고치기`}
               >
                 <Icon name="more" size={20} color={colors.text.icon} />
-              </Pressable>
+              </PressableScale>
             )}
           </View>
           {legs[i] ? <LegRow leg={legs[i]} {...props} /> : null}
@@ -103,7 +104,7 @@ function LegRow({
     // 경로를 못 구했으면 0분이나 직선거리로 채우지 않고 그렇게 알린다(Figma 201-13272)
     return (
       <View style={styles.leg}>
-        <Pressable
+        <PressableScale
           onPress={() => onSelectLeg?.(leg.key)}
           hitSlop={HIT_LEG}
           style={[styles.legPill, styles.legFail, selected && styles.legSelected]}
@@ -113,19 +114,19 @@ function LegRow({
         >
           <Icon name="alert" size={14} color={colors.status.danger} />
           <Text style={[typography.captionMedium, styles.failText]}>이동 시간을 못 구했어요</Text>
-        </Pressable>
+        </PressableScale>
         {onRecalculate ? (
-          <Pressable onPress={onRecalculate} style={styles.recalc} accessibilityRole="button">
+          <PressableScale onPress={onRecalculate} style={styles.recalc} accessibilityRole="button">
             <Icon name="refresh" size={14} color={colors.brand.primary} />
             <Text style={[typography.captionMedium, styles.recalcText]}>다시 계산</Text>
-          </Pressable>
+          </PressableScale>
         ) : null}
       </View>
     );
   }
   return (
     <View style={styles.leg}>
-      <Pressable
+      <PressableScale
         disabled={mode !== 'edit'}
         onPress={() => onSelectLeg?.(leg.key)}
         hitSlop={HIT_LEG}
@@ -137,7 +138,7 @@ function LegRow({
         <Text style={[typography.captionMedium, styles.legText]}>
           {label ?? `${MODE_LABEL[leg.mode]} · ${noTime === 'pending' ? '계산 전' : '시간 모름'}`}
         </Text>
-      </Pressable>
+      </PressableScale>
     </View>
   );
 }

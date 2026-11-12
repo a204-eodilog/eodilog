@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { BottomSheet, Button, Icon, RoundCheck } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { seoulToday } from '@/lib/seoul-date';
 import { colors, radius, spacing, typography } from '@/theme';
 
@@ -83,7 +84,7 @@ export function MemberPickSheet({ visible, onClose, mode, members, onPick, loadi
         {members.map((m, i) => {
           const selected = m.id === pickedId;
           return (
-            <Pressable
+            <PressableScale
               key={m.id}
               accessibilityRole="radio"
               accessibilityState={{ selected, disabled: loading }}
@@ -103,7 +104,7 @@ export function MemberPickSheet({ visible, onClose, mode, members, onPick, loadi
                   {joinedDay(m.joinedAt)} 참여{i === 0 ? ' · 가장 먼저 참여' : ''}
                 </Text>
               </View>
-            </Pressable>
+            </PressableScale>
           );
         })}
       </View>

@@ -2,9 +2,9 @@ import { useMutationState } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Spinner } from '@/components/ui/spinner';
 
 import { CenterNotice, Header, toast } from '@/components/ui';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { colors } from '@/theme';
 
 import { VisitListView } from '../components/visit-list-view';
@@ -40,7 +40,7 @@ export function VisitListScreen() {
       <View style={styles.screen}>
         <Header title="평가" />
         {board.isLoading ? (
-          <Spinner style={styles.loading} color={colors.brand.primary} />
+          <SkeletonList style={styles.loading} />
         ) : (
           <CenterNotice
             icon="alert"

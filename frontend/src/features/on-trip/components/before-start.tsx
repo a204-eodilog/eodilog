@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { formatShortDate, parseDate } from '@/lib/format-date';
 import { colors, radius, spacing, typography } from '@/theme';
 
@@ -71,7 +72,7 @@ export function BeforeStart({ startDate, regionName, forecasts, checklist, onChe
           </View>
         </View>
       ) : null}
-      <Pressable
+      <PressableScale
         style={styles.checklist}
         onPress={onChecklist}
         accessibilityRole="button"
@@ -92,7 +93,7 @@ export function BeforeStart({ startDate, regionName, forecasts, checklist, onChe
             <View style={[styles.fill, { width: `${Math.round(ratio * 100)}%` }]} />
           </View>
         ) : null}
-      </Pressable>
+      </PressableScale>
     </View>
   );
 }

@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, radius, spacing, typography } from '@/theme';
 
 type MyTripRowProps = {
@@ -19,7 +20,7 @@ type MyTripRowProps = {
  */
 export function MyTripRow({ title, period, companions, onPress }: MyTripRowProps) {
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={[title, period, companions].filter(Boolean).join(', ')}
       onPress={onPress}
@@ -51,7 +52,7 @@ export function MyTripRow({ title, period, companions, onPress }: MyTripRowProps
           </View>
         ) : null}
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }
 

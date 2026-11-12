@@ -1,8 +1,9 @@
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AvatarGroup, Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { formatRange } from '@/lib/seoul-date';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -62,7 +63,7 @@ export function TripHero({ trip, headline, companions }: Props) {
           <Text style={[typography.subBold, styles.peopleText]} numberOfLines={1}>
             {companions ?? '동행을 초대해 보세요'}
           </Text>
-          <Pressable
+          <PressableScale
             accessibilityRole="button"
             accessibilityLabel="동행 초대"
             // 동그라미는 피그마대로 32지만 누르는 범위는 손가락 크기(44)에 맞춘다
@@ -71,7 +72,7 @@ export function TripHero({ trip, headline, companions }: Props) {
             style={styles.invite}
           >
             <Icon name="person-plus" size={18} color={colors.brand.primary} />
-          </Pressable>
+          </PressableScale>
         </View>
       </View>
     </View>
@@ -88,7 +89,7 @@ function IconButton({
   onPress: () => void;
 }) {
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={label}
       hitSlop={8}
@@ -96,7 +97,7 @@ function IconButton({
       style={styles.iconButton}
     >
       <Icon name={icon} color={colors.text.inverse} />
-    </Pressable>
+    </PressableScale>
   );
 }
 

@@ -1,8 +1,9 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Spinner } from '@/components/ui/spinner';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, Button, ErrorState, Header, Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 import type { ViewerRow } from '../visibility';
@@ -36,7 +37,7 @@ export function VisibilityView(props: VisibilityViewProps) {
       {props.state === 'error' ? (
         <ErrorState title="노출 설정을 불러오지 못했어요" onRetry={props.onRetry} />
       ) : props.state === 'loading' ? (
-        <Spinner style={styles.flex} color={colors.brand.primary} />
+        <SkeletonList style={styles.flex} />
       ) : (
         <>
           <ScrollView contentContainerStyle={styles.content}>
@@ -117,7 +118,7 @@ function Row({ row, onToggle }: { row: ViewerRow; onToggle: (id: string) => void
       {row.companion ? (
         <Text style={styles.companion}>동행</Text>
       ) : (
-        <Pressable
+        <PressableScale
           onPress={() => onToggle(row.user.id)}
           style={({ pressed }) => [
             styles.toggle,
@@ -134,7 +135,7 @@ function Row({ row, onToggle }: { row: ViewerRow; onToggle: (id: string) => void
             size={18}
             color={row.hidden ? colors.brand.primaryDark : colors.text.strong}
           />
-        </Pressable>
+        </PressableScale>
       )}
     </View>
   );

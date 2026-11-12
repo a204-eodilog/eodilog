@@ -1,8 +1,9 @@
 import { Fragment, type ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, Icon, type IconName } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { MODE_ICON } from '@/features/course/components/course-day-list';
 import { CourseMap } from '@/features/course/components/course-map';
 import { legLabel, MODE_LABEL, type DayLeg, type DraftItem } from '@/features/course/course-rules';
@@ -123,9 +124,9 @@ export function ProposalCompare(props: Props) {
       </ScrollView>
       {props.notice}
       <View style={[styles.bottom, { paddingBottom: insets.bottom + spacing[12] }]}>
-        <Pressable style={styles.skip} onPress={props.onSkip} accessibilityRole="button">
+        <PressableScale style={styles.skip} onPress={props.onSkip} accessibilityRole="button">
           <Text style={[typography.bodyMedium, styles.icon]}>적용 안 함</Text>
-        </Pressable>
+        </PressableScale>
         <Button
           label="적용"
           weight="medium"

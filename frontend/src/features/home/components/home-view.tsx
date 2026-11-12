@@ -1,6 +1,5 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Spinner } from '@/components/ui/spinner';
+import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
@@ -15,6 +14,8 @@ import {
   MascotTraveler,
   pinEnterStartMs,
 } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { findMapRegion, type MapPoint } from '@/lib/korea-map';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -90,7 +91,7 @@ export function HomeView(props: HomeViewProps) {
           <Icon name="map-pin" size={24} color={colors.brand.primary} filled />
           <Text style={styles.logoText}>어디로그</Text>
         </View>
-        <Pressable
+        <PressableScale
           onPress={props.onBell}
           style={styles.bell}
           accessibilityRole="button"
@@ -102,11 +103,11 @@ export function HomeView(props: HomeViewProps) {
               <Text style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
             </View>
           ) : null}
-        </Pressable>
+        </PressableScale>
       </View>
 
       {state === 'loading' ? (
-        <Spinner style={styles.flex} color={colors.brand.primary} />
+        <SkeletonList style={styles.flex} />
       ) : state === 'first-visit' ? (
         <EmptyState
           title="첫 여행을 만들어 볼까요?"
@@ -277,11 +278,11 @@ function MapBody(props: HomeViewProps) {
         inset={{ top: TREND_SPACE, bottom: bottomSpace }}
         creditBottom={bottomSpace + spacing[8]}
       />
-      <Pressable onPress={props.onTrend} style={styles.trend} accessibilityRole="button">
+      <PressableScale onPress={props.onTrend} style={styles.trend} accessibilityRole="button">
         <Icon name="trending" size={20} color={colors.brand.primary} />
         <Text style={styles.trendText}>요즘 뜨는 여행지</Text>
         <Icon name="chevron-right" size={16} color={colors.text.icon} />
-      </Pressable>
+      </PressableScale>
       {caption ? (
         <Text style={[styles.caption, { bottom: bottomSpace + spacing[32] }]} pointerEvents="none">
           {caption}
