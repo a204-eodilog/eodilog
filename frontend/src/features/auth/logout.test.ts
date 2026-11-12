@@ -28,6 +28,18 @@ describe('탈퇴', () => {
     expect(mockClearSession).toHaveBeenCalledTimes(1);
   });
 
+  it('401이면 이미 탈퇴된 것으로 보고 기기의 자료와 토큰을 지운다', async () => {
+    jest.mocked(deleteAccount).mockRejectedValue({
+      isAxiosError: true,
+      response: { status: 401, data: { error: { code: 'UNAUTHORIZED' } } },
+    });
+
+    await withdraw();
+
+    expect(mockClearCache).toHaveBeenCalledTimes(1);
+    expect(mockClearSession).toHaveBeenCalledTimes(1);
+  });
+
   it('서버가 받지 않으면 로그인 상태를 그대로 두고 실패를 알린다', async () => {
     jest.mocked(deleteAccount).mockRejectedValue(new Error('network'));
 

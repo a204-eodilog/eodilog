@@ -1,3 +1,4 @@
+import { toApiError } from '@/api/errors';
 import { waitForRefresh } from '@/api/session';
 import { queryClient } from '@/api/query-client';
 import { useSessionStore } from '@/stores/session-store';
@@ -21,11 +22,19 @@ export async function signOut(): Promise<void> {
 
 /**
  * 회원 탈퇴. 로그아웃과 달리 서버가 탈퇴를 받아야만 기기의 토큰을 지운다(실패하면 그대로 로그인 상태로 남아
- * 다시 시도할 수 있다). 갱신 중이면 갱신이 끝난 뒤 보낸다
+ * 다시 시도할 수 있다). 갱신 중이면 갱신이 끝난 뒤 보낸다.
+ *
+ * 401은 탈퇴가 이미 된 것으로 본다. 서버가 탈퇴를 처리한 뒤 응답이 끊겨 다시 누르면 토큰이 이미 폐기돼 401이
+ * 나고, 그 사이 클라이언트가 갱신까지 실패해 "로그인이 만료됐어요" 상태로 바꿔 놓았을 수 있다. 그 표시를 지우고
+ * 탈퇴 성공과 같이 끝낸다
  */
 export async function withdraw(): Promise<void> {
   await waitForRefresh();
-  await deleteAccount();
+  try {
+    await deleteAccount();
+  } catch (error) {
+    if (toApiError(error).status !== 401) throw error;
+  }
   queryClient.clear();
   await useSessionStore.getState().clearSession();
 }
