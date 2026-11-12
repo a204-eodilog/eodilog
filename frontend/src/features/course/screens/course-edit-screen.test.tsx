@@ -579,10 +579,7 @@ describe('구성 방식과 준비 상태', () => {
     await renderScreen();
     expect(await screen.findByText('여행지를 먼저 정해요')).toBeTruthy();
     await fireEvent.press(screen.getByText('여행지 정하기'));
-    expect(mockRouter.push).toHaveBeenCalledWith({
-      pathname: '/trips/[tripId]/settings-region',
-      params: { tripId: 'trip-1' },
-    });
+    expect(mockRouter.push).toHaveBeenCalledWith('/trips/trip-1/region');
   });
 
   it('기간이 없으면 기간을 고르고 다음에서 여행 기간을 저장한다', async () => {

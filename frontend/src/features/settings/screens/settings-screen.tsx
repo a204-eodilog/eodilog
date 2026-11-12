@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stagger } from '@/components/ui/stagger';
 import { Avatar, Button, ConfirmSheet, ErrorState, Header, toast } from '@/components/ui';
 import { SkeletonList } from '@/components/ui/skeleton';
-import { signOut } from '@/features/auth/logout';
+import { signOut, withdraw } from '@/features/auth/logout';
 import {
   AiModeSelector,
   SettingsRow,
@@ -92,6 +92,8 @@ export function SettingsView({
     preview ? initialDetail : null,
   );
   const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [withdrawFailed, setWithdrawFailed] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const logoutLock = useRef(false);
   const { profile, settings } = data;
@@ -158,6 +160,26 @@ export function SettingsView({
     } finally {
       logoutLock.current = false;
       setLoggingOut(false);
+    }
+  }
+
+  async function confirmWithdraw() {
+    if (withdrawing) return;
+    if (preview) {
+      setWithdrawOpen(false);
+      toast.show('미리보기에서는 탈퇴하지 않아요');
+      return;
+    }
+    setWithdrawing(true);
+    setWithdrawFailed(false);
+    try {
+      await withdraw();
+      router.replace('/');
+      toast.show('탈퇴했어요. 그동안 어디로그를 써 주셔서 고마워요');
+    } catch {
+      // 서버가 받지 않았으면 로그인 상태 그대로 두고 시트에서 다시 시도하게 한다
+      setWithdrawFailed(true);
+      setWithdrawing(false);
     }
   }
 
@@ -410,12 +432,14 @@ export function SettingsView({
         title="어디로그를 탈퇴할까요?"
         description={'내 기록이 모두 지워져요.\n함께 만든 여행은 동행에게 남아요'}
         confirmLabel="탈퇴하기"
-        onClose={() => setWithdrawOpen(false)}
-        onConfirm={() => {
+        loading={withdrawing}
+        error={withdrawFailed ? '탈퇴하지 못했어요' : undefined}
+        errorDescription="잠시 후 다시 시도해 주세요"
+        onClose={() => {
           setWithdrawOpen(false);
-          // 탈퇴(DELETE /me)는 보존 정책(Q-11)이 정해진 뒤 연결한다
-          toast.show('탈퇴는 곧 지원돼요');
+          setWithdrawFailed(false);
         }}
+        onConfirm={() => void confirmWithdraw()}
       />
     </SafeAreaView>
   );

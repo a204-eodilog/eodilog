@@ -7,6 +7,7 @@ import {
   destinationLabel,
   groupTrips,
   nextTodoLabel,
+  placeNamesOfDay,
   shortRegionName,
   tripDetailView,
   tripListState,
@@ -311,14 +312,39 @@ describe('tripDetailView', () => {
     expect(view.headline).toBe('두근두근,\n부산 여행');
   });
 
-  it('여행 중: n일차 + 오늘 코스 자리 안내', () => {
+  it('여행 중: n일차 + 오늘 코스 버튼', () => {
     const t = trip({ startDate: '2026-10-27', endDate: '2026-10-29' });
     const view = tripDetailView(t, ['부산'], TODAY);
 
     expect(view.headline).toBe('부산 여행 2일차예요');
     expect(view.steps).toEqual([]);
-    expect(view.note).toBe('오늘 코스가 아직 없어요');
     expect(view.action?.target).toBe('today');
+  });
+
+  it('여행 중: 오늘 코스를 아직 모르면 줄을 비운다', () => {
+    const t = trip({ startDate: '2026-10-27', endDate: '2026-10-29' });
+    expect(tripDetailView(t, ['부산'], TODAY).note).toBeNull();
+    expect(tripDetailView(t, ['부산'], TODAY, null).note).toBeNull();
+  });
+
+  it('여행 중: 오늘 갈 곳이 없으면 없다고 알린다', () => {
+    const t = trip({ startDate: '2026-10-27', endDate: '2026-10-29' });
+    expect(tripDetailView(t, ['부산'], TODAY, []).note).toBe('오늘 코스가 아직 없어요');
+  });
+
+  it('여행 중: 오늘 갈 곳을 한 줄로 알린다', () => {
+    const t = trip({ startDate: '2026-10-27', endDate: '2026-10-29' });
+    expect(tripDetailView(t, ['부산'], TODAY, ['해운대']).note).toBe('오늘 갈 곳: 해운대');
+    expect(tripDetailView(t, ['부산'], TODAY, ['해운대', '해리단길', '광안리']).note).toBe(
+      '오늘 갈 곳: 해운대 외 2곳',
+    );
+  });
+
+  it('계획 중·다녀온 여행은 오늘 갈 곳을 받아도 줄이 없다', () => {
+    const planning = trip({ startDate: '2026-11-14', endDate: '2026-11-15' });
+    const done = trip({ startDate: '2026-10-01', endDate: '2026-10-02' });
+    expect(tripDetailView(planning, ['부산'], TODAY, ['해운대']).note).toBeNull();
+    expect(tripDetailView(done, ['부산'], TODAY, ['해운대']).note).toBeNull();
   });
 
   it('다녀옴: 사진 올리기 → 경비 정산하기 + 피드로 게시', () => {
@@ -370,5 +396,18 @@ describe('stayLabel', () => {
     expect(stayLabel(0)).toBe('당일');
     expect(stayLabel(1)).toBe('1박 2일');
     expect(stayLabel(8)).toBe('8박 9일');
+  });
+});
+
+describe('placeNamesOfDay', () => {
+  const item = (day: number, order: number, name: string) => ({ day, order, place: { name } });
+
+  it('그 일차 장소만 순서대로 뽑는다', () => {
+    const items = [item(2, 2, '광안리'), item(1, 1, '감천문화마을'), item(2, 1, '해운대')];
+    expect(placeNamesOfDay(items, 2)).toEqual(['해운대', '광안리']);
+  });
+
+  it('그 일차에 장소가 없으면 빈 목록', () => {
+    expect(placeNamesOfDay([item(1, 1, '해운대')], 3)).toEqual([]);
   });
 });

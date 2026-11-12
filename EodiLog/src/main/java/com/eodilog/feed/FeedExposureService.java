@@ -138,7 +138,9 @@ public class FeedExposureService {
             var f=r.snapshot();
             var like=likes.get(r.id());
             UUID cover=f.coverPhotoId()!=null && photos.getOrDefault(r.id(),Set.of()).contains(f.coverPhotoId())?f.coverPhotoId():null;
-            return new FeedCard(r.id(),r.tripId(),r.title(),cover,f.regions(),f.startDate(),f.endDate(),f.publishedAt(),
+            // 표지 사진 주소는 게시 스냅샷의 같은 사진 주소를 쓴다(피드 상세 photos[].imageUrl과 같다)
+            String coverUrl=cover==null?null:f.photos().stream().filter(p->p.id().equals(cover)).map(PublicPhoto::imageUrl).findFirst().orElse(null);
+            return new FeedCard(r.id(),r.tripId(),r.title(),cover,coverUrl,f.regions(),f.startDate(),f.endDate(),f.publishedAt(),
                     like!=null && like.likedByMe(),like==null?0:like.count());
         }).toList();
     }

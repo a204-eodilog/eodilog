@@ -88,6 +88,7 @@ public final class FeedDtos {
         @Schema(description="Source trip identifier (UUID)", example="019a0000-0000-7000-8000-000000000002", requiredMode=REQUIRED) UUID tripId,
         @Schema(description="Shared publication title", example="제주 3박 4일", requiredMode=REQUIRED) String title,
         @Schema(description="Cover photo identifier; null when the original is unavailable", requiredMode=REQUIRED, nullable=true) UUID coverPhotoId,
+        @Schema(description="Authenticated /api/v1/assets/{assetId}/download?feedId=... URL of the cover photo (same as the feed photos[].imageUrl); null when coverPhotoId is null", requiredMode=REQUIRED, nullable=true) String coverImageUrl,
         @Schema(description="Regions captured at publication", requiredMode=REQUIRED) List<RegionView> regions,
         @Schema(description="Trip start date captured at publication; null when undecided", example="2026-11-10", requiredMode=REQUIRED, nullable=true) LocalDate startDate,
         @Schema(description="Trip end date captured at publication; null when undecided", example="2026-11-12", requiredMode=REQUIRED, nullable=true) LocalDate endDate,

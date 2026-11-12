@@ -18,10 +18,21 @@ import type { Region } from '../types';
 
 /**
  * 여행지 검색. S16 "어디로" 줄(draft 'new')과 S19 여행지 줄(draft 'edit')에서 연다.
+ * 코스·투표에서 여는 여행지 고르기(TripRegionScreen)는 onDone으로 바로 저장한다.
  * 여러 곳을 고를 수 있고 같은 곳은 한 번만 들어간다.
  * 두 입력 스토어를 언제나 둘 다 부르고 값으로 고른다. 훅을 조건에 따라 부르지 않기 위해서다
  */
-export function RegionSearchScreen({ draft = 'new' }: { draft?: 'new' | 'edit' }) {
+export function RegionSearchScreen({
+  draft = 'new',
+  onDone,
+  busy = false,
+}: {
+  draft?: 'new' | 'edit';
+  /** 아래 버튼을 눌렀을 때. 없으면 뒤로만 간다(고른 값은 입력 스토어에 남는다) */
+  onDone?: () => void;
+  /** onDone이 저장하는 중 */
+  busy?: boolean;
+}) {
   const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
   const [input, setInput] = useState('');
@@ -128,7 +139,8 @@ export function RegionSearchScreen({ draft = 'new' }: { draft?: 'new' | 'edit' }
             count={picked.length > 0 ? picked.length : undefined}
             size="xl"
             block
-            onPress={() => router.back()}
+            loading={busy}
+            onPress={onDone ?? (() => router.back())}
           />
         </View>
       </View>

@@ -12,8 +12,8 @@ export const pollRoutes = {
   collectPlaces(tripId: string) {
     router.push(`/trips/${tripId}/favorites`);
   },
-  /** 0표 [직접 정하기] → 여행지 고르기 */
+  /** 0표 [직접 정하기] → 여행지 고르기. 고르면 바로 저장한다 */
   decideDirectly(tripId: string) {
-    router.push(`/trips/${tripId}/settings-region`);
+    router.push(`/trips/${tripId}/region`);
   },
 };

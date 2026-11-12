@@ -21,6 +21,9 @@ export type ItineraryItem = {
   startTime: string | null;
 };
 
+/** 코스 응답에서 이 기능이 쓰는 부분. 캐시에는 서버가 준 코스 전체가 있다(코스 화면과 같은 쿼리 키) */
+export type ItineraryDoc = { items: ItineraryItem[] };
+
 /** MANUAL: '다녀옴' 직접 체크 / PHOTO: 사진 방문 후보를 본인이 확인 */
 export type VisitEvidenceType = 'MANUAL' | 'PHOTO';
 

@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { Icon, type IconName, toast } from '@/components/ui';
 import { PressableScale } from '@/components/ui/pressable-scale';
+import { useReadEvent } from '@/features/notification/hooks/use-read-event';
 import { colors, radius, spacing, typography } from '@/theme';
 
 import { systemCard, type SystemCardKind } from '../chat-rules';
@@ -21,10 +22,14 @@ type Props = {
  */
 export function SystemCard({ message, tripId }: Props) {
   const card = systemCard(message);
+  const readEvent = useReadEvent();
   const go = () => {
     const route = SYSTEM_CARD_ROUTES[card.kind];
-    if (route && message.target) route(message.target, tripId);
-    else toast.show('준비 중이에요');
+    if (route && message.target) {
+      // 카드로 소식을 열었으니 같은 소식의 알림도 읽음으로 맞춘다. 이미 읽은 소식은 다시 보내지 않는다
+      if (message.eventId && message.eventReadAt === null) readEvent(message.eventId);
+      route(message.target, tripId);
+    } else toast.show('준비 중이에요');
   };
 
   return (
