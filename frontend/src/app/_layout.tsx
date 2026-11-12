@@ -14,6 +14,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { queryClient } from '@/api/query-client';
 import { setupQueryFocus } from '@/api/query-focus';
+import { CelebrateHost } from '@/components/ui/celebrate';
 import { ToastHost } from '@/components/ui/toast';
 import { SessionExpiredDialog } from '@/features/auth/components/session-expired-dialog';
 import { startChatRealtime } from '@/features/chat/realtime-chat';
@@ -60,6 +61,7 @@ export default function RootLayout() {
           <Stack screenOptions={{ headerShown: false }} />
           <SessionExpiredDialog />
           <ToastHost />
+          <CelebrateHost />
         </BottomSheetModalProvider>
       </QueryClientProvider>
     </GestureHandlerRootView>

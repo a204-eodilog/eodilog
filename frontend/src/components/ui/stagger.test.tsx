@@ -31,7 +31,7 @@ describe('Stagger', () => {
     const delays = timing.mock.calls.map((call) => call[1].delay);
     expect(delays).toEqual([0, 60, 120]);
     expect(timing.mock.calls[0][1]).toEqual(
-      expect.objectContaining({ toValue: 1, duration: motion.duration.normal }),
+      expect.objectContaining({ toValue: 1, duration: motion.appear.duration }),
     );
     expect(screen.getByText('제목')).toBeTruthy();
     expect(screen.getByText('내용')).toBeTruthy();

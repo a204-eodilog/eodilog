@@ -105,7 +105,7 @@ export function Button({
         if (major) haptic.light();
         onPress?.();
       }}
-      onPressIn={press.onPressIn}
+      onPressIn={() => press.onPressIn()}
       onPressOut={press.onPressOut}
       style={[
         styles.base,
