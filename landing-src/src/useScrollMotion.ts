@@ -36,6 +36,100 @@ export function useScrollMotion(root: RefObject<HTMLElement | null>) {
           toggleClass: { targets: '.nav', className: 'is-stuck' },
         })
 
+        // 한 장씩 넘길 때 멈춰 설 자리들. 구간마다 화면 한 장을 차지하므로 각 장의 맨 위가 자리다
+        const html = document.documentElement
+        const snapPoints = () =>
+          gsap.utils.toArray<HTMLElement>('[data-page]').map((el) => {
+            let y = 0
+            for (let node: HTMLElement | null = el; node; node = node.offsetParent as HTMLElement | null) {
+              y += node.offsetTop
+            }
+            return y
+          })
+
+        // 한 장씩 넘기기: 휠을 살짝만 굴려도 다음 구간까지 알아서 부드럽게 넘어간다.
+        // 넓은 화면에서 휠과 키보드에만 건다. 폰은 구간이 화면보다 훨씬 길어서 손가락 스크롤을 그대로 둔다
+        let pageTween: gsap.core.Tween | null = null
+        const stopPage = () => {
+          if (!pageTween) return
+          pageTween.kill()
+          pageTween = null
+          html.style.scrollBehavior = ''
+        }
+        const goPage = (dir: 1 | -1) => {
+          const vh = window.innerHeight
+          const max = ScrollTrigger.maxScroll(window)
+          const from = window.scrollY
+          const points = [...new Set([...snapPoints(), max].map((y) => Math.round(Math.min(y, max))))].sort(
+            (a, b) => a - b,
+          )
+          const pageTop = points.findLast((y) => y <= from + 4) ?? 0
+          const pageEnd = points.find((y) => y > from + 4)
+          let to: number | undefined
+          if (dir > 0) {
+            // 화면이 낮아 한 장이 화면보다 길면, 남은 아래쪽을 먼저 보여 준 뒤 다음 장으로 넘긴다
+            const hidden = pageEnd === undefined ? 0 : pageEnd - (from + vh)
+            to = hidden > 8 ? Math.min(from + vh * 0.85, (pageEnd ?? max) - vh) : pageEnd
+          } else {
+            to = from - pageTop > 8 ? Math.max(from - vh * 0.85, pageTop) : points.findLast((y) => y < from - 4)
+          }
+          if (to === undefined || Math.abs(to - from) < 2) return
+          const pos = { y: from }
+          // 부드러운 스크롤 설정이 켜져 있으면 움직임이 겹쳐 밀린다. 움직이는 동안만 끈다
+          html.style.scrollBehavior = 'auto'
+          pageTween = gsap.to(pos, {
+            y: to,
+            duration: 1.15,
+            ease: 'power2.inOut',
+            onUpdate: () => window.scrollTo(0, pos.y),
+            onComplete: () => {
+              pageTween = null
+              html.style.scrollBehavior = ''
+            },
+          })
+        }
+
+        // 터치패드는 손을 뗀 뒤에도 약한 휠 신호가 이어진다. 그 꼬리로 한 장 더 넘어가지 않게,
+        // 신호가 끊겼다 다시 오거나 전보다 세질 때만 새로 굴린 것으로 본다
+        let lastWheelAt = 0
+        let lastWheelSize = 0
+        const onWheel = (event: WheelEvent) => {
+          if (event.ctrlKey || !event.deltaY) return
+          event.preventDefault()
+          const size = Math.abs(event.deltaY)
+          const fresh = event.timeStamp - lastWheelAt > 120 || size > lastWheelSize * 1.5
+          lastWheelAt = event.timeStamp
+          lastWheelSize = size
+          if (pageTween || !fresh) return
+          goPage(event.deltaY > 0 ? 1 : -1)
+        }
+        const onKey = (event: KeyboardEvent) => {
+          if (event.ctrlKey || event.altKey || event.metaKey) return
+          const target = event.target as HTMLElement | null
+          // 버튼이나 링크에서 누른 스페이스는 그 버튼을 누르는 동작이라 가로채지 않는다
+          const onControl = !!target?.closest('a, button, input, textarea, select')
+          let dir: 1 | -1 | 0 = 0
+          if (event.key === 'ArrowDown' || event.key === 'PageDown') dir = 1
+          else if (event.key === 'ArrowUp' || event.key === 'PageUp') dir = -1
+          else if (event.key === ' ' && !onControl) dir = event.shiftKey ? -1 : 1
+          if (!dir) return
+          event.preventDefault()
+          if (!pageTween) goPage(dir)
+        }
+        const stopEvents = ['touchstart', 'pointerdown'] as const
+        if (wide) {
+          window.addEventListener('wheel', onWheel, { passive: false })
+          window.addEventListener('keydown', onKey)
+          // 스크롤 막대를 잡거나 화면을 누르면 넘기던 움직임을 멈추고 손에 맡긴다
+          stopEvents.forEach((name) => window.addEventListener(name, stopPage, { passive: true }))
+        }
+        const removeSnap = () => {
+          window.removeEventListener('wheel', onWheel)
+          window.removeEventListener('keydown', onKey)
+          stopEvents.forEach((name) => window.removeEventListener(name, stopPage))
+          stopPage()
+        }
+
         // 첫 화면: 글이 줄마다 올라오고, 폰과 떠 있는 카드가 차례로 나타난다
         gsap
           .timeline({ defaults: { ease: 'power3.out' } })
@@ -248,6 +342,8 @@ export function useScrollMotion(root: RefObject<HTMLElement | null>) {
           ease: 'back.out(1.6)',
           scrollTrigger: { trigger: '.download', start: 'top 80%', once: true },
         })
+
+        return removeSnap
       },
     )
 
