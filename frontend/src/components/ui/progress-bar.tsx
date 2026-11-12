@@ -77,7 +77,11 @@ export function ProgressBar({
             opacity: width > 0 ? 1 : 0,
             transform: [
               {
-                translateX: filled.interpolate({ inputRange: [0, 1], outputRange: [-width, 0] }),
+                // 0일 때 왼쪽 끝이 1px 비치지 않게 1px 더 민다
+                translateX: filled.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [-(width + 1), 0],
+                }),
               },
             ],
           },

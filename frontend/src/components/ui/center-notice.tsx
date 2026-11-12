@@ -57,9 +57,7 @@ export function CenterNotice({
           label={actionLabel}
           onPress={onAction}
           loading={actionLoading}
-          leading={
-            actionIcon ? <Icon name={actionIcon} size={20} color={colors.text.inverse} /> : null
-          }
+          icon={actionIcon}
           style={styles.action}
         />
       ) : null}

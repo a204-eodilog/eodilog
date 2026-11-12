@@ -1,4 +1,4 @@
-import { Children, useEffect, useState, type ReactNode } from 'react';
+import { Children, isValidElement, useEffect, useState, type ReactNode } from 'react';
 import { Animated, type StyleProp, type ViewStyle } from 'react-native';
 
 import { isReduceMotion } from '@/hooks/use-reduce-motion';
@@ -20,7 +20,8 @@ export type StaggerProps = {
 /**
  * 순서대로 나오는 글. 자식을 위에서부터 한 줄씩, 60ms 간격으로 통 하고 올라오며 나타나게 한다(theme/motion).
  * 제목 → 설명 → 내용 순서가 눈에 들어오게 하려고 바텀시트, 가운데 창, 빈 화면·오류 안내, 큰 제목이 있는 입력 화면에 쓴다.
- * 일반 목록 화면의 머리글에는 쓰지 않는다(화면을 열 때마다 글이 하나씩 나오면 느리게 느껴진다).
+ * 부수적인 화면(설정, 기록, 프로필 등)의 스크롤 내용도 감싸 구역이 위에서부터 차례로 나타나게 한다.
+ * 줄이 많은 목록에는 쓰지 않는다. 목록의 줄은 FadeIn으로 감싼다.
  * 빈 자식(null, false)은 건너뛰어 간격이 비지 않는다. "동작 줄이기"가 켜져 있으면 바로 보인다
  */
 export function Stagger({
@@ -33,7 +34,15 @@ export function Stagger({
   return (
     <>
       {items.map((child, index) => (
-        <StaggerItem key={index} index={index} active={active} gap={gap} style={itemStyle}>
+        // 자식의 제 이름(key)으로 구분한다. 순서 번호로 구분하면 위쪽에 안내 띠 같은 것이 나중에 생길 때
+        // 아래 줄이 모두 새로 그려져, 다시 나타나고 입력하던 글도 사라진다
+        <StaggerItem
+          key={isValidElement(child) && child.key != null ? child.key : index}
+          index={index}
+          active={active}
+          gap={gap}
+          style={itemStyle}
+        >
           {child}
         </StaggerItem>
       ))}
@@ -55,6 +64,8 @@ function StaggerItem({
   children: ReactNode;
 }) {
   const shown = useState(() => new Animated.Value(active && isReduceMotion() ? 1 : 0))[0];
+  // 처음 그려질 때의 순서만 쓴다. 나중에 순서가 바뀌어도 다시 나타나지 않는다
+  const delay = useState(() => Math.min(index, motion.stagger.max) * gap)[0];
 
   useEffect(() => {
     if (!active) {
@@ -69,13 +80,13 @@ function StaggerItem({
     const appearing = Animated.timing(shown, {
       toValue: 1,
       duration: motion.appear.duration,
-      delay: index * gap,
+      delay,
       easing: motion.appear.easing,
       useNativeDriver: motion.native,
     });
     appearing.start();
     return () => appearing.stop();
-  }, [active, index, gap, shown]);
+  }, [active, delay, shown]);
 
   return (
     <Animated.View

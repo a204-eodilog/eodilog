@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Text, type TextProps } from 'react-native';
+import { Animated, StyleSheet, Text, type TextProps } from 'react-native';
 
 import { isReduceMotion } from '@/hooks/use-reduce-motion';
 import { motion } from '@/theme/motion';
@@ -15,7 +15,7 @@ export type CountUpProps = Omit<TextProps, 'children'> & {
  * 처음 그릴 때는 움직이지 않는다. 도중에 또 바뀌면 지금 보이는 수에서 이어 간다.
  * "동작 줄이기"가 켜져 있으면 바로 바뀐다
  */
-export function CountUp({ value, format = String, ...rest }: CountUpProps) {
+export function CountUp({ value, format = String, style, ...rest }: CountUpProps) {
   const [shown, setShown] = useState(value);
   const rolling = useState(() => new Animated.Value(value))[0];
   const first = useRef(true);
@@ -42,5 +42,14 @@ export function CountUp({ value, format = String, ...rest }: CountUpProps) {
     };
   }, [rolling, value]);
 
-  return <Text {...rest}>{format(shown)}</Text>;
+  return (
+    <Text {...rest} style={[styles.digits, style]}>
+      {format(shown)}
+    </Text>
+  );
 }
+
+const styles = StyleSheet.create({
+  // 숫자마다 폭이 같다. 세는 동안 글자가 좌우로 떨리지 않는다
+  digits: { fontVariant: ['tabular-nums'] },
+});
