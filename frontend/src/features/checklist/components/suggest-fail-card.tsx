@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Icon, type IconName } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, radius, spacing, typography } from '@/theme';
 
 import { CHECKLIST_TEXT } from '../checklist-rules';
@@ -49,10 +50,10 @@ export function SuggestFailCard({ failure, onAction }: Props) {
         <Icon name={copy.badge} size={22} color={colors.text.icon} />
       </View>
       <View style={styles.actionRow}>
-        <Pressable style={styles.action} onPress={onAction} accessibilityRole="button">
+        <PressableScale style={styles.action} onPress={onAction} accessibilityRole="button">
           <Icon name={copy.icon} size={16} color={colors.text.default} />
           <Text style={[typography.bodyMedium, styles.actionText]}>{copy.action}</Text>
-        </Pressable>
+        </PressableScale>
       </View>
     </View>
   );

@@ -435,9 +435,9 @@ describe('장소 없음', () => {
     expect(screen.queryByText('전체 0')).toBeNull();
     expect(screen.queryByLabelText('동행별로 보기')).toBeNull();
     expect(screen.queryByLabelText('지도로 보기')).toBeNull();
-    expect(screen.queryByText('투표 열기')).toBeNull();
-    expect(screen.queryByText('추천 받기')).toBeNull();
-    await fireEvent.press(screen.getByText('장소 추가'));
+    expect(screen.queryByLabelText('투표 열기')).toBeNull();
+    expect(screen.queryByLabelText('추천 받기')).toBeNull();
+    await fireEvent.press(screen.getByLabelText('장소 추가'));
     expect(screen.getByText('장소 검색')).toBeTruthy();
   });
 
@@ -458,7 +458,7 @@ describe('후보 고르기와 추천', () => {
   it('투표 열기를 누르면 줄을 골라 개수가 버튼에 보이고 확정하면 그 장소로 투표 열기 시트를 연다', async () => {
     mockList.mockResolvedValue(page(sampleSaved()));
     await renderScreen();
-    await fireEvent.press(await screen.findByText('투표 열기'));
+    await fireEvent.press(await screen.findByLabelText('투표 열기'));
     expect(screen.getByText('후보를 골라 주세요')).toBeTruthy();
     const rows = screen.getAllByRole('checkbox');
     await fireEvent.press(rows[0]);
@@ -471,15 +471,15 @@ describe('후보 고르기와 추천', () => {
     expect(toast.show).not.toHaveBeenCalledWith('준비 중이에요');
     // 고르는 중에는 장소 시트가 열리지 않는다
     expect(screen.queryByLabelText('내 메모')).toBeNull();
-    await fireEvent.press(screen.getByText('취소'));
+    await fireEvent.press(screen.getByLabelText('취소'));
     expect(screen.queryAllByRole('checkbox')).toHaveLength(0);
-    expect(screen.getByText('투표 열기')).toBeTruthy();
+    expect(screen.getByLabelText('투표 열기')).toBeTruthy();
   });
 
   it('투표가 열리면 고르기를 끝내고 그 투표 화면으로 간다', async () => {
     mockList.mockResolvedValue(page(sampleSaved()));
     await renderScreen();
-    await fireEvent.press(await screen.findByText('투표 열기'));
+    await fireEvent.press(await screen.findByLabelText('투표 열기'));
     await fireEvent.press(screen.getAllByRole('checkbox')[0]);
     await fireEvent.press(screen.getByText('1곳으로 투표 열기'));
     await fireEvent.press(screen.getByText(/^투표 열기 시트/));
@@ -490,7 +490,7 @@ describe('후보 고르기와 추천', () => {
   it('추천 받기는 추천 결과를 연다', async () => {
     mockList.mockResolvedValue(page(sampleSaved()));
     await renderScreen();
-    await fireEvent.press(await screen.findByText('추천 받기'));
+    await fireEvent.press(await screen.findByLabelText('추천 받기'));
     expect(mockRouter.push).toHaveBeenCalledWith({
       pathname: '/trips/[tripId]/recommend',
       params: { tripId: 'trip-1' },
@@ -523,7 +523,7 @@ describe('지도에서 후보 고르기', () => {
     const items = sampleSaved();
     mockList.mockResolvedValue(page(items));
     await renderScreen();
-    await fireEvent.press(await screen.findByText('투표 열기'));
+    await fireEvent.press(await screen.findByLabelText('투표 열기'));
     await fireEvent.press(screen.getByLabelText('지도로 보기'));
     await fireEvent.press(
       screen.getByLabelText(`${items[0].place.name}, ${items[0].savedCount}명이 담았어요`),

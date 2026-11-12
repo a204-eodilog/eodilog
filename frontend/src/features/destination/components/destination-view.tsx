@@ -1,9 +1,11 @@
 import { Image } from 'expo-image';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Spinner } from '@/components/ui/spinner';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Stagger } from '@/components/ui/stagger';
 import { Button, ErrorState, Header, Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { assetSource } from '@/lib/asset-image';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -37,80 +39,78 @@ export function DestinationView(props: DestinationViewProps) {
           onRetry={props.onRetry}
         />
       ) : props.state === 'loading' || !info ? (
-        <Spinner style={styles.flex} color={colors.brand.primary} />
+        <SkeletonList style={styles.flex} />
       ) : (
         <>
           <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-            <View style={styles.cover}>
-              <Icon name="image" size={32} color={colors.brand.primary} />
-              {cover ? (
-                <Image source={cover} style={StyleSheet.absoluteFill} contentFit="cover" />
-              ) : null}
-            </View>
+            <Stagger itemStyle={styles.staggerItem}>
+              <View style={styles.cover}>
+                <Icon name="image" size={32} color={colors.brand.primary} />
+                {cover ? (
+                  <Image source={cover} style={StyleSheet.absoluteFill} contentFit="cover" />
+                ) : null}
+              </View>
 
-            <View style={styles.head}>
-              <Text style={styles.title}>{info.name}</Text>
-              {info.area ? (
-                <View style={styles.area}>
-                  <Icon name="map-pin" size={14} color={colors.text.icon} />
-                  <Text style={styles.areaText}>{info.area}</Text>
-                </View>
-              ) : null}
-              {info.introduction ? <Text style={styles.intro}>{info.introduction}</Text> : null}
-            </View>
-
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>대표 장소</Text>
-              {info.places.length === 0 ? (
-                <Text style={styles.none}>아직 소개할 장소가 없어요</Text>
-              ) : (
-                info.places.map((p) => (
-                  <View key={p.id} style={styles.place}>
-                    <Pressable
-                      onPress={() => props.onPlace(p.id)}
-                      style={({ pressed }) => [styles.placeMain, pressed && styles.pressed]}
-                      accessibilityRole="button"
-                      accessibilityLabel={p.name}
-                    >
-                      <View style={styles.thumb}>
-                        <Icon name="image" size={20} color={colors.brand.primary} />
-                      </View>
-                      <View style={styles.placeText}>
-                        <Text style={styles.placeName} numberOfLines={1}>
-                          {p.name}
-                        </Text>
-                        {p.address ? (
-                          <View style={styles.area}>
-                            <Icon name="map-pin" size={14} color={colors.text.icon} />
-                            <Text style={styles.areaText} numberOfLines={1}>
-                              {p.address}
-                            </Text>
-                          </View>
-                        ) : null}
-                      </View>
-                    </Pressable>
-                    <Pressable
-                      onPress={() => props.onSavePlace({ id: p.id, name: p.name })}
-                      style={({ pressed }) => [styles.save, pressed && styles.pressed]}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${p.name} 저장`}
-                    >
-                      <Icon name="bookmark" size={20} color={colors.text.default} />
-                    </Pressable>
+              <View style={styles.head}>
+                <Text style={styles.title}>{info.name}</Text>
+                {info.area ? (
+                  <View style={styles.area}>
+                    <Icon name="map-pin" size={14} color={colors.text.icon} />
+                    <Text style={styles.areaText}>{info.area}</Text>
                   </View>
-                ))
-              )}
-            </View>
+                ) : null}
+                {info.introduction ? <Text style={styles.intro}>{info.introduction}</Text> : null}
+              </View>
+
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>대표 장소</Text>
+                {info.places.length === 0 ? (
+                  <Text style={styles.none}>아직 소개할 장소가 없어요</Text>
+                ) : (
+                  info.places.map((p) => (
+                    <View key={p.id} style={styles.place}>
+                      <PressableScale
+                        onPress={() => props.onPlace(p.id)}
+                        style={({ pressed }) => [styles.placeMain, pressed && styles.pressed]}
+                        accessibilityRole="button"
+                        accessibilityLabel={p.name}
+                      >
+                        <View style={styles.thumb}>
+                          <Icon name="image" size={20} color={colors.brand.primary} />
+                        </View>
+                        <View style={styles.placeText}>
+                          <Text style={styles.placeName} numberOfLines={1}>
+                            {p.name}
+                          </Text>
+                          {p.address ? (
+                            <View style={styles.area}>
+                              <Icon name="map-pin" size={14} color={colors.text.icon} />
+                              <Text style={styles.areaText} numberOfLines={1}>
+                                {p.address}
+                              </Text>
+                            </View>
+                          ) : null}
+                        </View>
+                      </PressableScale>
+                      <PressableScale
+                        onPress={() => props.onSavePlace({ id: p.id, name: p.name })}
+                        style={({ pressed }) => [styles.save, pressed && styles.pressed]}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${p.name} 저장`}
+                      >
+                        <Icon name="bookmark" size={20} color={colors.text.default} />
+                      </PressableScale>
+                    </View>
+                  ))
+                )}
+              </View>
+            </Stagger>
           </ScrollView>
           <View
             style={[styles.fab, { bottom: spacing[24] + insets.bottom }]}
             pointerEvents="box-none"
           >
-            <Button
-              label="새 여행"
-              onPress={props.onNewTrip}
-              leading={<Icon name="plus" size={20} color={colors.text.inverse} />}
-            />
+            <Button label="새 여행" icon="plus" onPress={props.onNewTrip} />
           </View>
         </>
       )}
@@ -119,6 +119,8 @@ export function DestinationView(props: DestinationViewProps) {
 }
 
 const styles = StyleSheet.create({
+  // 차례로 나타나는 구역을 감싼 칸. 한 구역이 여러 줄이면 그 사이 간격을 스크롤 내용과 같게 둔다
+  staggerItem: { gap: spacing[24] },
   screen: { flex: 1, backgroundColor: colors.surface.white },
   flex: { flex: 1 },
   pressed: { opacity: 0.7 },

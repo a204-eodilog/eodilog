@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Spinner } from '@/components/ui/spinner';
+import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { UserCard } from '@/api/types';
 import { Avatar, EmptyState, ErrorState, Header, Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { caret, colors, layout, radius, spacing, typography } from '@/theme';
 
 import { followButtonState, suggestionReason } from '../people-rules';
@@ -57,7 +58,7 @@ export function FindFriendsView(props: FindFriendsViewProps) {
           style={styles.searchInput}
           accessibilityLabel="닉네임으로 찾기"
         />
-        <Pressable
+        <PressableScale
           onPress={submit}
           style={({ pressed }) => [styles.searchButton, pressed && styles.pressed]}
           hitSlop={4}
@@ -65,7 +66,7 @@ export function FindFriendsView(props: FindFriendsViewProps) {
           accessibilityLabel="찾기"
         >
           <Icon name="search" size={18} color={colors.text.default} />
-        </Pressable>
+        </PressableScale>
       </View>
 
       {props.search ? (
@@ -81,7 +82,7 @@ function Suggestions(props: FindFriendsViewProps) {
   const { state, items } = props.suggestions;
   if (state === 'error')
     return <ErrorState title="추천을 불러오지 못했어요" onRetry={props.onRetry} />;
-  if (state === 'loading') return <Spinner style={styles.flex} color={colors.brand.primary} />;
+  if (state === 'loading') return <SkeletonList style={styles.flex} />;
   if (items.length === 0) {
     return (
       <EmptyState title="아직 추천할 친구가 없어요" description="닉네임으로 찾아 팔로우해 보세요" />
@@ -92,7 +93,7 @@ function Suggestions(props: FindFriendsViewProps) {
       <Text style={styles.sectionTitle}>추천 친구</Text>
       {items.map((s) => (
         <View key={s.user.id} style={styles.card}>
-          <Pressable
+          <PressableScale
             onPress={() => props.onPerson(s.user)}
             style={styles.cardHead}
             accessibilityRole="button"
@@ -110,17 +111,16 @@ function Suggestions(props: FindFriendsViewProps) {
                 <Text style={styles.reasonText}>{suggestionReason(s.reason)}</Text>
               </View>
             </View>
-          </Pressable>
+          </PressableScale>
           <View style={styles.actions}>
-            <Pressable
+            <PressableScale
               onPress={() => props.onHide(s.user)}
               style={({ pressed }) => [styles.hide, pressed && styles.pressed]}
               accessibilityRole="button"
               accessibilityLabel={`${s.user.nickname} 추천 숨기기`}
             >
-              <Icon name="eye-off" size={18} color={colors.text.strong} />
-              <Text style={styles.hideText}>숨기기</Text>
-            </Pressable>
+              <Icon name="eye-off" size={16} color={colors.text.sub} />
+            </PressableScale>
             <FollowButton
               compact
               onCard
@@ -141,7 +141,7 @@ function SearchResults(
   const { state, items, query } = props.search;
   if (state === 'error')
     return <ErrorState title="찾지 못했어요" onRetry={() => props.onSearch(query)} />;
-  if (state === 'loading') return <Spinner style={styles.flex} color={colors.brand.primary} />;
+  if (state === 'loading') return <SkeletonList style={styles.flex} />;
   if (items.length === 0) {
     return (
       <EmptyState
@@ -155,7 +155,7 @@ function SearchResults(
       <Text style={styles.sectionTitle}>검색 결과</Text>
       {items.map((u) => (
         <View key={u.id} style={styles.row}>
-          <Pressable
+          <PressableScale
             onPress={() => props.onPerson(u)}
             style={styles.rowMain}
             accessibilityRole="button"
@@ -171,7 +171,7 @@ function SearchResults(
                 </View>
               ) : null}
             </View>
-          </Pressable>
+          </PressableScale>
           <FollowButton
             compact
             state={followButtonState(u)}
@@ -185,7 +185,8 @@ function SearchResults(
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.surface.white },
+  // 바탕은 옅은 회색, 추천 카드는 흰 카드
+  screen: { flex: 1, backgroundColor: colors.surface.subtle },
   flex: { flex: 1 },
   pressed: { opacity: 0.7 },
   searchBox: {
@@ -197,8 +198,8 @@ const styles = StyleSheet.create({
     marginTop: spacing[8],
     paddingLeft: spacing[16],
     paddingRight: spacing[6],
-    borderRadius: radius.md,
-    backgroundColor: colors.surface.default,
+    borderRadius: radius.full,
+    backgroundColor: colors.surface.white,
   },
   searchInput: {
     flex: 1,
@@ -215,7 +216,7 @@ const styles = StyleSheet.create({
     height: 36,
     paddingHorizontal: spacing[14],
     borderRadius: radius.full,
-    backgroundColor: colors.surface.white,
+    backgroundColor: colors.surface.default,
     justifyContent: 'center',
   },
   list: {
@@ -228,8 +229,8 @@ const styles = StyleSheet.create({
   card: {
     padding: spacing[20],
     gap: spacing[12],
-    borderRadius: radius.lg,
-    backgroundColor: colors.surface.default,
+    borderRadius: radius.xl,
+    backgroundColor: colors.surface.white,
   },
   cardHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[14] },
   cardText: { flex: 1, minWidth: 0, gap: spacing[6] },
@@ -240,16 +241,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     alignItems: 'center',
-    gap: spacing[12],
+    gap: spacing[8],
   },
+  // 팔로우 동그라미와 같은 크기의 흰 동그라미. 회색 카드 위에서 누를 수 있는 칸으로 보인다
   hide: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing[4],
-    height: 40,
-    paddingHorizontal: spacing[8],
+    justifyContent: 'center',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.surface.default,
   },
-  hideText: { ...typography.bodyMedium, color: colors.text.strong },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

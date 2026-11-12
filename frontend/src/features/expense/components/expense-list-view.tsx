@@ -1,7 +1,9 @@
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, Card, CenterNotice, Header, Icon } from '@/components/ui';
+import { FadeIn } from '@/components/ui/fade-in';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { formatTotalShort, formatWon } from '@/lib/format-number';
 import { colors, layout, spacing, typography } from '@/theme';
 
@@ -58,7 +60,7 @@ export function ExpenseListView({
         subtitle={tripTitle}
         subtitleIcon="trip"
         right={
-          <Pressable
+          <PressableScale
             accessibilityRole="button"
             accessibilityLabel="지출 추가"
             hitSlop={8}
@@ -66,7 +68,7 @@ export function ExpenseListView({
             style={styles.headerButton}
           >
             <Icon name="plus" color={colors.text.default} />
-          </Pressable>
+          </PressableScale>
         }
       />
 
@@ -91,8 +93,8 @@ export function ExpenseListView({
               <View style={styles.top}>
                 {changed ? <SettlementChangedBox onPrevious={onPreviousSettlement} /> : null}
                 <Card variant="filled" rounded="xl" style={styles.total}>
-                  <Text style={[typography.caption, styles.sub]}>함께 쓴 돈</Text>
-                  <Text style={[typography.title1, styles.text]}>
+                  <Text style={[typography.captionMedium, styles.onBrandSoft]}>함께 쓴 돈</Text>
+                  <Text style={[typography.display, styles.onBrand]}>
                     {changed ? formatWon(total) : formatTotalShort(total)}
                   </Text>
                 </Card>
@@ -101,19 +103,21 @@ export function ExpenseListView({
                 </Text>
               </View>
             }
-            renderItem={({ item }) => {
+            renderItem={({ item, index }) => {
               const payerName = nameOf(item.payerMemberId);
               return (
-                <ExpenseRow
-                  title={item.title}
-                  amount={item.amountMinor}
-                  payerName={payerName}
-                  payerIsMe={item.payerMemberId === myMemberId}
-                  payerText={payerLabel(payerName)}
-                  splitText={splitLabel(item.participantMemberIds, members)}
-                  addedAfterSettlement={addedAfterSettlement(item.id, settlement)}
-                  onPress={() => onOpen(item)}
-                />
+                <FadeIn index={index}>
+                  <ExpenseRow
+                    title={item.title}
+                    amount={item.amountMinor}
+                    payerName={payerName}
+                    payerIsMe={item.payerMemberId === myMemberId}
+                    payerText={payerLabel(payerName)}
+                    splitText={splitLabel(item.participantMemberIds, members)}
+                    addedAfterSettlement={addedAfterSettlement(item.id, settlement)}
+                    onPress={() => onOpen(item)}
+                  />
+                </FadeIn>
               );
             }}
           />
@@ -126,15 +130,9 @@ export function ExpenseListView({
           >
             <Button
               label={changed ? '다시 계산' : '정산 계산'}
+              icon={changed ? 'refresh' : 'calculator'}
               weight="medium"
               onPress={onCalculate}
-              leading={
-                <Icon
-                  name={changed ? 'refresh' : 'calculator'}
-                  size={20}
-                  color={colors.text.inverse}
-                />
-              }
               style={styles.calculate}
             />
           </View>
@@ -162,7 +160,10 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: layout.screenPaddingX, paddingTop: spacing[16] },
   top: { gap: spacing[20] },
   // 합계 상자 안쪽 여백 20, 글자 사이는 붙여 둔다
-  total: { padding: spacing[20], gap: 0 },
+  // 합계는 파랑 카드에 큰 숫자로. 이 화면에서 가장 먼저 읽히는 값이다
+  total: { padding: spacing[20], gap: spacing[2], backgroundColor: colors.brand.primary },
+  onBrand: { color: colors.text.inverse },
+  onBrandSoft: { color: colors.onBrand.textSoft },
   // 합계 상자와 목록 제목 사이 24(top의 gap 20 + 4), 제목과 목록 사이 8
   listTitle: { marginTop: spacing[4], marginBottom: spacing[8] },
   rowGap: { height: spacing[6] },

@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Spinner } from '@/components/ui/spinner';
 
 import { BottomSheet, Button, Tag } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { CheckMarkWhen } from '@/components/ui/check-mark';
 import type { Bookmark } from '@/features/saved/types';
 import { colors, spacing, typography } from '@/theme';
@@ -67,7 +68,7 @@ export function BookmarkPickSheet({
             const disabled = id === null || already;
             const on = id !== null && picked.has(id);
             return (
-              <Pressable
+              <PressableScale
                 key={id ?? b.retainedPlace.name}
                 style={[styles.row, disabled && styles.off]}
                 disabled={disabled}
@@ -87,13 +88,15 @@ export function BookmarkPickSheet({
                     <Tag label="담김" small />
                   </View>
                 ) : null}
-              </Pressable>
+              </PressableScale>
             );
           })}
         </ScrollView>
       )}
       <Button
         label={picked.size > 0 ? `${picked.size}곳 담기` : '장소를 골라 주세요'}
+        icon="bookmark"
+        count={picked.size > 0 ? picked.size : undefined}
         size="xl"
         block
         disabled={picked.size === 0}

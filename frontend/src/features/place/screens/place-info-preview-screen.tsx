@@ -1,8 +1,9 @@
 import { Redirect, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { toast } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, typography } from '@/theme';
 
 import { PlaceInfoSheetView } from '../components/place-info-sheet';
@@ -28,9 +29,9 @@ export function PlaceInfoPreviewScreen() {
   if (!__DEV__) return <Redirect href="/" />;
   return (
     <View style={styles.screen}>
-      <Pressable onPress={() => setOpen(true)} style={styles.open} accessibilityRole="button">
+      <PressableScale onPress={() => setOpen(true)} style={styles.open} accessibilityRole="button">
         <Text style={styles.openText}>N7 장소 정보 시트 열기</Text>
-      </Pressable>
+      </PressableScale>
       <PlaceInfoSheetView
         visible={open}
         state={state === 'loading' || state === 'error' ? state : 'ready'}

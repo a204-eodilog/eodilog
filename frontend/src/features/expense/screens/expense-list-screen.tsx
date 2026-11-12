@@ -1,8 +1,8 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
-import { Spinner } from '@/components/ui/spinner';
 
 import { ErrorState, Header } from '@/components/ui';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { colors } from '@/theme';
 
 import { ExpenseListView } from '../components/expense-list-view';
@@ -18,7 +18,7 @@ export function ExpenseListScreen() {
       <View style={styles.screen}>
         <Header title="경비" />
         {board.isLoading ? (
-          <Spinner style={styles.loading} color={colors.brand.primary} />
+          <SkeletonList style={styles.loading} />
         ) : (
           <ErrorState title="경비를 불러오지 못했어요" onRetry={board.refetch} />
         )}

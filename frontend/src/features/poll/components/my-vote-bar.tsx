@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Avatar, Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 type Props = {
@@ -33,23 +34,23 @@ export function MyVoteBar({ myName, summary, highlight = false, onCancel, onChan
         {summary}
       </Text>
       {highlight ? null : (
-        <Pressable
+        <PressableScale
           accessibilityRole="button"
           accessibilityLabel="내 투표 취소"
           onPress={onCancel}
           style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
         >
           <Icon name="close" size={20} color={colors.text.icon} />
-        </Pressable>
+        </PressableScale>
       )}
-      <Pressable
+      <PressableScale
         accessibilityRole="button"
         accessibilityLabel="투표 바꾸기"
         onPress={onChange}
         style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
       >
         <Icon name="refresh" size={20} color={colors.text.default} />
-      </Pressable>
+      </PressableScale>
     </View>
   );
 }

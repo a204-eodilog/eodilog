@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Keyboard, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Keyboard, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { caret, colors, fontFamily, radius, spacing, typography } from '@/theme';
 
 import { MESSAGE_MAX_LENGTH, validateMessageText } from '../chat-rules';
@@ -75,7 +76,7 @@ export function Composer({ onSend, disabled = false, initialText = '' }: Props) 
           textAlignVertical="center"
           accessibilityLabel="메시지 입력"
         />
-        <Pressable
+        <PressableScale
           accessibilityRole="button"
           accessibilityLabel="보내기"
           accessibilityState={{ disabled: !canSend }}
@@ -88,7 +89,7 @@ export function Composer({ onSend, disabled = false, initialText = '' }: Props) 
           ]}
         >
           <Icon name="send" size={20} color={colors.text.inverse} />
-        </Pressable>
+        </PressableScale>
       </View>
     </View>
   );

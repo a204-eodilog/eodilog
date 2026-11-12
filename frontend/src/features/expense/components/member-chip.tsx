@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 
 import { Avatar, Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, radius, spacing, typography } from '@/theme';
 
 type MemberChipProps = {
@@ -24,7 +25,7 @@ export function MemberChip({
 }: MemberChipProps) {
   const label = me ? `${name} (나)` : name;
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole={multiple ? 'checkbox' : 'radio'}
       accessibilityLabel={label}
       accessibilityState={{ checked: selected, disabled }}
@@ -44,7 +45,7 @@ export function MemberChip({
       {multiple && selected ? (
         <Icon name="check" size={16} color={colors.brand.primaryDark} />
       ) : null}
-    </Pressable>
+    </PressableScale>
   );
 }
 

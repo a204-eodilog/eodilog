@@ -1,9 +1,11 @@
 import { Image } from 'expo-image';
-import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
-import { Spinner } from '@/components/ui/spinner';
+import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, ErrorState, Header, Icon } from '@/components/ui';
+import { FadeIn } from '@/components/ui/fade-in';
+import { PressableScale } from '@/components/ui/pressable-scale';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { assetSource } from '@/lib/asset-image';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -32,7 +34,7 @@ export function TrendsView(props: TrendsViewProps) {
           onRetry={props.onRetry}
         />
       ) : props.state === 'loading' || !board ? (
-        <Spinner style={styles.flex} color={colors.brand.primary} />
+        <SkeletonList style={styles.flex} />
       ) : (
         <FlatList
           data={board.insufficient ? [] : board.rows}
@@ -56,13 +58,18 @@ export function TrendsView(props: TrendsViewProps) {
               <Text style={styles.emptyDesc}>여행이 모이면 보여요</Text>
               <Button
                 label="돌아가기"
+                icon="back"
                 variant="neutral"
                 onPress={props.onBack}
                 style={styles.emptyButton}
               />
             </View>
           }
-          renderItem={({ item }) => <Row row={item} onPress={() => props.onRow(item)} />}
+          renderItem={({ item, index }) => (
+            <FadeIn index={index}>
+              <Row row={item} onPress={() => props.onRow(item)} />
+            </FadeIn>
+          )}
         />
       )}
     </SafeAreaView>
@@ -87,7 +94,7 @@ function Row({ row, onPress }: { row: TrendRow; onPress: () => void }) {
   const src = assetSource(row.coverUrl);
   const top = row.rank <= 3;
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
       accessibilityRole="button"
@@ -115,7 +122,7 @@ function Row({ row, onPress }: { row: TrendRow; onPress: () => void }) {
         </View>
       </View>
       <Move move={row.move} />
-    </Pressable>
+    </PressableScale>
   );
 }
 

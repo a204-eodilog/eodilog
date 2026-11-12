@@ -1,8 +1,8 @@
 import { router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
-import { Spinner } from '@/components/ui/spinner';
 
 import { CenterNotice, Header } from '@/components/ui';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { colors } from '@/theme';
 
 import { MyTripsView } from '../components/my-trips-view';
@@ -19,7 +19,7 @@ export function MyTripsScreen() {
       <View style={styles.screen}>
         <Header onBack={goBack} />
         {board.isLoading ? (
-          <Spinner style={styles.loading} color={colors.brand.primary} />
+          <SkeletonList style={styles.loading} />
         ) : (
           <CenterNotice
             icon="trip"

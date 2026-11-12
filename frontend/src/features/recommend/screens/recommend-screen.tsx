@@ -1,16 +1,11 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useRef, useState, type ReactNode } from 'react';
-import {
-  Pressable,
-  ScrollView,
-  type ScrollViewInstance,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ScrollView, type ScrollViewInstance, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { FadeIn } from '@/components/ui/fade-in';
 import { Chip, Header, Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { isMine } from '@/features/group-favorites/group-rules';
 import { useFavoriteMutations } from '@/features/group-favorites/hooks/use-favorite-mutations';
 import { useGroupFavorites } from '@/features/group-favorites/hooks/use-group-favorites';
@@ -133,15 +128,16 @@ export function RecommendView(props: RecommendViewProps) {
                 <Text style={[typography.title3, styles.sectionTitle]}>여행지 추천</Text>
                 <Text style={[typography.caption, styles.sectionHint]}>투표 후보로 올려요</Text>
               </View>
-              {props.regions.map((r) => (
-                <RecommendCard
-                  key={r.region.id}
-                  title={regionCardText(r.region.name).title}
-                  location={regionCardText(r.region.name).location}
-                  reason={r.reason}
-                  reasonIcon="bookmark"
-                  action={{ kind: 'vote', onPress: () => props.onVote(r) }}
-                />
+              {props.regions.map((r, order) => (
+                <FadeIn key={r.region.id} index={order}>
+                  <RecommendCard
+                    title={regionCardText(r.region.name).title}
+                    location={regionCardText(r.region.name).location}
+                    reason={r.reason}
+                    reasonIcon="bookmark"
+                    action={{ kind: 'vote', onPress: () => props.onVote(r) }}
+                  />
+                </FadeIn>
               ))}
             </View>
           ) : null}
@@ -154,32 +150,33 @@ export function RecommendView(props: RecommendViewProps) {
               }}
             >
               <Text style={[typography.title3, styles.sectionTitle]}>맛집과 스팟</Text>
-              {props.places.map((p) => (
-                <RecommendCard
-                  key={p.place.id}
-                  title={p.place.name}
-                  location={p.place.address}
-                  reason={p.reason}
-                  reasonIcon="people"
-                  action={{
-                    kind: 'save',
-                    saved: props.savedIds.has(p.place.id),
-                    busy: props.savingIds.has(p.place.id),
-                    onPress: () => props.onSave(p.place.id),
-                  }}
-                />
+              {props.places.map((p, order) => (
+                <FadeIn key={p.place.id} index={order}>
+                  <RecommendCard
+                    title={p.place.name}
+                    location={p.place.address}
+                    reason={p.reason}
+                    reasonIcon="people"
+                    action={{
+                      kind: 'save',
+                      saved: props.savedIds.has(p.place.id),
+                      busy: props.savingIds.has(p.place.id),
+                      onPress: () => props.onSave(p.place.id),
+                    }}
+                  />
+                </FadeIn>
               ))}
             </View>
           ) : null}
         </ScrollView>
-        <Pressable
+        <PressableScale
+          accessibilityLabel="재추천"
           style={[styles.redo, { bottom: insets.bottom + spacing[16] }]}
           onPress={props.onRedo}
           accessibilityRole="button"
         >
           <Icon name="refresh" size={18} color={colors.text.default} />
-          <Text style={[typography.bodyMedium, styles.redoText]}>재추천</Text>
-        </Pressable>
+        </PressableScale>
       </>
     );
   }

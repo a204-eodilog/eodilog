@@ -3,6 +3,7 @@ import { useRef, useState } from 'react';
 
 import { API_ERROR, toApiError, type ApiError } from '@/api/errors';
 import { createIdempotencyKeyStore } from '@/api/idempotency';
+import { celebrate } from '@/components/ui/celebrate';
 import { haptic } from '@/lib/haptics';
 
 import { createTrip } from '../api';
@@ -51,6 +52,7 @@ export function useCreateTrip({ onCreated }: { onCreated: (trip: Trip) => void }
       queryClient.setQueryData(tripKey(trip.id), trip);
       invalidateAfterJoin(queryClient);
       haptic.success();
+      celebrate();
     },
     onError: (e) => {
       const error = toApiError(e);

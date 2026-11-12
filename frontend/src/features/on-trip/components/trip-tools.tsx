@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Icon, type IconName } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, radius, spacing, typography } from '@/theme';
 
 type Tool = { key: string; icon: IconName; label: string; sub: string; onPress(): void };
@@ -43,8 +44,10 @@ export function TripTools(props: {
   ];
   return (
     <View style={styles.grid}>
-      {tools.map((t) => (
-        <Pressable
+      {tools.map((t, order) => (
+        <PressableScale
+          appear={order}
+          appearFrom="pop"
           key={t.key}
           style={({ pressed }) => [styles.cell, pressed && styles.pressed]}
           onPress={t.onPress}
@@ -60,7 +63,7 @@ export function TripTools(props: {
           <Text style={[typography.caption, styles.sub]} numberOfLines={1}>
             {t.sub}
           </Text>
-        </Pressable>
+        </PressableScale>
       ))}
     </View>
   );

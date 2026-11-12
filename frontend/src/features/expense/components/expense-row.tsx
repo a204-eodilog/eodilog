@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Avatar, Icon, Tag } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { formatWon } from '@/lib/format-number';
 import { colors, spacing, typography } from '@/theme';
 
@@ -30,7 +31,7 @@ export function ExpenseRow({
   onPress,
 }: ExpenseRowProps) {
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={`${title} ${formatWon(amount)}, ${payerText}, ${splitText}`}
       onPress={onPress}
@@ -60,7 +61,7 @@ export function ExpenseRow({
         </View>
       </View>
       <Text style={[typography.bodyBold, styles.amount]}>{formatWon(amount)}</Text>
-    </Pressable>
+    </PressableScale>
   );
 }
 

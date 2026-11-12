@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Icon, type IconName } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, radius, spacing, typography } from '@/theme';
 
 /** 가운데 회색 원 아이콘 */
@@ -15,10 +16,10 @@ function Badge({ icon }: { icon: IconName }) {
 /** 파란 알약 버튼 */
 function PrimaryPill(props: { icon: IconName; label: string; onPress(): void }) {
   return (
-    <Pressable style={styles.primary} onPress={props.onPress} accessibilityRole="button">
+    <PressableScale style={styles.primary} onPress={props.onPress} accessibilityRole="button">
       <Icon name={props.icon} size={18} color={colors.text.inverse} />
       <Text style={[typography.bodyMedium, styles.primaryText]}>{props.label}</Text>
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -46,10 +47,14 @@ export function InsufficientView(props: {
         </View>
       </View>
       <PrimaryPill icon="bookmark" label="장소 더 모으기" onPress={props.onMorePlaces} />
-      <Pressable style={styles.textButton} onPress={props.onPreferences} accessibilityRole="button">
+      <PressableScale
+        accessibilityLabel="취향 입력"
+        style={styles.textButton}
+        onPress={props.onPreferences}
+        accessibilityRole="button"
+      >
         <Icon name="heart" size={16} color={colors.text.icon} />
-        <Text style={[typography.bodyMedium, styles.textButtonText]}>취향 입력</Text>
-      </Pressable>
+      </PressableScale>
     </View>
   );
 }

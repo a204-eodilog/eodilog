@@ -1,13 +1,15 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams, usePreventRemove } from 'expo-router';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Spinner } from '@/components/ui/spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { errorLook } from '@/api/error-look';
 import { API_ERROR, toApiError } from '@/api/errors';
 import { AvatarGroup, ConfirmSheet, ErrorState, Header, Icon, toast } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { pickPlace } from '@/features/place/place-picker';
 import { updateTrip } from '@/features/trip/api';
 import { invalidateTripLists } from '@/features/trip/hooks/trip-cache';
@@ -189,7 +191,8 @@ export function DraftView(props: DraftViewProps) {
         </View>
       </ScrollView>
       <View style={[styles.bottom, { paddingBottom: Math.max(insets.bottom, spacing[16]) }]}>
-        <Pressable
+        <PressableScale
+          accessibilityLabel="재추천"
           style={[styles.pill, styles.redo, props.redoBusy && styles.busy]}
           onPress={props.onRedo}
           disabled={props.redoBusy}
@@ -197,9 +200,9 @@ export function DraftView(props: DraftViewProps) {
           accessibilityRole="button"
         >
           <Icon name="refresh" size={18} color={colors.text.default} />
-          <Text style={[typography.bodyMedium, styles.redoText]}>재추천</Text>
-        </Pressable>
-        <Pressable
+        </PressableScale>
+        <PressableScale
+          accessibilityLabel="완료"
           style={[styles.pill, styles.done, props.saving && styles.busy]}
           onPress={props.onDone}
           disabled={props.saving}
@@ -211,8 +214,7 @@ export function DraftView(props: DraftViewProps) {
           ) : (
             <Icon name="check" size={18} color={colors.text.inverse} />
           )}
-          <Text style={[typography.bodyMedium, styles.doneText]}>완료</Text>
-        </Pressable>
+        </PressableScale>
       </View>
       <ItemSheet
         target={
@@ -582,7 +584,7 @@ export function CourseEditScreen() {
       />
     );
   } else if (!itinerary.data || !trip.data) {
-    body = <Spinner style={styles.loading} color={colors.brand.primary} />;
+    body = <SkeletonList style={styles.loading} />;
   } else if (mode === 'setup') {
     const regionName = regionNames.join('·');
     if (trip.data.destinationRegionIds.length === 0) {

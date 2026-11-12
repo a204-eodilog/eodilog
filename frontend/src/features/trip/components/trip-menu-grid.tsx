@@ -1,7 +1,8 @@
 import { router, type Href } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { Icon, toast, type IconName } from '@/components/ui';
+import { Icon, type IconName, toast } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, radius, spacing, typography } from '@/theme';
 
 import { publishHref } from '../trip-routes';
@@ -97,8 +98,10 @@ export function TripMenuGrid({ tripId }: { tripId: string }) {
     <View style={styles.wrap}>
       <Text style={[typography.title3, styles.title]}>여행 메뉴</Text>
       <View style={styles.grid}>
-        {MENU.map((item) => (
-          <Pressable
+        {MENU.map((item, order) => (
+          <PressableScale
+            appear={order}
+            appearFrom="pop"
             key={item.key}
             accessibilityRole="button"
             accessibilityLabel={item.label}
@@ -109,7 +112,7 @@ export function TripMenuGrid({ tripId }: { tripId: string }) {
               <Icon name={item.icon} size={22} color={colors.text.default} />
             </View>
             <Text style={[typography.captionMedium, styles.label]}>{item.label}</Text>
-          </Pressable>
+          </PressableScale>
         ))}
       </View>
     </View>

@@ -1,8 +1,9 @@
 import { Image } from 'expo-image';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { assetSource } from '@/lib/asset-image';
 import { colors, radius, spacing, typography } from '@/theme';
 
@@ -32,7 +33,7 @@ export function PhotoViewer({
             <Icon name="image" size={40} color={colors.text.muted} />
           </View>
         )}
-        <Pressable
+        <PressableScale
           accessibilityRole="button"
           accessibilityLabel="닫기"
           hitSlop={8}
@@ -40,7 +41,7 @@ export function PhotoViewer({
           style={[styles.close, { top: insets.top + spacing[8] }]}
         >
           <Icon name="close" size={24} color={colors.text.inverse} />
-        </Pressable>
+        </PressableScale>
         <Text style={[typography.caption, styles.caption, { bottom: insets.bottom + spacing[24] }]}>
           {caption}
         </Text>

@@ -1,7 +1,8 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Dot, Icon, Tag } from '@/components/ui';
-import { colors, spacing, typography } from '@/theme';
+import { PressableScale } from '@/components/ui/pressable-scale';
+import { colors, radius, spacing, typography } from '@/theme';
 
 import type { PlaceRow, TripTag } from '../timeline-rules';
 
@@ -18,14 +19,14 @@ type TimelineTripProps = {
 export function TimelineTrip({ title, period, tag, rows, onOpen }: TimelineTripProps) {
   return (
     <View style={styles.group}>
-      <Pressable
+      <PressableScale
         accessibilityRole="button"
         accessibilityLabel={`${title}, ${period}, ${tag.label}, 여행 요약 보기`}
         onPress={onOpen}
         style={({ pressed }) => [styles.head, pressed && styles.pressed]}
       >
         <View style={styles.headTexts}>
-          <Text style={[typography.bodyBold, styles.text]} numberOfLines={1}>
+          <Text style={[typography.title3, styles.text]} numberOfLines={1}>
             {title}
           </Text>
           <View style={styles.headInfo}>
@@ -36,13 +37,18 @@ export function TimelineTrip({ title, period, tag, rows, onOpen }: TimelineTripP
             <Tag label={tag.label} tone={tag.tone} />
           </View>
         </View>
-        <Icon name="chevron-right" size={16} color={colors.text.icon} />
-      </Pressable>
+        <View style={styles.open}>
+          <Icon name="chevron-right" size={18} color={colors.text.icon} />
+        </View>
+      </PressableScale>
       {rows.length === 0 ? (
-        <Text style={[typography.caption, styles.icon]}>아직 담은 장소가 없어요</Text>
+        <View style={styles.empty}>
+          <Icon name="map-pin" size={16} color={colors.text.muted} />
+          <Text style={[typography.caption, styles.muted]}>아직 담은 장소가 없어요</Text>
+        </View>
       ) : (
         <View style={styles.rows}>
-          {rows.map((row) => (
+          {rows.map((row, i) => (
             <View
               key={row.key}
               style={styles.row}
@@ -59,8 +65,12 @@ export function TimelineTrip({ title, period, tag, rows, onOpen }: TimelineTripP
               <Text style={[typography.captionMedium, styles.icon, styles.day]}>
                 {row.day ?? ''}
               </Text>
-              <View style={styles.dot}>
-                <Dot size={10} color={row.visited ? colors.status.success : colors.gray[300]} />
+              {/* 점과 다음 점을 잇는 선. 마지막 줄에는 선이 없다 */}
+              <View style={styles.rail}>
+                <View style={styles.dot}>
+                  <Dot size={10} color={row.visited ? colors.status.success : colors.gray[300]} />
+                </View>
+                {i < rows.length - 1 ? <View style={styles.line} /> : null}
               </View>
               <View style={styles.rowTexts}>
                 <View style={styles.nameLine}>
@@ -80,20 +90,48 @@ export function TimelineTrip({ title, period, tag, rows, onOpen }: TimelineTripP
 }
 
 const styles = StyleSheet.create({
-  group: { gap: spacing[8] },
+  // 여행 하나가 카드 하나다
+  group: {
+    gap: spacing[14],
+    padding: spacing[16],
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.line.default,
+    backgroundColor: colors.surface.white,
+  },
   head: { flexDirection: 'row', alignItems: 'center', gap: spacing[10] },
   pressed: { opacity: 0.7 },
   headTexts: { flex: 1, gap: spacing[6] },
   headInfo: { flexDirection: 'row', alignItems: 'center', gap: spacing[10] },
   period: { flexDirection: 'row', alignItems: 'center', gap: spacing[6] },
-  rows: { gap: spacing[6] },
-  row: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing[12] },
+  open: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface.default,
+  },
+  empty: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[6],
+    paddingVertical: spacing[10],
+    paddingHorizontal: spacing[12],
+    borderRadius: radius.md,
+    backgroundColor: colors.surface.subtle,
+  },
+  rows: {},
+  row: { flexDirection: 'row', alignItems: 'stretch', gap: spacing[12] },
   day: { width: 44, paddingTop: 2 },
+  rail: { alignItems: 'center' },
   // 점을 장소 이름 첫 줄 가운데에 맞춘다
   dot: { height: 22, justifyContent: 'center' },
-  rowTexts: { flex: 1 },
+  line: { flex: 1, width: 2, borderRadius: 1, backgroundColor: colors.line.default },
+  rowTexts: { flex: 1, paddingBottom: spacing[12] },
   nameLine: { flexDirection: 'row', alignItems: 'center', gap: spacing[6] },
   shrink: { flexShrink: 1 },
   text: { color: colors.text.default },
   icon: { color: colors.text.icon },
+  muted: { color: colors.text.muted },
 });

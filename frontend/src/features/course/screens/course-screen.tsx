@@ -1,12 +1,13 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Spinner } from '@/components/ui/spinner';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { errorLook } from '@/api/error-look';
 import { toApiError } from '@/api/errors';
 import { AvatarGroup, ErrorState, Header, Icon, toast } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { useUndo } from '@/features/proposal/hooks/use-undo';
 import { useTrip } from '@/features/trip/hooks/use-trip';
 import { useMe } from '@/hooks/use-me';
@@ -70,7 +71,7 @@ export function CourseView(props: CourseViewProps) {
 
   let body;
   if (props.status === 'loading' || (props.status === 'ready' && !draft)) {
-    body = <Spinner style={styles.loading} color={colors.brand.primary} />;
+    body = <SkeletonList style={styles.loading} />;
   } else if (props.status === 'notFound') {
     body = (
       <ErrorState
@@ -140,10 +141,14 @@ export function CourseView(props: CourseViewProps) {
           </View>
         </ScrollView>
         <View style={[styles.bottom, { paddingBottom: Math.max(insets.bottom, spacing[16]) }]}>
-          <Pressable style={styles.edit} onPress={props.onEdit} accessibilityRole="button">
+          <PressableScale
+            accessibilityLabel="편집"
+            style={styles.edit}
+            onPress={props.onEdit}
+            accessibilityRole="button"
+          >
             <Icon name="pencil" size={18} color={colors.text.default} />
-            <Text style={[typography.bodyMedium, styles.editText]}>편집</Text>
-          </Pressable>
+          </PressableScale>
         </View>
       </>
     );

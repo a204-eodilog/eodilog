@@ -4,7 +4,7 @@ import BottomSheet, {
 } from '@gorhom/bottom-sheet';
 import { Image } from 'expo-image';
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Spinner } from '@/components/ui/spinner';
 // 시트 안 가로 목록은 제스처 핸들러 스크롤이어야 시트 끌기와 손가락을 나눠 가진다(안드로이드)
 import { ScrollView } from 'react-native-gesture-handler';
@@ -17,6 +17,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { assetSource } from '@/lib/asset-image';
 import { colors, layout, motion, radius, spacing, typography } from '@/theme';
 
@@ -92,8 +93,9 @@ export function RecommendSheet({ items, status, initialExpanded = false, onPress
               contentContainerStyle={styles.list}
               showsVerticalScrollIndicator={false}
             >
-              {items.map((item) => (
-                <Pressable
+              {items.map((item, order) => (
+                <PressableScale
+                  appear={order}
                   key={item.id}
                   onPress={() => onPress(item)}
                   style={styles.row}
@@ -107,7 +109,7 @@ export function RecommendSheet({ items, status, initialExpanded = false, onPress
                     <Meta item={item} />
                   </View>
                   <Icon name="chevron-right" size={20} color={colors.text.muted} />
-                </Pressable>
+                </PressableScale>
               ))}
             </BottomSheetScrollView>
           </Animated.View>
@@ -123,8 +125,10 @@ export function RecommendSheet({ items, status, initialExpanded = false, onPress
               style={styles.cardsScroll}
               contentContainerStyle={styles.cards}
             >
-              {items.map((item) => (
-                <Pressable
+              {items.map((item, order) => (
+                <PressableScale
+                  appear={order}
+                  appearFrom="pop"
                   key={item.id}
                   onPress={() => onPress(item)}
                   style={styles.card}
@@ -137,7 +141,7 @@ export function RecommendSheet({ items, status, initialExpanded = false, onPress
                     </Text>
                     <Meta item={item} />
                   </View>
-                </Pressable>
+                </PressableScale>
               ))}
             </ScrollView>
           </Animated.View>

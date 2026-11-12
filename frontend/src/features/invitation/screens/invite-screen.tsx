@@ -1,11 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type Href, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { celebrate } from '@/components/ui/celebrate';
 import { Spinner } from '@/components/ui/spinner';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, ErrorState, Header, Icon, type IconName, toast } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { withRo } from '@/lib/korean';
 import { openOverTabs } from '@/lib/open-over-tabs';
 import { invalidateAfterJoin } from '@/features/trip/hooks/trip-cache';
@@ -53,6 +55,8 @@ function InviteContent({ token, first }: { token: string; first: boolean }) {
     onSuccess: (trip) => {
       // 참여하면 서버가 대화방에도 넣는다. 여행 목록·홈·채팅 탭이 새 여행을 바로 보이게 새로 받는다
       void invalidateAfterJoin(queryClient);
+      // 새로 참여했을 때만 축하한다. 이미 동행이라 여행으로 넘어가기만 할 때는 하지 않는다
+      if (!preview.data?.alreadyMember) celebrate();
       leave(first ? { pathname: '/preferences', params: { tripId: trip.id } } : tripHref(trip.id));
     },
     onError: (error) => {
@@ -190,15 +194,17 @@ function InviteContent({ token, first }: { token: string; first: boolean }) {
           { paddingBottom: Math.max(insets.bottom + spacing[16], spacing[24]) },
         ]}
       >
-        <Pressable
+        <PressableScale
+          accessibilityLabel="취소"
           accessibilityRole="button"
           onPress={() => leave('/home')}
           style={({ pressed }) => [styles.cancel, pressed && styles.pressed]}
         >
-          <Text style={[typography.bodyMedium, styles.cancelLabel]}>취소</Text>
-        </Pressable>
+          <Icon name="close" size={20} color={colors.text.icon} />
+        </PressableScale>
         <Button
           label="참여하기"
+          icon="check"
           size="xl"
           loading={accept.isPending}
           onPress={() => accept.mutate()}
@@ -233,10 +239,17 @@ function Notice({
         <Text style={[typography.title1, styles.noticeTitle]}>{title}</Text>
         <Text style={[typography.body, styles.noticeDescription]}>{description}</Text>
         {onRetry ? (
-          <Button label="다시 시도" size="lg" onPress={onRetry} style={styles.home} />
+          <Button
+            label="다시 시도"
+            icon="refresh"
+            size="lg"
+            onPress={onRetry}
+            style={styles.home}
+          />
         ) : null}
         <Button
           label="홈으로"
+          icon="home"
           variant="neutral"
           size="lg"
           onPress={onHome}

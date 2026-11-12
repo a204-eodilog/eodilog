@@ -18,6 +18,7 @@ export function ProfileIncompleteSheet({ visible, onClose }: Props) {
         <View style={styles.footer}>
           <Button
             label="닉네임 정하기"
+            icon="pencil"
             size="xl"
             block
             onPress={() => {
@@ -25,7 +26,7 @@ export function ProfileIncompleteSheet({ visible, onClose }: Props) {
               router.push('/profile');
             }}
           />
-          <Button label="나중에" variant="text" block onPress={onClose} />
+          <Button label="나중에" icon="close" variant="text" block onPress={onClose} />
         </View>
       }
     />

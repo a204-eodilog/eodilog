@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, layout, spacing, typography } from '@/theme';
 
 /**
@@ -29,7 +30,7 @@ export function SheetHeader({
           <Text style={styles.subtitleText}>{subtitle}</Text>
         </View>
       </View>
-      <Pressable
+      <PressableScale
         accessibilityRole="button"
         accessibilityLabel="닫기"
         disabled={closeDisabled}
@@ -37,7 +38,7 @@ export function SheetHeader({
         style={({ pressed }) => [styles.close, pressed && styles.pressed]}
       >
         <Icon name="close" size={24} color={colors.text.default} />
-      </Pressable>
+      </PressableScale>
     </View>
   );
 }

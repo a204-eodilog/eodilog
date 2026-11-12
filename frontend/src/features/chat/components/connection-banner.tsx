@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { type StyleProp, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 
 import { Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { realtime, useConnectionState, useShowDisconnected } from '@/realtime';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -31,7 +32,7 @@ export function ConnectionBannerView({ stopped, onRetry, style }: ViewProps) {
         </Text>
       </View>
       {stopped && onRetry ? (
-        <Pressable
+        <PressableScale
           accessibilityRole="button"
           accessibilityLabel="다시 연결"
           onPress={onRetry}
@@ -39,7 +40,7 @@ export function ConnectionBannerView({ stopped, onRetry, style }: ViewProps) {
           style={({ pressed }) => [styles.retry, pressed && styles.pressed]}
         >
           <Icon name="refresh" size={22} color={colors.status.danger} />
-        </Pressable>
+        </PressableScale>
       ) : null}
     </View>
   );

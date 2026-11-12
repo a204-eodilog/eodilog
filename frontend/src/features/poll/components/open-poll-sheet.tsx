@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FadeIn } from '@/components/ui/fade-in';
 import { Spinner } from '@/components/ui/spinner';
 
 import { BottomSheet, Button, Chip, Icon } from '@/components/ui';
@@ -158,6 +159,7 @@ export function OpenPollSheet({
           </View>
           <Button
             label="다시 시도"
+            icon="refresh"
             variant="secondary"
             size="sm"
             onPress={() => void saved.refetch()}
@@ -171,13 +173,14 @@ export function OpenPollSheet({
           contentContainerStyle={styles.listContent}
           nestedScrollEnabled
         >
-          {options.map((o) => (
-            <OptionRow
-              key={o.key}
-              option={o}
-              checked={selected.includes(o.key)}
-              onToggle={() => toggle(o.key)}
-            />
+          {options.map((o, order) => (
+            <FadeIn key={o.key} index={order}>
+              <OptionRow
+                option={o}
+                checked={selected.includes(o.key)}
+                onToggle={() => toggle(o.key)}
+              />
+            </FadeIn>
           ))}
         </ScrollView>
       )}
@@ -192,6 +195,7 @@ export function OpenPollSheet({
 
       <Button
         label="투표 열기"
+        icon="check"
         block
         size="lg"
         weight="medium"

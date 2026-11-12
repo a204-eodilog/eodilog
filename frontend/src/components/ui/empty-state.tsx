@@ -15,6 +15,8 @@ export type EmptyStateProps = {
   /** 큰 버튼 글자와 동작. 없으면 버튼이 없다 */
   actionLabel?: string;
   onAction?: () => void;
+  /** 버튼에 그릴 아이콘. 기본은 더하기. 버튼은 아이콘만 그리고 actionLabel은 화면 읽어 주기가 읽는다 */
+  actionIcon?: IconName;
   /** 회색 동그라미 안에 넣을 아이콘. 화면 내용에 맞춰 고른다(여행 trip, 장소 map-pin, 대화 chat …) */
   icon?: IconName;
   /** 아이콘 대신 쓸 그림. 첫 방문 홈의 걷는 마스코트처럼 특별한 경우에만 */
@@ -27,6 +29,7 @@ export function EmptyState({
   description,
   actionLabel,
   onAction,
+  actionIcon = 'plus',
   icon = 'trip',
   illustration,
 }: EmptyStateProps) {
@@ -39,17 +42,12 @@ export function EmptyState({
             <Icon name={icon} size={32} color={colors.text.icon} />
           </View>
         )}
-        <Text style={[typography.title1, styles.title]}>{title}</Text>
+        <Text style={[typography.title2, styles.title]}>{title}</Text>
         {description ? (
           <Text style={[typography.body, styles.description]}>{description}</Text>
         ) : null}
         {actionLabel ? (
-          <Button
-            label={actionLabel}
-            onPress={onAction}
-            leading={<Icon name="plus" size={20} color={colors.text.inverse} />}
-            style={styles.action}
-          />
+          <Button label={actionLabel} onPress={onAction} icon={actionIcon} style={styles.action} />
         ) : null}
       </Stagger>
     </View>
@@ -86,7 +84,13 @@ export function ErrorState({
           <Text style={[typography.body, styles.description]}>{description}</Text>
         ) : null}
         {onRetry ? (
-          <Button label={retryLabel} variant="secondary" onPress={onRetry} style={styles.action} />
+          <Button
+            label={retryLabel}
+            icon="refresh"
+            variant="secondary"
+            onPress={onRetry}
+            style={styles.action}
+          />
         ) : null}
       </Stagger>
     </View>

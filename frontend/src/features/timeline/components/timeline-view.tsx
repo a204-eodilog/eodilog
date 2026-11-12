@@ -2,6 +2,7 @@ import { ScrollView, StyleSheet, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmptyState } from '@/components/ui';
+import { FadeIn } from '@/components/ui/fade-in';
 import { formatPeriod } from '@/features/my-trips';
 import { colors, layout, spacing, typography } from '@/theme';
 
@@ -27,16 +28,19 @@ export function TimelineView({ entries, onOpen }: TimelineViewProps) {
     <ScrollView
       contentContainerStyle={[styles.content, { paddingBottom: spacing[32] + insets.bottom }]}
     >
-      <Text style={[typography.title1, styles.title]}>타임라인</Text>
-      {entries.map(({ item, trip, places }) => (
-        <TimelineTrip
-          key={trip.id}
-          title={trip.title}
-          period={formatPeriod(trip.startDate, trip.endDate) ?? '날짜 미정'}
-          tag={tripTag(trip.status, item.feedId)}
-          rows={placeRows(places, trip.status)}
-          onOpen={() => onOpen(trip.id)}
-        />
+      <FadeIn from="mask">
+        <Text style={[typography.title1, styles.title]}>타임라인</Text>
+      </FadeIn>
+      {entries.map(({ item, trip, places }, order) => (
+        <FadeIn key={trip.id} index={order + 1}>
+          <TimelineTrip
+            title={trip.title}
+            period={formatPeriod(trip.startDate, trip.endDate) ?? '날짜 미정'}
+            tag={tripTag(trip.status, item.feedId)}
+            rows={placeRows(places, trip.status)}
+            onOpen={() => onOpen(trip.id)}
+          />
+        </FadeIn>
       ))}
     </ScrollView>
   );
@@ -46,7 +50,7 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: layout.screenPaddingX,
     paddingTop: spacing[16],
-    gap: spacing[28],
+    gap: spacing[16],
   },
   title: { color: colors.text.default },
 });

@@ -1,5 +1,6 @@
-import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
+import { ScrollView, StyleSheet, Text } from 'react-native';
 
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, radius, spacing, typography } from '@/theme';
 
 type Props = {
@@ -20,7 +21,7 @@ export function DayTabs({ days, selected, onSelect }: Props) {
       {days.map((d, i) => {
         const on = i === selected;
         return (
-          <Pressable
+          <PressableScale
             key={d.title}
             onPress={() => onSelect(i)}
             style={[styles.tab, on ? styles.tabOn : styles.tabOff, days.length <= 2 && styles.grow]}
@@ -31,7 +32,7 @@ export function DayTabs({ days, selected, onSelect }: Props) {
             {d.sub ? (
               <Text style={[typography.caption, on ? styles.on : styles.offSub]}>{d.sub}</Text>
             ) : null}
-          </Pressable>
+          </PressableScale>
         );
       })}
     </ScrollView>

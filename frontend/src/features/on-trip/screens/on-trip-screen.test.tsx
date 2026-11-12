@@ -178,7 +178,7 @@ describe('S25 여행 중', () => {
     await renderScreen();
     expect(await screen.findByLabelText(/날씨를 새로 불러오지 못했어요/)).toBeTruthy();
     expect(screen.queryByText('날씨를 새로 불러오지 못했어요')).toBeNull();
-    await fireEvent.press(screen.getByText('다시 시도'));
+    await fireEvent.press(screen.getByLabelText('다시 시도'));
     expect(await screen.findByText('오전 비 70%')).toBeTruthy();
   });
 

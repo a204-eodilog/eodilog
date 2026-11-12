@@ -1,13 +1,14 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, radius, spacing, typography } from '@/theme';
 
 /** 이전 대화를 읽는 중에 새 메시지가 오면 아래에 뜨는 버튼(US2 시나리오 4). 누르면 맨 아래로 간다 */
 export function NewMessageButton({ onPress, bottom }: { onPress: () => void; bottom: number }) {
   return (
     <View style={[styles.wrap, { bottom }]} pointerEvents="box-none">
-      <Pressable
+      <PressableScale
         accessibilityRole="button"
         accessibilityLabel="새 메시지로 내려가기"
         onPress={onPress}
@@ -17,7 +18,7 @@ export function NewMessageButton({ onPress, bottom }: { onPress: () => void; bot
         <View style={styles.down}>
           <Icon name="chevron-right" size={16} color={colors.text.inverse} />
         </View>
-      </Pressable>
+      </PressableScale>
     </View>
   );
 }

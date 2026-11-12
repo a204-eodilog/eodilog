@@ -1,8 +1,9 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Popup } from '@/components/ui/popup';
 
 import { Button } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 type Props = {
@@ -41,7 +42,7 @@ export function CoeditConflict({ editor, busy, onOverwrite, onLatest }: Props) {
         {'같은 곳을 고쳤어요.\n최신 코스를 확인해 주세요'}
       </Text>
       <View style={styles.actions}>
-        <Pressable
+        <PressableScale
           style={styles.overwrite}
           onPress={onOverwrite}
           disabled={busy}
@@ -49,9 +50,10 @@ export function CoeditConflict({ editor, busy, onOverwrite, onLatest }: Props) {
           accessibilityState={{ disabled: busy }}
         >
           <Text style={[typography.bodyMedium, styles.overwriteText]}>내 것으로 덮기</Text>
-        </Pressable>
+        </PressableScale>
         <Button
           label="최신 코스 보기"
+          icon="route"
           weight="medium"
           onPress={onLatest}
           disabled={busy}

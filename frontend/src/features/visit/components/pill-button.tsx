@@ -1,7 +1,8 @@
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import { Spinner } from '@/components/ui/spinner';
 
 import { Icon, type IconName } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, radius, spacing, typography } from '@/theme';
 
 type Tone = 'gray' | 'white' | 'brand';
@@ -44,7 +45,7 @@ export function PillButton({
   onPress,
 }: PillButtonProps) {
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ disabled: loading, busy: loading }}
@@ -71,7 +72,7 @@ export function PillButton({
       >
         {label}
       </Text>
-    </Pressable>
+    </PressableScale>
   );
 }
 

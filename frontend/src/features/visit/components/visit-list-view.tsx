@@ -1,8 +1,9 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { FadeIn } from '@/components/ui/fade-in';
 import { AvatarGroup, EmptyState, Header, Icon } from '@/components/ui';
-import { colors, layout, spacing, typography } from '@/theme';
+import { colors, layout, radius, spacing, typography } from '@/theme';
 
 import type { VisitDay, VisitRow as VisitRowData } from '../visit-rules';
 
@@ -75,16 +76,17 @@ export function VisitListView({
 
           {days.map((day) => (
             <View key={day.day} style={styles.day}>
-              <Text style={[typography.captionMedium, styles.dayTitle]}>{day.title}</Text>
+              <Text style={[typography.captionBold, styles.dayTitle]}>{day.title}</Text>
               <View style={styles.rows}>
-                {day.rows.map((row) => (
-                  <VisitRow
-                    key={row.itemId}
-                    row={row}
-                    checking={busyPlaceIds.includes(row.placeId)}
-                    onCheck={() => onCheck(row)}
-                    onReview={() => onReview(row)}
-                  />
+                {day.rows.map((row, order) => (
+                  <FadeIn key={row.itemId} index={order}>
+                    <VisitRow
+                      row={row}
+                      checking={busyPlaceIds.includes(row.placeId)}
+                      onCheck={() => onCheck(row)}
+                      onReview={() => onReview(row)}
+                    />
+                  </FadeIn>
                 ))}
               </View>
             </View>
@@ -103,7 +105,8 @@ export function VisitListView({
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.surface.white },
+  // 바탕은 옅은 회색, 하루가 흰 카드 하나다
+  screen: { flex: 1, backgroundColor: colors.surface.subtle },
   content: {
     paddingTop: spacing[16],
     paddingHorizontal: layout.screenPaddingX,
@@ -111,9 +114,14 @@ const styles = StyleSheet.create({
   },
   guide: { color: colors.text.sub2 },
   text: { color: colors.text.default },
-  day: { gap: spacing[8] },
-  dayTitle: { color: colors.text.icon },
-  rows: { gap: spacing[8] },
+  day: {
+    gap: spacing[12],
+    padding: spacing[16],
+    borderRadius: radius.xl,
+    backgroundColor: colors.surface.white,
+  },
+  dayTitle: { color: colors.brand.primary },
+  rows: { gap: spacing[14] },
   footer: { flexDirection: 'row', alignItems: 'center', gap: spacing[6] },
   footerText: { color: colors.text.icon },
 });

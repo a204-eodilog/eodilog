@@ -6,7 +6,6 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -15,8 +14,10 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Stagger } from '@/components/ui/stagger';
 import { apiErrorCode } from '@/api/errors';
 import { Button, Header, Icon, type IconName, toast } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { caret, colors, layout, radius, spacing, typography } from '@/theme';
 
 import type { CaptureFile } from '../api';
@@ -196,189 +197,193 @@ export function LinkCaptureScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
-          {showCopied ? (
-            <View style={styles.copied}>
-              <Icon name="copy" size={20} color={colors.brand.primaryDark} />
-              <View style={styles.copiedTexts}>
-                <Text style={[typography.captionMedium, styles.dark]}>복사한 링크가 있어요</Text>
-                <Text style={[typography.body, styles.text]} numberOfLines={1}>
-                  {copied}
-                </Text>
+          <Stagger itemStyle={styles.staggerItem}>
+            {showCopied ? (
+              <View style={styles.copied}>
+                <Icon name="copy" size={20} color={colors.brand.primaryDark} />
+                <View style={styles.copiedTexts}>
+                  <Text style={[typography.captionMedium, styles.dark]}>복사한 링크가 있어요</Text>
+                  <Text style={[typography.body, styles.text]} numberOfLines={1}>
+                    {copied}
+                  </Text>
+                </View>
+                <PressableScale
+                  accessibilityRole="button"
+                  accessibilityLabel="복사한 링크 붙여넣기"
+                  onPress={() => void paste(copied)}
+                  hitSlop={4}
+                  style={({ pressed }) => [styles.copiedPaste, pressed && styles.pressed]}
+                >
+                  <Icon name="clipboard" size={20} color={colors.brand.primaryDark} />
+                </PressableScale>
               </View>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="복사한 링크 붙여넣기"
-                onPress={() => void paste(copied)}
-                hitSlop={4}
-                style={({ pressed }) => [styles.copiedPaste, pressed && styles.pressed]}
-              >
-                <Icon name="clipboard" size={20} color={colors.brand.primaryDark} />
-              </Pressable>
-            </View>
-          ) : null}
+            ) : null}
 
-          {showLink ? (
-            <View style={styles.section}>
-              <SectionLabel icon="link" label="링크" />
-              <View>
-                <TextInput
-                  {...caret}
-                  accessibilityLabel="링크"
-                  value={link}
-                  onChangeText={setLink}
-                  placeholder="링크를 붙여 넣어 주세요"
-                  // 링크로 시작했거나, [+ 링크도 추가]로 칸이 새로 생긴 때 바로 커서를 둔다
-                  autoFocus={begin !== 'capture' || linkOpened}
-                  placeholderTextColor={colors.text.sub}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  keyboardType="url"
-                  returnKeyType="done"
-                  style={[styles.inputText, styles.input, styles.linkInput]}
-                />
-                {link.length > 0 ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="링크 지우기"
-                    hitSlop={8}
-                    onPress={() => setLink('')}
-                    style={({ pressed }) => [styles.clearLink, pressed && styles.pressed]}
-                  >
-                    <Icon name="close" size={14} color={colors.text.inverse} />
-                  </Pressable>
-                ) : (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="붙여넣기"
-                    hitSlop={4}
-                    onPress={() => void paste()}
-                    style={({ pressed }) => [styles.pasteButton, pressed && styles.pressed]}
-                  >
-                    {/* 복사 아이콘은 "복사"로 읽혀 집게판 아이콘을 따로 쓴다 */}
-                    <Icon name="clipboard" size={18} color={colors.brand.primaryDark} />
-                  </Pressable>
-                )}
-              </View>
-              {unsupported ? (
-                <>
-                  <View style={styles.errorLine} accessibilityLiveRegion="polite">
-                    <Icon name="alert" size={16} color={colors.status.danger} />
-                    <Text style={[typography.captionMedium, styles.danger]}>
-                      이 형식에서는 장소를 찾을 수 없어요
-                    </Text>
-                  </View>
-                  <View style={styles.guide}>
-                    <Text style={[typography.captionMedium, styles.sub]}>
-                      이런 것을 넣어 주세요
-                    </Text>
-                    <View style={styles.guideRow}>
-                      <Icon name="link" size={20} color={colors.text.icon} />
-                      <Text style={[typography.body, styles.text]}>SNS 게시물, 블로그 글 링크</Text>
-                    </View>
-                    <View style={styles.guideRow}>
-                      <Icon name="image" size={20} color={colors.text.icon} />
-                      <Text style={[typography.body, styles.text]}>캡처 이미지 (JPG, PNG)</Text>
-                    </View>
-                  </View>
-                </>
-              ) : null}
-              {showCaptures ? null : <AddMore label="캡처도 추가" onPress={addCapture} />}
-            </View>
-          ) : null}
-
-          {showCaptures ? (
-            <View style={styles.section}>
-              <View style={styles.labelRow}>
-                <Icon name="image" size={16} color={colors.text.icon} />
-                <Text style={[typography.captionMedium, styles.sub]}>선택한 캡처</Text>
-                <Text style={[typography.captionMedium, styles.dark]}>
-                  {captures.length}/{MAX_CAPTURES}
-                </Text>
-              </View>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.captures}
-              >
-                {captures.map((c, i) => (
-                  <View key={c.key} style={styles.thumb}>
-                    <Image source={{ uri: c.uri }} style={styles.thumbImage} />
-                    <Pressable
+            {showLink ? (
+              <View style={styles.section}>
+                <SectionLabel icon="link" label="링크" />
+                <View>
+                  <TextInput
+                    {...caret}
+                    accessibilityLabel="링크"
+                    value={link}
+                    onChangeText={setLink}
+                    placeholder="링크를 붙여 넣어 주세요"
+                    // 링크로 시작했거나, [+ 링크도 추가]로 칸이 새로 생긴 때 바로 커서를 둔다
+                    autoFocus={begin !== 'capture' || linkOpened}
+                    placeholderTextColor={colors.text.sub}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    keyboardType="url"
+                    returnKeyType="done"
+                    style={[styles.inputText, styles.input, styles.linkInput]}
+                  />
+                  {link.length > 0 ? (
+                    <PressableScale
                       accessibilityRole="button"
-                      accessibilityLabel={`캡처 ${i + 1} 빼기`}
+                      accessibilityLabel="링크 지우기"
                       hitSlop={8}
-                      onPress={() =>
-                        setCaptures(capturesNow.current.filter((x) => x.key !== c.key))
-                      }
-                      style={styles.removeCapture}
+                      onPress={() => setLink('')}
+                      style={({ pressed }) => [styles.clearLink, pressed && styles.pressed]}
                     >
                       <Icon name="close" size={14} color={colors.text.inverse} />
-                    </Pressable>
-                  </View>
-                ))}
-                {full ? null : (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`캡처 더 고르기, 최대 ${MAX_CAPTURES}장`}
-                    onPress={() => void pick()}
-                    style={({ pressed }) => [styles.addCapture, pressed && styles.pressed]}
-                  >
-                    <Icon name="plus" size={22} color={colors.text.icon} />
-                  </Pressable>
-                )}
-              </ScrollView>
-              {showLink ? null : (
-                <AddMore label="링크도 추가" onPress={() => setLinkOpened(true)} />
-              )}
-            </View>
-          ) : null}
+                    </PressableScale>
+                  ) : (
+                    <PressableScale
+                      accessibilityRole="button"
+                      accessibilityLabel="붙여넣기"
+                      hitSlop={4}
+                      onPress={() => void paste()}
+                      style={({ pressed }) => [styles.pasteButton, pressed && styles.pressed]}
+                    >
+                      {/* 복사 아이콘은 "복사"로 읽혀 집게판 아이콘을 따로 쓴다 */}
+                      <Icon name="clipboard" size={18} color={colors.brand.primaryDark} />
+                    </PressableScale>
+                  )}
+                </View>
+                {unsupported ? (
+                  <>
+                    <View style={styles.errorLine} accessibilityLiveRegion="polite">
+                      <Icon name="alert" size={16} color={colors.status.danger} />
+                      <Text style={[typography.captionMedium, styles.danger]}>
+                        이 형식에서는 장소를 찾을 수 없어요
+                      </Text>
+                    </View>
+                    <View style={styles.guide}>
+                      <Text style={[typography.captionMedium, styles.sub]}>
+                        이런 것을 넣어 주세요
+                      </Text>
+                      <View style={styles.guideRow}>
+                        <Icon name="link" size={20} color={colors.text.icon} />
+                        <Text style={[typography.body, styles.text]}>
+                          SNS 게시물, 블로그 글 링크
+                        </Text>
+                      </View>
+                      <View style={styles.guideRow}>
+                        <Icon name="image" size={20} color={colors.text.icon} />
+                        <Text style={[typography.body, styles.text]}>캡처 이미지 (JPG, PNG)</Text>
+                      </View>
+                    </View>
+                  </>
+                ) : null}
+                {showCaptures ? null : <AddMore label="캡처도 추가" onPress={addCapture} />}
+              </View>
+            ) : null}
 
-          {memoOpen || memo.length > 0 ? (
-            <View style={styles.section}>
-              <View style={styles.labelRow}>
-                <Icon name="pencil" size={16} color={colors.text.icon} />
-                <Text style={[typography.captionMedium, styles.sub]}>메모</Text>
+            {showCaptures ? (
+              <View style={styles.section}>
+                <View style={styles.labelRow}>
+                  <Icon name="image" size={16} color={colors.text.icon} />
+                  <Text style={[typography.captionMedium, styles.sub]}>선택한 캡처</Text>
+                  <Text style={[typography.captionMedium, styles.dark]}>
+                    {captures.length}/{MAX_CAPTURES}
+                  </Text>
+                </View>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.captures}
+                >
+                  {captures.map((c, i) => (
+                    <View key={c.key} style={styles.thumb}>
+                      <Image source={{ uri: c.uri }} style={styles.thumbImage} />
+                      <PressableScale
+                        accessibilityRole="button"
+                        accessibilityLabel={`캡처 ${i + 1} 빼기`}
+                        hitSlop={8}
+                        onPress={() =>
+                          setCaptures(capturesNow.current.filter((x) => x.key !== c.key))
+                        }
+                        style={styles.removeCapture}
+                      >
+                        <Icon name="close" size={14} color={colors.text.inverse} />
+                      </PressableScale>
+                    </View>
+                  ))}
+                  {full ? null : (
+                    <PressableScale
+                      accessibilityRole="button"
+                      accessibilityLabel={`캡처 더 고르기, 최대 ${MAX_CAPTURES}장`}
+                      onPress={() => void pick()}
+                      style={({ pressed }) => [styles.addCapture, pressed && styles.pressed]}
+                    >
+                      <Icon name="plus" size={22} color={colors.text.icon} />
+                    </PressableScale>
+                  )}
+                </ScrollView>
+                {showLink ? null : (
+                  <AddMore label="링크도 추가" onPress={() => setLinkOpened(true)} />
+                )}
               </View>
-              <TextInput
-                {...caret}
-                accessibilityLabel="메모"
-                value={memo}
-                onChangeText={setMemo}
-                placeholder="예: 노을 질 때 가 보기"
-                placeholderTextColor={colors.text.sub}
-                maxLength={MEMO_MAX}
-                multiline
-                autoFocus
-                textAlignVertical="top"
-                style={[styles.inputText, styles.input, styles.memo]}
-              />
-            </View>
-          ) : (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="메모 남기기"
-              onPress={() => setMemoOpen(true)}
-              style={({ pressed }) => [styles.memoClosed, pressed && styles.pressed]}
-            >
-              <Icon name="pencil" size={18} color={colors.text.icon} />
-              <Text style={[typography.body, styles.sub, styles.flex]}>메모 남기기</Text>
-              {/* 아이콘 모음에 아래 꺾쇠가 없어 오른쪽 꺾쇠를 돌린다 */}
-              <View style={styles.down}>
-                <Icon name="chevron-right" size={18} color={colors.text.muted} />
+            ) : null}
+
+            {memoOpen || memo.length > 0 ? (
+              <View style={styles.section}>
+                <View style={styles.labelRow}>
+                  <Icon name="pencil" size={16} color={colors.text.icon} />
+                  <Text style={[typography.captionMedium, styles.sub]}>메모</Text>
+                </View>
+                <TextInput
+                  {...caret}
+                  accessibilityLabel="메모"
+                  value={memo}
+                  onChangeText={setMemo}
+                  placeholder="예: 노을 질 때 가 보기"
+                  placeholderTextColor={colors.text.sub}
+                  maxLength={MEMO_MAX}
+                  multiline
+                  autoFocus
+                  textAlignVertical="top"
+                  style={[styles.inputText, styles.input, styles.memo]}
+                />
               </View>
-            </Pressable>
-          )}
+            ) : (
+              <PressableScale
+                accessibilityRole="button"
+                accessibilityLabel="메모 남기기"
+                onPress={() => setMemoOpen(true)}
+                style={({ pressed }) => [styles.memoClosed, pressed && styles.pressed]}
+              >
+                <Icon name="pencil" size={18} color={colors.text.icon} />
+                <Text style={[typography.body, styles.sub, styles.flex]}>메모 남기기</Text>
+                {/* 아이콘 모음에 아래 꺾쇠가 없어 오른쪽 꺾쇠를 돌린다 */}
+                <View style={styles.down}>
+                  <Icon name="chevron-right" size={18} color={colors.text.muted} />
+                </View>
+              </PressableScale>
+            )}
+          </Stagger>
         </ScrollView>
 
         <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom + spacing[12], 34) }]}>
           <Button
             label="장소 찾기"
+            icon="search"
             size="xl"
             block
             disabled={!ready}
             loading={start.isPending}
             onPress={find}
-            leading={<Icon name="search" size={20} color={colors.text.inverse} />}
             style={ready ? undefined : styles.findOff}
           />
         </View>
@@ -399,7 +404,7 @@ function SectionLabel({ icon, label }: { icon: IconName; label: string }) {
 /** 다른 자료를 더 넣는 작은 보조 버튼([+ 캡처도 추가]·[+ 링크도 추가]) */
 function AddMore({ label, onPress }: { label: string; onPress: () => void }) {
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={label}
       hitSlop={8}
@@ -408,13 +413,15 @@ function AddMore({ label, onPress }: { label: string; onPress: () => void }) {
     >
       <Icon name="plus" size={16} color={colors.brand.primaryDark} />
       <Text style={[typography.captionMedium, styles.dark]}>{label}</Text>
-    </Pressable>
+    </PressableScale>
   );
 }
 
 const THUMB = 80;
 
 const styles = StyleSheet.create({
+  // 차례로 나타나는 구역을 감싼 칸. 한 구역이 여러 줄이면 그 사이 간격을 스크롤 내용과 같게 둔다
+  staggerItem: { gap: spacing[28] },
   screen: { flex: 1, backgroundColor: colors.surface.white },
   flex: { flex: 1 },
   body: {

@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { BottomSheet, Button, Icon, TextField } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, layout, spacing } from '@/theme';
 
 import { LABEL_MAX, validateLabel } from '../checklist-rules';
@@ -68,6 +69,7 @@ export function EditItemSheet({ item, onClose, onSave, onDelete }: Props) {
         <View style={styles.actions}>
           <Button
             label="저장"
+            icon="check"
             size="xl"
             block
             onPress={() => void save()}
@@ -75,7 +77,7 @@ export function EditItemSheet({ item, onClose, onSave, onDelete }: Props) {
             loading={saving}
           />
           {/* 공통 Button의 글자 버튼은 파랑뿐이라 지우기는 빨간 글자로 따로 그린다 */}
-          <Pressable
+          <PressableScale
             style={styles.delete}
             accessibilityRole="button"
             accessibilityLabel="지우기"
@@ -86,7 +88,7 @@ export function EditItemSheet({ item, onClose, onSave, onDelete }: Props) {
             }}
           >
             <Icon name="trash" size={22} color={colors.status.danger} />
-          </Pressable>
+          </PressableScale>
         </View>
       </View>
     </BottomSheet>

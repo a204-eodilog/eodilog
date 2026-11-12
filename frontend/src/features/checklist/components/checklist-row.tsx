@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Icon, Tag } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { CheckMarkWhen } from '@/components/ui/check-mark';
 import { colors, spacing, typography } from '@/theme';
 
@@ -27,7 +28,7 @@ export function ChecklistRow({ item, members, onToggle, onMore }: Props) {
   const hint = [tag, meta].filter((t): t is string => Boolean(t)).join(', ');
   return (
     <View style={styles.row}>
-      <Pressable
+      <PressableScale
         style={styles.main}
         onPress={() => onToggle(item)}
         accessibilityRole="checkbox"
@@ -62,15 +63,15 @@ export function ChecklistRow({ item, members, onToggle, onMore }: Props) {
             </View>
           ) : null}
         </View>
-      </Pressable>
-      <Pressable
+      </PressableScale>
+      <PressableScale
         style={styles.more}
         onPress={() => onMore(item)}
         accessibilityRole="button"
         accessibilityLabel={`${item.label} 고치기`}
       >
         <Icon name="more" size={20} color={colors.text.icon} />
-      </Pressable>
+      </PressableScale>
     </View>
   );
 }

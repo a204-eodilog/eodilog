@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, radius, spacing, typography } from '@/theme';
 
 type MyTripRowProps = {
@@ -19,7 +20,7 @@ type MyTripRowProps = {
  */
 export function MyTripRow({ title, period, companions, onPress }: MyTripRowProps) {
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={[title, period, companions].filter(Boolean).join(', ')}
       onPress={onPress}
@@ -51,23 +52,34 @@ export function MyTripRow({ title, period, companions, onPress }: MyTripRowProps
           </View>
         ) : null}
       </View>
-    </Pressable>
+      <Icon name="chevron-right" size={18} color={colors.text.muted} />
+    </PressableScale>
   );
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', minHeight: 72, gap: spacing[18] },
+  // 줄 하나가 카드 하나다. 회색 바탕에 둥글기 16, 오른쪽 끝에 들어간다는 표시
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 76,
+    gap: spacing[14],
+    padding: spacing[12],
+    paddingRight: spacing[14],
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface.subtle,
+  },
   pressed: { opacity: 0.7 },
   // 피그마 둥글기 14는 토큰에 없어 radius.md(12)
   photo: {
-    width: 56,
-    height: 56,
+    width: 52,
+    height: 52,
     borderRadius: radius.md,
-    backgroundColor: colors.brand.primaryBg,
+    backgroundColor: colors.surface.white,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  texts: { flex: 1, gap: spacing[8] },
+  texts: { flex: 1, gap: spacing[4] },
   title: { color: colors.text.default },
   info: { flexDirection: 'row', alignItems: 'center', gap: spacing[12] },
   infoItem: { flexDirection: 'row', alignItems: 'center', gap: spacing[6] },

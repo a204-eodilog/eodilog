@@ -149,7 +149,7 @@ describe('S29 비교', () => {
 
   it('적용 안 함은 돌아간다', async () => {
     await renderScreen();
-    await fireEvent.press(await screen.findByText('적용 안 함'));
+    await fireEvent.press(await screen.findByLabelText('적용 안 함'));
     expect(mockRouter.back).toHaveBeenCalled();
     expect(mockApply).not.toHaveBeenCalled();
   });
@@ -223,7 +223,7 @@ describe('실패와 충돌', () => {
   it('재계산 실패의 코스 보기는 코스로', async () => {
     mockGet.mockResolvedValueOnce(proposal({ job: job('FAILED'), proposed: null }));
     await renderScreen();
-    await fireEvent.press(await screen.findByText('코스 보기'));
+    await fireEvent.press(await screen.findByLabelText('코스 보기'));
     expect(mockRouter.replace).toHaveBeenCalledWith('/trips/trip-1/course');
   });
 

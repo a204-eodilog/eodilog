@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { BottomSheet, Button, Card, Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 type PublishSheetProps = {
@@ -40,7 +41,7 @@ export function PublishSheet({
             </Text>
           </View>
         </View>
-        <Pressable
+        <PressableScale
           accessibilityRole="button"
           accessibilityLabel="닫기"
           hitSlop={8}
@@ -49,7 +50,7 @@ export function PublishSheet({
           style={styles.close}
         >
           <Icon name="close" color={colors.text.default} />
-        </Pressable>
+        </PressableScale>
       </View>
 
       <View style={styles.body}>
@@ -68,7 +69,7 @@ export function PublishSheet({
             </Text>
           </View>
         </Card>
-        <Pressable
+        <PressableScale
           accessibilityRole="link"
           hitSlop={8}
           onPress={onPreview}
@@ -77,10 +78,10 @@ export function PublishSheet({
           <Text style={[typography.captionMedium, styles.link]}>
             친구에게 보이는 모습 미리 보기
           </Text>
-        </Pressable>
+        </PressableScale>
       </View>
 
-      <Button label="게시" block loading={publishing} onPress={onPublish} />
+      <Button label="게시" icon="globe" block loading={publishing} onPress={onPublish} />
     </BottomSheet>
   );
 }

@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, radius, spacing, typography } from '@/theme';
 
 import type { NotificationLine } from '../notification-rules';
@@ -19,11 +20,16 @@ type Props = {
 export function NotificationRow({ line, onPress, compact = false }: Props) {
   const state = line.unread ? '읽지 않음, ' : '';
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`${state}${line.title}, ${line.label}, ${line.time}${line.leftTrip ? ', 나간 여행' : ''}`}
-      style={({ pressed }) => [styles.row, compact && styles.compact, pressed && styles.pressed]}
+      style={({ pressed }) => [
+        styles.row,
+        compact && styles.compact,
+        !compact && line.unread && styles.rowUnread,
+        pressed && styles.pressed,
+      ]}
     >
       <View style={[styles.icon, line.unread && styles.iconUnread]}>
         <Icon
@@ -35,7 +41,8 @@ export function NotificationRow({ line, onPress, compact = false }: Props) {
       <View style={styles.body}>
         <Text
           style={[line.unread ? typography.bodyBold : typography.body, styles.title]}
-          numberOfLines={compact ? 1 : 2}
+          // 팝업에서도 두 줄까지 보인다. 한 줄이면 제목 끝이 잘렸다
+          numberOfLines={2}
         >
           {line.title}
         </Text>
@@ -53,24 +60,35 @@ export function NotificationRow({ line, onPress, compact = false }: Props) {
         </View>
       </View>
       <View style={[styles.dot, line.unread && styles.dotOn]} />
-    </Pressable>
+    </PressableScale>
   );
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing[14], minHeight: 60 },
+  // 한 줄 제목이면 높이 60 그대로다(26 + 2 + 20 + 위아래 6). 제목이 두 줄이면 위아래 6이 남아 옆 줄과 붙지 않는다
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[14],
+    minHeight: 64,
+    paddingVertical: spacing[10],
+    paddingHorizontal: spacing[12],
+    borderRadius: radius.lg,
+  },
+  // 읽지 않은 알림은 줄 전체가 연파랑 카드가 된다. 점 하나보다 한눈에 구분된다
+  rowUnread: { backgroundColor: colors.brand.primaryBg },
   // Figma S48 팝업 줄은 높이 52, 종류와 시각을 한 줄에
-  compact: { minHeight: 52 },
+  compact: { minHeight: 52, paddingVertical: spacing[4], paddingHorizontal: 0 },
   pressed: { opacity: 0.6 },
   icon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: colors.surface.default,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  iconUnread: { backgroundColor: colors.brand.primaryBg },
+  iconUnread: { backgroundColor: colors.surface.white },
   body: { flex: 1, gap: spacing[2] },
   title: { color: colors.text.default },
   meta: { flexDirection: 'row', alignItems: 'center', gap: spacing[8] },

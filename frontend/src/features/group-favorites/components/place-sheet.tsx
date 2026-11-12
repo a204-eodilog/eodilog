@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Avatar, BottomSheet, Button, Icon, TextField } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 import { isMine, MEMO_MAX, myMemo, saverNames } from '../group-rules';
@@ -76,6 +77,7 @@ export function PlaceSheet({ item, members, myMemberId, onClose, ...props }: Pro
               />
               <Button
                 label="메모 저장"
+                icon="check"
                 size="lg"
                 block
                 variant="secondary"
@@ -83,17 +85,24 @@ export function PlaceSheet({ item, members, myMemberId, onClose, ...props }: Pro
                 loading={props.busy}
                 onPress={() => props.onSaveMemo(memo)}
               />
-              <Pressable
+              <PressableScale
                 style={styles.remove}
                 onPress={props.onRemove}
                 accessibilityRole="button"
                 accessibilityLabel="내 저장 빼기"
               >
                 <Icon name="trash" size={22} color={colors.status.danger} />
-              </Pressable>
+              </PressableScale>
             </>
           ) : (
-            <Button label="나도 담기" size="xl" block loading={props.busy} onPress={props.onAdd} />
+            <Button
+              label="나도 담기"
+              icon="plus"
+              size="xl"
+              block
+              loading={props.busy}
+              onPress={props.onAdd}
+            />
           )}
         </View>
       ) : null}

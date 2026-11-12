@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Button, Icon, type IconName } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, radius, spacing, typography } from '@/theme';
 
 /**
@@ -16,15 +17,19 @@ export function ProposalUnsupported({ onEdit, onCourse }: { onEdit(): void; onCo
       <Text style={[typography.title2, styles.title]}>아직 AI로 장소를 뺄 수 없어요</Text>
       <Button
         label="코스 편집"
+        icon="pencil"
         weight="medium"
-        leading={<Icon name="pencil" size={18} color={colors.text.inverse} />}
         onPress={onEdit}
         style={styles.retry}
       />
-      <Pressable style={styles.course} onPress={onCourse} accessibilityRole="button">
+      <PressableScale
+        accessibilityLabel="코스 보기"
+        style={styles.course}
+        onPress={onCourse}
+        accessibilityRole="button"
+      >
         <Icon name="route" size={18} color={colors.text.icon} />
-        <Text style={[typography.bodyMedium, styles.body]}>코스 보기</Text>
-      </Pressable>
+      </PressableScale>
     </View>
   );
 }
@@ -53,15 +58,19 @@ export function ProposalFail({
       <Text style={[typography.title2, styles.title]}>{title}</Text>
       <Button
         label="다시 시도"
+        icon="refresh"
         weight="medium"
-        leading={<Icon name="refresh" size={18} color={colors.text.inverse} />}
         onPress={onRetry}
         style={styles.retry}
       />
-      <Pressable style={styles.course} onPress={onCourse} accessibilityRole="button">
+      <PressableScale
+        accessibilityLabel="코스 보기"
+        style={styles.course}
+        onPress={onCourse}
+        accessibilityRole="button"
+      >
         <Icon name="route" size={18} color={colors.text.icon} />
-        <Text style={[typography.bodyMedium, styles.body]}>코스 보기</Text>
-      </Pressable>
+      </PressableScale>
     </View>
   );
 }

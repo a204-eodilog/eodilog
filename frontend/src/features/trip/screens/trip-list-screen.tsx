@@ -1,11 +1,13 @@
 import { router, useFocusEffect } from 'expo-router';
 import { setStatusBarStyle } from 'expo-status-bar';
 import { useCallback, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Spinner } from '@/components/ui/spinner';
+import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmptyState, ErrorState, Icon, OfflineNotice } from '@/components/ui';
+import { FadeIn } from '@/components/ui/fade-in';
+import { PressableScale } from '@/components/ui/pressable-scale';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -62,7 +64,7 @@ export function TripListScreen() {
         여행
       </Text>
       {/* 글 버튼 대신 더하기 아이콘(2026-11-05 사용자 요청: 글보다 아이콘) */}
-      <Pressable
+      <PressableScale
         accessibilityRole="button"
         accessibilityLabel="새 여행"
         onPress={openNew}
@@ -70,14 +72,14 @@ export function TripListScreen() {
         style={({ pressed }) => [styles.newButton, pressed && styles.pressed]}
       >
         <Icon name="plus" size={26} color={onBrand ? colors.text.inverse : colors.text.default} />
-      </Pressable>
+      </PressableScale>
     </View>
   );
 
   if (!sections || (!featured && sections.next.length === 0 && sections.past.length === 0)) {
     let body;
     if (listState.kind === 'loading') {
-      body = <Spinner style={styles.loading} color={colors.brand.primary} />;
+      body = <SkeletonList style={styles.loading} />;
     } else if (listState.kind === 'offline') {
       body = <OfflineNotice onRetry={() => refetch()} />;
     } else if (listState.kind === 'error') {
@@ -131,30 +133,30 @@ export function TripListScreen() {
           <View style={styles.offline}>
             <Icon name="alert" size={16} color={colors.status.warning} />
             <Text style={[typography.caption, styles.offlineText]}>연결이 불안정해요</Text>
-            <Pressable
+            <PressableScale
               accessibilityRole="button"
               accessibilityLabel="다시 불러오기"
               onPress={() => refetch()}
               hitSlop={spacing[8]}
             >
               <Icon name="refresh" size={18} color={colors.status.warning} />
-            </Pressable>
+            </PressableScale>
           </View>
         ) : null}
 
         {sections.next.length > 0 ? (
           <View style={styles.section}>
             <SectionTitle title="다음 계획" count={sections.next.length} />
-            <View>
+            <View style={styles.listCard}>
               {next.shown.map((trip, i) => (
-                <View key={trip.id}>
+                <FadeIn key={trip.id} index={i}>
                   {i > 0 ? <View style={styles.divider} /> : null}
                   <TripRow trip={trip} kind="next" today={today} onPress={() => openTrip(trip)} />
-                </View>
+                </FadeIn>
               ))}
             </View>
             {next.canToggle ? (
-              <Pressable
+              <PressableScale
                 accessibilityRole="button"
                 accessibilityLabel={
                   nextExpanded ? '다음 계획 접기' : `다음 계획 ${next.hiddenCount}개 더 보기`
@@ -170,7 +172,7 @@ export function TripListScreen() {
                   size={18}
                   color={colors.text.icon}
                 />
-              </Pressable>
+              </PressableScale>
             ) : null}
           </View>
         ) : null}
@@ -183,14 +185,10 @@ export function TripListScreen() {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.cardRow}
             >
-              {sections.past.map((trip) => (
-                <TripCard
-                  key={trip.id}
-                  trip={trip}
-                  kind="past"
-                  today={today}
-                  onPress={() => openTrip(trip)}
-                />
+              {sections.past.map((trip, order) => (
+                <FadeIn key={trip.id} index={order} from="right">
+                  <TripCard trip={trip} kind="past" today={today} onPress={() => openTrip(trip)} />
+                </FadeIn>
               ))}
             </ScrollView>
           </View>
@@ -203,17 +201,40 @@ export function TripListScreen() {
 function SectionTitle({ title, count }: { title: string; count: number }) {
   return (
     <View style={styles.sectionHead}>
-      <Text style={[typography.title3, styles.heading]}>{title}</Text>
-      <Text style={[typography.bodyBold, styles.count]}>{count}</Text>
+      <Text style={[typography.title2, styles.heading]}>{title}</Text>
+      <View style={styles.countPill}>
+        <Text style={[typography.captionBold, styles.count]}>{count}</Text>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.surface.white },
+  // 바탕은 옅은 회색, 내용은 흰 카드에 담는다. 파랑 머리와 카드가 또렷이 나뉜다
+  screen: { flex: 1, backgroundColor: colors.surface.subtle },
   flex: { flex: 1 },
   content: { flexGrow: 1 },
-  brand: { backgroundColor: colors.brand.primary },
+  // 파랑 머리는 아래 모서리를 둥글려 카드처럼 내려앉게 한다
+  brand: {
+    backgroundColor: colors.brand.primary,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+  },
+  listCard: {
+    marginHorizontal: spacing[16],
+    paddingVertical: spacing[6],
+    borderRadius: radius.xl,
+    backgroundColor: colors.surface.white,
+  },
+  countPill: {
+    minWidth: 24,
+    height: 22,
+    paddingHorizontal: spacing[8],
+    borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.brand.primaryBg,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -235,11 +256,11 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.6 },
   // 로딩 동그라미를 남은 화면의 정중앙에 둔다
   loading: { flex: 1 },
-  section: { paddingTop: spacing[28], gap: spacing[12] },
+  section: { paddingTop: spacing[24], gap: spacing[12] },
   sectionHead: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing[6],
+    gap: spacing[8],
     paddingHorizontal: layout.screenPaddingX,
   },
   count: { color: colors.brand.primary },
@@ -250,15 +271,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing[4],
+    alignSelf: 'center',
     minHeight: layout.minTouchTarget,
-    marginHorizontal: layout.screenPaddingX,
+    paddingHorizontal: spacing[20],
+    borderRadius: radius.full,
+    backgroundColor: colors.surface.white,
   },
   moreLabel: { color: colors.text.icon },
   // 줄 사이 선은 이름 글자 시작에 맞춘다(화면 여백 20 + 달력 칸 48 + 간격 14)
   divider: {
     height: StyleSheet.hairlineWidth,
-    marginLeft: layout.screenPaddingX + 48 + spacing[14],
-    marginRight: layout.screenPaddingX,
+    marginLeft: spacing[16] + 48 + spacing[14],
+    marginRight: spacing[16],
     backgroundColor: colors.line.strong,
   },
   offline: {

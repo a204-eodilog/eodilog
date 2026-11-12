@@ -1,9 +1,10 @@
 import { Image } from 'expo-image';
-import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { Spinner } from '@/components/ui/spinner';
+import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, CenterNotice, ErrorState, Header, Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { assetSource } from '@/lib/asset-image';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -53,7 +54,7 @@ export function TripPhotosView(props: TripPhotosViewProps) {
       subtitle={props.tripTitle ?? undefined}
       onBack={props.onBack}
       right={
-        <Pressable
+        <PressableScale
           accessibilityRole="button"
           accessibilityLabel="사진 올리기"
           hitSlop={8}
@@ -61,7 +62,7 @@ export function TripPhotosView(props: TripPhotosViewProps) {
           style={({ pressed }) => [styles.headerButton, pressed && styles.pressed]}
         >
           <Icon name="upload" size={24} color={colors.text.default} />
-        </Pressable>
+        </PressableScale>
       }
     />
   );
@@ -73,7 +74,7 @@ export function TripPhotosView(props: TripPhotosViewProps) {
         {props.state === 'error' ? (
           <ErrorState title="사진을 불러오지 못했어요" onRetry={props.onRetry} />
         ) : (
-          <Spinner style={styles.flex} color={colors.brand.primary} />
+          <SkeletonList style={styles.flex} />
         )}
       </View>
     );
@@ -109,7 +110,7 @@ export function TripPhotosView(props: TripPhotosViewProps) {
           {props.chips.map((chip) => {
             const on = chip.key === props.topic;
             return (
-              <Pressable
+              <PressableScale
                 key={chip.key}
                 accessibilityRole="button"
                 accessibilityState={{ selected: on }}
@@ -127,13 +128,13 @@ export function TripPhotosView(props: TripPhotosViewProps) {
                 <Text style={[typography.captionMedium, on ? styles.chipTextOn : styles.chipText]}>
                   {chip.count}
                 </Text>
-              </Pressable>
+              </PressableScale>
             );
           })}
         </ScrollView>
 
         {props.unplaced.length > 0 ? (
-          <Pressable
+          <PressableScale
             accessibilityRole="button"
             accessibilityLabel={`장소 미지정 ${props.unplaced.length}장, 연결하기`}
             onPress={props.onUnplaced}
@@ -161,7 +162,7 @@ export function TripPhotosView(props: TripPhotosViewProps) {
               <Text style={[typography.captionMedium, styles.link]}>연결하기</Text>
               <Icon name="chevron-right" size={14} color={colors.brand.primaryDark} />
             </View>
-          </Pressable>
+          </PressableScale>
         ) : null}
 
         {empty ? (
@@ -180,7 +181,7 @@ export function TripPhotosView(props: TripPhotosViewProps) {
                 </View>
                 <Text style={[typography.caption, styles.sub]}>{sectionMeta(section)}</Text>
                 {section.photos.some((p) => p.uploaderMemberId === props.myMemberId) ? (
-                  <Pressable
+                  <PressableScale
                     accessibilityRole="button"
                     accessibilityLabel={`${section.name ?? '장소'} 사진 수정`}
                     // 아이콘 18에 사방 13씩 넓혀 누르는 자리 44
@@ -189,7 +190,7 @@ export function TripPhotosView(props: TripPhotosViewProps) {
                     style={({ pressed }) => pressed && styles.pressed}
                   >
                     <Icon name="pencil" size={18} color={colors.brand.primaryDark} />
-                  </Pressable>
+                  </PressableScale>
                 ) : null}
               </View>
               <View style={styles.grid}>
@@ -212,12 +213,7 @@ export function TripPhotosView(props: TripPhotosViewProps) {
       </ScrollView>
       <View style={[styles.bottom, { paddingBottom: Math.max(insets.bottom + spacing[12], 34) }]}>
         <Text style={[typography.caption, styles.sub, styles.flex]}>{props.footer}</Text>
-        <Button
-          label="공동 피드 게시"
-          size="lg"
-          leading={<Icon name="globe" size={20} color={colors.text.inverse} />}
-          onPress={props.onPublish}
-        />
+        <Button label="공동 피드 게시" icon="globe" size="lg" onPress={props.onPublish} />
       </View>
     </View>
   );
