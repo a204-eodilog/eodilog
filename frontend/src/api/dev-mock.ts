@@ -1099,6 +1099,8 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
   }
 
   if (method === 'get' && url === '/me') return ok(config, { data: ME });
+  // 탈퇴(DELETE /me, 202). 가짜 서버는 받기만 하고 자료는 남겨 둔다(다음 테스트 모드 로그인에서 다시 쓴다)
+  if (method === 'delete' && url === '/me') return ok(config, { data: { accepted: true } }, 202);
   if (method === 'patch' && url === '/me') {
     const body = JSON.parse(String(config.data ?? '{}')) as {
       nickname?: string;
