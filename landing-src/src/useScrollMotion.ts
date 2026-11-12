@@ -77,12 +77,14 @@ export function useScrollMotion(root: RefObject<HTMLElement | null>) {
           })
         }
 
-        // 제목과 문단은 화면에 들어올 때 아래에서 올라온다
+        // 제목과 문단은 화면에 들어올 때 아래에서 올라온다.
+        // 처음부터 숨겨 둔다. 들어온 순간에 숨기면, 화면 아래쪽에 이미 보이던 글이 사라졌다 다시 나타나 깜빡인다
+        gsap.set('[data-reveal]', { y: 28, autoAlpha: 0 })
         ScrollTrigger.batch('[data-reveal]', {
           start: 'top 86%',
           once: true,
           onEnter: (els) =>
-            gsap.from(els, { y: 28, autoAlpha: 0, duration: 0.7, stagger: 0.1, ease: 'power3.out' }),
+            gsap.to(els, { y: 0, autoAlpha: 1, duration: 0.7, stagger: 0.1, ease: 'power3.out' }),
         })
 
         // 불편 카드는 살짝 기울어져 있다가 차례로 바로 선다
