@@ -861,43 +861,6 @@ h3 {
   color: var(--text);
 }
 
-/* 흘러가는 띠 */
-.marquee {
-  overflow: hidden;
-  padding: 18px 0;
-  border-block: 1px solid var(--line);
-  background: var(--white);
-  mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
-}
-
-.marquee-track {
-  display: flex;
-  gap: 12px;
-  width: max-content;
-  animation: marquee 36s linear infinite;
-}
-
-.marquee-track span {
-  padding: 8px 18px;
-  border-radius: 999px;
-  background: var(--surface);
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-sub);
-  white-space: nowrap;
-}
-
-.marquee-track span:nth-child(3n + 1) {
-  background: var(--brand-bg);
-  color: var(--brand-dark);
-}
-
-@keyframes marquee {
-  to {
-    transform: translateX(calc(-50% - 6px));
-  }
-}
-
 /* 공통 구간 */
 .section {
   display: flex;
@@ -1748,25 +1711,6 @@ h3 {
   line-height: 1.45;
 }
 
-.footer {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  max-width: var(--wrap);
-  margin: 0 auto;
-  padding: 28px var(--gutter) 40px;
-  border-top: 1px solid var(--line);
-  font-size: 14px;
-  color: var(--text-muted);
-}
-
-.footer .brand {
-  font-size: 16px;
-  color: var(--text);
-}
-
 /* 좁은 화면 */
 @media (max-width: 899px) {
   .hero {
@@ -1876,7 +1820,6 @@ h3 {
     scroll-behavior: auto;
   }
 
-  .marquee-track,
   .live i {
     animation: none;
   }

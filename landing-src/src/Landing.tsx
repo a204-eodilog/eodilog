@@ -31,7 +31,6 @@ import {
   aiMoments,
   extras,
   features,
-  keywords,
   pains,
   releases,
   SITE_URL,
@@ -158,14 +157,6 @@ export function Landing() {
             </div>
           </div>
         </section>
-
-        <div className="marquee" aria-hidden="true">
-          <div className="marquee-track">
-            {[...keywords, ...keywords].map((word, i) => (
-              <span key={`${word}-${i}`}>{word}</span>
-            ))}
-          </div>
-        </div>
 
         <section className="section" id="why">
           <p className="eyebrow" data-reveal>
@@ -406,14 +397,6 @@ export function Landing() {
           </div>
         </section>
       </main>
-
-      <footer className="footer">
-        <span className="brand">
-          <Logo size={24} />
-          <span>어디로그</span>
-        </span>
-        <p>15기 자율 프로젝트 A204</p>
-      </footer>
     </div>
   )
 }

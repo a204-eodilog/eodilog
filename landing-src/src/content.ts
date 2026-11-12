@@ -95,21 +95,6 @@ export const pains = [
   { title: '여행 뒤에 남는 숙제', body: '사진은 흩어지고 정산은 몇 주째 미뤄져요.' },
 ]
 
-/** 흘러가는 띠에 나오는 낱말 */
-export const keywords = [
-  '장소 모으기',
-  '지역 투표',
-  '그룹 채팅',
-  '취향 추천',
-  '코스 추천',
-  '함께 편집',
-  '날씨 대안',
-  '준비물',
-  '사진 분류',
-  '경비 정산',
-  '친구 여행 지도',
-]
-
 export type Release = {
   version: string
   date: string
