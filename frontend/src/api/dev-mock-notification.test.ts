@@ -50,6 +50,23 @@ describe('테스트 모드 가짜 알림 서버', () => {
     expect(count()).toBe(0);
   });
 
+  it('소식 읽음은 같은 소식의 알림을 읽음으로 바꾸고, 없는 소식은 404', () => {
+    const { call, mock } = setup();
+    const target = mock.controls.peek().find((n) => n.readAt === null)!;
+    const count = () =>
+      (call('get', '/me/notification-summary') as { data: { unreadCount: number } }).data
+        .unreadCount;
+    const before = count();
+
+    const res = call('post', `/me/events/${target.eventId}/read`) as {
+      data: { eventId: string; readAt: string };
+    };
+
+    expect(res.data.eventId).toBe(target.eventId);
+    expect(count()).toBe(before - 1);
+    expect(() => call('post', '/me/events/none/read')).toThrow('EVENT_NOT_FOUND');
+  });
+
   it('모두 읽음은 through 뒤에 온 알림을 남긴다', () => {
     const { call, mock } = setup();
     const through = (call('get', '/me/notifications') as Page).data[0].createdAt;

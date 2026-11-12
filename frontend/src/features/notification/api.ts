@@ -28,6 +28,17 @@ export async function readNotification(id: string): Promise<NotificationView> {
   return data.data;
 }
 
+/**
+ * 같은 소식(eventId)에서 나온 내 알림을 읽음으로. 채팅 시스템 카드를 열 때 알림과 읽음을 맞춘다.
+ * 그 소식의 알림이 나에게 없으면 서버가 404(EVENT_NOT_FOUND)를 준다
+ */
+export async function readEvent(eventId: string): Promise<{ eventId: string; readAt: string }> {
+  const { data } = await apiClient.post<DataResponse<{ eventId: string; readAt: string }>>(
+    `/me/events/${encodeURIComponent(eventId)}/read`,
+  );
+  return data.data;
+}
+
 /** 내 목록에서 알림을 숨긴다(204) */
 export async function dismissNotification(id: string): Promise<void> {
   await apiClient.delete(`/me/notifications/${id}`);
