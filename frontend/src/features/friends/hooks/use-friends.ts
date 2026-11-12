@@ -14,6 +14,7 @@ import {
   type FriendsAction,
 } from '@/features/friends/friends-rules';
 import type { Follow, FriendsBoard } from '@/features/friends/types';
+import { markHomeStale } from '@/features/home/home-cache';
 
 export type FriendsService = {
   load: (signal?: AbortSignal) => Promise<FriendsBoard>;
@@ -78,6 +79,8 @@ export function useFriends(service: FriendsService = SERVER, queryKey: QueryKey 
       client.setQueryData<FriendsBoard>(queryKey, (old) =>
         applyFriendsAction(old ?? EMPTY, action, result || undefined),
       );
+      // 홈 지도는 내가 팔로우한 사람으로 정해진다. 끊은 사람의 지역이 홈에 남지 않게 한다
+      if (action.kind === 'unfollow') void markHomeStale(client);
       if (mounted.current) {
         if (action.kind === 'accept') setAccepted(result || action.follow);
         const message =

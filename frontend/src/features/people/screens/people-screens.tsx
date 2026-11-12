@@ -4,6 +4,7 @@ import { useState } from 'react';
 
 import type { UserCard } from '@/api/types';
 import { toast } from '@/components/ui';
+import { markHomeStale } from '@/features/home/home-cache';
 
 import {
   followUser,
@@ -41,6 +42,8 @@ function useFollowToggle() {
       void queryClient.invalidateQueries({ queryKey: ['me', 'following-count'] });
       void queryClient.invalidateQueries({ queryKey: SUGGESTIONS_KEY });
       void queryClient.invalidateQueries({ queryKey: ['users'] });
+      // 안 하면 팔로우하고 돌아와도 홈이 "팔로우한 사람이 없어요"로 남는다
+      void markHomeStale(queryClient);
     },
     onError: (_e, user) =>
       toast.show(

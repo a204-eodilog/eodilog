@@ -1,8 +1,11 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
 
 import { koreaBbox } from '@/lib/korea-map';
 
 import { getDiscovery, getHomeMap, getUnreadCount, hasAnyFollowing, hasAnyTrip } from '../api';
+import { refetchStaleHome } from '../home-cache';
 import { homeState, toRecommendations, toRegionMarks } from '../home-rules';
 
 const KEYS = {
@@ -31,6 +34,15 @@ export function useHome() {
     retry: false,
   });
   const unread = useQuery({ queryKey: KEYS.unread, queryFn: getUnreadCount, retry: false });
+
+  // 다른 화면에서 홈 자료에 "새로 받아야 함" 표시만 해 둔 것(팔로우 등)은 홈으로 돌아올 때 받는다.
+  // 그래야 새로 생긴 지역이 사람이 보는 앞에서 물든다
+  const queryClient = useQueryClient();
+  useFocusEffect(
+    useCallback(() => {
+      void refetchStaleHome(queryClient);
+    }, [queryClient]),
+  );
 
   const state = trip.isError
     ? 'error'
