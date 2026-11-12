@@ -26,7 +26,8 @@ export type FriendsViewProps = {
   pendingIds: string[];
   accepted?: Follow | null;
   onAction: (action: FriendsAction) => Promise<boolean>;
-  onPerson: () => void;
+  /** 사람 줄을 누르면 그 사람(요청은 보낸 사람, 팔로잉은 받는 사람, 팔로워는 보낸 사람) */
+  onPerson: (person: Follow['follower']) => void;
   onFind: () => void;
   initialTab?: FriendsTab;
   initialConfirm?: Follow;
@@ -112,7 +113,7 @@ export function FriendsView({
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={follow.follower.nickname + ' 프로필'}
-                    onPress={onPerson}
+                    onPress={() => onPerson(follow.follower)}
                     disabled={pendingIds.includes(follow.follower.id)}
                     style={styles.person}
                   >
@@ -226,7 +227,7 @@ export function FriendsView({
                       accessibilityRole="button"
                       accessibilityLabel={person.nickname + ' 프로필'}
                       disabled={blocked}
-                      onPress={onPerson}
+                      onPress={() => onPerson(person)}
                     >
                       <Avatar name={person.nickname} imageUrl={person.profileImageUrl} size="lg" />
                       <View style={styles.flex}>

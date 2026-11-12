@@ -82,7 +82,7 @@ function Preview({ state, onState }: { state: State; onState: (state: State) => 
       pendingIds={friends.pendingIds}
       accepted={accepted}
       onAction={friends.run}
-      onPerson={() => toast.show('준비 중이에요')}
+      onPerson={(person) => toast.show(`${person.nickname}: N9 프로필로 가요`)}
       onFind={() => toast.show('준비 중이에요')}
       previewTrips={PREVIEW_TRIPS}
       initialTab={state === 'followers' || state === 'accepted' ? 'followers' : 'following'}
