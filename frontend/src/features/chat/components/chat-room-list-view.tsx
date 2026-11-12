@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
 import { EmptyState, ErrorState } from '@/components/ui';
+import { FadeIn } from '@/components/ui/fade-in';
 import { SkeletonList } from '@/components/ui/skeleton';
 import { colors, layout, spacing, typography } from '@/theme';
 
@@ -99,15 +100,17 @@ export function ChatRoomListView({
           contentContainerStyle={styles.content}
           ListHeaderComponent={header}
           ItemSeparatorComponent={Separator}
-          renderItem={({ item }) => (
-            <RoomRow
-              title={item.title}
-              preview={item.preview}
-              time={item.time}
-              participants={item.room.participants}
-              meId={meId}
-              onPress={() => onOpen(item)}
-            />
+          renderItem={({ item, index }) => (
+            <FadeIn index={index}>
+              <RoomRow
+                title={item.title}
+                preview={item.preview}
+                time={item.time}
+                participants={item.room.participants}
+                meId={meId}
+                onPress={() => onOpen(item)}
+              />
+            </FadeIn>
           )}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         />

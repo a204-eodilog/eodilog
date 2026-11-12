@@ -3,6 +3,7 @@ import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, ErrorState, Header, Icon } from '@/components/ui';
+import { FadeIn } from '@/components/ui/fade-in';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { SkeletonList } from '@/components/ui/skeleton';
 import { assetSource } from '@/lib/asset-image';
@@ -63,7 +64,11 @@ export function TrendsView(props: TrendsViewProps) {
               />
             </View>
           }
-          renderItem={({ item }) => <Row row={item} onPress={() => props.onRow(item)} />}
+          renderItem={({ item, index }) => (
+            <FadeIn index={index}>
+              <Row row={item} onPress={() => props.onRow(item)} />
+            </FadeIn>
+          )}
         />
       )}
     </SafeAreaView>

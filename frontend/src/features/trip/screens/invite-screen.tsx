@@ -2,6 +2,7 @@ import * as Clipboard from 'expo-clipboard';
 import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Platform, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { FadeIn } from '@/components/ui/fade-in';
 import { Spinner } from '@/components/ui/spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -206,8 +207,10 @@ export function TripInviteScreen() {
               {trip.members.length}/{TRIP_CAPACITY}명
             </Text>
           </View>
-          {members.map((m) => (
-            <MemberRow key={m.id} member={m} labels={memberLabel(m, trip, me?.id)} />
+          {members.map((m, order) => (
+            <FadeIn key={m.id} index={order}>
+              <MemberRow member={m} labels={memberLabel(m, trip, me?.id)} />
+            </FadeIn>
           ))}
         </View>
       </ScrollView>

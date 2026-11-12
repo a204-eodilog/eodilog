@@ -136,8 +136,9 @@ export function AiModeSelector<T extends string>({
         </View>
       </View>
       <View accessibilityRole="radiogroup" accessibilityLabel={label} style={styles.segments}>
-        {options.map((option) => (
+        {options.map((option, order) => (
           <PressableScale
+            appear={order}
             key={option.value}
             accessibilityRole="radio"
             accessibilityLabel={label + ', ' + option.label}

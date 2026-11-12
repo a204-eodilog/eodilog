@@ -2,6 +2,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmptyState, Header } from '@/components/ui';
+import { FadeIn } from '@/components/ui/fade-in';
 import { colors, layout, spacing, typography } from '@/theme';
 
 import { companionNames, formatPeriod, groupMyTrips } from '../my-trip-rules';
@@ -38,14 +39,15 @@ export function MyTripsView({ trips, myUserId, onOpen, onBack }: MyTripsViewProp
                 <Text style={[typography.title3, styles.text]}>{group.title}</Text>
                 <Text style={[typography.caption, styles.sub]}>{group.trips.length}개</Text>
               </View>
-              {group.trips.map((trip) => (
-                <MyTripRow
-                  key={trip.id}
-                  title={trip.title}
-                  period={formatPeriod(trip.startDate, trip.endDate)}
-                  companions={companionNames(trip, myUserId)}
-                  onPress={() => onOpen(trip)}
-                />
+              {group.trips.map((trip, i) => (
+                <FadeIn key={trip.id} index={i}>
+                  <MyTripRow
+                    title={trip.title}
+                    period={formatPeriod(trip.startDate, trip.endDate)}
+                    companions={companionNames(trip, myUserId)}
+                    onPress={() => onOpen(trip)}
+                  />
+                </FadeIn>
               ))}
             </View>
           ))}

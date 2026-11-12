@@ -5,6 +5,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Header, Icon } from '@/components/ui';
+import { FadeIn } from '@/components/ui/fade-in';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { SkeletonList } from '@/components/ui/skeleton';
 import { colors, layout, spacing, typography } from '@/theme';
@@ -70,8 +71,10 @@ export function NotificationsView(props: NotificationsViewProps) {
               {section.title}
             </Text>
           )}
-          renderItem={({ item }) => (
-            <NotificationRow line={item} onPress={() => props.onOpen(item)} />
+          renderItem={({ item, index }) => (
+            <FadeIn index={index}>
+              <NotificationRow line={item} onPress={() => props.onOpen(item)} />
+            </FadeIn>
           )}
           ItemSeparatorComponent={Gap}
           stickySectionHeadersEnabled={false}

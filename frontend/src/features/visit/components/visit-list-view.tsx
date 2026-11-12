@@ -1,6 +1,7 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { FadeIn } from '@/components/ui/fade-in';
 import { AvatarGroup, EmptyState, Header, Icon } from '@/components/ui';
 import { colors, layout, spacing, typography } from '@/theme';
 
@@ -77,14 +78,15 @@ export function VisitListView({
             <View key={day.day} style={styles.day}>
               <Text style={[typography.captionMedium, styles.dayTitle]}>{day.title}</Text>
               <View style={styles.rows}>
-                {day.rows.map((row) => (
-                  <VisitRow
-                    key={row.itemId}
-                    row={row}
-                    checking={busyPlaceIds.includes(row.placeId)}
-                    onCheck={() => onCheck(row)}
-                    onReview={() => onReview(row)}
-                  />
+                {day.rows.map((row, order) => (
+                  <FadeIn key={row.itemId} index={order}>
+                    <VisitRow
+                      row={row}
+                      checking={busyPlaceIds.includes(row.placeId)}
+                      onCheck={() => onCheck(row)}
+                      onReview={() => onReview(row)}
+                    />
+                  </FadeIn>
                 ))}
               </View>
             </View>

@@ -5,6 +5,7 @@ import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmptyState, ErrorState, Icon, OfflineNotice } from '@/components/ui';
+import { FadeIn } from '@/components/ui/fade-in';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { SkeletonList } from '@/components/ui/skeleton';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
@@ -148,10 +149,10 @@ export function TripListScreen() {
             <SectionTitle title="다음 계획" count={sections.next.length} />
             <View>
               {next.shown.map((trip, i) => (
-                <View key={trip.id}>
+                <FadeIn key={trip.id} index={i}>
                   {i > 0 ? <View style={styles.divider} /> : null}
                   <TripRow trip={trip} kind="next" today={today} onPress={() => openTrip(trip)} />
-                </View>
+                </FadeIn>
               ))}
             </View>
             {next.canToggle ? (
@@ -184,14 +185,10 @@ export function TripListScreen() {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.cardRow}
             >
-              {sections.past.map((trip) => (
-                <TripCard
-                  key={trip.id}
-                  trip={trip}
-                  kind="past"
-                  today={today}
-                  onPress={() => openTrip(trip)}
-                />
+              {sections.past.map((trip, order) => (
+                <FadeIn key={trip.id} index={order} from="right">
+                  <TripCard trip={trip} kind="past" today={today} onPress={() => openTrip(trip)} />
+                </FadeIn>
               ))}
             </ScrollView>
           </View>

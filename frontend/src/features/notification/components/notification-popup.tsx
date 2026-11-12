@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { FadeIn } from '@/components/ui/fade-in';
 import { Icon } from '@/components/ui';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { Popup } from '@/components/ui/popup';
@@ -81,8 +82,10 @@ export function ManyPopup({ visible, count, lines, onLine, onClose, onAll }: Man
         새 알림 {count}개
       </Text>
       <View style={styles.lines}>
-        {lines.slice(0, MAX_LINES).map((line) => (
-          <NotificationRow key={line.id} line={line} compact onPress={() => onLine(line)} />
+        {lines.slice(0, MAX_LINES).map((line, order) => (
+          <FadeIn key={line.id} index={order}>
+            <NotificationRow line={line} compact onPress={() => onLine(line)} />
+          </FadeIn>
         ))}
       </View>
       <Choices

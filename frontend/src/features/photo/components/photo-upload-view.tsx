@@ -3,6 +3,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, CenterNotice, Header, Icon, type IconName } from '@/components/ui';
 import { PressableScale } from '@/components/ui/pressable-scale';
+import { ProgressBar } from '@/components/ui/progress-bar';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 import type { UploadPhase } from '../hooks/use-photo-upload';
@@ -155,13 +156,7 @@ export function PhotoUploadView(props: PhotoUploadViewProps) {
                 </Text>
               </View>
             </View>
-            <View
-              style={styles.track}
-              accessibilityRole="progressbar"
-              accessibilityValue={{ min: 0, max: total, now: done }}
-            >
-              <View style={[styles.fill, { width: `${total ? (done / total) * 100 : 0}%` }]} />
-            </View>
+            <ProgressBar ratio={total ? done / total : 0} trackColor={colors.surface.white} />
           </View>
         )}
         <View style={styles.grid}>
@@ -263,11 +258,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   boxTexts: { flex: 1, gap: spacing[2] },
-  track: {
-    height: 6,
-    borderRadius: radius.full,
-    backgroundColor: colors.surface.white,
-    overflow: 'hidden',
-  },
-  fill: { height: 6, borderRadius: radius.full, backgroundColor: colors.brand.primary },
 });

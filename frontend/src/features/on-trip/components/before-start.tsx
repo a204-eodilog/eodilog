@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/ui';
 import { PressableScale } from '@/components/ui/pressable-scale';
+import { ProgressBar } from '@/components/ui/progress-bar';
 import { formatShortDate, parseDate } from '@/lib/format-date';
 import { colors, radius, spacing, typography } from '@/theme';
 
@@ -88,11 +89,7 @@ export function BeforeStart({ startDate, regionName, forecasts, checklist, onChe
           ) : null}
           <Icon name="chevron-right" size={18} color={colors.text.muted} />
         </View>
-        {checklist ? (
-          <View style={styles.bar}>
-            <View style={[styles.fill, { width: `${Math.round(ratio * 100)}%` }]} />
-          </View>
-        ) : null}
+        {checklist ? <ProgressBar ratio={ratio} trackColor={colors.line.default} /> : null}
       </PressableScale>
     </View>
   );
@@ -130,11 +127,4 @@ const styles = StyleSheet.create({
   },
   checklistTop: { flexDirection: 'row', alignItems: 'center', gap: spacing[10] },
   progressText: { color: colors.brand.primary },
-  bar: {
-    height: 6,
-    borderRadius: radius.full,
-    backgroundColor: colors.line.default,
-    overflow: 'hidden',
-  },
-  fill: { height: 6, borderRadius: radius.full, backgroundColor: colors.brand.primary },
 });

@@ -98,8 +98,10 @@ export function TripMenuGrid({ tripId }: { tripId: string }) {
     <View style={styles.wrap}>
       <Text style={[typography.title3, styles.title]}>여행 메뉴</Text>
       <View style={styles.grid}>
-        {MENU.map((item) => (
+        {MENU.map((item, order) => (
           <PressableScale
+            appear={order}
+            appearFrom="pop"
             key={item.key}
             accessibilityRole="button"
             accessibilityLabel={item.label}

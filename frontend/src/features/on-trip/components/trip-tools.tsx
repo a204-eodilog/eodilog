@@ -44,8 +44,10 @@ export function TripTools(props: {
   ];
   return (
     <View style={styles.grid}>
-      {tools.map((t) => (
+      {tools.map((t, order) => (
         <PressableScale
+          appear={order}
+          appearFrom="pop"
           key={t.key}
           style={({ pressed }) => [styles.cell, pressed && styles.pressed]}
           onPress={t.onPress}

@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { KeyboardAvoidingView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FadeIn } from '@/components/ui/fade-in';
 import { Spinner } from '@/components/ui/spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -108,14 +109,15 @@ export function ChecklistView(props: ChecklistViewProps) {
           {failCard}
           <ChecklistProgress items={items} />
           <View style={styles.list}>
-            {items.map((item) => (
-              <ChecklistRow
-                key={item.id}
-                item={item}
-                members={members}
-                onToggle={props.onToggle}
-                onMore={props.onMore}
-              />
+            {items.map((item, order) => (
+              <FadeIn key={item.id} index={order}>
+                <ChecklistRow
+                  item={item}
+                  members={members}
+                  onToggle={props.onToggle}
+                  onMore={props.onMore}
+                />
+              </FadeIn>
             ))}
           </View>
           <AddItemBar onAdd={props.onAdd} busy={props.adding} />

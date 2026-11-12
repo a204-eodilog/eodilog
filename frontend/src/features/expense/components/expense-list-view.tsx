@@ -2,6 +2,7 @@ import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, Card, CenterNotice, Header, Icon } from '@/components/ui';
+import { FadeIn } from '@/components/ui/fade-in';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { formatTotalShort, formatWon } from '@/lib/format-number';
 import { colors, layout, spacing, typography } from '@/theme';
@@ -102,19 +103,21 @@ export function ExpenseListView({
                 </Text>
               </View>
             }
-            renderItem={({ item }) => {
+            renderItem={({ item, index }) => {
               const payerName = nameOf(item.payerMemberId);
               return (
-                <ExpenseRow
-                  title={item.title}
-                  amount={item.amountMinor}
-                  payerName={payerName}
-                  payerIsMe={item.payerMemberId === myMemberId}
-                  payerText={payerLabel(payerName)}
-                  splitText={splitLabel(item.participantMemberIds, members)}
-                  addedAfterSettlement={addedAfterSettlement(item.id, settlement)}
-                  onPress={() => onOpen(item)}
-                />
+                <FadeIn index={index}>
+                  <ExpenseRow
+                    title={item.title}
+                    amount={item.amountMinor}
+                    payerName={payerName}
+                    payerIsMe={item.payerMemberId === myMemberId}
+                    payerText={payerLabel(payerName)}
+                    splitText={splitLabel(item.participantMemberIds, members)}
+                    addedAfterSettlement={addedAfterSettlement(item.id, settlement)}
+                    onPress={() => onOpen(item)}
+                  />
+                </FadeIn>
               );
             }}
           />

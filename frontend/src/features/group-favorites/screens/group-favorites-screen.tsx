@@ -7,6 +7,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { errorLook } from '@/api/error-look';
 import { toApiError } from '@/api/errors';
 import { ErrorState, Header, Icon } from '@/components/ui';
+import { FadeIn } from '@/components/ui/fade-in';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { SkeletonList } from '@/components/ui/skeleton';
 import { pickPlace } from '@/features/place/place-picker';
@@ -78,8 +79,9 @@ function ViewToggle({
 }) {
   return (
     <View style={styles.toggle} accessibilityRole="tablist">
-      {(['list', 'map'] as const).map((v) => (
+      {(['list', 'map'] as const).map((v, order) => (
         <PressableScale
+          appear={order}
           key={v}
           style={[styles.toggleItem, view === v && styles.toggleOn]}
           onPress={() => onChange(v)}
@@ -146,14 +148,16 @@ export function GroupFavoritesView(props: GroupFavoritesViewProps) {
         keyExtractor={(i) => i.place.id}
         contentContainerStyle={styles.list}
         ListHeaderComponent={<Text style={[typography.caption, styles.order]}>최근 담은 순</Text>}
-        renderItem={({ item }) => (
-          <PlaceRow
-            item={item}
-            members={members}
-            onPress={props.onOpen}
-            selecting={props.selecting !== null}
-            selected={props.selecting?.has(item.place.id) ?? false}
-          />
+        renderItem={({ item, index }) => (
+          <FadeIn index={index}>
+            <PlaceRow
+              item={item}
+              members={members}
+              onPress={props.onOpen}
+              selecting={props.selecting !== null}
+              selected={props.selecting?.has(item.place.id) ?? false}
+            />
+          </FadeIn>
         )}
         onEndReached={props.onEndReached}
         onEndReachedThreshold={0.5}

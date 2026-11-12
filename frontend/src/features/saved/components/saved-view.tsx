@@ -2,6 +2,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon, type IconName } from '@/components/ui';
+import { FadeIn } from '@/components/ui/fade-in';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -115,13 +116,14 @@ export function SavedView({
           <View style={styles.columns}>
             {[left, right].map((column, c) => (
               <View key={c} style={styles.column}>
-                {column.map(({ item, photoHeight }) => (
-                  <BookmarkCard
-                    key={item.key}
-                    item={item}
-                    photoHeight={photoHeight}
-                    onPress={() => onOpen(item)}
-                  />
+                {column.map(({ item, photoHeight }, i) => (
+                  <FadeIn key={item.key} index={i * 2 + c}>
+                    <BookmarkCard
+                      item={item}
+                      photoHeight={photoHeight}
+                      onPress={() => onOpen(item)}
+                    />
+                  </FadeIn>
                 ))}
               </View>
             ))}

@@ -136,8 +136,10 @@ export function ManualBuilder(props: Props) {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.chips}
           >
-            {left.map((s) => (
+            {left.map((s, order) => (
               <PressableScale
+                appear={order}
+                appearFrom="pop"
                 key={s.place.id}
                 style={styles.chip}
                 onPress={() => props.onPlace(s.place)}

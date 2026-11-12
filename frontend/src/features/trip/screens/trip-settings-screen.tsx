@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FadeIn } from '@/components/ui/fade-in';
 import { Spinner } from '@/components/ui/spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -339,8 +340,10 @@ export function TripSettingsScreen() {
         </View>
 
         <View style={styles.menu}>
-          {actions.map((action) => (
-            <MenuRow key={action.key} action={action} onPress={() => onAction(action)} />
+          {actions.map((action, order) => (
+            <FadeIn key={action.key} index={order}>
+              <MenuRow action={action} onPress={() => onAction(action)} />
+            </FadeIn>
           ))}
         </View>
       </ScrollView>

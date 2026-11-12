@@ -14,6 +14,7 @@ import {
   MascotTraveler,
   pinEnterStartMs,
 } from '@/components/ui';
+import { Pop } from '@/components/ui/pop';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { SkeletonList } from '@/components/ui/skeleton';
 import { findMapRegion, type MapPoint } from '@/lib/korea-map';
@@ -99,9 +100,9 @@ export function HomeView(props: HomeViewProps) {
         >
           <Icon name="bell" size={24} color={colors.text.default} />
           {unreadCount > 0 ? (
-            <View style={styles.badge}>
+            <Pop trigger={unreadCount} style={styles.badge}>
               <Text style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
-            </View>
+            </Pop>
           ) : null}
         </PressableScale>
       </View>

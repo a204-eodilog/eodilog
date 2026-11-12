@@ -112,8 +112,9 @@ export function LoginScreen() {
         ) : null}
 
         <View style={styles.terms}>
-          {['이용약관', '개인정보 처리방침'].map((label) => (
+          {['이용약관', '개인정보 처리방침'].map((label, order) => (
             <PressableScale
+              appear={order}
               key={label}
               accessibilityRole="link"
               onPress={() => toast.show(`${label} 화면은 준비 중이에요`)}

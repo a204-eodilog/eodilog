@@ -93,8 +93,9 @@ export function RecommendSheet({ items, status, initialExpanded = false, onPress
               contentContainerStyle={styles.list}
               showsVerticalScrollIndicator={false}
             >
-              {items.map((item) => (
+              {items.map((item, order) => (
                 <PressableScale
+                  appear={order}
                   key={item.id}
                   onPress={() => onPress(item)}
                   style={styles.row}
@@ -124,8 +125,10 @@ export function RecommendSheet({ items, status, initialExpanded = false, onPress
               style={styles.cardsScroll}
               contentContainerStyle={styles.cards}
             >
-              {items.map((item) => (
+              {items.map((item, order) => (
                 <PressableScale
+                  appear={order}
+                  appearFrom="pop"
                   key={item.id}
                   onPress={() => onPress(item)}
                   style={styles.card}

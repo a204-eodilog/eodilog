@@ -254,8 +254,9 @@ export function PlacePickScreen() {
                 </Text>
               ) : (
                 <ScrollView keyboardShouldPersistTaps="handled" style={styles.resultsScroll}>
-                  {results.map(({ place, meters }) => (
+                  {results.map(({ place, meters }, order) => (
                     <PressableScale
+                      appear={order}
                       key={place.id}
                       onPress={() => choose(place)}
                       style={({ pressed }) => [styles.result, pressed && styles.pressed]}

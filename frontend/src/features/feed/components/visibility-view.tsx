@@ -1,6 +1,7 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { FadeIn } from '@/components/ui/fade-in';
 import { Avatar, Button, ErrorState, Header, Icon } from '@/components/ui';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { SkeletonList } from '@/components/ui/skeleton';
@@ -48,8 +49,10 @@ export function VisibilityView(props: VisibilityViewProps) {
 
             {hidden.length > 0 ? (
               <Section label="숨긴 친구" count={hidden.length} tone="danger">
-                {hidden.map((r) => (
-                  <Row key={r.user.id} row={r} onToggle={props.onToggle} />
+                {hidden.map((r, order) => (
+                  <FadeIn key={r.user.id} index={order}>
+                    <Row row={r} onToggle={props.onToggle} />
+                  </FadeIn>
                 ))}
               </Section>
             ) : null}

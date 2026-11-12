@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AvatarGroup, Icon } from '@/components/ui';
+import { FadeIn } from '@/components/ui/fade-in';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { formatRange } from '@/lib/seoul-date';
 import { colors, layout, radius, spacing, typography } from '@/theme';
@@ -42,13 +43,17 @@ export function TripHero({ trip, headline, companions }: Props) {
 
       <View style={styles.body}>
         {/* 피그마 S17: 여행 이름 14, 큰 제목 30, 날짜 칩 13 */}
-        <Text style={[typography.subBold, styles.tripName]} numberOfLines={1}>
-          {trip.title}
-        </Text>
-        <Text style={[typography.hero, styles.headline]}>{headline}</Text>
-        <View style={styles.dateChip}>
+        <FadeIn from="left">
+          <Text style={[typography.subBold, styles.tripName]} numberOfLines={1}>
+            {trip.title}
+          </Text>
+        </FadeIn>
+        <FadeIn from="mask" index={1}>
+          <Text style={[typography.hero, styles.headline]}>{headline}</Text>
+        </FadeIn>
+        <FadeIn from="pop" index={3} style={styles.dateChip}>
           <Text style={[typography.label, styles.dateText]}>{dateLabel}</Text>
-        </View>
+        </FadeIn>
 
         <View style={styles.people}>
           {/* 4명까지 얼굴, 나머지는 "+n"(정원 20명) */}

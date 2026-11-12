@@ -14,6 +14,7 @@ import {
   Tag,
 } from '@/components/ui';
 import { PressableScale } from '@/components/ui/pressable-scale';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { requestDate, type FriendsAction } from '@/features/friends/friends-rules';
 import type { Follow, FriendsBoard } from '@/features/friends/types';
 import { colors, layout, radius, size, spacing, typography } from '@/theme';
@@ -74,11 +75,7 @@ export function FriendsView({
       <Header title="친구" />
       {controls}
       {loading ? (
-        <Spinner
-          accessibilityLabel="친구 목록 불러오는 중"
-          style={styles.fill}
-          color={colors.brand.primary}
-        />
+        <SkeletonList accessibilityLabel="친구 목록 불러오는 중" style={styles.fill} />
       ) : error ? (
         <ErrorState title="친구 목록을 불러오지 못했어요" onRetry={retry} />
       ) : allEmpty ? (
@@ -174,8 +171,10 @@ export function FriendsView({
             </Card>
           ) : null}
           <View accessibilityRole="tablist" style={styles.tabs}>
-            {(['following', 'followers'] as const).map((key) => (
+            {(['following', 'followers'] as const).map((key, order) => (
               <PressableScale
+                appear={order}
+                appearFrom="pop"
                 key={key}
                 accessibilityRole="tab"
                 accessibilityState={{ selected: tab === key }}

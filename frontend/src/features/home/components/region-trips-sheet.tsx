@@ -3,6 +3,7 @@ import { Image } from 'expo-image';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { BackHandler, StyleSheet, Text, View } from 'react-native';
+import { FadeIn } from '@/components/ui/fade-in';
 import { Spinner } from '@/components/ui/spinner';
 // 시트 안 가로 목록은 제스처 핸들러 스크롤이어야 시트 끌기와 손가락을 나눠 가진다(안드로이드)
 import { ScrollView } from 'react-native-gesture-handler';
@@ -116,13 +117,10 @@ export function RegionTripsSheet({ groups, onClose, onTrip, onRetry }: RegionTri
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
       >
-        {cards.map(({ card, region }) => (
-          <TripCard
-            key={card.feedId}
-            card={card}
-            region={many ? region : null}
-            onPress={() => onTrip(card)}
-          />
+        {cards.map(({ card, region }, order) => (
+          <FadeIn key={card.feedId} index={order}>
+            <TripCard card={card} region={many ? region : null} onPress={() => onTrip(card)} />
+          </FadeIn>
         ))}
         {loading ? <Spinner color={colors.brand.primary} style={styles.loading} /> : null}
         {!loading && failed ? (
