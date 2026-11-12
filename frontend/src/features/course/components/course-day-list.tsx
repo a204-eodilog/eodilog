@@ -70,7 +70,6 @@ export function CourseDayList(props: Props) {
                 accessibilityLabel={`${item.place.name} 빼기`}
               >
                 <Icon name="close" size={14} color={colors.text.icon} />
-                <Text style={[typography.captionMedium, styles.removeText]}>빼기</Text>
               </PressableScale>
             ) : (
               <PressableScale
@@ -116,9 +115,13 @@ function LegRow({
           <Text style={[typography.captionMedium, styles.failText]}>이동 시간을 못 구했어요</Text>
         </PressableScale>
         {onRecalculate ? (
-          <PressableScale onPress={onRecalculate} style={styles.recalc} accessibilityRole="button">
+          <PressableScale
+            accessibilityLabel="다시 계산"
+            onPress={onRecalculate}
+            style={styles.recalc}
+            accessibilityRole="button"
+          >
             <Icon name="refresh" size={14} color={colors.brand.primary} />
-            <Text style={[typography.captionMedium, styles.recalcText]}>다시 계산</Text>
           </PressableScale>
         ) : null}
       </View>

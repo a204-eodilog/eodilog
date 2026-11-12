@@ -82,10 +82,10 @@ export function AddToTripSheet({
             </Text>
             <Button
               label="다시 시도"
+              icon="refresh"
               size="sm"
               variant="secondary"
               onPress={onRetryTrips}
-              leading={<Icon name="refresh" size={16} color={colors.brand.primary} />}
             />
           </View>
         ) : empty ? (
@@ -107,11 +107,11 @@ export function AddToTripSheet({
       <View style={[styles.footer, !ready || empty ? styles.dim : null]}>
         <Button
           label="추가"
+          icon="plus"
           weight="medium"
           disabled={!ready || empty || selectedId === null}
           loading={adding}
           onPress={onAdd}
-          leading={<Icon name="plus" size={20} color={colors.text.inverse} />}
           style={styles.add}
         />
       </View>

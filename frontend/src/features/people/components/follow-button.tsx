@@ -1,4 +1,4 @@
-import { Button, Icon } from '@/components/ui';
+import { Button, type IconName } from '@/components/ui';
 import { colors } from '@/theme';
 
 import type { FollowButtonState } from '../types';
@@ -7,6 +7,13 @@ const LABEL: Record<FollowButtonState, string> = {
   follow: '팔로우',
   requested: '요청됨',
   following: '팔로잉',
+};
+
+/** 상태마다 아이콘. 글자 없이 아이콘만 그린다: 팔로우는 사람 더하기, 요청됨은 시계, 팔로잉은 체크 */
+const ICON: Record<FollowButtonState, IconName> = {
+  follow: 'person-plus',
+  requested: 'clock',
+  following: 'check',
 };
 
 /**
@@ -37,11 +44,7 @@ export function FollowButton({
       loading={loading}
       size={compact ? 'sm' : undefined}
       style={!follow && onCard ? { backgroundColor: colors.surface.white } : undefined}
-      leading={
-        follow && compact ? (
-          <Icon name="person-plus" size={18} color={colors.text.inverse} />
-        ) : undefined
-      }
+      icon={ICON[state]}
     />
   );
 }

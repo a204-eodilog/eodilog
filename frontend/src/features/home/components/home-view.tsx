@@ -126,8 +126,8 @@ export function HomeView(props: HomeViewProps) {
           <Text style={styles.errorDesc}>연결을 확인해 주세요</Text>
           <Button
             label="다시 시도"
+            icon="refresh"
             onPress={props.onRetry}
-            leading={<Icon name="refresh" size={20} color={colors.text.inverse} />}
             style={styles.errorButton}
           />
         </View>
@@ -279,9 +279,13 @@ function MapBody(props: HomeViewProps) {
         inset={{ top: TREND_SPACE, bottom: bottomSpace }}
         creditBottom={bottomSpace + spacing[8]}
       />
-      <PressableScale onPress={props.onTrend} style={styles.trend} accessibilityRole="button">
+      <PressableScale
+        accessibilityLabel="요즘 뜨는 여행지"
+        onPress={props.onTrend}
+        style={styles.trend}
+        accessibilityRole="button"
+      >
         <Icon name="trending" size={20} color={colors.brand.primary} />
-        <Text style={styles.trendText}>요즘 뜨는 여행지</Text>
         <Icon name="chevron-right" size={16} color={colors.text.icon} />
       </PressableScale>
       {caption ? (
@@ -333,31 +337,18 @@ function EmptyCard(props: HomeViewProps) {
       <View style={styles.cardActions}>
         {noFriends ? (
           <>
-            <Button
-              label="트렌드"
-              variant="text"
-              onPress={props.onTrend}
-              leading={<Icon name="trending" size={20} color={colors.brand.primary} />}
-            />
-            <Button
-              label="친구 찾기"
-              onPress={props.onFindFriends}
-              leading={<Icon name="person-plus" size={20} color={colors.text.inverse} />}
-            />
+            <Button label="트렌드" icon="trending" variant="text" onPress={props.onTrend} />
+            <Button label="친구 찾기" icon="person-plus" onPress={props.onFindFriends} />
           </>
         ) : (
           <>
             <Button
               label="친구 찾기"
+              icon="person-plus"
               variant="text"
               onPress={props.onFindFriends}
-              leading={<Icon name="person-plus" size={20} color={colors.brand.primary} />}
             />
-            <Button
-              label="요즘 뜨는 여행지"
-              onPress={props.onTrend}
-              leading={<Icon name="trending" size={20} color={colors.text.inverse} />}
-            />
+            <Button label="요즘 뜨는 여행지" icon="trending" onPress={props.onTrend} />
           </>
         )}
       </View>

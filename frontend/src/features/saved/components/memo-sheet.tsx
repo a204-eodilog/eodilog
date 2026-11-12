@@ -30,9 +30,10 @@ export function MemoSheet({ visible, memo, saving = false, onClose, onSave }: Me
       title="내 메모"
       footer={
         <View style={styles.footer}>
-          <Button label="취소" variant="text" disabled={saving} onPress={onClose} />
+          <Button label="취소" icon="close" variant="text" disabled={saving} onPress={onClose} />
           <Button
             label="저장"
+            icon="check"
             weight="medium"
             loading={saving}
             disabled={text === memo}

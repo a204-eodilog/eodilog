@@ -195,14 +195,16 @@ function InviteContent({ token, first }: { token: string; first: boolean }) {
         ]}
       >
         <PressableScale
+          accessibilityLabel="취소"
           accessibilityRole="button"
           onPress={() => leave('/home')}
           style={({ pressed }) => [styles.cancel, pressed && styles.pressed]}
         >
-          <Text style={[typography.bodyMedium, styles.cancelLabel]}>취소</Text>
+          <Icon name="close" size={20} color={colors.text.icon} />
         </PressableScale>
         <Button
           label="참여하기"
+          icon="check"
           size="xl"
           loading={accept.isPending}
           onPress={() => accept.mutate()}
@@ -237,10 +239,17 @@ function Notice({
         <Text style={[typography.title1, styles.noticeTitle]}>{title}</Text>
         <Text style={[typography.body, styles.noticeDescription]}>{description}</Text>
         {onRetry ? (
-          <Button label="다시 시도" size="lg" onPress={onRetry} style={styles.home} />
+          <Button
+            label="다시 시도"
+            icon="refresh"
+            size="lg"
+            onPress={onRetry}
+            style={styles.home}
+          />
         ) : null}
         <Button
           label="홈으로"
+          icon="home"
           variant="neutral"
           size="lg"
           onPress={onHome}

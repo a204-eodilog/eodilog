@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Stagger } from '@/components/ui/stagger';
 import { Button, Card, Chip, Header, Icon, Tag, TextField, toast } from '@/components/ui';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { inviteHref } from '@/features/invitation/invite-rules';
@@ -149,93 +150,97 @@ export function ProfileScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          {save.isError ? (
-            <Card variant="filled" rounded="xl" style={styles.failCard}>
-              <View style={styles.failRow}>
-                <View style={styles.failIcon}>
-                  <Icon name="alert" size={22} color={colors.status.danger} />
+          <Stagger itemStyle={styles.staggerItem}>
+            {save.isError ? (
+              <Card variant="filled" rounded="xl" style={styles.failCard}>
+                <View style={styles.failRow}>
+                  <View style={styles.failIcon}>
+                    <Icon name="alert" size={22} color={colors.status.danger} />
+                  </View>
+                  <View style={styles.flex}>
+                    <Text style={[typography.bodyBold, styles.text]}>
+                      프로필을 저장하지 못했어요
+                    </Text>
+                    <Text style={[typography.caption, styles.sub]}>
+                      저장하지 못했어요. 다시 눌러 주세요
+                    </Text>
+                  </View>
                 </View>
-                <View style={styles.flex}>
-                  <Text style={[typography.bodyBold, styles.text]}>프로필을 저장하지 못했어요</Text>
-                  <Text style={[typography.caption, styles.sub]}>
-                    저장하지 못했어요. 다시 눌러 주세요
-                  </Text>
-                </View>
+              </Card>
+            ) : null}
+
+            <View style={styles.photoBlock}>
+              <View>
+                {photoSource ? (
+                  <Image
+                    source={photoSource}
+                    style={styles.photo}
+                    contentFit="cover"
+                    accessibilityLabel="프로필 사진"
+                  />
+                ) : (
+                  <View style={styles.photo}>
+                    <Icon name="person" size={40} color={colors.text.sub} />
+                  </View>
+                )}
+                <PressableScale
+                  accessibilityRole="button"
+                  accessibilityLabel={photoSource ? '프로필 사진 바꾸기' : '프로필 사진 추가'}
+                  onPress={pickPhoto}
+                  disabled={save.isPending}
+                  style={styles.photoButton}
+                >
+                  <Icon name="camera" size={20} color={colors.text.inverse} />
+                </PressableScale>
               </View>
-            </Card>
-          ) : null}
+              <View style={styles.labelRow}>
+                <Text style={[typography.caption, styles.sub]}>프로필 사진</Text>
+                <Tag label="선택" />
+              </View>
+            </View>
 
-          <View style={styles.photoBlock}>
-            <View>
-              {photoSource ? (
-                <Image
-                  source={photoSource}
-                  style={styles.photo}
-                  contentFit="cover"
-                  accessibilityLabel="프로필 사진"
-                />
-              ) : (
-                <View style={styles.photo}>
-                  <Icon name="person" size={40} color={colors.text.sub} />
-                </View>
-              )}
-              <PressableScale
-                accessibilityRole="button"
-                accessibilityLabel={photoSource ? '프로필 사진 바꾸기' : '프로필 사진 추가'}
-                onPress={pickPhoto}
-                disabled={save.isPending}
-                style={styles.photoButton}
-              >
-                <Icon name="camera" size={20} color={colors.text.inverse} />
-              </PressableScale>
-            </View>
-            <View style={styles.labelRow}>
-              <Text style={[typography.caption, styles.sub]}>프로필 사진</Text>
-              <Tag label="선택" />
-            </View>
-          </View>
+            <TextField
+              label="닉네임"
+              required
+              variant="filled"
+              value={nickname}
+              onChangeText={(v) => {
+                setTouched(true);
+                setEdited(v);
+              }}
+              maxLength={NICKNAME_MAX_LENGTH}
+              placeholder="친구에게 보일 이름"
+              helper="친구에게 보이는 이름이에요"
+              error={missing ? '닉네임을 입력해 주세요' : undefined}
+              autoFocus={!me.data?.nickname}
+              returnKeyType="done"
+              onSubmitEditing={onNext}
+            />
 
-          <TextField
-            label="닉네임"
-            required
-            variant="filled"
-            value={nickname}
-            onChangeText={(v) => {
-              setTouched(true);
-              setEdited(v);
-            }}
-            maxLength={NICKNAME_MAX_LENGTH}
-            placeholder="친구에게 보일 이름"
-            helper="친구에게 보이는 이름이에요"
-            error={missing ? '닉네임을 입력해 주세요' : undefined}
-            autoFocus={!me.data?.nickname}
-            returnKeyType="done"
-            onSubmitEditing={onNext}
-          />
-
-          <View style={styles.section}>
-            <View style={styles.labelRow}>
-              <Text style={[typography.captionMedium, styles.sub]}>연령</Text>
-              <Tag label="선택" />
+            <View style={styles.section}>
+              <View style={styles.labelRow}>
+                <Text style={[typography.captionMedium, styles.sub]}>연령</Text>
+                <Tag label="선택" />
+              </View>
+              <View style={styles.chips}>
+                {AGE_BANDS.map((band) => (
+                  <Chip
+                    key={band.code}
+                    label={band.label}
+                    size="md"
+                    selected={age === band.code}
+                    onPress={() => setAgeEdited(age === band.code ? null : band.code)}
+                  />
+                ))}
+              </View>
+              <View style={styles.noteRow}>
+                <Icon name="lock" size={16} color={colors.text.icon} />
+                <Text style={[typography.caption, styles.sub]}>
+                  연령은 공개 프로필에 보이지 않아요
+                </Text>
+              </View>
             </View>
-            <View style={styles.chips}>
-              {AGE_BANDS.map((band) => (
-                <Chip
-                  key={band.code}
-                  label={band.label}
-                  size="md"
-                  selected={age === band.code}
-                  onPress={() => setAgeEdited(age === band.code ? null : band.code)}
-                />
-              ))}
-            </View>
-            <View style={styles.noteRow}>
-              <Icon name="lock" size={16} color={colors.text.icon} />
-              <Text style={[typography.caption, styles.sub]}>
-                연령은 공개 프로필에 보이지 않아요
-              </Text>
-            </View>
-          </View>
+          </Stagger>
         </ScrollView>
 
         <View style={styles.bottom}>
@@ -246,6 +251,7 @@ export function ProfileScreen() {
           )}
           <Button
             label={save.isError ? '다시 시도' : editing ? '저장' : '다음'}
+            icon={save.isError ? 'refresh' : editing ? 'check' : 'arrow-right'}
             size="xl"
             block
             loading={save.isPending}
@@ -261,6 +267,8 @@ export function ProfileScreen() {
 const PHOTO_SIZE = 96;
 
 const styles = StyleSheet.create({
+  // 차례로 나타나는 구역을 감싼 칸. 한 구역이 여러 줄이면 그 사이 간격을 스크롤 내용과 같게 둔다
+  staggerItem: { gap: spacing[28] },
   screen: { flex: 1, backgroundColor: colors.surface.white },
   flex: { flex: 1 },
   content: {

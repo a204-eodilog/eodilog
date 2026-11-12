@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Stagger } from '@/components/ui/stagger';
 import { AvatarGroup, Chip, ErrorState, Header, Icon, type IconName } from '@/components/ui';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { SkeletonList } from '@/components/ui/skeleton';
@@ -106,158 +107,162 @@ function Body({ detail, ...props }: FeedDetailViewProps & { detail: FeedDetail }
       scrollEventThrottle={64}
       showsVerticalScrollIndicator={false}
     >
-      <View style={styles.cover}>
-        <Icon name="image" size={32} color={colors.brand.primary} />
-        {cover ? <Image source={cover} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
-      </View>
-
-      <View style={styles.titleBlock}>
-        <View style={styles.titleRow}>
-          <Text style={styles.title} numberOfLines={2}>
-            {detail.title}
-          </Text>
-          <PressableScale
-            onPress={props.onLike}
-            style={({ pressed }) => [styles.like, pressed && styles.pressed]}
-            accessibilityRole="button"
-            accessibilityState={{ selected: detail.likedByMe }}
-            accessibilityLabel={`좋아요 ${detail.likeCount}개${detail.likedByMe ? ', 누름' : ''}`}
-          >
-            <Icon
-              name="heart"
-              size={20}
-              color={detail.likedByMe ? colors.brand.accent : colors.text.default}
-              filled={detail.likedByMe}
-            />
-            <Text style={styles.likeCount}>{detail.likeCount}</Text>
-          </PressableScale>
-        </View>
-        <View style={styles.meta}>
-          {who ? (
-            <View style={styles.metaItem}>
-              <AvatarGroup people={detail.members} max={3} />
-              <Text style={styles.metaText}>{who}</Text>
-            </View>
-          ) : null}
-          {detail.periodLabel ? (
-            <View style={styles.metaItem}>
-              <Icon name="calendar" size={16} color={colors.text.icon} />
-              <Text style={styles.metaText}>{detail.periodLabel}</Text>
-            </View>
-          ) : null}
-          {detail.nightsLabel ? (
-            <View style={styles.metaItem}>
-              <Icon name="moon" size={16} color={colors.text.icon} />
-              <Text style={styles.metaText}>{detail.nightsLabel}</Text>
-            </View>
+      <Stagger itemStyle={styles.staggerItem}>
+        <View style={styles.cover}>
+          <Icon name="image" size={32} color={colors.brand.primary} />
+          {cover ? (
+            <Image source={cover} style={StyleSheet.absoluteFill} contentFit="cover" />
           ) : null}
         </View>
-      </View>
 
-      {shown.length > 1 ? (
-        <View style={styles.tabs} accessibilityRole="tablist">
-          {shown.map((s) => (
-            <Chip
-              key={s.key}
-              label={s.label}
-              selected={current === s.key}
-              onPress={() => jump(s.key)}
-            />
-          ))}
-        </View>
-      ) : null}
-
-      {detail.photos.length > 0 ? (
-        <View style={styles.section} onLayout={mark('photos')}>
-          <Text style={styles.sectionTitle}>사진</Text>
-          <View style={styles.photos}>
-            {detail.photos.map((p, i) => {
-              const src = assetSource(p.url);
-              const last = i === detail.photos.length - 1 && detail.morePhotos > 0;
-              return (
-                <PressableScale
-                  key={p.id}
-                  onPress={props.onPhotos}
-                  style={styles.photo}
-                  accessibilityRole="button"
-                  accessibilityLabel={last ? `사진 ${detail.morePhotos}장 더 보기` : '사진 보기'}
-                >
-                  {last ? null : <Icon name="image" size={22} color={colors.brand.primary} />}
-                  {src ? (
-                    <Image source={src} style={StyleSheet.absoluteFill} contentFit="cover" />
-                  ) : null}
-                  {last ? (
-                    <View style={styles.more}>
-                      <Text style={styles.moreText}>+{detail.morePhotos}</Text>
-                    </View>
-                  ) : null}
-                </PressableScale>
-              );
-            })}
+        <View style={styles.titleBlock}>
+          <View style={styles.titleRow}>
+            <Text style={styles.title} numberOfLines={2}>
+              {detail.title}
+            </Text>
+            <PressableScale
+              onPress={props.onLike}
+              style={({ pressed }) => [styles.like, pressed && styles.pressed]}
+              accessibilityRole="button"
+              accessibilityState={{ selected: detail.likedByMe }}
+              accessibilityLabel={`좋아요 ${detail.likeCount}개${detail.likedByMe ? ', 누름' : ''}`}
+            >
+              <Icon
+                name="heart"
+                size={20}
+                color={detail.likedByMe ? colors.brand.accent : colors.text.default}
+                filled={detail.likedByMe}
+              />
+              <Text style={styles.likeCount}>{detail.likeCount}</Text>
+            </PressableScale>
+          </View>
+          <View style={styles.meta}>
+            {who ? (
+              <View style={styles.metaItem}>
+                <AvatarGroup people={detail.members} max={3} />
+                <Text style={styles.metaText}>{who}</Text>
+              </View>
+            ) : null}
+            {detail.periodLabel ? (
+              <View style={styles.metaItem}>
+                <Icon name="calendar" size={16} color={colors.text.icon} />
+                <Text style={styles.metaText}>{detail.periodLabel}</Text>
+              </View>
+            ) : null}
+            {detail.nightsLabel ? (
+              <View style={styles.metaItem}>
+                <Icon name="moon" size={16} color={colors.text.icon} />
+                <Text style={styles.metaText}>{detail.nightsLabel}</Text>
+              </View>
+            ) : null}
           </View>
         </View>
-      ) : null}
 
-      {detail.days.length > 0 ? (
-        <>
-          <View style={styles.section} onLayout={mark('route')}>
-            <Text style={styles.sectionTitle}>경로</Text>
-            <RouteMap days={detail.days} />
+        {shown.length > 1 ? (
+          <View style={styles.tabs} accessibilityRole="tablist">
+            {shown.map((s) => (
+              <Chip
+                key={s.key}
+                label={s.label}
+                selected={current === s.key}
+                onPress={() => jump(s.key)}
+              />
+            ))}
           </View>
+        ) : null}
 
-          <View style={styles.section} onLayout={mark('places')}>
-            <Text style={styles.sectionTitle}>장소와 이동</Text>
-            <View style={styles.days}>
-              {detail.days.map((d) => (
-                <View key={d.day} style={styles.day}>
-                  <View style={styles.dayHead}>
-                    <View style={styles.dayBadge}>
-                      <Text style={styles.dayBadgeText}>{d.day}일차</Text>
+        {detail.photos.length > 0 ? (
+          <View style={styles.section} onLayout={mark('photos')}>
+            <Text style={styles.sectionTitle}>사진</Text>
+            <View style={styles.photos}>
+              {detail.photos.map((p, i) => {
+                const src = assetSource(p.url);
+                const last = i === detail.photos.length - 1 && detail.morePhotos > 0;
+                return (
+                  <PressableScale
+                    key={p.id}
+                    onPress={props.onPhotos}
+                    style={styles.photo}
+                    accessibilityRole="button"
+                    accessibilityLabel={last ? `사진 ${detail.morePhotos}장 더 보기` : '사진 보기'}
+                  >
+                    {last ? null : <Icon name="image" size={22} color={colors.brand.primary} />}
+                    {src ? (
+                      <Image source={src} style={StyleSheet.absoluteFill} contentFit="cover" />
+                    ) : null}
+                    {last ? (
+                      <View style={styles.more}>
+                        <Text style={styles.moreText}>+{detail.morePhotos}</Text>
+                      </View>
+                    ) : null}
+                  </PressableScale>
+                );
+              })}
+            </View>
+          </View>
+        ) : null}
+
+        {detail.days.length > 0 ? (
+          <>
+            <View style={styles.section} onLayout={mark('route')}>
+              <Text style={styles.sectionTitle}>경로</Text>
+              <RouteMap days={detail.days} />
+            </View>
+
+            <View style={styles.section} onLayout={mark('places')}>
+              <Text style={styles.sectionTitle}>장소와 이동</Text>
+              <View style={styles.days}>
+                {detail.days.map((d) => (
+                  <View key={d.day} style={styles.day}>
+                    <View style={styles.dayHead}>
+                      <View style={styles.dayBadge}>
+                        <Text style={styles.dayBadgeText}>{d.day}일차</Text>
+                      </View>
+                      {d.dateLabel ? <Text style={styles.dayDate}>{d.dateLabel}</Text> : null}
                     </View>
-                    {d.dateLabel ? <Text style={styles.dayDate}>{d.dateLabel}</Text> : null}
-                  </View>
-                  {d.stops.map((stop) => (
-                    <View key={stop.itemId}>
-                      <StopRow
-                        stop={stop}
-                        onPress={() => props.onPlace(stop)}
-                        onSave={() => props.onSavePlace(stop)}
-                      />
-                      {stop.next ? (
-                        <View style={styles.leg}>
-                          <View style={styles.legChip}>
-                            <Icon
-                              name={MODE_ICON[stop.next.mode]}
-                              size={14}
-                              color={colors.text.icon}
-                            />
-                            <Text style={styles.legText}>
-                              {minutesLabel(stop.next.minutes) ?? '이동'}
-                            </Text>
+                    {d.stops.map((stop) => (
+                      <View key={stop.itemId}>
+                        <StopRow
+                          stop={stop}
+                          onPress={() => props.onPlace(stop)}
+                          onSave={() => props.onSavePlace(stop)}
+                        />
+                        {stop.next ? (
+                          <View style={styles.leg}>
+                            <View style={styles.legChip}>
+                              <Icon
+                                name={MODE_ICON[stop.next.mode]}
+                                size={14}
+                                color={colors.text.icon}
+                              />
+                              <Text style={styles.legText}>
+                                {minutesLabel(stop.next.minutes) ?? '이동'}
+                              </Text>
+                            </View>
                           </View>
-                        </View>
-                      ) : null}
-                    </View>
-                  ))}
-                </View>
-              ))}
+                        ) : null}
+                      </View>
+                    ))}
+                  </View>
+                ))}
+              </View>
             </View>
-          </View>
-        </>
-      ) : null}
+          </>
+        ) : null}
 
-      {detail.expenseTotal !== null ? (
-        <View style={styles.section} onLayout={mark('expense')}>
-          <Text style={styles.sectionTitle}>경비</Text>
-          <View style={styles.expense}>
-            <View style={styles.metaItem}>
-              <Icon name="card" size={20} color={colors.text.icon} />
-              <Text style={styles.expenseLabel}>합계</Text>
+        {detail.expenseTotal !== null ? (
+          <View style={styles.section} onLayout={mark('expense')}>
+            <Text style={styles.sectionTitle}>경비</Text>
+            <View style={styles.expense}>
+              <View style={styles.metaItem}>
+                <Icon name="card" size={20} color={colors.text.icon} />
+                <Text style={styles.expenseLabel}>합계</Text>
+              </View>
+              <Text style={styles.expenseTotal}>{wonShort(detail.expenseTotal)}</Text>
             </View>
-            <Text style={styles.expenseTotal}>{wonShort(detail.expenseTotal)}</Text>
           </View>
-        </View>
-      ) : null}
+        ) : null}
+      </Stagger>
     </ScrollView>
   );
 }
@@ -326,6 +331,8 @@ function StopRow({
 const PHOTO = 110;
 
 const styles = StyleSheet.create({
+  // 차례로 나타나는 구역을 감싼 칸. 한 구역이 여러 줄이면 그 사이 간격을 스크롤 내용과 같게 둔다
+  staggerItem: { gap: spacing[32] },
   screen: { flex: 1, backgroundColor: colors.surface.white },
   flex: { flex: 1 },
   pressed: { opacity: 0.7 },
@@ -365,10 +372,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
-    columnGap: spacing[16],
+    // 보조 글자가 13으로 커진 뒤 폭 360 기기에서 기간이 다음 줄로 넘어가 사이를 좁혔다(16 → 10, 6 → 4)
+    columnGap: spacing[10],
     rowGap: spacing[6],
   },
-  metaItem: { flexDirection: 'row', alignItems: 'center', gap: spacing[6] },
+  metaItem: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
   metaText: { ...typography.caption, color: colors.text.sub },
   tabs: { flexDirection: 'row', gap: spacing[10], marginTop: -spacing[8] },
   // 11/09 직접 확인에서 빽빽하다고 해 섹션·일차·장소 사이를 조금씩 넓혔다

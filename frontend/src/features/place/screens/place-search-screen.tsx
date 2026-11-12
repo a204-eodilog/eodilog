@@ -131,13 +131,7 @@ export function PlaceSearchScreen() {
           icon="clock"
           title="검색이 오래 걸려 멈췄어요"
           description="검색이 오래 걸려요"
-          primary={
-            <Button
-              label="다시 검색"
-              leading={<Icon name="refresh" size={20} color={colors.text.inverse} />}
-              onPress={() => search.refetch()}
-            />
-          }
+          primary={<Button label="다시 검색" icon="refresh" onPress={() => search.refetch()} />}
           onMap={openMap}
           mapAsText
         />
@@ -152,13 +146,7 @@ export function PlaceSearchScreen() {
           icon="search"
           title="검색 결과가 없어요"
           description="지도에서 직접 골라 주세요"
-          primary={
-            <Button
-              label="지도에서 고르기"
-              leading={<Icon name="map" size={20} color={colors.text.inverse} />}
-              onPress={openMap}
-            />
-          }
+          primary={<Button label="지도에서 고르기" icon="map" onPress={openMap} />}
         />
       ) : (
         <FlatList
@@ -169,6 +157,7 @@ export function PlaceSearchScreen() {
           ListHeaderComponent={
             <View style={styles.listHeader}>
               <PressableScale
+                accessibilityLabel="지도에서 직접 고르기"
                 accessibilityRole="button"
                 onPress={openMap}
                 style={({ pressed }) => [styles.mapCard, pressed && styles.pressed]}
@@ -176,7 +165,6 @@ export function PlaceSearchScreen() {
                 <View style={styles.mapCardIcon}>
                   <Icon name="map" size={20} color={colors.brand.primaryDark} />
                 </View>
-                <Text style={[typography.bodyBold, styles.mapCardText]}>지도에서 직접 고르기</Text>
                 <Icon name="chevron-right" size={20} color={colors.brand.primaryDark} />
               </PressableScale>
               {query && search.isFetching && !search.data ? (
@@ -247,12 +235,12 @@ function Notice({
         {primary}
         {mapAsText && onMap ? (
           <PressableScale
+            accessibilityLabel="지도에서 고르기"
             accessibilityRole="button"
             onPress={onMap}
             style={({ pressed }) => [styles.textLink, pressed && styles.pressed]}
           >
             <Icon name="map" size={18} color={colors.text.icon} />
-            <Text style={[typography.bodyMedium, styles.address]}>지도에서 고르기</Text>
           </PressableScale>
         ) : null}
       </View>

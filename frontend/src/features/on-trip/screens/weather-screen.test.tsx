@@ -193,7 +193,7 @@ describe('S26 날씨 대안', () => {
     expect(screen.getByText('1일차 오전 일정')).toBeTruthy();
     expect(screen.getAllByText('해운대 실내 수족관').length).toBeGreaterThan(1);
     expect(screen.getByText('적용 전까지 지금 코스는 그대로예요')).toBeTruthy();
-    await fireEvent.press(screen.getByText('닫기'));
+    await fireEvent.press(screen.getByLabelText('닫기'));
     expect(screen.queryByText('변경안을 만들었어요')).toBeNull();
   });
 
@@ -235,7 +235,7 @@ describe('S26 날씨 대안', () => {
       await screen.findByLabelText('날씨를 새로 불러오지 못했어요. 마지막 조회 11.14(토) 09:40'),
     ).toBeTruthy();
     expect(screen.getByText('해운대 실내 수족관')).toBeTruthy();
-    expect(screen.getByText('다시 시도')).toBeTruthy();
+    expect(screen.getByLabelText('다시 시도')).toBeTruthy();
   });
 
   it('대안을 만들지 못하면 다시 시도로 다시 만든다', async () => {

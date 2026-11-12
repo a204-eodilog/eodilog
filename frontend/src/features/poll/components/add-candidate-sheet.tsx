@@ -126,6 +126,7 @@ export function AddCandidateSheet({
       </View>
       <Button
         label="후보에 넣기"
+        icon="plus"
         block
         size="lg"
         weight="medium"

@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Stagger } from '@/components/ui/stagger';
 import { FadeIn } from '@/components/ui/fade-in';
 import { Spinner } from '@/components/ui/spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -267,85 +268,87 @@ export function TripSettingsScreen() {
         contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + spacing[24] }]}
         keyboardShouldPersistTaps="handled"
       >
-        {update.failure === 'error' ? (
-          <View style={styles.failure} accessibilityLiveRegion="polite">
-            <View style={styles.failureIcon}>
-              <Icon name="alert" size={20} color={colors.status.danger} />
+        <Stagger itemStyle={styles.staggerItem}>
+          {update.failure === 'error' ? (
+            <View style={styles.failure} accessibilityLiveRegion="polite">
+              <View style={styles.failureIcon}>
+                <Icon name="alert" size={20} color={colors.status.danger} />
+              </View>
+              <View style={styles.failureTexts}>
+                <Text style={[typography.bodyBold, styles.failureTitle]}>
+                  여행 정보를 저장하지 못했어요
+                </Text>
+                <Text style={[typography.caption, styles.failureDescription]}>
+                  저장하지 못했어요. 다시 눌러 주세요
+                </Text>
+              </View>
             </View>
-            <View style={styles.failureTexts}>
-              <Text style={[typography.bodyBold, styles.failureTitle]}>
-                여행 정보를 저장하지 못했어요
-              </Text>
-              <Text style={[typography.caption, styles.failureDescription]}>
-                저장하지 못했어요. 다시 눌러 주세요
-              </Text>
+          ) : null}
+
+          <TextField
+            label="여행 이름"
+            value={draft.title}
+            onChangeText={(text) => {
+              draft.setTitle(text);
+              if (titleError) setTitleError(null);
+              if (update.titleError) update.clearTitleError();
+            }}
+            maxLength={TITLE_MAX}
+            // 피그마 S19에는 글자 수가 없다. 200자 제한은 그대로 막는다
+            hideCount
+            error={shownTitleError}
+            returnKeyType="done"
+            variant="filled"
+            accessibilityLabel="여행 이름"
+          />
+
+          <View style={styles.rows}>
+            <FieldRow
+              icon="calendar"
+              label="기간"
+              value={draft.range ? formatRange(draft.range.start, draft.range.end) : '기간 미정'}
+              onPress={() => setRangeOpen(true)}
+            />
+            <FieldRow
+              icon="map-pin"
+              label="여행지"
+              value={
+                draft.regions.length > 0
+                  ? draft.regions.map((r) => shortRegionName(r.name)).join(', ')
+                  : '미정'
+              }
+              onPress={() => router.push(`/trips/${tripId}/settings-region`)}
+            />
+          </View>
+
+          <View style={styles.section}>
+            <View style={styles.sectionHead}>
+              <Text style={[typography.title3, styles.sectionTitle]}>구성원</Text>
+              <Text style={[typography.caption, styles.sub]}>{trip.members.length}명</Text>
+            </View>
+            <View style={styles.faces}>
+              {[...trip.members]
+                .sort((a, b) => a.joinOrder - b.joinOrder)
+                .map((m) => (
+                  <Avatar
+                    key={m.id}
+                    name={m.user.nickname}
+                    imageUrl={m.user.profileImageUrl}
+                    size="lg"
+                    me={m.user.id === me?.id}
+                  />
+                ))}
             </View>
           </View>
-        ) : null}
 
-        <TextField
-          label="여행 이름"
-          value={draft.title}
-          onChangeText={(text) => {
-            draft.setTitle(text);
-            if (titleError) setTitleError(null);
-            if (update.titleError) update.clearTitleError();
-          }}
-          maxLength={TITLE_MAX}
-          // 피그마 S19에는 글자 수가 없다. 200자 제한은 그대로 막는다
-          hideCount
-          error={shownTitleError}
-          returnKeyType="done"
-          variant="filled"
-          accessibilityLabel="여행 이름"
-        />
-
-        <View style={styles.rows}>
-          <FieldRow
-            icon="calendar"
-            label="기간"
-            value={draft.range ? formatRange(draft.range.start, draft.range.end) : '기간 미정'}
-            onPress={() => setRangeOpen(true)}
-          />
-          <FieldRow
-            icon="map-pin"
-            label="여행지"
-            value={
-              draft.regions.length > 0
-                ? draft.regions.map((r) => shortRegionName(r.name)).join(', ')
-                : '미정'
-            }
-            onPress={() => router.push(`/trips/${tripId}/settings-region`)}
-          />
-        </View>
-
-        <View style={styles.section}>
-          <View style={styles.sectionHead}>
-            <Text style={[typography.title3, styles.sectionTitle]}>구성원</Text>
-            <Text style={[typography.caption, styles.sub]}>{trip.members.length}명</Text>
+          <View style={styles.menu}>
+            {actions.map((action, order) => (
+              <FadeIn key={action.key} index={order}>
+                <MenuRow action={action} onPress={() => onAction(action)} />
+              </FadeIn>
+            ))}
           </View>
-          <View style={styles.faces}>
-            {[...trip.members]
-              .sort((a, b) => a.joinOrder - b.joinOrder)
-              .map((m) => (
-                <Avatar
-                  key={m.id}
-                  name={m.user.nickname}
-                  imageUrl={m.user.profileImageUrl}
-                  size="lg"
-                  me={m.user.id === me?.id}
-                />
-              ))}
-          </View>
-        </View>
-
-        <View style={styles.menu}>
-          {actions.map((action, order) => (
-            <FadeIn key={action.key} index={order}>
-              <MenuRow action={action} onPress={() => onAction(action)} />
-            </FadeIn>
-          ))}
-        </View>
+        </Stagger>
       </ScrollView>
 
       <DateRangeSheet
@@ -468,6 +471,8 @@ function MenuRow({ action, onPress }: { action: SettingsAction; onPress: () => v
 }
 
 const styles = StyleSheet.create({
+  // 차례로 나타나는 구역을 감싼 칸. 한 구역이 여러 줄이면 그 사이 간격을 스크롤 내용과 같게 둔다
+  staggerItem: { gap: spacing[28] },
   screen: { flex: 1, backgroundColor: colors.surface.white },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   // 피그마 S19: 위 16, 묶음 사이 28, 줄 사이 12

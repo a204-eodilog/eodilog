@@ -61,7 +61,6 @@ export function RecommendCard({ title, location, reason, reasonIcon, action }: P
             accessibilityLabel={`${title} 투표 후보로`}
           >
             <Icon name="check" size={16} color={colors.text.default} />
-            <Text style={[typography.subMedium, styles.voteText]}>투표 후보로</Text>
           </PressableScale>
         ) : action.saved ? (
           <View
@@ -89,7 +88,6 @@ export function RecommendCard({ title, location, reason, reasonIcon, action }: P
             ) : (
               <Icon name="people" size={16} color={colors.text.inverse} />
             )}
-            <Text style={[typography.subMedium, styles.saveText]}>담기</Text>
           </PressableScale>
         )}
       </View>

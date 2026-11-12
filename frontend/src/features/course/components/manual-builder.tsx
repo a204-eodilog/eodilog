@@ -125,9 +125,13 @@ export function ManualBuilder(props: Props) {
         {props.saved.length === 0 ? (
           <View style={styles.emptyTray}>
             <Text style={[typography.caption, styles.dropText]}>그룹 즐겨찾기가 비어 있어요</Text>
-            <PressableScale style={styles.find} onPress={props.onFind} accessibilityRole="button">
+            <PressableScale
+              accessibilityLabel="장소 찾기"
+              style={styles.find}
+              onPress={props.onFind}
+              accessibilityRole="button"
+            >
               <Icon name="search" size={16} color={colors.brand.primary} />
-              <Text style={[typography.captionMedium, styles.findText]}>장소 찾기</Text>
             </PressableScale>
           </View>
         ) : (
@@ -158,6 +162,7 @@ export function ManualBuilder(props: Props) {
         )}
         <View style={styles.buildRow}>
           <PressableScale
+            accessibilityLabel="코스 만들기"
             style={[styles.build, itemCount(draft) === 0 && styles.buildOff]}
             onPress={props.onBuild}
             disabled={itemCount(draft) === 0}
@@ -165,7 +170,6 @@ export function ManualBuilder(props: Props) {
             accessibilityState={{ disabled: itemCount(draft) === 0 }}
           >
             <Icon name="route" size={18} color={colors.text.inverse} />
-            <Text style={[typography.bodyMedium, styles.buildText]}>코스 만들기</Text>
           </PressableScale>
         </View>
       </View>

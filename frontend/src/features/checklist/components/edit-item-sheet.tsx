@@ -69,6 +69,7 @@ export function EditItemSheet({ item, onClose, onSave, onDelete }: Props) {
         <View style={styles.actions}>
           <Button
             label="저장"
+            icon="check"
             size="xl"
             block
             onPress={() => void save()}

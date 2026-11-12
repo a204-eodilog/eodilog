@@ -132,6 +132,7 @@ export function NewTripScreen() {
         <View style={[styles.footer, { paddingBottom: insets.bottom + spacing[16] }]}>
           <Button
             label={problem?.kind === 'failed' ? '다시 시도' : '여행 만들기'}
+            icon={problem?.kind === 'failed' ? 'refresh' : 'plus'}
             size="xl"
             block
             loading={isPending}

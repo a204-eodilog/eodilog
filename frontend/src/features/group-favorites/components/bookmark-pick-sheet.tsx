@@ -95,6 +95,8 @@ export function BookmarkPickSheet({
       )}
       <Button
         label={picked.size > 0 ? `${picked.size}곳 담기` : '장소를 골라 주세요'}
+        icon="bookmark"
+        count={picked.size > 0 ? picked.size : undefined}
         size="xl"
         block
         disabled={picked.size === 0}

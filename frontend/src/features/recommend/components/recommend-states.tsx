@@ -48,12 +48,12 @@ export function InsufficientView(props: {
       </View>
       <PrimaryPill icon="bookmark" label="장소 더 모으기" onPress={props.onMorePlaces} />
       <PressableScale
+        accessibilityLabel="취향 입력"
         style={styles.textButton}
         onPress={props.onPreferences}
         accessibilityRole="button"
       >
         <Icon name="heart" size={16} color={colors.text.icon} />
-        <Text style={[typography.bodyMedium, styles.textButtonText]}>취향 입력</Text>
       </PressableScale>
     </View>
   );

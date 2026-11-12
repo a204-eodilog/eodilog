@@ -58,6 +58,7 @@ export function TrendsView(props: TrendsViewProps) {
               <Text style={styles.emptyDesc}>여행이 모이면 보여요</Text>
               <Button
                 label="돌아가기"
+                icon="back"
                 variant="neutral"
                 onPress={props.onBack}
                 style={styles.emptyButton}

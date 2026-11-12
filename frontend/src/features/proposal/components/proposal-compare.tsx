@@ -2,6 +2,7 @@ import { Fragment, type ReactNode } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Stagger } from '@/components/ui/stagger';
 import { Button, Icon, type IconName } from '@/components/ui';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { MODE_ICON } from '@/features/course/components/course-day-list';
@@ -37,100 +38,107 @@ export function ProposalCompare(props: Props) {
   return (
     <View style={styles.flex}>
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.summary}>
-          <View style={styles.summaryIcon}>
-            <Icon name={props.summaryIcon} size={20} color={colors.status.danger} />
-          </View>
-          <View style={styles.flex}>
-            <Text style={[typography.bodyBold, styles.title]}>{props.summary.title}</Text>
-            {props.summary.sub ? (
-              <Text style={[typography.caption, styles.icon]}>{props.summary.sub}</Text>
-            ) : null}
-          </View>
-        </View>
-        <View style={styles.stats}>
-          {props.stats.map((s) => (
-            <View key={s.label} style={styles.stat}>
-              <Text style={[typography.caption, styles.icon]}>{s.label}</Text>
-              <Text style={[typography.bodyBold, styles.title]}>{s.value}</Text>
-              <Text style={[typography.caption, styles.sub]}>{s.before}</Text>
+        <Stagger itemStyle={styles.staggerItem}>
+          <View style={styles.summary}>
+            <View style={styles.summaryIcon}>
+              <Icon name={props.summaryIcon} size={20} color={colors.status.danger} />
             </View>
-          ))}
-        </View>
-        {props.basis ? (
-          <View style={styles.line}>
-            <Icon name="clock" size={16} color={colors.text.sub} />
-            <Text style={[typography.caption, styles.sub]}>{props.basis}</Text>
+            <View style={styles.flex}>
+              <Text style={[typography.bodyBold, styles.title]}>{props.summary.title}</Text>
+              {props.summary.sub ? (
+                <Text style={[typography.caption, styles.icon]}>{props.summary.sub}</Text>
+              ) : null}
+            </View>
           </View>
-        ) : null}
-        <View style={styles.map}>
-          <CourseMap items={props.items} legs={props.legs} badges={[]} tone="draft" />
-        </View>
-        <View style={styles.list}>
-          {props.rows.map((row, i) => {
-            const leg = i > 0 ? props.legs[i - 1] : null;
-            const label = leg ? (legLabel(leg) ?? MODE_LABEL[leg.mode]) : null;
-            return (
-              <Fragment key={row.item.key}>
-                {leg ? (
-                  <View style={styles.legRow}>
-                    <View style={styles.legChip}>
-                      <Icon name={MODE_ICON[leg.mode]} size={16} color={colors.text.icon} />
-                      <Text style={[typography.captionMedium, styles.icon]}>{label}</Text>
-                    </View>
-                    {row.legChanged ? <Mark text="바뀜" tone="blue" /> : null}
-                  </View>
-                ) : null}
-                <View style={styles.row}>
-                  <View style={styles.number}>
-                    <Text style={[typography.captionBold, styles.numberText]}>{i + 1}</Text>
-                  </View>
-                  <View style={styles.flex}>
-                    <View style={styles.timeRow}>
-                      {row.item.startTime ? (
-                        <Text style={[typography.captionMedium, styles.icon]}>
-                          {row.item.startTime}
-                        </Text>
-                      ) : null}
-                      {row.before ? (
-                        <Text style={[typography.caption, styles.struck]}>{row.before}</Text>
-                      ) : null}
-                    </View>
-                    <Text style={[typography.bodyBold, styles.title]} numberOfLines={1}>
-                      {row.item.place.name}
-                    </Text>
-                  </View>
-                  {row.mark === 'same' ? (
-                    <Text style={[typography.caption, styles.sub]}>{MARK_LABEL.same}</Text>
-                  ) : (
-                    <Mark text={MARK_LABEL[row.mark]} tone="blue" />
-                  )}
-                </View>
-              </Fragment>
-            );
-          })}
-          {props.removed.map((item) => (
-            <View key={item.key} style={[styles.row, styles.removed]}>
-              <View style={styles.removedIcon}>
-                <Icon name="close" size={18} color={colors.text.sub} />
+          <View style={styles.stats}>
+            {props.stats.map((s) => (
+              <View key={s.label} style={styles.stat}>
+                <Text style={[typography.caption, styles.icon]}>{s.label}</Text>
+                <Text style={[typography.bodyBold, styles.title]}>{s.value}</Text>
+                <Text style={[typography.caption, styles.sub]}>{s.before}</Text>
               </View>
-              <Text style={[typography.body, styles.struckName]} numberOfLines={1}>
-                {item.place.name}
-              </Text>
-              <Mark text="빠짐" tone="gray" />
+            ))}
+          </View>
+          {props.basis ? (
+            <View style={styles.line}>
+              <Icon name="clock" size={16} color={colors.text.sub} />
+              <Text style={[typography.caption, styles.sub]}>{props.basis}</Text>
             </View>
-          ))}
-        </View>
+          ) : null}
+          <View style={styles.map}>
+            <CourseMap items={props.items} legs={props.legs} badges={[]} tone="draft" />
+          </View>
+          <View style={styles.list}>
+            {props.rows.map((row, i) => {
+              const leg = i > 0 ? props.legs[i - 1] : null;
+              const label = leg ? (legLabel(leg) ?? MODE_LABEL[leg.mode]) : null;
+              return (
+                <Fragment key={row.item.key}>
+                  {leg ? (
+                    <View style={styles.legRow}>
+                      <View style={styles.legChip}>
+                        <Icon name={MODE_ICON[leg.mode]} size={16} color={colors.text.icon} />
+                        <Text style={[typography.captionMedium, styles.icon]}>{label}</Text>
+                      </View>
+                      {row.legChanged ? <Mark text="바뀜" tone="blue" /> : null}
+                    </View>
+                  ) : null}
+                  <View style={styles.row}>
+                    <View style={styles.number}>
+                      <Text style={[typography.captionBold, styles.numberText]}>{i + 1}</Text>
+                    </View>
+                    <View style={styles.flex}>
+                      <View style={styles.timeRow}>
+                        {row.item.startTime ? (
+                          <Text style={[typography.captionMedium, styles.icon]}>
+                            {row.item.startTime}
+                          </Text>
+                        ) : null}
+                        {row.before ? (
+                          <Text style={[typography.caption, styles.struck]}>{row.before}</Text>
+                        ) : null}
+                      </View>
+                      <Text style={[typography.bodyBold, styles.title]} numberOfLines={1}>
+                        {row.item.place.name}
+                      </Text>
+                    </View>
+                    {row.mark === 'same' ? (
+                      <Text style={[typography.caption, styles.sub]}>{MARK_LABEL.same}</Text>
+                    ) : (
+                      <Mark text={MARK_LABEL[row.mark]} tone="blue" />
+                    )}
+                  </View>
+                </Fragment>
+              );
+            })}
+            {props.removed.map((item) => (
+              <View key={item.key} style={[styles.row, styles.removed]}>
+                <View style={styles.removedIcon}>
+                  <Icon name="close" size={18} color={colors.text.sub} />
+                </View>
+                <Text style={[typography.body, styles.struckName]} numberOfLines={1}>
+                  {item.place.name}
+                </Text>
+                <Mark text="빠짐" tone="gray" />
+              </View>
+            ))}
+          </View>
+        </Stagger>
       </ScrollView>
       {props.notice}
       <View style={[styles.bottom, { paddingBottom: insets.bottom + spacing[12] }]}>
-        <PressableScale style={styles.skip} onPress={props.onSkip} accessibilityRole="button">
-          <Text style={[typography.bodyMedium, styles.icon]}>적용 안 함</Text>
+        <PressableScale
+          accessibilityLabel="적용 안 함"
+          style={styles.skip}
+          onPress={props.onSkip}
+          accessibilityRole="button"
+        >
+          <Icon name="close" size={20} color={colors.text.icon} />
         </PressableScale>
         <Button
           label="적용"
+          icon="check"
           weight="medium"
-          leading={<Icon name="check" size={20} color={colors.text.inverse} />}
           loading={props.applying}
           onPress={props.onApply}
         />
@@ -150,6 +158,8 @@ function Mark({ text, tone }: { text: string; tone: 'blue' | 'gray' }) {
 }
 
 const styles = StyleSheet.create({
+  // 차례로 나타나는 구역을 감싼 칸. 한 구역이 여러 줄이면 그 사이 간격을 스크롤 내용과 같게 둔다
+  staggerItem: { gap: spacing[18] },
   flex: { flex: 1 },
   content: {
     paddingHorizontal: layout.screenPaddingX,

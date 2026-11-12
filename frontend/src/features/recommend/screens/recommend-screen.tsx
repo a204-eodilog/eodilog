@@ -170,12 +170,12 @@ export function RecommendView(props: RecommendViewProps) {
           ) : null}
         </ScrollView>
         <PressableScale
+          accessibilityLabel="재추천"
           style={[styles.redo, { bottom: insets.bottom + spacing[16] }]}
           onPress={props.onRedo}
           accessibilityRole="button"
         >
           <Icon name="refresh" size={18} color={colors.text.default} />
-          <Text style={[typography.bodyMedium, styles.redoText]}>재추천</Text>
         </PressableScale>
       </>
     );

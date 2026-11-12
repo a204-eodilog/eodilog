@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Stagger } from '@/components/ui/stagger';
 import { Spinner } from '@/components/ui/spinner';
 import { Calendar, LocaleConfig, type DateData } from 'react-native-calendars';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -70,29 +71,31 @@ export function ChooseView({
 }: ChooseProps) {
   return (
     <ScrollView contentContainerStyle={styles.content}>
-      <Text style={[typography.bodyBold, styles.heading]}>이 내용으로 짜요</Text>
-      <View style={styles.summary}>
-        <CheckLine text={`여행지 ${regionName}`} />
-        <CheckLine text={`기간 ${period}`} />
-        <CheckLine text={`모은 장소 ${savedCount}곳`} />
-      </View>
-      <Text style={[typography.captionBold, styles.subHeading]}>어떻게 짤까요?</Text>
-      <Option
-        icon="bulb"
-        title="자동 추천"
-        tag="추천"
-        body={autoUnavailable ? '모은 장소가 없어 쓸 수 없어요' : '모은 장소로 동선을 짜요'}
-        onPress={onAuto}
-        busy={autoBusy}
-        disabled={autoBusy || autoUnavailable}
-      />
-      <Option
-        icon="pencil"
-        title="직접 만들기"
-        body="모은 장소를 날짜별로 놓아요"
-        onPress={onManual}
-        disabled={autoBusy}
-      />
+      <Stagger itemStyle={styles.staggerItem}>
+        <Text style={[typography.bodyBold, styles.heading]}>이 내용으로 짜요</Text>
+        <View style={styles.summary}>
+          <CheckLine text={`여행지 ${regionName}`} />
+          <CheckLine text={`기간 ${period}`} />
+          <CheckLine text={`모은 장소 ${savedCount}곳`} />
+        </View>
+        <Text style={[typography.captionBold, styles.subHeading]}>어떻게 짤까요?</Text>
+        <Option
+          icon="bulb"
+          title="자동 추천"
+          tag="추천"
+          body={autoUnavailable ? '모은 장소가 없어 쓸 수 없어요' : '모은 장소로 동선을 짜요'}
+          onPress={onAuto}
+          busy={autoBusy}
+          disabled={autoBusy || autoUnavailable}
+        />
+        <Option
+          icon="pencil"
+          title="직접 만들기"
+          body="모은 장소를 날짜별로 놓아요"
+          onPress={onManual}
+          disabled={autoBusy}
+        />
+      </Stagger>
     </ScrollView>
   );
 }
@@ -150,9 +153,9 @@ export function NoRegionView({ onPickRegion }: { onPickRegion(): void }) {
       </Text>
       <Button
         label="여행지 정하기"
+        icon="check"
         size="lg"
         weight="medium"
-        leading={<Icon name="check" size={20} color={colors.text.inverse} />}
         onPress={onPickRegion}
         style={styles.centerButton}
       />
@@ -208,59 +211,62 @@ export function NoDatesView({ regionName, value, onChange, onNext, saving }: NoD
   return (
     <>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={[typography.caption, styles.muted]}>기간을 넣으면 날짜별로 나눠 짜요</Text>
-        <View style={styles.steps}>
-          <CheckLine text={`여행지 ${regionName}`} />
-          <CheckLine text="기간 넣기" state="doing" />
-        </View>
-        <Text style={[typography.title2, styles.heading]}>언제 가요?</Text>
-        {start ? (
-          <View style={styles.period}>
-            <Icon name="calendar" size={18} color={colors.brand.primary} />
-            <Text style={[typography.bodyMedium, styles.periodText]}>
-              {[formatTripPeriod(start, end ?? start), end ? formatTripNights(start, end) : null]
-                .filter(Boolean)
-                .join(' · ')}
-            </Text>
+        <Stagger itemStyle={styles.staggerItem}>
+          <Text style={[typography.caption, styles.muted]}>기간을 넣으면 날짜별로 나눠 짜요</Text>
+          <View style={styles.steps}>
+            <CheckLine text={`여행지 ${regionName}`} />
+            <CheckLine text="기간 넣기" state="doing" />
           </View>
-        ) : null}
-        <View style={styles.quick}>
-          {QUICK.map((q) => (
-            <Chip
-              key={q.label}
-              label={q.label}
-              size="sm"
-              selected={nights === q.nights}
-              onPress={() => {
-                const from = start ?? today;
-                onChange({ start: from, end: addDays(from, q.nights) });
+          <Text style={[typography.title2, styles.heading]}>언제 가요?</Text>
+          {start ? (
+            <View style={styles.period}>
+              <Icon name="calendar" size={18} color={colors.brand.primary} />
+              <Text style={[typography.bodyMedium, styles.periodText]}>
+                {[formatTripPeriod(start, end ?? start), end ? formatTripNights(start, end) : null]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </Text>
+            </View>
+          ) : null}
+          <View style={styles.quick}>
+            {QUICK.map((q) => (
+              <Chip
+                key={q.label}
+                label={q.label}
+                size="sm"
+                selected={nights === q.nights}
+                onPress={() => {
+                  const from = start ?? today;
+                  onChange({ start: from, end: addDays(from, q.nights) });
+                }}
+              />
+            ))}
+          </View>
+          <View style={styles.calendar}>
+            <Calendar
+              markingType="period"
+              markedDates={marked}
+              current={start ?? today}
+              minDate={today}
+              onDayPress={pick}
+              monthFormat="yyyy년 M월"
+              theme={{
+                calendarBackground: colors.surface.default,
+                todayTextColor: colors.brand.primary,
+                arrowColor: colors.text.default,
+                monthTextColor: colors.text.default,
+                textSectionTitleColor: colors.text.muted,
+                dayTextColor: colors.text.default,
+                textDisabledColor: colors.gray[300],
               }}
             />
-          ))}
-        </View>
-        <View style={styles.calendar}>
-          <Calendar
-            markingType="period"
-            markedDates={marked}
-            current={start ?? today}
-            minDate={today}
-            onDayPress={pick}
-            monthFormat="yyyy년 M월"
-            theme={{
-              calendarBackground: colors.surface.default,
-              todayTextColor: colors.brand.primary,
-              arrowColor: colors.text.default,
-              monthTextColor: colors.text.default,
-              textSectionTitleColor: colors.text.muted,
-              dayTextColor: colors.text.default,
-              textDisabledColor: colors.gray[300],
-            }}
-          />
-        </View>
+          </View>
+        </Stagger>
       </ScrollView>
       <View style={[styles.bottom, { paddingBottom: Math.max(insets.bottom, spacing[16]) }]}>
         <Button
           label="다음"
+          icon="arrow-right"
           size="lg"
           weight="medium"
           onPress={onNext}
@@ -273,6 +279,8 @@ export function NoDatesView({ regionName, value, onChange, onNext, saving }: NoD
 }
 
 const styles = StyleSheet.create({
+  // 차례로 나타나는 구역을 감싼 칸. 한 구역이 여러 줄이면 그 사이 간격을 스크롤 내용과 같게 둔다
+  staggerItem: { gap: spacing[14] },
   content: {
     paddingHorizontal: layout.screenPaddingX,
     paddingTop: spacing[20],

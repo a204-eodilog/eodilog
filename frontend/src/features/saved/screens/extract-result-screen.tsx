@@ -184,7 +184,7 @@ export function ExtractResultScreen() {
             onPress={() => void cancel()}
             style={({ pressed }) => [styles.cancel, (pressed || cancelling) && styles.pressed]}
           >
-            <Text style={[typography.bodyMedium, styles.sub]}>취소</Text>
+            <Icon name="close" size={20} color={colors.text.icon} />
           </PressableScale>
         </View>
       </View>
@@ -332,6 +332,7 @@ export function ExtractResultScreen() {
             <View style={styles.buttons}>
               <Button
                 label="여기에 없어요"
+                icon="search"
                 variant="text"
                 onPress={() =>
                   void choose(
@@ -339,17 +340,16 @@ export function ExtractResultScreen() {
                     options[choiceIndex]?.place,
                   )
                 }
-                leading={<Icon name="search" size={20} color={colors.text.icon} />}
                 style={styles.notHere}
               />
               <Button
                 label="이곳으로"
+                icon="check"
                 weight="medium"
                 onPress={() => {
                   const o = options[choiceIndex];
                   if (o) pickFor(asking.key, { place: o.place, evidence: o.evidence });
                 }}
-                leading={<Icon name="check" size={20} color={colors.text.inverse} />}
                 style={styles.primary}
               />
             </View>
@@ -441,10 +441,11 @@ export function ExtractResultScreen() {
             <View style={styles.buttons}>
               <Button
                 label={`${placed.length}곳`}
+                count={placed.length}
+                icon="bookmark"
                 weight="medium"
                 disabled={placed.length === 0}
                 onPress={() => setSaveOpen(true)}
-                leading={<Icon name="bookmark" size={20} color={colors.text.inverse} />}
                 style={styles.primary}
               />
             </View>

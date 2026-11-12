@@ -40,6 +40,7 @@ function WeatherBadge({
 function RetryPill({ onPress, busy }: { onPress(): void; busy: boolean }) {
   return (
     <PressableScale
+      accessibilityLabel="다시 시도"
       style={styles.retry}
       onPress={onPress}
       disabled={busy}
@@ -51,7 +52,6 @@ function RetryPill({ onPress, busy }: { onPress(): void; busy: boolean }) {
       ) : (
         <Icon name="refresh" size={16} color={colors.text.default} />
       )}
-      <Text style={[typography.subMedium, styles.retryText]}>다시 시도</Text>
     </PressableScale>
   );
 }

@@ -53,6 +53,7 @@ export function CoeditConflict({ editor, busy, onOverwrite, onLatest }: Props) {
         </PressableScale>
         <Button
           label="최신 코스 보기"
+          icon="route"
           weight="medium"
           onPress={onLatest}
           disabled={busy}

@@ -449,7 +449,7 @@ describe('항목 없음', () => {
     mockGet.mockResolvedValue([]);
     mockAdd.mockResolvedValue(checklistItem({ id: 'warmer', label: '손난로' }));
     await renderScreen();
-    await fireEvent.press(await screen.findByText('직접 추가'));
+    await fireEvent.press(await screen.findByLabelText('직접 추가'));
     const input = screen.getByLabelText('챙길 것 추가');
     expect(input.props.autoFocus).toBe(true);
     await fireEvent.changeText(input, '손난로');
@@ -473,9 +473,9 @@ describe('다시 제안 받기', () => {
   it('받는 동안 버튼이 바뀌어 다시 눌리지 않는다', async () => {
     mockRequest.mockReturnValue(new Promise<JobRef>(() => {}));
     await renderScreen();
-    await fireEvent.press(await screen.findByText('다시 제안 받기'));
-    expect(await screen.findByText('제안 받는 중…')).toBeTruthy();
-    await fireEvent.press(screen.getByText('제안 받는 중…'));
+    await fireEvent.press(await screen.findByLabelText('다시 제안 받기'));
+    expect(await screen.findByLabelText('제안 받는 중…')).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText('제안 받는 중…'));
     expect(mockRequest).toHaveBeenCalledTimes(1);
   });
 
@@ -491,7 +491,7 @@ describe('다시 제안 받기', () => {
       checklistItem({ id: 'sun', label: '선크림', source: 'AI', reason: '자외선 강함' }),
     );
     await renderScreen();
-    await fireEvent.press(await screen.findByText('다시 제안 받기'));
+    await fireEvent.press(await screen.findByLabelText('다시 제안 받기'));
 
     expect(await screen.findByText('4개 중 1개 챙겼어요')).toBeTruthy();
     expect(screen.getByText('자외선 강함')).toBeTruthy();
@@ -507,7 +507,7 @@ describe('다시 제안 받기', () => {
     mockRequest.mockResolvedValue(REF);
     mockJob.mockResolvedValueOnce(suggestionJob({ status: 'FAILED' }));
     await renderScreen();
-    await fireEvent.press(await screen.findByText('다시 제안 받기'));
+    await fireEvent.press(await screen.findByLabelText('다시 제안 받기'));
 
     expect(
       await screen.findByLabelText('준비물을 다시 제안하지 못했어요. 지금 목록은 그대로예요'),
@@ -527,7 +527,7 @@ describe('다시 제안 받기', () => {
   it('추천이 꺼져 있으면 설정 열기로 안내한다', async () => {
     mockRequest.mockRejectedValue(httpError(409, 'AI_FEATURE_DISABLED'));
     await renderScreen();
-    await fireEvent.press(await screen.findByText('다시 제안 받기'));
+    await fireEvent.press(await screen.findByLabelText('다시 제안 받기'));
     expect(await screen.findByLabelText(/준비물 추천이 꺼져 있어요/)).toBeTruthy();
     await fireEvent.press(screen.getByText('설정 열기'));
     expect(mockRouter.push).toHaveBeenCalledWith('/settings');

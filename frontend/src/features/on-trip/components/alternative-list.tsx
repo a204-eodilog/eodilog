@@ -131,10 +131,21 @@ export function ProposalSheet(props: {
           </Text>
         </View>
         <View style={styles.actions}>
-          <PressableScale style={styles.close} onPress={props.onClose} accessibilityRole="button">
-            <Text style={[typography.bodyMedium, styles.closeText]}>닫기</Text>
+          <PressableScale
+            accessibilityLabel="닫기"
+            style={styles.close}
+            onPress={props.onClose}
+            accessibilityRole="button"
+          >
+            <Icon name="close" size={20} color={colors.text.icon} />
           </PressableScale>
-          <Button label="변경안 보기" weight="medium" onPress={props.onView} style={styles.flex} />
+          <Button
+            label="변경안 보기"
+            icon="zap"
+            weight="medium"
+            onPress={props.onView}
+            style={styles.flex}
+          />
         </View>
       </View>
     </BottomSheet>
@@ -152,7 +163,7 @@ export function NoAlternative(props: { onAdd(): void; busy: boolean; added: bool
       <Text style={[typography.body, styles.emptyBody]}>우산·우비를 준비물에 넣을까요?</Text>
       <Button
         label={props.added ? '준비물에 넣었어요' : '준비물에 넣기'}
-        leading={<Icon name="bag" size={18} color={colors.text.inverse} />}
+        icon="bag"
         onPress={props.onAdd}
         loading={props.busy}
         disabled={props.added}

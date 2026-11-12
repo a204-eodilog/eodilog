@@ -213,12 +213,7 @@ export function TripPhotosView(props: TripPhotosViewProps) {
       </ScrollView>
       <View style={[styles.bottom, { paddingBottom: Math.max(insets.bottom + spacing[12], 34) }]}>
         <Text style={[typography.caption, styles.sub, styles.flex]}>{props.footer}</Text>
-        <Button
-          label="공동 피드 게시"
-          size="lg"
-          leading={<Icon name="globe" size={20} color={colors.text.inverse} />}
-          onPress={props.onPublish}
-        />
+        <Button label="공동 피드 게시" icon="globe" size="lg" onPress={props.onPublish} />
       </View>
     </View>
   );

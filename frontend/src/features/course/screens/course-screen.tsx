@@ -141,9 +141,13 @@ export function CourseView(props: CourseViewProps) {
           </View>
         </ScrollView>
         <View style={[styles.bottom, { paddingBottom: Math.max(insets.bottom, spacing[16]) }]}>
-          <PressableScale style={styles.edit} onPress={props.onEdit} accessibilityRole="button">
+          <PressableScale
+            accessibilityLabel="편집"
+            style={styles.edit}
+            onPress={props.onEdit}
+            accessibilityRole="button"
+          >
             <Icon name="pencil" size={18} color={colors.text.default} />
-            <Text style={[typography.bodyMedium, styles.editText]}>편집</Text>
           </PressableScale>
         </View>
       </>

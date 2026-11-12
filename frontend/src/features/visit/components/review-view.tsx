@@ -1,6 +1,7 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Stagger } from '@/components/ui/stagger';
 import { AvatarGroup, Button, Header, Icon, Tag, TextField } from '@/components/ui';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -74,95 +75,95 @@ export function ReviewView({
         right={people.length > 0 ? <AvatarGroup people={people} size="sm" /> : undefined}
       />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        {writing && saveFailed ? (
-          <View style={styles.failBox} accessibilityLiveRegion="polite">
-            <View style={styles.boxIcon}>
-              <Icon name="alert" size={22} color={colors.status.danger} />
-            </View>
-            <View style={styles.flex}>
-              <Text style={[typography.bodyBold, styles.text]}>평가를 저장하지 못했어요</Text>
-              <Text style={[typography.caption, styles.sub]}>
-                저장하지 못했어요. 다시 눌러 주세요
-              </Text>
-            </View>
-          </View>
-        ) : null}
-
-        {/* 장소 사진 API가 없어 N4처럼 연파랑 상자에 아이콘을 둔다 */}
-        <View style={styles.place}>
-          <View style={styles.photo}>
-            <Icon name="map-pin" size={24} color={colors.brand.primary} />
-          </View>
-          <View style={styles.placeTexts}>
-            <Text style={[typography.bodyBold, styles.text]} numberOfLines={1}>
-              {placeName}
-            </Text>
-            <View style={styles.whenRow}>
-              <View style={styles.when}>
-                <Icon name="calendar" size={16} color={colors.text.icon} />
-                <Text style={[typography.caption, styles.sub]} numberOfLines={1}>
-                  {when}
+        <Stagger itemStyle={styles.staggerItem}>
+          {writing && saveFailed ? (
+            <View style={styles.failBox} accessibilityLiveRegion="polite">
+              <View style={styles.boxIcon}>
+                <Icon name="alert" size={22} color={colors.status.danger} />
+              </View>
+              <View style={styles.flex}>
+                <Text style={[typography.bodyBold, styles.text]}>평가를 저장하지 못했어요</Text>
+                <Text style={[typography.caption, styles.sub]}>
+                  저장하지 못했어요. 다시 눌러 주세요
                 </Text>
               </View>
-              <Tag
-                label={evidence === 'PHOTO' ? '사진으로 확인됨' : '직접 체크함'}
-                tone="success"
-                icon="check"
-              />
+            </View>
+          ) : null}
+
+          {/* 장소 사진 API가 없어 N4처럼 연파랑 상자에 아이콘을 둔다 */}
+          <View style={styles.place}>
+            <View style={styles.photo}>
+              <Icon name="map-pin" size={24} color={colors.brand.primary} />
+            </View>
+            <View style={styles.placeTexts}>
+              <Text style={[typography.bodyBold, styles.text]} numberOfLines={1}>
+                {placeName}
+              </Text>
+              <View style={styles.whenRow}>
+                <View style={styles.when}>
+                  <Icon name="calendar" size={16} color={colors.text.icon} />
+                  <Text style={[typography.caption, styles.sub]} numberOfLines={1}>
+                    {when}
+                  </Text>
+                </View>
+                <Tag
+                  label={evidence === 'PHOTO' ? '사진으로 확인됨' : '직접 체크함'}
+                  tone="success"
+                  icon="check"
+                />
+              </View>
             </View>
           </View>
-        </View>
 
-        {writing ? (
-          <>
-            <View style={styles.stars}>
-              <StarInput value={score} onChange={onScore} disabled={saving} />
-              {score !== null ? (
-                <Text style={[typography.title1, styles.text]}>{score}점</Text>
-              ) : null}
-            </View>
+          {writing ? (
+            <>
+              <View style={styles.stars}>
+                <StarInput value={score} onChange={onScore} disabled={saving} />
+                {score !== null ? (
+                  <Text style={[typography.title1, styles.text]}>{score}점</Text>
+                ) : null}
+              </View>
+              <View style={styles.section}>
+                <Text style={[typography.bodyBold, styles.text]}>한 줄 평가</Text>
+                <TextField
+                  variant="filled"
+                  value={body}
+                  onChangeText={onBody}
+                  placeholder="어땠는지 한 줄로 남겨 주세요"
+                  maxLength={REVIEW_BODY_MAX}
+                  hideCount
+                  editable={!saving}
+                  accessibilityLabel="한 줄 평가"
+                />
+              </View>
+            </>
+          ) : myReview ? (
             <View style={styles.section}>
-              <Text style={[typography.bodyBold, styles.text]}>한 줄 평가</Text>
-              <TextField
-                variant="filled"
-                value={body}
-                onChangeText={onBody}
-                placeholder="어땠는지 한 줄로 남겨 주세요"
-                maxLength={REVIEW_BODY_MAX}
-                hideCount
-                editable={!saving}
-                accessibilityLabel="한 줄 평가"
-              />
+              <Text style={[typography.title3, styles.text]}>내 평가</Text>
+              <ReviewCard review={myReview} mine onEdit={onEdit} onDelete={onDelete} />
             </View>
-          </>
-        ) : myReview ? (
-          <View style={styles.section}>
-            <Text style={[typography.title3, styles.text]}>내 평가</Text>
-            <ReviewCard review={myReview} mine onEdit={onEdit} onDelete={onDelete} />
-          </View>
-        ) : null}
+          ) : null}
 
-        <View style={styles.section}>
-          <Text style={[typography.title3, styles.text]}>동행 평가</Text>
-          {companions.length > 0 ? (
-            companions.map((r) => <ReviewCard key={r.id} review={r} />)
-          ) : (
-            <Text style={[typography.caption, styles.sub]}>아직 평가를 남긴 동행이 없어요</Text>
-          )}
-        </View>
+          <View style={styles.section}>
+            <Text style={[typography.title3, styles.text]}>동행 평가</Text>
+            {companions.length > 0 ? (
+              companions.map((r) => <ReviewCard key={r.id} review={r} />)
+            ) : (
+              <Text style={[typography.caption, styles.sub]}>아직 평가를 남긴 동행이 없어요</Text>
+            )}
+          </View>
+        </Stagger>
       </ScrollView>
 
       {writing ? (
         <View style={[styles.bottom, { paddingBottom: Math.max(insets.bottom, BOTTOM_GAP) }]}>
           <Button
             label={saveFailed ? '다시 저장' : '저장'}
+            icon={saveFailed ? 'refresh' : 'check'}
             weight="medium"
             disabled={!canSave}
             loading={saving}
             onPress={onSave}
-            leading={
-              <Icon name={saveFailed ? 'refresh' : 'check'} size={20} color={colors.text.inverse} />
-            }
             style={styles.save}
           />
         </View>
@@ -175,6 +176,8 @@ export function ReviewView({
 const BOTTOM_GAP = 34;
 
 const styles = StyleSheet.create({
+  // 차례로 나타나는 구역을 감싼 칸. 한 구역이 여러 줄이면 그 사이 간격을 스크롤 내용과 같게 둔다
+  staggerItem: { gap: spacing[24] },
   screen: { flex: 1, backgroundColor: colors.surface.white },
   content: {
     paddingTop: spacing[16],

@@ -159,6 +159,7 @@ export function OpenPollSheet({
           </View>
           <Button
             label="다시 시도"
+            icon="refresh"
             variant="secondary"
             size="sm"
             onPress={() => void saved.refetch()}
@@ -194,6 +195,7 @@ export function OpenPollSheet({
 
       <Button
         label="투표 열기"
+        icon="check"
         block
         size="lg"
         weight="medium"

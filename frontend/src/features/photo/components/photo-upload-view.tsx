@@ -1,6 +1,7 @@
 import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Stagger } from '@/components/ui/stagger';
 import { Button, CenterNotice, Header, Icon, type IconName } from '@/components/ui';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { ProgressBar } from '@/components/ui/progress-bar';
@@ -78,40 +79,41 @@ export function PhotoUploadView(props: PhotoUploadViewProps) {
       <View style={styles.screen}>
         {header}
         <ScrollView contentContainerStyle={styles.body}>
-          <View style={styles.titleRow}>
-            <Text style={[typography.title3, styles.text]}>고른 사진</Text>
-            <PressableScale
-              accessibilityRole="button"
-              accessibilityLabel="사진 더 고르기"
-              hitSlop={8}
-              onPress={props.onPick}
-              style={({ pressed }) => [styles.inline, pressed && styles.pressed]}
-            >
-              <Icon name="plus" size={16} color={colors.brand.primaryDark} />
-              <Text style={[typography.bodyMedium, styles.link]}>더 고르기</Text>
-            </PressableScale>
-          </View>
-          <Hint icon="info" text="사진을 누르면 올리지 않을 사진으로 빠져요" />
-          <View style={styles.grid}>
-            {props.picked.map((photo, i) => (
-              <PhotoTile
-                key={photo.key}
-                uri={photo.uri}
-                size={tile}
-                selected={props.selected.has(photo.key)}
-                label={`사진 ${i + 1}`}
-                onPress={() => props.onToggle(photo.key)}
-              />
-            ))}
-          </View>
+          <Stagger itemStyle={styles.staggerItem}>
+            <View style={styles.titleRow}>
+              <Text style={[typography.title3, styles.text]}>고른 사진</Text>
+              <PressableScale
+                accessibilityRole="button"
+                accessibilityLabel="사진 더 고르기"
+                hitSlop={8}
+                onPress={props.onPick}
+                style={({ pressed }) => [styles.inline, pressed && styles.pressed]}
+              >
+                <Icon name="plus" size={16} color={colors.brand.primaryDark} />
+              </PressableScale>
+            </View>
+            <Hint icon="info" text="사진을 누르면 올리지 않을 사진으로 빠져요" />
+            <View style={styles.grid}>
+              {props.picked.map((photo, i) => (
+                <PhotoTile
+                  key={photo.key}
+                  uri={photo.uri}
+                  size={tile}
+                  selected={props.selected.has(photo.key)}
+                  label={`사진 ${i + 1}`}
+                  onPress={() => props.onToggle(photo.key)}
+                />
+              ))}
+            </View>
+          </Stagger>
         </ScrollView>
         <View style={[styles.bottom, styles.bottomSplit, bottomPad]}>
           <Text style={[typography.bodyBold, styles.text]}>{count}장 선택</Text>
           <Button
             label="올리기"
+            icon="upload"
             size="lg"
             disabled={count === 0}
-            leading={<Icon name="upload" size={20} color={colors.text.inverse} />}
             onPress={props.onUpload}
           />
         </View>
@@ -125,63 +127,70 @@ export function PhotoUploadView(props: PhotoUploadViewProps) {
     <View style={styles.screen}>
       {header}
       <ScrollView contentContainerStyle={styles.body}>
-        {isFailed ? (
-          <View style={[styles.box, styles.failBox]}>
-            <View style={styles.boxRow}>
-              <View style={styles.boxIcon}>
-                <Icon name="alert" size={22} color={colors.status.danger} />
-              </View>
-              <View style={styles.boxTexts}>
-                <Text style={[typography.bodyBold, styles.text]}>{failed}장을 올리지 못했어요</Text>
-                <Text style={[typography.caption, styles.sub]}>
-                  {done > 0
-                    ? `${done}장은 올라갔어요`
-                    : '인터넷 연결을 확인하고 다시 시도해 주세요'}
-                </Text>
-              </View>
-            </View>
-          </View>
-        ) : (
-          <View style={[styles.box, styles.progressBox]}>
-            <View style={styles.boxRow}>
-              <View style={styles.boxIcon}>
-                <Icon name="upload" size={22} color={colors.brand.primary} />
-              </View>
-              <View style={styles.boxTexts}>
-                <Text style={[typography.bodyBold, styles.text]}>
-                  {total}장 중 {done}장 올렸어요
-                </Text>
-                <Text style={[typography.caption, styles.sub]}>
-                  다 올리면 주제와 장소별로 나눠요
-                </Text>
+        <Stagger itemStyle={styles.staggerItem}>
+          {isFailed ? (
+            <View style={[styles.box, styles.failBox]}>
+              <View style={styles.boxRow}>
+                <View style={styles.boxIcon}>
+                  <Icon name="alert" size={22} color={colors.status.danger} />
+                </View>
+                <View style={styles.boxTexts}>
+                  <Text style={[typography.bodyBold, styles.text]}>
+                    {failed}장을 올리지 못했어요
+                  </Text>
+                  <Text style={[typography.caption, styles.sub]}>
+                    {done > 0
+                      ? `${done}장은 올라갔어요`
+                      : '인터넷 연결을 확인하고 다시 시도해 주세요'}
+                  </Text>
+                </View>
               </View>
             </View>
-            <ProgressBar ratio={total ? done / total : 0} trackColor={colors.surface.white} />
+          ) : (
+            <View style={[styles.box, styles.progressBox]}>
+              <View style={styles.boxRow}>
+                <View style={styles.boxIcon}>
+                  <Icon name="upload" size={22} color={colors.brand.primary} />
+                </View>
+                <View style={styles.boxTexts}>
+                  <Text style={[typography.bodyBold, styles.text]}>
+                    {total}장 중 {done}장 올렸어요
+                  </Text>
+                  <Text style={[typography.caption, styles.sub]}>
+                    다 올리면 주제와 장소별로 나눠요
+                  </Text>
+                </View>
+              </View>
+              <ProgressBar ratio={total ? done / total : 0} trackColor={colors.surface.white} />
+            </View>
+          )}
+          <View style={styles.grid}>
+            {props.items.map((item, i) => (
+              <PhotoTile
+                key={item.photo.key}
+                uri={item.photo.uri}
+                size={tile}
+                status={item.status}
+                label={`사진 ${i + 1}`}
+              />
+            ))}
           </View>
-        )}
-        <View style={styles.grid}>
-          {props.items.map((item, i) => (
-            <PhotoTile
-              key={item.photo.key}
-              uri={item.photo.uri}
-              size={tile}
-              status={item.status}
-              label={`사진 ${i + 1}`}
-            />
-          ))}
-        </View>
-        <Hint
-          icon="info"
-          text={isFailed ? `실패한 ${failed}장만 다시 올려요` : '취소해도 이미 올린 사진은 남아요'}
-        />
+          <Hint
+            icon="info"
+            text={
+              isFailed ? `실패한 ${failed}장만 다시 올려요` : '취소해도 이미 올린 사진은 남아요'
+            }
+          />
+        </Stagger>
       </ScrollView>
       {isFailed ? (
         <View style={[styles.bottom, styles.bottomEnd, bottomPad]}>
           <TextButton label="나중에" onPress={props.onLater} />
           <Button
             label={`${failed}장 다시 시도`}
+            count={failed}
+            icon="refresh"
             size="lg"
-            leading={<Icon name="refresh" size={20} color={colors.text.inverse} />}
             onPress={props.onRetry}
           />
         </View>
@@ -218,6 +227,8 @@ function Hint({ icon, text }: { icon: IconName; text: string }) {
 }
 
 const styles = StyleSheet.create({
+  // 차례로 나타나는 구역을 감싼 칸. 한 구역이 여러 줄이면 그 사이 간격을 스크롤 내용과 같게 둔다
+  staggerItem: { gap: spacing[18] },
   screen: { flex: 1, backgroundColor: colors.surface.white },
   text: { color: colors.text.default },
   sub: { color: colors.text.icon },

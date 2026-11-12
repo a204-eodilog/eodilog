@@ -195,8 +195,8 @@ describe('S21 추천 결과', () => {
     expect(screen.getByText('겹친 장소 흰여울문화마을이 있는 동네예요')).toBeTruthy();
     expect(screen.getByText('자갈치 회 골목')).toBeTruthy();
     expect(screen.getByText('부산 중구')).toBeTruthy();
-    expect(screen.getAllByText('투표 후보로')).toHaveLength(2);
-    expect(screen.getAllByText('담기')).toHaveLength(3);
+    expect(screen.getAllByLabelText(/투표 후보로$/)).toHaveLength(2);
+    expect(screen.getAllByLabelText(/그룹 즐겨찾기에 담기$/)).toHaveLength(3);
     expect(mockGet).toHaveBeenCalledWith('trip-1', 'job-1');
   });
 
@@ -261,7 +261,7 @@ describe('결과로 다음 행동', () => {
 
   it('재추천은 새 작업을 만든다', async () => {
     await renderScreen();
-    await fireEvent.press(await screen.findByText('재추천'));
+    await fireEvent.press(await screen.findByLabelText('재추천'));
     await waitFor(() => expect(mockRequest).toHaveBeenCalledTimes(2));
   });
 });
@@ -275,7 +275,7 @@ describe('추천할 수 없을 때', () => {
     expect(screen.getByText('취향 고른 사람 1명 · 2명부터 추천해요')).toBeTruthy();
     await fireEvent.press(screen.getByText('장소 더 모으기'));
     expect(mockRouter.dismissTo).toHaveBeenCalledWith('/trips/trip-1/favorites');
-    await fireEvent.press(screen.getByText('취향 입력'));
+    await fireEvent.press(screen.getByLabelText('취향 입력'));
     expect(mockRouter.push).toHaveBeenCalledWith({
       pathname: '/preferences',
       params: { from: 'recommendation', tripId: 'trip-1' },

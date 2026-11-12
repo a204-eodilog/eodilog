@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Stagger } from '@/components/ui/stagger';
 import { Button, Header, Icon, TextField } from '@/components/ui';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { AMOUNT_MAX_LENGTH, formatThousands } from '@/lib/format-number';
@@ -90,76 +91,78 @@ export function ExpenseFormView({
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          {failed ? <SaveFailedBox conflict={conflict} /> : null}
+          <Stagger itemStyle={styles.staggerItem}>
+            {failed ? <SaveFailedBox conflict={conflict} /> : null}
 
-          <Section title="금액">
-            <TextField
-              variant="filled"
-              large
-              value={form.amount}
-              onChangeText={(v) => onChange({ amount: formatThousands(v) })}
-              keyboardType="number-pad"
-              placeholder="0"
-              maxLength={AMOUNT_MAX_LENGTH}
-              hideCount
-              editable={!readOnly}
-              error={amountError}
-              accessibilityLabel="금액"
-              style={styles.amount}
-              trailing={<Text style={[typography.title1, styles.text]}>원</Text>}
-            />
-          </Section>
+            <Section title="금액">
+              <TextField
+                variant="filled"
+                large
+                value={form.amount}
+                onChangeText={(v) => onChange({ amount: formatThousands(v) })}
+                keyboardType="number-pad"
+                placeholder="0"
+                maxLength={AMOUNT_MAX_LENGTH}
+                hideCount
+                editable={!readOnly}
+                error={amountError}
+                accessibilityLabel="금액"
+                style={styles.amount}
+                trailing={<Text style={[typography.title1, styles.text]}>원</Text>}
+              />
+            </Section>
 
-          <Section title="낸 사람">
-            <View style={styles.chips}>
-              {ordered.map((m) => (
-                <MemberChip
-                  key={m.id}
-                  name={m.user.nickname}
-                  me={m.id === myMemberId}
-                  selected={form.payerMemberId === m.id}
-                  disabled={readOnly}
-                  onPress={() => onChange({ payerMemberId: m.id })}
-                />
-              ))}
-            </View>
-          </Section>
+            <Section title="낸 사람">
+              <View style={styles.chips}>
+                {ordered.map((m) => (
+                  <MemberChip
+                    key={m.id}
+                    name={m.user.nickname}
+                    me={m.id === myMemberId}
+                    selected={form.payerMemberId === m.id}
+                    disabled={readOnly}
+                    onPress={() => onChange({ payerMemberId: m.id })}
+                  />
+                ))}
+              </View>
+            </Section>
 
-          <Section
-            title="나눌 사람"
-            right={<Text style={[typography.caption, styles.sub]}>{chosen.size}명 선택</Text>}
-          >
-            <View style={styles.chips}>
-              {ordered.map((m) => (
-                <MemberChip
-                  key={m.id}
-                  name={m.user.nickname}
-                  me={m.id === myMemberId}
-                  multiple
-                  selected={chosen.has(m.id)}
-                  disabled={readOnly}
-                  onPress={() => toggleParticipant(m.id)}
-                />
-              ))}
-            </View>
-            {/* Figma는 13/20 보통 굵기인데 글자 토큰에 없어 caption(12/20)으로 쓴다 */}
-            <Text style={[typography.caption, styles.sub]}>
-              고른 사람끼리 똑같이 나눠요 · 1명 금액은 10원 단위로 올려요
-            </Text>
-          </Section>
+            <Section
+              title="나눌 사람"
+              right={<Text style={[typography.caption, styles.sub]}>{chosen.size}명 선택</Text>}
+            >
+              <View style={styles.chips}>
+                {ordered.map((m) => (
+                  <MemberChip
+                    key={m.id}
+                    name={m.user.nickname}
+                    me={m.id === myMemberId}
+                    multiple
+                    selected={chosen.has(m.id)}
+                    disabled={readOnly}
+                    onPress={() => toggleParticipant(m.id)}
+                  />
+                ))}
+              </View>
+              {/* Figma는 13/20 보통 굵기인데 글자 토큰에 없어 caption(12/20)으로 쓴다 */}
+              <Text style={[typography.caption, styles.sub]}>
+                고른 사람끼리 똑같이 나눠요 · 1명 금액은 10원 단위로 올려요
+              </Text>
+            </Section>
 
-          <Section title="항목 이름">
-            <TextField
-              variant="filled"
-              value={form.title}
-              onChangeText={(v) => onChange({ title: v })}
-              maxLength={TITLE_MAX_LENGTH}
-              hideCount
-              editable={!readOnly}
-              accessibilityLabel="항목 이름"
-              returnKeyType="done"
-            />
-          </Section>
+            <Section title="항목 이름">
+              <TextField
+                variant="filled"
+                value={form.title}
+                onChangeText={(v) => onChange({ title: v })}
+                maxLength={TITLE_MAX_LENGTH}
+                hideCount
+                editable={!readOnly}
+                accessibilityLabel="항목 이름"
+                returnKeyType="done"
+              />
+            </Section>
+          </Stagger>
         </ScrollView>
 
         {readOnly ? null : (
@@ -182,12 +185,10 @@ export function ExpenseFormView({
             ) : null}
             <Button
               label={failed ? '다시 저장' : '저장'}
+              icon={failed ? 'refresh' : 'check'}
               onPress={onSave}
               disabled={!canSave}
               loading={saving}
-              leading={
-                <Icon name={failed ? 'refresh' : 'check'} size={20} color={colors.text.inverse} />
-              }
             />
           </View>
         )}
@@ -241,6 +242,8 @@ function SaveFailedBox({ conflict }: { conflict: boolean }) {
 }
 
 const styles = StyleSheet.create({
+  // 차례로 나타나는 구역을 감싼 칸. 한 구역이 여러 줄이면 그 사이 간격을 스크롤 내용과 같게 둔다
+  staggerItem: { gap: spacing[24] },
   screen: { flex: 1, backgroundColor: colors.surface.white },
   flex: { flex: 1 },
   content: {

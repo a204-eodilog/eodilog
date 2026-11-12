@@ -32,33 +32,33 @@ export function BottomActions(props: Props) {
             <Icon name="plus" size={22} color={colors.text.default} />
           </PressableScale>
           <PressableScale
+            accessibilityLabel="투표 열기"
             style={[styles.pill, styles.secondary, props.pollDisabled && styles.off]}
             onPress={props.onPoll}
             disabled={props.pollDisabled}
             accessibilityRole="button"
             accessibilityState={{ disabled: props.pollDisabled }}
           >
-            <Text style={[typography.bodyBold, styles.secondaryText]}>투표 열기</Text>
+            <Icon name="check-all" size={20} color={colors.brand.primary} />
           </PressableScale>
           <PressableScale
+            accessibilityLabel="추천 받기"
             style={[styles.pill, styles.primary]}
             onPress={props.onRecommend}
             accessibilityRole="button"
           >
             <Icon name="bulb" size={18} color={colors.text.inverse} />
-            <Text style={[typography.bodyBold, styles.primaryText]}>추천 받기</Text>
           </PressableScale>
         </>
       ) : (
         <>
           <PressableScale
+            accessibilityLabel="취소"
             style={[styles.pill, styles.cancel]}
             onPress={props.onCancel}
             accessibilityRole="button"
           >
-            <Text style={[typography.bodyMedium, styles.cancelText]} numberOfLines={1}>
-              취소
-            </Text>
+            <Icon name="close" size={20} color={colors.text.default} />
           </PressableScale>
           <PressableScale
             style={[styles.pill, styles.primary, props.count === 0 && styles.off]}

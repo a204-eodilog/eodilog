@@ -192,6 +192,7 @@ export function DraftView(props: DraftViewProps) {
       </ScrollView>
       <View style={[styles.bottom, { paddingBottom: Math.max(insets.bottom, spacing[16]) }]}>
         <PressableScale
+          accessibilityLabel="재추천"
           style={[styles.pill, styles.redo, props.redoBusy && styles.busy]}
           onPress={props.onRedo}
           disabled={props.redoBusy}
@@ -199,9 +200,9 @@ export function DraftView(props: DraftViewProps) {
           accessibilityRole="button"
         >
           <Icon name="refresh" size={18} color={colors.text.default} />
-          <Text style={[typography.bodyMedium, styles.redoText]}>재추천</Text>
         </PressableScale>
         <PressableScale
+          accessibilityLabel="완료"
           style={[styles.pill, styles.done, props.saving && styles.busy]}
           onPress={props.onDone}
           disabled={props.saving}
@@ -213,7 +214,6 @@ export function DraftView(props: DraftViewProps) {
           ) : (
             <Icon name="check" size={18} color={colors.text.inverse} />
           )}
-          <Text style={[typography.bodyMedium, styles.doneText]}>완료</Text>
         </PressableScale>
       </View>
       <ItemSheet

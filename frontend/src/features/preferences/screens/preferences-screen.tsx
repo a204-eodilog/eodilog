@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Stagger } from '@/components/ui/stagger';
 import { Button, ErrorState, Header, Icon, type IconName, TextField, toast } from '@/components/ui';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { SkeletonList } from '@/components/ui/skeleton';
@@ -190,149 +191,147 @@ function PreferencesForm({
           contentContainerStyle={[styles.content, forRecommendation && styles.contentTight]}
           keyboardShouldPersistTaps="handled"
         >
-          {forRecommendation ? (
-            <View style={styles.notice}>
-              <Icon name="bulb" size={20} color={colors.text.icon} />
-              <Text style={[typography.body, styles.text]}>다 고르면 추천으로 돌아가요</Text>
-            </View>
-          ) : null}
-
-          <View style={styles.headline}>
-            <Text style={[typography.title1, styles.text]}>어떤 여행을 좋아하세요?</Text>
-            {forRecommendation && chosen.length === 0 ? (
-              <Text style={[typography.body, styles.sub]}>추천에 쓸 취향이 아직 없어요.</Text>
+          <Stagger itemStyle={styles.staggerItem}>
+            {forRecommendation ? (
+              <View style={styles.notice}>
+                <Icon name="bulb" size={20} color={colors.text.icon} />
+                <Text style={[typography.body, styles.text]}>다 고르면 추천으로 돌아가요</Text>
+              </View>
             ) : null}
-          </View>
 
-          {forRecommendation ? (
-            <>
-              <View style={styles.chips}>
-                {[...QUICK_KEYWORDS, ...chosen.filter((w) => !QUICK_KEYWORDS.includes(w))].map(
-                  (word) => (
-                    <ToggleChip
-                      key={word}
-                      label={word}
-                      selected={chosen.includes(word)}
-                      onToggle={() => toggle(word)}
-                    />
-                  ),
-                )}
-              </View>
-              <View style={styles.section}>
-                <Text style={[typography.bodyBold, styles.text]}>동행 추천에 쓸까요?</Text>
-                <View style={styles.radios}>
-                  <RadioRow
-                    icon="people"
-                    title="동행과 함께 쓰기"
-                    description="추천 이유에 내 얼굴과 취향이 보여요"
-                    selected={shareWithCompanions}
-                    onPress={() => setShareWithCompanions(true)}
-                  />
-                  <RadioRow
-                    icon="lock"
-                    title="나만 보기"
-                    description="그룹 추천에는 쓰지 않아요"
-                    selected={!shareWithCompanions}
-                    onPress={() => setShareWithCompanions(false)}
-                  />
-                </View>
-              </View>
-            </>
-          ) : (
-            <>
-              <View style={styles.addRow}>
-                <View style={styles.flex}>
-                  <TextField
-                    variant="filled"
-                    value={draft}
-                    onChangeText={(v) => {
-                      setDraft(v);
-                      setDraftError(undefined);
-                    }}
-                    placeholder="직접 쓰기 (예: 온천, 전시)"
-                    maxLength={KEYWORD_MAX_LENGTH}
-                    hideCount
-                    // 20자가 차면 더 써지지 않아서 왜 안 써지는지 보이게, 쓰는 중에만 칸 안 오른쪽에 "18/20"(다 차면 빨강)
-                    trailing={
-                      draft ? (
-                        <Text
-                          style={[
-                            typography.caption,
-                            draft.length >= KEYWORD_MAX_LENGTH ? styles.countFull : styles.count,
-                          ]}
-                        >
-                          {draft.length}/{KEYWORD_MAX_LENGTH}
-                        </Text>
-                      ) : null
-                    }
-                    error={draftError}
-                    returnKeyType="done"
-                    onSubmitEditing={() => add(draft) && setDraft('')}
-                    accessibilityLabel="취향 직접 쓰기"
-                  />
-                </View>
-                <PressableScale
-                  accessibilityRole="button"
-                  accessibilityLabel="추가"
-                  onPress={() => add(draft) && setDraft('')}
-                  style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}
-                >
-                  <Icon name="plus" size={20} color={colors.text.inverse} />
-                </PressableScale>
-              </View>
-
-              <View style={styles.section}>
-                <Text style={[typography.bodyBold, styles.text]}>내 취향</Text>
-                {chosen.length || inferred.length ? (
-                  <View style={styles.chips}>
-                    {chosen.map((word) => (
-                      <ChosenChip key={word} label={word} onRemove={() => remove(word)} />
-                    ))}
-                    {inferred.map((item) => (
-                      <InferredChip
-                        key={item.key}
-                        label={item.value}
-                        onRemove={() => removeInferred.mutate(item)}
-                      />
-                    ))}
-                  </View>
-                ) : (
-                  <Text style={[typography.caption, styles.sub]}>
-                    아래에서 고르거나 직접 써서 더해요
-                  </Text>
-                )}
-                {inferred.length ? (
-                  <Text style={[typography.caption, styles.hint]}>
-                    연한 칩은 저장한 장소로 찾은 취향이에요. 아니면 빼 주세요
-                  </Text>
-                ) : null}
-              </View>
-
-              {suggestions.length ? (
-                <View style={[styles.section, styles.sectionWide]}>
-                  <Text style={[typography.bodyBold, styles.text]}>이런 취향은 어때요?</Text>
-                  <View style={styles.chips}>
-                    {suggestions.map((word) => (
-                      <SuggestChip key={word} label={word} onAdd={() => add(word)} />
-                    ))}
-                  </View>
-                </View>
+            <View style={styles.headline}>
+              <Text style={[typography.title1, styles.text]}>어떤 여행을 좋아하세요?</Text>
+              {forRecommendation && chosen.length === 0 ? (
+                <Text style={[typography.body, styles.sub]}>추천에 쓸 취향이 아직 없어요.</Text>
               ) : null}
-            </>
-          )}
+            </View>
+
+            {forRecommendation ? (
+              <>
+                <View style={styles.chips}>
+                  {[...QUICK_KEYWORDS, ...chosen.filter((w) => !QUICK_KEYWORDS.includes(w))].map(
+                    (word) => (
+                      <ToggleChip
+                        key={word}
+                        label={word}
+                        selected={chosen.includes(word)}
+                        onToggle={() => toggle(word)}
+                      />
+                    ),
+                  )}
+                </View>
+                <View style={styles.section}>
+                  <Text style={[typography.bodyBold, styles.text]}>동행 추천에 쓸까요?</Text>
+                  <View style={styles.radios}>
+                    <RadioRow
+                      icon="people"
+                      title="동행과 함께 쓰기"
+                      description="추천 이유에 내 얼굴과 취향이 보여요"
+                      selected={shareWithCompanions}
+                      onPress={() => setShareWithCompanions(true)}
+                    />
+                    <RadioRow
+                      icon="lock"
+                      title="나만 보기"
+                      description="그룹 추천에는 쓰지 않아요"
+                      selected={!shareWithCompanions}
+                      onPress={() => setShareWithCompanions(false)}
+                    />
+                  </View>
+                </View>
+              </>
+            ) : (
+              <>
+                <View style={styles.addRow}>
+                  <View style={styles.flex}>
+                    <TextField
+                      variant="filled"
+                      value={draft}
+                      onChangeText={(v) => {
+                        setDraft(v);
+                        setDraftError(undefined);
+                      }}
+                      placeholder="직접 쓰기 (예: 온천, 전시)"
+                      maxLength={KEYWORD_MAX_LENGTH}
+                      hideCount
+                      // 20자가 차면 더 써지지 않아서 왜 안 써지는지 보이게, 쓰는 중에만 칸 안 오른쪽에 "18/20"(다 차면 빨강)
+                      trailing={
+                        draft ? (
+                          <Text
+                            style={[
+                              typography.caption,
+                              draft.length >= KEYWORD_MAX_LENGTH ? styles.countFull : styles.count,
+                            ]}
+                          >
+                            {draft.length}/{KEYWORD_MAX_LENGTH}
+                          </Text>
+                        ) : null
+                      }
+                      error={draftError}
+                      returnKeyType="done"
+                      onSubmitEditing={() => add(draft) && setDraft('')}
+                      accessibilityLabel="취향 직접 쓰기"
+                    />
+                  </View>
+                  <PressableScale
+                    accessibilityRole="button"
+                    accessibilityLabel="추가"
+                    onPress={() => add(draft) && setDraft('')}
+                    style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}
+                  >
+                    <Icon name="plus" size={20} color={colors.text.inverse} />
+                  </PressableScale>
+                </View>
+
+                <View style={styles.section}>
+                  <Text style={[typography.bodyBold, styles.text]}>내 취향</Text>
+                  {chosen.length || inferred.length ? (
+                    <View style={styles.chips}>
+                      {chosen.map((word) => (
+                        <ChosenChip key={word} label={word} onRemove={() => remove(word)} />
+                      ))}
+                      {inferred.map((item) => (
+                        <InferredChip
+                          key={item.key}
+                          label={item.value}
+                          onRemove={() => removeInferred.mutate(item)}
+                        />
+                      ))}
+                    </View>
+                  ) : (
+                    <Text style={[typography.caption, styles.sub]}>
+                      아래에서 고르거나 직접 써서 더해요
+                    </Text>
+                  )}
+                  {inferred.length ? (
+                    <Text style={[typography.caption, styles.hint]}>
+                      연한 칩은 저장한 장소로 찾은 취향이에요. 아니면 빼 주세요
+                    </Text>
+                  ) : null}
+                </View>
+
+                {suggestions.length ? (
+                  <View style={[styles.section, styles.sectionWide]}>
+                    <Text style={[typography.bodyBold, styles.text]}>이런 취향은 어때요?</Text>
+                    <View style={styles.chips}>
+                      {suggestions.map((word) => (
+                        <SuggestChip key={word} label={word} onAdd={() => add(word)} />
+                      ))}
+                    </View>
+                  </View>
+                ) : null}
+              </>
+            )}
+          </Stagger>
         </ScrollView>
 
         <View style={styles.bottom}>
           <Button
             label={forRecommendation ? '추천 보기' : '완료'}
+            icon={forRecommendation ? 'bulb' : 'check'}
             size="xl"
             block
             loading={save.isPending}
-            leading={
-              forRecommendation ? (
-                <Icon name="bulb" size={20} color={colors.text.inverse} />
-              ) : undefined
-            }
             onPress={() => save.mutate()}
             style={styles.done}
           />
@@ -380,6 +379,8 @@ function RadioRow({
 const RADIO = 22;
 
 const styles = StyleSheet.create({
+  // 차례로 나타나는 구역을 감싼 칸. 한 구역이 여러 줄이면 그 사이 간격을 스크롤 내용과 같게 둔다
+  staggerItem: { gap: spacing[28] },
   screen: { flex: 1, backgroundColor: colors.surface.white },
   flex: { flex: 1 },
   content: {

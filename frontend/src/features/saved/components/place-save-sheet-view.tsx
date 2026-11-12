@@ -123,10 +123,10 @@ export function PlaceSaveSheetView({
               </Text>
               <Button
                 label="다시 시도"
+                icon="refresh"
                 size="sm"
                 variant="secondary"
                 onPress={onRetryTrips}
-                leading={<Icon name="refresh" size={16} color={colors.brand.primary} />}
               />
             </View>
           ) : (

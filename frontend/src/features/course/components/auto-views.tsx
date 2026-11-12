@@ -91,9 +91,9 @@ export function AutoFailView({
       {FINAL.has(reason) ? null : (
         <Button
           label="다시 시도"
+          icon="refresh"
           size="lg"
           weight="medium"
-          leading={<Icon name="refresh" size={20} color={colors.text.inverse} />}
           onPress={onRetry}
           loading={retrying}
           style={styles.button}

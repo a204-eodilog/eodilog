@@ -1,4 +1,5 @@
 import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Stagger } from '@/components/ui/stagger';
 import { Spinner } from '@/components/ui/spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -95,102 +96,105 @@ export function PhotoEditView(props: PhotoEditViewProps) {
     <View style={styles.screen}>
       {header}
       <ScrollView contentContainerStyle={styles.body}>
-        <View style={styles.head}>
-          <View style={styles.flex}>
-            <Text style={[typography.title3, styles.text]} numberOfLines={1}>
-              {props.placeName ?? '장소'} 사진 {props.photos.length}장
-            </Text>
-            <Text style={[typography.caption, styles.sub]}>
-              {othersCount > 0 ? '내가 올린 사진만 고칠 수 있어요' : '바꿀 사진을 골라 주세요'}
-            </Text>
+        <Stagger itemStyle={styles.staggerItem}>
+          <View style={styles.head}>
+            <View style={styles.flex}>
+              <Text style={[typography.title3, styles.text]} numberOfLines={1}>
+                {props.placeName ?? '장소'} 사진 {props.photos.length}장
+              </Text>
+              <Text style={[typography.caption, styles.sub]}>
+                {othersCount > 0 ? '내가 올린 사진만 고칠 수 있어요' : '바꿀 사진을 골라 주세요'}
+              </Text>
+            </View>
+            <Text style={[typography.captionMedium, styles.link]}>{count}장 선택</Text>
           </View>
-          <Text style={[typography.captionMedium, styles.link]}>{count}장 선택</Text>
-        </View>
 
-        <View style={styles.grid}>
-          {props.photos.map((photo, i) => {
-            const mine = photo.uploaderMemberId === props.myMemberId;
-            return (
-              <TripPhotoTile
-                key={photo.id}
-                assetId={photo.assetId}
-                width={tile}
-                height={tile - 7}
-                uploader={props.memberName(photo.uploaderMemberId)}
-                mine={mine}
-                selected={props.selected.has(photo.id)}
-                disabled={!mine}
-                label={`사진 ${i + 1}`}
-                onPress={() => props.onToggle(photo.id)}
-              />
-            );
-          })}
-        </View>
+          <View style={styles.grid}>
+            {props.photos.map((photo, i) => {
+              const mine = photo.uploaderMemberId === props.myMemberId;
+              return (
+                <TripPhotoTile
+                  key={photo.id}
+                  assetId={photo.assetId}
+                  width={tile}
+                  height={tile - 7}
+                  uploader={props.memberName(photo.uploaderMemberId)}
+                  mine={mine}
+                  selected={props.selected.has(photo.id)}
+                  disabled={!mine}
+                  label={`사진 ${i + 1}`}
+                  onPress={() => props.onToggle(photo.id)}
+                />
+              );
+            })}
+          </View>
 
-        {count > 0 ? (
-          <View style={styles.box}>
-            <Text style={[typography.captionMedium, styles.link]}>고른 {count}장 바꾸기</Text>
-            <View style={styles.boxRow}>
-              <Label icon="bookmark" text="주제" />
-              <View style={styles.topicChips}>
-                {TOPICS.map((t) => {
-                  const on = props.topic === t.key;
-                  return (
-                    <PressableScale
-                      key={t.key}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: on }}
-                      accessibilityLabel={`주제 ${t.label}`}
-                      onPress={() => props.onTopic(t.key)}
-                      style={({ pressed }) => [
-                        styles.chip,
-                        on && styles.chipOn,
-                        pressed && styles.pressed,
-                      ]}
-                    >
-                      <Text style={[typography.captionMedium, on ? styles.link : styles.sub]}>
-                        {t.label}
-                      </Text>
-                    </PressableScale>
-                  );
-                })}
+          {count > 0 ? (
+            <View style={styles.box}>
+              <Text style={[typography.captionMedium, styles.link]}>고른 {count}장 바꾸기</Text>
+              <View style={styles.boxRow}>
+                <Label icon="bookmark" text="주제" />
+                <View style={styles.topicChips}>
+                  {TOPICS.map((t) => {
+                    const on = props.topic === t.key;
+                    return (
+                      <PressableScale
+                        key={t.key}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: on }}
+                        accessibilityLabel={`주제 ${t.label}`}
+                        onPress={() => props.onTopic(t.key)}
+                        style={({ pressed }) => [
+                          styles.chip,
+                          on && styles.chipOn,
+                          pressed && styles.pressed,
+                        ]}
+                      >
+                        <Text style={[typography.captionMedium, on ? styles.link : styles.sub]}>
+                          {t.label}
+                        </Text>
+                      </PressableScale>
+                    );
+                  })}
+                </View>
+              </View>
+              <View style={styles.boxRow}>
+                <Label icon="map-pin" text="장소" />
+                <Text style={[typography.body, styles.text, styles.flex]} numberOfLines={1}>
+                  {props.selectedPlaceName ?? '없음'}
+                </Text>
+                <PressableScale
+                  accessibilityRole="button"
+                  accessibilityLabel="장소 바꾸기"
+                  // 보이는 높이는 32, 누르는 자리는 위아래 6씩 넓혀 44
+                  hitSlop={6}
+                  onPress={props.onChangePlace}
+                  style={({ pressed }) => [styles.whitePill, pressed && styles.pressed]}
+                >
+                  <Icon name="pencil" size={16} color={colors.text.default} />
+                </PressableScale>
               </View>
             </View>
-            <View style={styles.boxRow}>
-              <Label icon="map-pin" text="장소" />
-              <Text style={[typography.body, styles.text, styles.flex]} numberOfLines={1}>
-                {props.selectedPlaceName ?? '없음'}
-              </Text>
-              <PressableScale
-                accessibilityRole="button"
-                accessibilityLabel="장소 바꾸기"
-                // 보이는 높이는 32, 누르는 자리는 위아래 6씩 넓혀 44
-                hitSlop={6}
-                onPress={props.onChangePlace}
-                style={({ pressed }) => [styles.whitePill, pressed && styles.pressed]}
-              >
-                <Icon name="pencil" size={16} color={colors.text.default} />
-              </PressableScale>
-            </View>
-          </View>
-        ) : null}
+          ) : null}
 
-        <View style={styles.inline}>
-          <Icon name="info" size={16} color={colors.text.icon} />
-          <Text style={[typography.caption, styles.sub]}>
-            {props.changed > 0
-              ? `${props.changed}장을 바꿨어요. [완료]를 눌러야 저장돼요`
-              : '바꾼 뒤 [완료]를 눌러 저장해요'}
-          </Text>
-        </View>
+          <View style={styles.inline}>
+            <Icon name="info" size={16} color={colors.text.icon} />
+            <Text style={[typography.caption, styles.sub]}>
+              {props.changed > 0
+                ? `${props.changed}장을 바꿨어요. [완료]를 눌러야 저장돼요`
+                : '바꾼 뒤 [완료]를 눌러 저장해요'}
+            </Text>
+          </View>
+        </Stagger>
       </ScrollView>
       <View style={[styles.bottom, { paddingBottom: Math.max(insets.bottom + spacing[12], 34) }]}>
         <Button
           label={count > 0 ? `${count}장 삭제` : '삭제'}
+          count={count > 0 ? count : undefined}
+          icon="trash"
           variant="danger"
           size="lg"
           disabled={count === 0 || props.saving}
-          leading={<Icon name="trash" size={20} color={colors.text.inverse} />}
           onPress={props.onDelete}
         />
       </View>
@@ -208,6 +212,8 @@ function Label({ icon, text }: { icon: 'bookmark' | 'map-pin'; text: string }) {
 }
 
 const styles = StyleSheet.create({
+  // 차례로 나타나는 구역을 감싼 칸. 한 구역이 여러 줄이면 그 사이 간격을 스크롤 내용과 같게 둔다
+  staggerItem: { gap: spacing[14] },
   screen: { flex: 1, backgroundColor: colors.surface.white },
   flex: { flex: 1 },
   text: { color: colors.text.default },

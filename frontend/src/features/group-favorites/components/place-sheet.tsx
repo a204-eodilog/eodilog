@@ -77,6 +77,7 @@ export function PlaceSheet({ item, members, myMemberId, onClose, ...props }: Pro
               />
               <Button
                 label="메모 저장"
+                icon="check"
                 size="lg"
                 block
                 variant="secondary"
@@ -94,7 +95,14 @@ export function PlaceSheet({ item, members, myMemberId, onClose, ...props }: Pro
               </PressableScale>
             </>
           ) : (
-            <Button label="나도 담기" size="xl" block loading={props.busy} onPress={props.onAdd} />
+            <Button
+              label="나도 담기"
+              icon="plus"
+              size="xl"
+              block
+              loading={props.busy}
+              onPress={props.onAdd}
+            />
           )}
         </View>
       ) : null}

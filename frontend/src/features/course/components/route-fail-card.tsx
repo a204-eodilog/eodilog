@@ -1,9 +1,9 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Spinner } from '@/components/ui/spinner';
 
 import { Icon } from '@/components/ui';
 import { PressableScale } from '@/components/ui/pressable-scale';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, radius, spacing } from '@/theme';
 
 type Props = {
   /** "10.26(월) 21:10 기준". 구한 적이 없으면 null */
@@ -29,6 +29,7 @@ export function RouteFailCard({ basis, onRecalculate, busy }: Props) {
       </View>
       <View style={styles.actionRow}>
         <PressableScale
+          accessibilityLabel={busy ? '계산하는 중…' : '다시 계산'}
           style={styles.action}
           onPress={onRecalculate}
           disabled={busy}
@@ -40,9 +41,6 @@ export function RouteFailCard({ basis, onRecalculate, busy }: Props) {
           ) : (
             <Icon name="refresh" size={16} color={colors.text.default} />
           )}
-          <Text style={[typography.bodyMedium, styles.actionText]}>
-            {busy ? '계산하는 중…' : '다시 계산'}
-          </Text>
         </PressableScale>
       </View>
     </View>

@@ -321,7 +321,7 @@ export function PlacePickScreen() {
           <View style={styles.actions}>
             <Button
               label={picked ? '이 장소로' : '이 위치로'}
-              leading={<Icon name="check" size={20} color={colors.text.inverse} />}
+              icon="check"
               loading={save.isPending}
               onPress={submit}
               style={styles.submit}

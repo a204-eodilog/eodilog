@@ -2,6 +2,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { Stagger } from '@/components/ui/stagger';
 import { Avatar, Button, Header, Icon, TextField, toast } from '@/components/ui';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import {
@@ -82,118 +83,122 @@ export function SettingsEditPreview({ kind, data, simulateFailure, onClose, onSa
     <View style={styles.screen}>
       <Header title={isProfile ? '프로필 수정' : '여행 취향'} onBack={onClose} />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        {failed ? (
-          <Text accessibilityRole="alert" style={styles.error}>
-            저장하지 못했어요. 다시 시도해 주세요.
-          </Text>
-        ) : null}
-        {isProfile ? (
-          <>
-            <View style={styles.photoBlock}>
-              <PressableScale
-                accessibilityRole="button"
-                accessibilityLabel="프로필 사진 변경"
-                onPress={pickPhoto}
-                style={styles.photoButton}
-              >
-                <Avatar
-                  name={nickname || data.profile.nickname}
-                  imageUrl={imageUrl}
-                  size={size.button.xl + size.avatar.lg}
-                  me
-                />
-                <View style={styles.camera}>
-                  <Icon name="camera" size={size.icon.md} color={colors.text.inverse} />
-                </View>
-              </PressableScale>
-              <PressableScale
-                accessibilityRole="button"
-                onPress={pickPhoto}
-                style={styles.photoLabel}
-              >
-                <Text style={styles.photoLabelText}>사진 변경</Text>
-              </PressableScale>
-            </View>
-            <TextField
-              label="닉네임"
-              accessibilityLabel="닉네임"
-              value={nickname}
-              onChangeText={setNickname}
-              maxLength={50}
-              variant="filled"
-              error={!valid ? '닉네임을 1~50자로 입력해 주세요' : undefined}
-            />
-            <View style={styles.ageRow}>
-              <Text style={styles.caption}>연령대</Text>
-              <Text style={styles.ageValue}>{data.profile.ageBand ?? '선택 안 함'}</Text>
-              <Text style={styles.caption}>비공개</Text>
-            </View>
-          </>
-        ) : (
-          <>
-            <View style={styles.inputSection}>
-              <Text style={styles.title}>어떤 여행을 좋아하세요?</Text>
-              <View style={styles.addRow}>
-                <View style={styles.input}>
-                  <TextField
-                    value={draft}
-                    onChangeText={(value) => {
-                      setDraft(value);
-                      setDraftError(undefined);
-                    }}
-                    variant="filled"
-                    placeholder="직접 입력 (예: 온천, 전시)"
-                    accessibilityLabel="취향 직접 입력"
-                    maxLength={KEYWORD_MAX_LENGTH}
-                    hideCount
-                    error={draftError}
-                    onSubmitEditing={addDraft}
-                    returnKeyType="done"
+        <Stagger itemStyle={styles.staggerItem}>
+          {failed ? (
+            <Text accessibilityRole="alert" style={styles.error}>
+              저장하지 못했어요. 다시 시도해 주세요.
+            </Text>
+          ) : null}
+          {isProfile ? (
+            <>
+              <View style={styles.photoBlock}>
+                <PressableScale
+                  accessibilityRole="button"
+                  accessibilityLabel="프로필 사진 변경"
+                  onPress={pickPhoto}
+                  style={styles.photoButton}
+                >
+                  <Avatar
+                    name={nickname || data.profile.nickname}
+                    imageUrl={imageUrl}
+                    size={size.button.xl + size.avatar.lg}
+                    me
                   />
-                </View>
-                <Button label="추가" variant="neutral" onPress={addDraft} />
+                  <View style={styles.camera}>
+                    <Icon name="camera" size={size.icon.md} color={colors.text.inverse} />
+                  </View>
+                </PressableScale>
+                <PressableScale
+                  accessibilityLabel="사진 변경"
+                  accessibilityRole="button"
+                  onPress={pickPhoto}
+                  style={styles.photoLabel}
+                >
+                  <Icon name="camera" size={20} color={colors.text.icon} />
+                </PressableScale>
               </View>
-            </View>
-            <View style={styles.section}>
-              <View style={styles.sectionHeading}>
-                <Text style={styles.sectionTitle}>내 취향</Text>
-                <Text style={styles.caption}>
-                  {preferences.length}/{MAX_PREFERENCES}
-                </Text>
+              <TextField
+                label="닉네임"
+                accessibilityLabel="닉네임"
+                value={nickname}
+                onChangeText={setNickname}
+                maxLength={50}
+                variant="filled"
+                error={!valid ? '닉네임을 1~50자로 입력해 주세요' : undefined}
+              />
+              <View style={styles.ageRow}>
+                <Text style={styles.caption}>연령대</Text>
+                <Text style={styles.ageValue}>{data.profile.ageBand ?? '선택 안 함'}</Text>
+                <Text style={styles.caption}>비공개</Text>
               </View>
-              {preferences.length ? (
-                <View style={styles.chips}>
-                  {preferences.map((word) => (
-                    <ChosenChip
-                      key={word}
-                      label={word}
-                      onRemove={() => {
-                        setPreferences((current) => current.filter((item) => item !== word));
+            </>
+          ) : (
+            <>
+              <View style={styles.inputSection}>
+                <Text style={styles.title}>어떤 여행을 좋아하세요?</Text>
+                <View style={styles.addRow}>
+                  <View style={styles.input}>
+                    <TextField
+                      value={draft}
+                      onChangeText={(value) => {
+                        setDraft(value);
                         setDraftError(undefined);
                       }}
+                      variant="filled"
+                      placeholder="직접 입력 (예: 온천, 전시)"
+                      accessibilityLabel="취향 직접 입력"
+                      maxLength={KEYWORD_MAX_LENGTH}
+                      hideCount
+                      error={draftError}
+                      onSubmitEditing={addDraft}
+                      returnKeyType="done"
                     />
-                  ))}
-                </View>
-              ) : (
-                <Text style={styles.caption}>취향을 직접 입력하거나 아래에서 골라 주세요.</Text>
-              )}
-            </View>
-            {suggestions.length ? (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>이런 취향은 어때요?</Text>
-                <View style={styles.chips}>
-                  {suggestions.map((word) => (
-                    <SuggestChip key={word} label={word} onAdd={() => add(word)} />
-                  ))}
+                  </View>
+                  <Button label="추가" icon="plus" variant="neutral" onPress={addDraft} />
                 </View>
               </View>
-            ) : null}
-          </>
-        )}
+              <View style={styles.section}>
+                <View style={styles.sectionHeading}>
+                  <Text style={styles.sectionTitle}>내 취향</Text>
+                  <Text style={styles.caption}>
+                    {preferences.length}/{MAX_PREFERENCES}
+                  </Text>
+                </View>
+                {preferences.length ? (
+                  <View style={styles.chips}>
+                    {preferences.map((word) => (
+                      <ChosenChip
+                        key={word}
+                        label={word}
+                        onRemove={() => {
+                          setPreferences((current) => current.filter((item) => item !== word));
+                          setDraftError(undefined);
+                        }}
+                      />
+                    ))}
+                  </View>
+                ) : (
+                  <Text style={styles.caption}>취향을 직접 입력하거나 아래에서 골라 주세요.</Text>
+                )}
+              </View>
+              {suggestions.length ? (
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>이런 취향은 어때요?</Text>
+                  <View style={styles.chips}>
+                    {suggestions.map((word) => (
+                      <SuggestChip key={word} label={word} onAdd={() => add(word)} />
+                    ))}
+                  </View>
+                </View>
+              ) : null}
+            </>
+          )}
+        </Stagger>
       </ScrollView>
       <View style={styles.footer}>
         <Button
           label={failed ? '다시 시도' : '저장'}
+          icon={failed ? 'refresh' : 'check'}
           disabled={isProfile && !valid}
           onPress={save}
           block
@@ -204,6 +209,8 @@ export function SettingsEditPreview({ kind, data, simulateFailure, onClose, onSa
 }
 
 const styles = StyleSheet.create({
+  // 차례로 나타나는 구역을 감싼 칸. 한 구역이 여러 줄이면 그 사이 간격을 스크롤 내용과 같게 둔다
+  staggerItem: { gap: spacing[32] },
   screen: { flex: 1, backgroundColor: colors.surface.white },
   content: {
     paddingHorizontal: layout.screenPaddingX,

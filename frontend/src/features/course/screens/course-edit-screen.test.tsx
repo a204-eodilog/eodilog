@@ -266,7 +266,7 @@ describe('코스 초안 고치고 저장하기', () => {
       screen.getByText('구간을 누르면 이동 수단을 바꿔요 · 10.26(월) 20:40 기준'),
     ).toBeTruthy();
     expect(screen.getByText('대중교통 22분')).toBeTruthy();
-    expect(screen.getByText('재추천')).toBeTruthy();
+    expect(screen.getByLabelText('재추천')).toBeTruthy();
   });
 
   it('장소를 위로 옮기고 완료하면 순서를 다시 매겨 저장하고 돌아간다', async () => {
@@ -275,7 +275,7 @@ describe('코스 초안 고치고 저장하기', () => {
     expect(screen.getByText('1일차 2번째')).toBeTruthy();
     expect(screen.getByText('고치는 중')).toBeTruthy();
     await fireEvent.press(screen.getByLabelText('위로'));
-    await fireEvent.press(screen.getByText('완료'));
+    await fireEvent.press(screen.getByLabelText('완료'));
 
     await waitFor(() => expect(mockPut).toHaveBeenCalledTimes(1));
     const body = lastBody();
@@ -289,7 +289,7 @@ describe('코스 초안 고치고 저장하기', () => {
     await renderScreen();
     await fireEvent.press(await screen.findByText('대중교통 25분'));
     await fireEvent.press(screen.getByText('자동차'));
-    await fireEvent.press(screen.getByText('완료'));
+    await fireEvent.press(screen.getByLabelText('완료'));
     await waitFor(() => expect(mockPut).toHaveBeenCalled());
     expect(lastBody().legs.map((l) => l.transportMode)).toEqual(['TRANSIT', 'CAR']);
   });
@@ -299,7 +299,7 @@ describe('코스 초안 고치고 저장하기', () => {
     await fireEvent.press(await screen.findByLabelText('광안리 바다뷰 카페 고치기'));
     await fireEvent.press(screen.getByText('코스에서 빼기'));
     expect(screen.queryByText('광안리 바다뷰 카페')).toBeNull();
-    await fireEvent.press(screen.getByText('완료'));
+    await fireEvent.press(screen.getByLabelText('완료'));
     await waitFor(() => expect(mockPut).toHaveBeenCalled());
     expect(day1(lastBody())).toEqual(['p-haeundae', 'p-seomyeon']);
     expect(lastBody().legs.filter((l) => l.day === 1)).toEqual([
@@ -313,7 +313,7 @@ describe('코스 초안 고치고 저장하기', () => {
     await fireEvent.press(await screen.findByLabelText('서면 돼지국밥집 고치기'));
     await fireEvent.press(screen.getByText('다른 장소로 바꾸기'));
     expect(await screen.findByText('흰여울문화마을')).toBeTruthy();
-    await fireEvent.press(screen.getByText('완료'));
+    await fireEvent.press(screen.getByLabelText('완료'));
     await waitFor(() => expect(mockPut).toHaveBeenCalled());
     const replaced = lastBody().items.find((i) => i.placeId === 'p-new');
     expect(replaced).toMatchObject({ day: 1, order: 3 });
@@ -322,7 +322,7 @@ describe('코스 초안 고치고 저장하기', () => {
 
   it('바뀐 게 없으면 저장하지 않고 돌아간다', async () => {
     await renderScreen();
-    await fireEvent.press(await screen.findByText('완료'));
+    await fireEvent.press(await screen.findByLabelText('완료'));
     expect(mockPut).not.toHaveBeenCalled();
     expect(mockRouter.back).toHaveBeenCalled();
   });
@@ -332,8 +332,8 @@ describe('코스 초안 고치고 저장하기', () => {
     await fireEvent.press(await screen.findByLabelText('해운대 해변 고치기'));
     await fireEvent.press(screen.getByLabelText('아래로'));
     await act(async () => {
-      fireEvent.press(screen.getByText('완료'));
-      fireEvent.press(screen.getByText('완료'));
+      fireEvent.press(screen.getByLabelText('완료'));
+      fireEvent.press(screen.getByLabelText('완료'));
     });
     await waitFor(() => expect(mockRouter.back).toHaveBeenCalled());
     expect(mockPut).toHaveBeenCalledTimes(1);
@@ -345,7 +345,7 @@ describe('코스 초안 고치고 저장하기', () => {
     await fireEvent.press(await screen.findByLabelText('해운대 해변 고치기'));
     await fireEvent.press(screen.getByText('코스에서 빼기'));
     mockGet.mockRejectedValue(httpError(500, 'INTERNAL_ERROR'));
-    await fireEvent.press(screen.getByText('완료'));
+    await fireEvent.press(screen.getByLabelText('완료'));
     await waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith('최신 코스를 받지 못했어요. 다시 시도해 주세요'),
     );
@@ -361,7 +361,7 @@ describe('코스 초안 고치고 저장하기', () => {
     const latest = sampleCourse(true);
     latest.version = 4;
     mockGet.mockResolvedValue(latest);
-    await fireEvent.press(screen.getByText('완료'));
+    await fireEvent.press(screen.getByLabelText('완료'));
     await waitFor(() =>
       expect(toast.show).toHaveBeenCalledWith(
         '세은님이 먼저 저장해서 최신 코스에 내 변경을 다시 얹었어요. 확인하고 완료를 눌러 주세요',
@@ -385,7 +385,7 @@ describe('코스 초안 고치고 저장하기', () => {
   it('빈 코스에서 왔으면 저장 뒤 S24로 바꿔 간다', async () => {
     mockParams.entry = 'empty';
     await renderScreen();
-    await fireEvent.press(await screen.findByText('완료'));
+    await fireEvent.press(await screen.findByLabelText('완료'));
     expect(mockRouter.replace).toHaveBeenCalledWith('/trips/trip-1/course');
   });
 });
@@ -456,8 +456,8 @@ describe('직접 만들기', () => {
     mockPut.mockResolvedValue(sampleCourse(true));
     await openManual();
     await fireEvent.press(await screen.findByLabelText('해운대 해변, 1일차에 놓기'));
-    await fireEvent.press(screen.getByText('코스 만들기'));
-    await fireEvent.press(await screen.findByText('완료'));
+    await fireEvent.press(screen.getByLabelText('코스 만들기'));
+    await fireEvent.press(await screen.findByLabelText('완료'));
     await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith('/trips/trip-1/course'));
   });
 
@@ -470,10 +470,10 @@ describe('직접 만들기', () => {
     expect(screen.getByText('1곳 남았어요')).toBeTruthy();
     await fireEvent.press(screen.getByLabelText('2일차에 놓기'));
     await fireEvent.press(screen.getByLabelText('서면 돼지국밥집, 2일차에 놓기'));
-    await fireEvent.press(screen.getByText('코스 만들기'));
+    await fireEvent.press(screen.getByLabelText('코스 만들기'));
 
-    expect(await screen.findByText('재추천')).toBeTruthy();
-    await fireEvent.press(screen.getByText('완료'));
+    expect(await screen.findByLabelText('재추천')).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText('완료'));
     await waitFor(() => expect(mockPut).toHaveBeenCalled());
     const body = lastBody();
     expect(body.expectedVersion).toBe(1);
@@ -484,8 +484,8 @@ describe('직접 만들기', () => {
 
   it('놓은 장소가 없으면 코스 만들기를 누를 수 없다', async () => {
     await openManual();
-    await fireEvent.press(await screen.findByText('코스 만들기'));
-    expect(screen.queryByText('재추천')).toBeNull();
+    await fireEvent.press(await screen.findByLabelText('코스 만들기'));
+    expect(screen.queryByLabelText('재추천')).toBeNull();
   });
 
   it('놓은 장소를 빼면 칩 줄로 돌아온다', async () => {
@@ -501,7 +501,7 @@ describe('직접 만들기', () => {
     mockPick.mockResolvedValue(place('p-new', '흰여울문화마을'));
     await openManual();
     expect(await screen.findByText('그룹 즐겨찾기가 비어 있어요')).toBeTruthy();
-    await fireEvent.press(screen.getByText('장소 찾기'));
+    await fireEvent.press(screen.getByLabelText('장소 찾기'));
     expect(await screen.findByText('흰여울문화마을')).toBeTruthy();
   });
 });
@@ -612,7 +612,7 @@ describe('구성 방식과 준비 상태', () => {
     expect(screen.getByText('자동차 22분')).toBeTruthy();
     // 추천안 구간은 저장된 코스의 기준 시각을 붙이지 않는다
     expect(screen.getByText('구간을 누르면 이동 수단을 바꿔요')).toBeTruthy();
-    await fireEvent.press(screen.getByText('완료'));
+    await fireEvent.press(screen.getByLabelText('완료'));
     await waitFor(() => expect(mockApplyAuto).toHaveBeenCalledWith('trip-1', 'job-1', 1));
     expect(mockPut).not.toHaveBeenCalled();
   });
@@ -624,7 +624,7 @@ describe('구성 방식과 준비 상태', () => {
     await screen.findByText('추천안');
     // 구간 수단을 바꾸면 고친 것이 된다
     await fireEvent.press(screen.getByText('대중교통'));
-    await fireEvent.press(screen.getByText('완료'));
+    await fireEvent.press(screen.getByLabelText('완료'));
     await waitFor(() => expect(mockPut).toHaveBeenCalled());
     expect(mockApplyAuto).not.toHaveBeenCalled();
     expect(lastBody().legs).toEqual([
@@ -636,7 +636,7 @@ describe('구성 방식과 준비 상태', () => {
     mockGet.mockResolvedValue(sampleCourse(true));
     mockGetAuto.mockResolvedValue({ ...proposalOf('SUCCEEDED'), baseVersion: 3 });
     await renderScreen();
-    await fireEvent.press(await screen.findByText('재추천'));
+    await fireEvent.press(await screen.findByLabelText('재추천'));
     expect(
       await screen.findByText('완료하면 지금 코스 전체가 이 추천안으로 바뀌어요'),
     ).toBeTruthy();
@@ -649,7 +649,7 @@ describe('구성 방식과 준비 상태', () => {
     await fireEvent.press(await screen.findByText('자동 추천'));
     await screen.findByText('추천안');
     mockGet.mockResolvedValue(sampleCourse(true));
-    await fireEvent.press(screen.getByText('완료'));
+    await fireEvent.press(screen.getByLabelText('완료'));
     expect(await screen.findByText(/먼저 코스를 바꿨어요$/)).toBeTruthy();
     await fireEvent.press(screen.getByText('내 것으로 덮기'));
     await waitFor(() => expect(mockPut).toHaveBeenCalled());
@@ -749,12 +749,12 @@ describe('구성 방식과 준비 상태', () => {
     await renderScreen();
     await fireEvent.press(await screen.findByLabelText('해운대 해변 고치기'));
     await fireEvent.press(screen.getByLabelText('아래로'));
-    await fireEvent.press(screen.getByText('재추천'));
+    await fireEvent.press(screen.getByLabelText('재추천'));
     expect(await screen.findByText('고치던 코스로 돌아가기')).toBeTruthy();
     expect(screen.queryByText('직접 만들기')).toBeNull();
     await fireEvent.press(screen.getByText('고치던 코스로 돌아가기'));
     expect(await screen.findByText('고치는 중')).toBeTruthy();
-    await fireEvent.press(screen.getByText('완료'));
+    await fireEvent.press(screen.getByLabelText('완료'));
     await waitFor(() => expect(mockPut).toHaveBeenCalled());
     expect(day1(lastBody())).toEqual(['p-gwangalli', 'p-haeundae', 'p-seomyeon']);
   });
@@ -763,7 +763,7 @@ describe('구성 방식과 준비 상태', () => {
     mockGet.mockResolvedValue(sampleCourse(true));
     mockGetAuto.mockResolvedValue(proposalOf('SUCCEEDED'));
     await renderScreen();
-    const redo = await screen.findByText('재추천');
+    const redo = await screen.findByLabelText('재추천');
     await fireEvent.press(redo);
     await fireEvent.press(redo);
     expect(await screen.findByText('추천 장소 A')).toBeTruthy();
@@ -775,7 +775,7 @@ describe('구성 방식과 준비 상태', () => {
     mockGet.mockResolvedValue(sampleCourse(true));
     mockGetAuto.mockResolvedValue(proposalOf('SUCCEEDED'));
     await renderScreen();
-    await fireEvent.press(await screen.findByText('재추천'));
+    await fireEvent.press(await screen.findByLabelText('재추천'));
     expect(await screen.findByText('추천 장소 A')).toBeTruthy();
     expect(mockRequestAuto).toHaveBeenCalledWith('trip-1', 3, expect.any(String));
   });
@@ -821,7 +821,7 @@ describe('이동 시간 계산 불가', () => {
     await renderScreen();
     await screen.findByText('두 곳 사이 경로를 찾지 못했어요');
     mockGet.mockResolvedValue(sampleCourse(true));
-    await fireEvent.press(screen.getAllByText('다시 계산')[0]);
+    await fireEvent.press(screen.getAllByLabelText('다시 계산')[0]);
     expect(mockRecalc).toHaveBeenCalledWith('trip-1', 3);
     expect(await screen.findByText('대중교통 22분')).toBeTruthy();
     expect(screen.queryByText('두 곳 사이 경로를 찾지 못했어요')).toBeNull();
@@ -831,7 +831,7 @@ describe('이동 시간 계산 불가', () => {
     await renderScreen();
     await fireEvent.press(await screen.findByLabelText('서면 돼지국밥집 고치기'));
     await fireEvent.press(screen.getByLabelText('위로'));
-    await fireEvent.press(screen.getAllByText('다시 계산')[0]);
+    await fireEvent.press(screen.getAllByLabelText('다시 계산')[0]);
     expect(mockRecalc).not.toHaveBeenCalled();
     expect(toast.show).toHaveBeenCalledWith('완료로 저장한 뒤 다시 계산할 수 있어요');
   });
@@ -888,7 +888,7 @@ describe('함께 편집', () => {
     await fireEvent.press(await screen.findByLabelText('해운대 해변 고치기'));
     await fireEvent.press(screen.getByText('코스에서 빼기'));
     mockGet.mockResolvedValue(latest);
-    await fireEvent.press(screen.getByText('완료'));
+    await fireEvent.press(screen.getByLabelText('완료'));
   }
 
   it('동행이 다른 날을 고쳤으면 내 1일차를 얹은 초안을 보이고 다시 완료하면 저장한다', async () => {
@@ -904,7 +904,7 @@ describe('함께 편집', () => {
     );
     expect(screen.queryByText('해운대 해변')).toBeNull();
     expect(mockPut).toHaveBeenCalledTimes(1);
-    await fireEvent.press(screen.getByText('완료'));
+    await fireEvent.press(screen.getByLabelText('완료'));
     await waitFor(() => expect(mockPut).toHaveBeenCalledTimes(2));
     const body = lastBody();
     expect(body.expectedVersion).toBe(4);

@@ -22,7 +22,14 @@ export function RecordSummaryCard({ icon, label, value, sub, onPress }: RecordSu
         <Icon name={icon} size={18} color={colors.text.icon} />
         <Text style={[typography.captionMedium, styles.label]}>{label}</Text>
       </View>
-      <Text style={[typography.bodyBold, styles.value]}>{value}</Text>
+      <Text
+        style={[typography.bodyBold, styles.value]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.85}
+      >
+        {value}
+      </Text>
       <Text style={[typography.caption, styles.sub]} numberOfLines={2}>
         {sub}
       </Text>

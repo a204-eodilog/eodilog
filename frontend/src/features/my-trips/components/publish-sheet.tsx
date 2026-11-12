@@ -81,7 +81,7 @@ export function PublishSheet({
         </PressableScale>
       </View>
 
-      <Button label="게시" block loading={publishing} onPress={onPublish} />
+      <Button label="게시" icon="globe" block loading={publishing} onPress={onPublish} />
     </BottomSheet>
   );
 }

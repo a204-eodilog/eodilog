@@ -88,6 +88,7 @@ export function DateRangeSheet({ visible, value, onClose, onDone }: Props) {
       footer={
         <Button
           label="선택"
+          icon="check"
           size="lg"
           block
           disabled={!complete}

@@ -44,7 +44,6 @@ export function OutboxBubble({ item, onRetry, onDiscard }: Props) {
                 style={({ pressed }) => [styles.retry, pressed && styles.pressed]}
               >
                 <Icon name="refresh" size={14} color={colors.status.danger} />
-                <Text style={[typography.captionMedium, styles.failedText]}>다시 보내기</Text>
               </PressableScale>
             ) : null}
           </View>

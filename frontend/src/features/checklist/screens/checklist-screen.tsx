@@ -136,6 +136,7 @@ export function ChecklistView(props: ChecklistViewProps) {
             </View>
           ) : null}
           <PressableScale
+            accessibilityLabel={props.suggesting ? '제안 받는 중…' : '다시 제안 받기'}
             style={[styles.suggest, !props.failure && styles.suggestBlock]}
             onPress={props.onSuggest}
             disabled={props.suggesting}
@@ -147,9 +148,6 @@ export function ChecklistView(props: ChecklistViewProps) {
             ) : (
               <Icon name="refresh" size={20} color={colors.text.default} />
             )}
-            <Text style={[typography.bodyMedium, styles.suggestText]}>
-              {props.suggesting ? '제안 받는 중…' : '다시 제안 받기'}
-            </Text>
           </PressableScale>
         </View>
       </>
