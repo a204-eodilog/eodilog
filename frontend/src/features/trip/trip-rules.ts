@@ -131,14 +131,44 @@ export type TripDetailView = {
   headline: string;
   steps: TodoStep[];
   action: { label: string; target: TodoTarget } | null;
-  /** 단계 대신 보이는 한 줄. 여행 중의 오늘 코스 요약 자리 */
+  /** 단계 대신 보이는 한 줄. 여행 중의 오늘 코스 요약 */
   note: string | null;
   /** 다녀온 여행의 [피드로 게시] */
   showPublish: boolean;
 };
 
-/** 여행 상세의 큰 제목과 단계. 여행지가 정해진 여행은 지역 투표를 건너뛴다(결정 F-12) */
-export function tripDetailView(trip: Trip, regionNames: string[], today: string): TripDetailView {
+/** 코스에서 그 일차에 갈 곳 이름을 순서대로 뽑는다 */
+export function placeNamesOfDay(
+  items: readonly { day: number; order: number; place: { name: string } }[],
+  day: number,
+): string[] {
+  return items
+    .filter((item) => item.day === day)
+    .sort((a, b) => a.order - b.order)
+    .map((item) => item.place.name);
+}
+
+/**
+ * 여행 중 여행 상세에 보이는 오늘 코스 한 줄.
+ * 코스를 아직 모르면(받는 중이거나 받지 못함) null이라 줄을 비운다. 없다고 잘못 말하지 않기 위해서다
+ */
+export function todayCourseNote(todayPlaces: readonly string[] | null): string | null {
+  if (!todayPlaces) return null;
+  if (todayPlaces.length === 0) return '오늘 코스가 아직 없어요';
+  if (todayPlaces.length === 1) return `오늘 갈 곳: ${todayPlaces[0]}`;
+  return `오늘 갈 곳: ${todayPlaces[0]} 외 ${todayPlaces.length - 1}곳`;
+}
+
+/**
+ * 여행 상세의 큰 제목과 단계. 여행지가 정해진 여행은 지역 투표를 건너뛴다(결정 F-12).
+ * todayPlaces는 여행 중일 때 오늘 갈 곳 이름. 모르면 null
+ */
+export function tripDetailView(
+  trip: Trip,
+  regionNames: string[],
+  today: string,
+  todayPlaces: readonly string[] | null = null,
+): TripDetailView {
   const place = destinationLabel(regionNames);
   // 여행지가 없으면 여행 이름을 쓴다. "겨울 여행 여행"처럼 겹치지 않게 '여행'을 붙이지 않는다
   const subject = place ? `${place} 여행` : trip.title;
@@ -151,8 +181,7 @@ export function tripDetailView(trip: Trip, regionNames: string[], today: string)
       headline: `${subject} ${n}일차예요`,
       steps: [],
       action: { label: '오늘 코스', target: 'today' },
-      // 코스 기능(S23·S24)이 생기면 오늘 코스 요약으로 바꾼다
-      note: '오늘 코스가 아직 없어요',
+      note: todayCourseNote(todayPlaces),
       showPublish: false,
     };
   }
