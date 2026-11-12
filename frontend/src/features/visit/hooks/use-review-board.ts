@@ -2,9 +2,9 @@ import { useQuery } from '@tanstack/react-query';
 
 import { useMe } from '@/hooks/use-me';
 
-import { getItineraryItems, getMyVisits, getTripReviews, getVisitTrip } from '../api';
+import { getMyVisits, getTripReviews, getVisitTrip } from '../api';
 
-import { visitKeys } from './use-visit-board';
+import { itineraryItemsQuery, visitKeys } from './use-visit-board';
 
 export const reviewKeys = {
   trip: (tripId: string) => ['trips', tripId, 'reviews'] as const,
@@ -19,10 +19,7 @@ export function useReviewBoard(tripId: string, visitId: string) {
     queryKey: visitKeys.trip(tripId),
     queryFn: () => getVisitTrip(tripId),
   });
-  const itinerary = useQuery({
-    queryKey: visitKeys.itinerary(tripId),
-    queryFn: () => getItineraryItems(tripId),
-  });
+  const itinerary = useQuery(itineraryItemsQuery(tripId));
   const visits = useQuery({
     queryKey: visitKeys.myVisits(tripId),
     queryFn: () => getMyVisits(tripId),
