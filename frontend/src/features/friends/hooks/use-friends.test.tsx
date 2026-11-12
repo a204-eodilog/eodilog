@@ -125,3 +125,19 @@ describe('친구 목록 낙관적 변경', () => {
     await unmount();
   });
 });
+
+describe('팔로우 해제 뒤 홈 지도', () => {
+  it('팔로우를 끊으면 홈 자료에 새로 받기 표시를 하고, 수락은 홈을 건드리지 않는다', async () => {
+    const { result, client, unmount } = await setup(async () => undefined);
+    client.setQueryData(['home', 'map'], []);
+    await act(async () => {
+      await result.current.run({ kind: 'accept', follow: PREVIEW_BOARD.requests[0], at: '' });
+    });
+    expect(client.getQueryState(['home', 'map'])?.isInvalidated).toBe(false);
+    await act(async () => {
+      await result.current.run({ kind: 'unfollow', follow: PREVIEW_BOARD.following[0], at: '' });
+    });
+    expect(client.getQueryState(['home', 'map'])?.isInvalidated).toBe(true);
+    await unmount();
+  });
+});
