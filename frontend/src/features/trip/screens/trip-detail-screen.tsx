@@ -14,9 +14,10 @@ import { TripGoneState } from '../components/trip-gone-state';
 import { TripHero } from '../components/trip-hero';
 import { TripMenuGrid } from '../components/trip-menu-grid';
 import { useRegionNames } from '../hooks/use-region-names';
+import { useTodayPlaces } from '../hooks/use-today-places';
 import { useTrip } from '../hooks/use-trip';
 import { publishHref, todoHref } from '../trip-routes';
-import { companionsLabel, tripDetailView } from '../trip-rules';
+import { companionsLabel, dayIndex, tripDetailView } from '../trip-rules';
 
 const comingSoon = () => toast.show('준비 중이에요');
 
@@ -28,6 +29,8 @@ export function TripDetailScreen() {
   const regionNames = useRegionNames(trip?.destinationRegionIds ?? []);
   // 앱이 다시 앞으로 오면 새로 구한다. 자정을 넘기면 제목·단계가 바뀐다
   const today = useSeoulToday();
+  // 여행 중일 때만 코스를 받아 오늘 갈 곳을 한 줄로 보인다
+  const todayPlaces = useTodayPlaces(tripId, trip ? dayIndex(trip, today) : null);
   const insets = useSafeAreaInsets();
 
   // 링크·알림으로 처음 열어 받아 둔 여행이 없는데 연결이 끊겼다. 로딩만 돌지 않게 안내한다
@@ -59,7 +62,7 @@ export function TripDetailScreen() {
 
   if (!trip) return null;
 
-  const view = tripDetailView(trip, regionNames, today);
+  const view = tripDetailView(trip, regionNames, today, todayPlaces);
 
   return (
     // 화면을 안드로이드 하단 버튼 줄(갤럭시 내비게이션 바) 위에서 끝낸다. 스크롤 끝에 여백만 주면
