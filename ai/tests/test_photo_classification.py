@@ -403,7 +403,9 @@ def test_failed_model_load_is_retried_on_the_next_request(monkeypatch):
     monkeypatch.setitem(
         sys.modules,
         "torch",
-        SimpleNamespace(cuda=SimpleNamespace(is_available=lambda: False)),
+        SimpleNamespace(
+            cuda=SimpleNamespace(is_available=lambda: False), set_num_threads=lambda count: None
+        ),
     )
     monkeypatch.setitem(
         sys.modules,

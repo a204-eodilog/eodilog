@@ -62,3 +62,5 @@ ignore = ["B008"]
 "app/features/*/service.py" = ["E501"]
 # 캡처 평가 세트 생성기: HTML 목업 문자열과 이미지별 데이터를 한 줄에 둔다
 "scripts/make_captures.py" = ["E501"]
+# H200 학습 실험 스크립트: 서버에서 돌린 그대로 보관한다(서비스 코드 아님)
+"scripts/h200/*" = ["E501", "E402", "B905"]

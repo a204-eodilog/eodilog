@@ -6,6 +6,7 @@ CPU·GPU 작업이라 호출하는 쪽에서 스레드로 돌린다.
 """
 
 import logging
+import os
 import threading
 from typing import Any, Protocol
 
@@ -16,6 +17,12 @@ log = logging.getLogger("ai")
 
 # 사진 50장을 한 번에 올리면 메모리가 크게 튄다
 IMAGE_BATCH_SIZE = 16
+# 다른 작업과 CPU를 나눠 쓰면 전체 코어 스레드가 서로 밀려 3~4배 느려진다 (reports §14)
+MAX_TORCH_THREADS = 4
+
+
+def limit_torch_threads(torch: Any, *, cpu_count: int | None) -> None:
+    torch.set_num_threads(min(cpu_count or MAX_TORCH_THREADS, MAX_TORCH_THREADS))
 
 
 class PhotoEmbedder(Protocol):
@@ -65,6 +72,7 @@ class SiglipEmbedder:
                 import open_clip
                 import torch
 
+                limit_torch_threads(torch, cpu_count=os.cpu_count())
                 device = "cuda" if torch.cuda.is_available() else "cpu"
                 model, _, preprocess = open_clip.create_model_and_transforms(
                     self._model_name, pretrained=self._pretrained, device=device
