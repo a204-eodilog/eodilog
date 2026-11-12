@@ -861,43 +861,6 @@ h3 {
   color: var(--text);
 }
 
-/* 흘러가는 띠 */
-.marquee {
-  overflow: hidden;
-  padding: 18px 0;
-  border-block: 1px solid var(--line);
-  background: var(--white);
-  mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
-}
-
-.marquee-track {
-  display: flex;
-  gap: 12px;
-  width: max-content;
-  animation: marquee 36s linear infinite;
-}
-
-.marquee-track span {
-  padding: 8px 18px;
-  border-radius: 999px;
-  background: var(--surface);
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-sub);
-  white-space: nowrap;
-}
-
-.marquee-track span:nth-child(3n + 1) {
-  background: var(--brand-bg);
-  color: var(--brand-dark);
-}
-
-@keyframes marquee {
-  to {
-    transform: translateX(calc(-50% - 6px));
-  }
-}
-
 /* 공통 구간 */
 .section {
   display: flex;
@@ -1748,25 +1711,6 @@ h3 {
   line-height: 1.45;
 }
 
-.footer {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  max-width: var(--wrap);
-  margin: 0 auto;
-  padding: 28px var(--gutter) 40px;
-  border-top: 1px solid var(--line);
-  font-size: 14px;
-  color: var(--text-muted);
-}
-
-.footer .brand {
-  font-size: 16px;
-  color: var(--text);
-}
-
 /* 좁은 화면 */
 @media (max-width: 899px) {
   .hero {
@@ -1871,12 +1815,87 @@ h3 {
 }
 
 /* 움직임 줄이기를 켠 사람에게는 흐르는 띠와 부드러운 이동을 멈춘다 */
+/* 넓은 화면: 구간 하나가 화면 한 장을 꽉 채운다. 한 장씩 넘길 때 옆 구간이 끼어들지 않는다.
+   좁은 화면에서는 아래 틀들이 없는 것처럼 동작해 원래 배치 그대로다 */
+.page-hero,
+.features-head,
+.feature-slot {
+  display: contents;
+}
+
+@media (min-width: 900px) {
+  [data-page] {
+    scroll-margin-top: 0;
+  }
+
+  .page-hero {
+    display: flex;
+    flex-direction: column;
+    min-height: 100svh;
+  }
+
+  .page-hero .hero {
+    flex: 1;
+    width: 100%;
+    min-height: 0;
+  }
+
+  .section[data-page],
+  .features-head,
+  .ai,
+  .download {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 100svh;
+    padding-top: 92px;
+    padding-bottom: 40px;
+  }
+
+  .features {
+    gap: 0;
+    padding-top: 0;
+  }
+
+  .features-head {
+    align-items: center;
+    gap: 18px;
+    width: 100%;
+  }
+
+  .feature-list {
+    gap: 0;
+    margin-top: 0;
+  }
+
+  .feature-slot {
+    display: grid;
+    align-content: center;
+    min-height: 100svh;
+    padding: 92px 0 24px;
+  }
+
+  .ai {
+    margin-top: 0;
+  }
+
+  .ai-inner {
+    width: 100%;
+  }
+}
+
+/* 작은 기능 카드 여덟 장은 세 줄이면 한 화면을 넘는다. 넓을 때는 네 장씩 두 줄로 놓는다 */
+@media (min-width: 1100px) {
+  .extras {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
   }
 
-  .marquee-track,
   .live i {
     animation: none;
   }
