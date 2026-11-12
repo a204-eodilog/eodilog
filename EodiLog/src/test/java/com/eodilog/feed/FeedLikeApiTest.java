@@ -62,11 +62,13 @@ class FeedLikeApiTest {
         jdbc.update("insert into photo_upload_batches(id,trip_id,created_by_member_id,file_count,created_at,expires_at) values(?,?,?,1,now(),now()+interval '1 hour')",batch,trip,memberId);
         jdbc.update("insert into assets(id,owner_user_id,trip_id,purpose,object_key,display_key,content_type,display_content_type,byte_size,status,created_at) values(?,?,?,'TRIP_PHOTO',?,?,'image/jpeg','image/jpeg',3,'READY',now())",asset,member,trip,"original/"+asset,"display/"+asset);
         jdbc.update("insert into photos(id,batch_id,trip_id,uploader_member_id,asset_id,created_at) values(?,?,?,?,?,now())",photo,batch,trip,memberId,asset);
-        publish();
+        UUID feed=publish();
         UUID other=user("PUBLIC");
-        mvc.perform(get("/api/v1/users/{id}/feeds",member).with(authUser(other))).andExpect(jsonPath("$.data[0].coverPhotoId").value(photo.toString()));
+        mvc.perform(get("/api/v1/users/{id}/feeds",member).with(authUser(other))).andExpect(jsonPath("$.data[0].coverPhotoId").value(photo.toString()))
+                .andExpect(jsonPath("$.data[0].coverImageUrl").value("/api/v1/assets/"+asset+"/download?feedId="+feed));
         jdbc.update("update photos set deleted_at=now() where id=?",photo);
-        mvc.perform(get("/api/v1/users/{id}/feeds",member).with(authUser(other))).andExpect(jsonPath("$.data[0].coverPhotoId").isEmpty());
+        mvc.perform(get("/api/v1/users/{id}/feeds",member).with(authUser(other))).andExpect(jsonPath("$.data[0].coverPhotoId").isEmpty())
+                .andExpect(jsonPath("$.data[0].coverImageUrl").isEmpty());
     }
     @Test void deletedFeedRejectsLikesAndRepublishedFeedStartsAtZero() throws Exception {
         UUID feed=publish();

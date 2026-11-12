@@ -297,7 +297,7 @@ class FeedExposureApiTest {
         assertThat(docs.path("paths").path("/api/v1/feeds/{feedId}/like").has("put")).isTrue();
         assertThat(docs.path("paths").path("/api/v1/feeds/{feedId}/like").has("delete")).isTrue();
         var schemas=docs.path("components").path("schemas");
-        for(String field:List.of("id","tripId","title","coverPhotoId","regions","startDate","endDate","publishedAt","likedByMe","likeCount"))
+        for(String field:List.of("id","tripId","title","coverPhotoId","coverImageUrl","regions","startDate","endDate","publishedAt","likedByMe","likeCount"))
             assertThat(schemas.path("FeedCard").path("properties").has(field)).as(field).isTrue();
         for(String field:List.of("markers","criteria","updatedAt")) assertThat(schemas.path("MapResult").path("properties").has(field)).isTrue();
         for(String field:List.of("markers","unlocatedTripCount","hiddenTripCount","updatedAt")) assertThat(schemas.path("OwnMapResult").path("properties").has(field)).isTrue();
