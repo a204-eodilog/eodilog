@@ -110,6 +110,7 @@ export function Landing() {
       </header>
 
       <main id="main">
+        <div className="page-hero" data-page>
         <section className="hero" id="top">
           <div className="aurora" aria-hidden="true">
             <i className="blob blob-a" />
@@ -158,7 +159,9 @@ export function Landing() {
           </div>
         </section>
 
-        <section className="section" id="why">
+        </div>
+
+        <section className="section" id="why" data-page>
           <p className="eyebrow" data-reveal>
             왜 필요한가요
           </p>
@@ -178,6 +181,7 @@ export function Landing() {
         </section>
 
         <section className="section features" id="features">
+          <div className="features-head" data-page>
           <p className="eyebrow" data-reveal>
             핵심 기능
           </p>
@@ -194,13 +198,14 @@ export function Landing() {
               </li>
             ))}
           </ol>
+          </div>
 
           <div className="feature-list">
             {features.map((feature, i) => (
+              <div className="feature-slot" key={feature.id} data-page>
               <article
                 className={`feature tone-${i % 4}${i % 2 ? ' is-flip' : ''}`}
                 id={feature.id}
-                key={feature.id}
               >
                 <span className="feature-num" aria-hidden="true">
                   {String(i + 1).padStart(2, '0')}
@@ -229,11 +234,12 @@ export function Landing() {
                   </ul>
                 </div>
               </article>
+              </div>
             ))}
           </div>
         </section>
 
-        <section className="section together" id="together">
+        <section className="section together" id="together" data-page>
           <p className="eyebrow" data-reveal>
             함께라서 다른 점
           </p>
@@ -297,7 +303,7 @@ export function Landing() {
           </div>
         </section>
 
-        <section className="ai" id="ai">
+        <section className="ai" id="ai" data-page>
           <i className="ai-orb ai-orb-a" aria-hidden="true" />
           <i className="ai-orb ai-orb-b" aria-hidden="true" />
           <div className="ai-inner">
@@ -341,7 +347,7 @@ export function Landing() {
           </div>
         </section>
 
-        <section className="section" id="more">
+        <section className="section" id="more" data-page>
           <p className="eyebrow" data-reveal>
             이런 것도 돼요
           </p>
@@ -362,7 +368,7 @@ export function Landing() {
           </ul>
         </section>
 
-        <section className="download" id="download">
+        <section className="download" id="download" data-page>
           <div className="download-card" data-pop>
             <div className="download-copy">
               <p className="eyebrow on-brand">앱 받기</p>
