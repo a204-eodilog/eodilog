@@ -1,9 +1,9 @@
 ---
 title: "어디로그 AI 서버 API 스펙"
 status: draft
-version: "0.5"
+version: "0.6"
 created: 2026-10-27
-updated: 2026-11-06
+updated: 2026-11-12
 jira: EODI-76
 parent: EODI-141
 sources:
@@ -14,7 +14,7 @@ sources:
   - "프론트 화면 설계 (eodilog-figma-import)"
 ---
 
-# 어디로그 AI 서버 API 스펙 v0.5
+# 어디로그 AI 서버 API 스펙 v0.6
 
 > 백엔드 작업 큐(worker)가 호출하는 **내부 API**다. 응답 `data`의 최상위 키는 백엔드 [`api-spec.md`](../../docs/api-spec.md) §10 "비동기 작업 kind별 result"와 같다. `TRIP_RECOMMENDATION`·`WEATHER_ALTERNATIVES`·`CHECKLIST_SUGGESTIONS`·`PHOTO_CLASSIFICATION`은 변환 없이 `jobs.result_json`에 저장할 수 있고, 나머지 kind는 §0.1 아래 표의 값이 다르다.
 > 기준 우선순위: **백엔드 API 명세(dev) → 화면 설계 → PRD.** 스펙과 코드가 다르면 스펙을 먼저 고친다.
@@ -33,6 +33,7 @@ sources:
 | `CHECKLIST_SUGGESTIONS` | `POST /ai/v1/checklist-suggestions` | `{items}` |
 | `PHOTO_CLASSIFICATION` | `POST /ai/v1/photo-classifications` | `{photos}` |
 | `VISIT_DETECTION` | `POST /ai/v1/visit-detections` | `{candidates}` |
+| `VOICE_EXPENSE_DRAFT` | `POST /ai/v1/voice-expense-drafts` | `{transcript, items, warnings}` (백엔드가 멤버로 바꿔 `drafts`로 저장, §14) |
 | `GET /me/preferences`의 추론 항목 | `POST /ai/v1/preference-inferences` | `{inferredItems}` |
 | `GET /me/discovery-recommendations` | `POST /ai/v1/discovery-recommendations` | `{items}` |
 | `GET /me/follow-suggestions` | `POST /ai/v1/follow-suggestions` | `{items}` |
@@ -430,6 +431,7 @@ sources:
 | 네이버 지역 검색(NAVER API HUB) | 장소 추출의 장소 검색 | `place: null` |
 | 카카오 길찾기(자동차·도보·대중교통) | 코스 변경안의 구간 시간, 날씨 대안 이동 시간, 직접 편집 뒤 구간 재계산 | 구간 `UNAVAILABLE` |
 | SigLIP2 `ViT-B-32-SigLIP2-256`, `webli` 가중치 (로컬) | 사진 분류·묶음 | 503 |
+| GMS `whisper-1` (`/audio/transcriptions`) | 음성 경비 받아쓰기(§14) | 503 |
 
 ## 11. 백엔드에 요청할 것
 
@@ -471,6 +473,7 @@ sources:
 | AS-19 | 사진 주제 분류기: `ViT-B-32-SigLIP2-256` 벡터에 학습한 4주제 선형 분류기(13KB). 정답은 GMS가 두 번 판단해 일치한 사진만 썼고(메뉴판은 데이터셋 자체를 기타로 봄) 사람이 검토하지 않았다. 학습 8,571장(AI Hub 71780·104·71553 메뉴판, Wikimedia 문서류), 평가 1,931장은 학습과 겹치지 않는다. 모델을 바꾸면 다시 학습해야 한다. 안내판·화면 캡처는 학습 자료에 거의 없다 |
 | AS-20 | 사진 인코더 파인튜닝: AS-19와 같은 학습 사진으로 `ViT-B-32-SigLIP2-256` 사진 인코더의 마지막 블록 4개와 출력 풀링을 분류기와 함께 학습했다. 바뀐 텐서(fp16)와 분류기만 `photo_finetune.safetensors`(71MB)에 두고 서버 시작 때 기본 모델에 덮어쓴다. 텍스트 인코더는 바꾸지 않았다. 인코더와 분류기는 짝이라 따로 쓰지 않는다. 파일이 모델과 맞지 않으면 Docker 빌드가 멈춘다. 평가 결과는 reports/photo-classification-eval.md §13 |
 | AS-21 | 사진 모델 CPU 스레드: PyTorch 스레드를 코어 수와 4 중 작은 값으로 둔다. 다른 작업과 CPU를 나눠 쓸 때 전체 코어를 쓰면 스레드끼리 밀려 사진 50장이 3~4배 느려졌다. 근거는 reports/photo-classification-eval.md §14 |
+| AS-22 | 음성 경비(§14): 녹음 60초(인코더가 넘겨 적는 1초 허용)·10MiB·한 번에 10건. 시간 예산 45초 중 받아쓰기 25초·추출 15초. 받아쓰기는 GMS에 열린 유일한 모델 `whisper-1`(2026-11-12 확인). whisper가 무음으로 본 구간(`no_speech_prob` ≥ 0.6)은 글을 자신 없게 읽었거나(`avg_logprob` < -0.7) 무음에서 흔히 지어내는 인사말일 때만 뺀다. 무음 확률만 보면 실제 끝 문장(0.72, -0.49)이 빠졌다. 지출 시각은 표현에 날짜 낱말과 시각이 모두 있고, 기준 시각 이전 1년 안일 때만 만든다 |
 | AS-18 | 구간 재계산(§5.1): 코스 직접 편집 뒤 시간은 AI 서버가 한 곳에서 구한다(백엔드 `ROUTE_RECALCULATION`이 이 엔드포인트를 부른다). 백엔드가 2026-11-10 이 방식에 동의했다. 한 번에 구간 최대 200개를 동시에 부르며 카카오 호출 한도에 걸린 구간은 `UNAVAILABLE`이다 |
 
 ## 13. 변경 이력
@@ -482,3 +485,65 @@ sources:
 | 0.3 | **백엔드 API 명세(dev v0.4)에 맞춤.** 응답을 `{data}`/`{error}`와 job kind별 result 모양으로, camelCase, 동기 처리(작업 관리는 백엔드), 날씨 요약·날씨 조회 제거, 코스 재조정(`PLACE_REMOVED`·`WEATHER`)·방문 판정 추가, 구간별 수단, 캡처 10장·사진 50장·HEIC, 준비물 삭제 항목 재제안 금지, 강수확률 0~1 |
 | 0.4 | **백엔드 `jobs` 기반(EODI-135)에 맞춤.** 추적 헤더를 `X-Trace-Id`로 변경, 응답 처리표, 사전 검사 위치, 시간 예산, 재실행 동작 추가. 백엔드 요청 7~10 추가 |
 | 0.5 | **장소 검색을 카카오에서 네이버로 교체**(2026-11-03 기술 확정). 장소 ID 규칙 AS-12 추가. 2026-11-04 문서 정리: 머리말 버전, 지역 코드 예시, 변환 없이 저장할 수 있는 범위, §11 순서와 #8 현황. 2026-11-06: §8.1을 사진 분류 구현(!128)에 맞춤(가중치, 448px 축소, 주제 문장 평균, 연결 묶음, 사진별 errorCode, 400) |
+| 0.6 | 2026-11-12: **음성 공동 경비 초안**(§14, EODI-341) 추가. 계약은 `docs/plan/voice-expense-stt-work-split-2026-11-12.md` §7 |
+
+## 14. `POST /ai/v1/voice-expense-drafts` — VOICE_EXPENSE_DRAFT (경비 폼 '말로 입력')
+
+계약 원문: [`docs/plan/voice-expense-stt-work-split-2026-11-12.md`](../../docs/plan/voice-expense-stt-work-split-2026-11-12.md) §5·§7. 녹음 한 개에서 경비 여러 건의 **초안**을 만든다. 경비를 저장하지 않고, 이름을 여행 멤버로 바꾸지 않는다(백엔드).
+
+**요청** (`multipart/form-data`)
+
+- `audio`: 녹음 한 개. M4A(MP4 컨테이너 + AAC). MIME·파일 이름은 보지 않고 내용(ftyp, 소리 트랙, `mp4a`+esds AAC)과 트랙 길이를 읽는다.
+- `meta`: `{"language": "ko", "timeZone": "Asia/Seoul", "referenceAt": "2026-11-12T05:30:00Z"}`. `referenceAt`은 시간대가 있어야 한다. 선택 `nameHints`(여행 멤버 이름, 20개·20자까지)는 받아쓰기 힌트로만 쓴다.
+
+**응답 `data`**
+
+```json
+{
+  "transcript": "택시비 2만4천원 내가 냈고 나랑 민수랑 지연이 나눠 커피 1만2천원은 지연이가 냈고 나랑 지연이 둘이 나눠",
+  "items": [{
+    "transcriptSegment": "택시비 2만4천원 내가 냈고 나랑 민수랑 지연이 나눠",
+    "title": "택시비", "memo": null, "amountMinor": 24000, "currency": "KRW",
+    "payer": {"kind": "SELF", "name": null},
+    "participants": {"mode": "NAMED", "includeSpeaker": true, "names": ["민수", "지연"], "headcount": 3},
+    "spentAt": null, "spentAtExpression": null, "warnings": []
+  }],
+  "warnings": []
+}
+```
+
+- `payer.kind`: `SELF | NAMED | UNKNOWN`. `participants.mode`: `NAMED | ALL_ACTIVE | UNKNOWN`. `includeSpeaker`는 모르면 `null`. `names`에는 화자를 넣지 않는다. `headcount`는 말한 인원수(없으면 나열한 사람 수)이며 `ALL_ACTIVE`에도 붙을 수 있다. 백엔드가 현재 멤버 수와 비교할 수 있다.
+- 받아쓴 글에 없는 값은 버린다: 금액(글에서 읽은 금액 중 하나여야 함, `2만4천`·`만 2천`·`12,000`·`1.5만` 등), 이름, `transcriptSegment`, `spentAtExpression`. 버린 칸은 경고로 알린다. confidence 수치는 만들지 않는다.
+- `spentAt`(UTC)은 표현에 날짜(오늘·어제·N일·요일 등)와 시각(N시·HH:MM 등)이 모두 있을 때만. 아니면 `null`이고 표현이 있으면 `spentAtExpression`에 남긴다.
+- '합계 3만 원'처럼 다른 항목의 합인 금액은 항목에서 뺀다. 말한 합계와 항목 합이 다르면 전체 경고 `TOTAL_MISMATCH`.
+- 경고 `{code, field, message}`: 항목별 `AMOUNT_MISSING`·`PAYER_UNKNOWN`·`PARTICIPANTS_UNKNOWN`·`COUNT_MISMATCH`(말한 인원과 이름 수가 다름)·`SPENT_AT_UNKNOWN`, 전체 `TOTAL_MISMATCH`. `MEMBER_AMBIGUOUS`·`MEMBER_NOT_FOUND`는 백엔드가 멤버를 맞출 때 붙인다.
+
+**오류**
+
+| 상황 | HTTP | code |
+| --- | --- | --- |
+| `meta`가 틀림, 파일이 비었거나 M4A(AAC)가 아님 | 400 | `VALIDATION_ERROR` |
+| 60초·10MiB 초과(파일 상자 길이 또는 공급자가 실제로 읽은 길이), 11건 이상 | 422 | `INPUT_LIMIT_EXCEEDED` |
+| 무음, 경비를 찾지 못함 | 422 | `INSUFFICIENT_DATA` |
+| 외화, 똑같이 나누지 않는 분담 | 422 | `VOICE_EXPENSE_UNSUPPORTED` |
+| GMS 장애, 받아쓰기 25초·추출 15초 초과, 45초 예산 초과 | 503 | `PROVIDER_UNAVAILABLE` |
+
+- 원음은 저장하지 않는다. 업로드 임시 파일은 읽은 즉시 닫고, 받아쓰기가 끝나면 원음 바이트를 놓은 뒤 추출한다. 재시도하지 않는다.
+- 받아쓴 글은 LLM에 자료로만 넘기고 그 안의 지시는 따르지 않는다. 응답 칸은 모두 다시 검사한다.
+- 로그에는 소요 시간·모델·건수·오류 종류만 남긴다. 받아쓴 글·이름·금액은 남기지 않는다.
+
+**실제 호출 (2026-11-12, GMS `whisper-1` + `gpt-5.6-luna`, Windows TTS로 만든 44.1kHz 모노 64kbps M4A)**
+
+| 녹음 | 결과 | 시간 |
+| --- | --- | --- |
+| 결제자·분담자 다른 2건 (10초) | 2건, 금액·결제자·분담자 맞음 | 4.5~6.3초 |
+| 택시 2만·커피 1만·합계 3만, 둘 다 내가 (6초) | 2건, 둘 다 SELF, 분담자 확인 필요 | 4.1~4.8초 |
+| 1만2천 아니 1만5천 (6초) | 1건 15,000원, ALL_ACTIVE | 3.7~4.8초 |
+| 어제 저녁 7시, 셋이 나눠 (7초) | `spentAt` 2026-11-11T10:00:00Z, 분담 UNKNOWN·인원 3 | 5.4~6.9초 |
+| 10건 + 전부 우리 셋이 (29초) | 10건 금액 모두 맞음, ALL_ACTIVE·인원 3. 받아쓰기 2.8~3.7초, 추출 7.4~8.0초(15초 상한 안) | 10.5~11.7초 |
+| 스무 달러 | 422 `VOICE_EXPENSE_UNSUPPORTED` | 2.0초 |
+| 무음 5초 | 422 `INSUFFICIENT_DATA` (whisper는 '고맙습니다.'를 지어냄) | 1.9~2.4초 |
+
+gpt-4o-transcribe·gpt-4o-mini-transcribe는 GMS에서 400 "not available"이다. 실제 Android/iOS 녹음 샘플 검증은 프론트 샘플을 받은 뒤 한다.
+
+**검증:** `tests/test_voice_expense.py`, `tests/test_stt_client.py`
