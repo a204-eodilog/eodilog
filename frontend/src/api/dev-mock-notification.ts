@@ -183,6 +183,14 @@ export function createNotificationMock({ ok, fail }: Helpers) {
       }
       return ok(config, { data: { updatedCount } });
     }
+    // 같은 소식(eventId)의 알림을 읽음으로. 채팅 시스템 카드를 열 때 쓴다
+    const event = /^\/me\/events\/([^/]+)\/read$/.exec(url);
+    if (event && method === 'post') {
+      const found = list().find((n) => n.eventId === event[1]);
+      if (!found) throw fail(config, 404, 'EVENT_NOT_FOUND', '이벤트를 찾을 수 없습니다.');
+      found.readAt = found.readAt ?? new Date().toISOString();
+      return ok(config, { data: { eventId: found.eventId, readAt: found.readAt } });
+    }
     const one = /^\/me\/notifications\/([^/]+)$/.exec(url);
     if (one) {
       const found = list().find((n) => n.id === one[1]);
