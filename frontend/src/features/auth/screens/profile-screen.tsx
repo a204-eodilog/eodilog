@@ -142,10 +142,11 @@ export function ProfileScreen() {
           editing ? undefined : (
             <Pressable
               accessibilityRole="button"
+              accessibilityLabel="로그아웃"
               onPress={signOut}
               style={({ pressed }) => [styles.logout, pressed && styles.pressed]}
             >
-              <Text style={[typography.captionMedium, styles.sub]}>로그아웃</Text>
+              <Icon name="leave" size={22} color={colors.text.sub} />
             </Pressable>
           )
         }
@@ -276,7 +277,13 @@ const styles = StyleSheet.create({
   },
   // 안내 상자(회색). 피그마 S02 저장 실패: 바탕 grey 98, 둥글기 20, 안쪽 20
   failCard: { gap: 0, padding: spacing[20], backgroundColor: colors.surface.subtle },
-  logout: { paddingHorizontal: spacing[8], paddingVertical: spacing[12] },
+  // 누르는 자리 44
+  logout: {
+    width: layout.minTouchTarget,
+    height: layout.minTouchTarget,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   pressed: { opacity: 0.6 },
   failRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[14] },
   failIcon: {

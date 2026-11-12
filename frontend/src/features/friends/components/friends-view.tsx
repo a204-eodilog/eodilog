@@ -261,7 +261,7 @@ export function FriendsView({
                       {blocked ? (
                         <Spinner color={colors.brand.primary} />
                       ) : (
-                        <Text style={styles.name}>⋯</Text>
+                        <Icon name="more" size={22} color={colors.text.default} />
                       )}
                     </Pressable>
                   </View>

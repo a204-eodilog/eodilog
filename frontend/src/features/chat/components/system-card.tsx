@@ -38,9 +38,12 @@ export function SystemCard({ message, tripId }: Props) {
           <Pressable
             accessibilityRole="button"
             onPress={go}
+            // 보이는 높이는 36, 누르는 자리는 위아래 4씩 넓혀 44
+            hitSlop={{ top: spacing[4], bottom: spacing[4] }}
             style={({ pressed }) => [styles.button, pressed && styles.pressed]}
           >
             <Text style={[typography.bodyMedium, styles.buttonText]}>{card.action.label}</Text>
+            <Icon name="chevron-right" size={16} color={colors.text.inverse} />
           </Pressable>
         ) : null}
       </View>
@@ -71,8 +74,12 @@ const styles = StyleSheet.create({
   body: { color: colors.text.icon, textAlign: 'center' },
   button: {
     height: 36,
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: spacing[16],
+    gap: spacing[2],
+    paddingLeft: spacing[16],
+    paddingRight: spacing[12],
     marginTop: spacing[2],
     borderRadius: radius.full,
     backgroundColor: colors.brand.primary,

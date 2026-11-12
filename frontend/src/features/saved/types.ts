@@ -9,6 +9,8 @@ export type Place = {
   provider: string | null;
   providerPlaceId: string | null;
   source: 'PROVIDER' | 'MANUAL';
+  /** 장소 사진 주소. 서버 응답에는 아직 없다(백엔드 요청). 테스트 모드의 시험 데이터만 채운다 */
+  imageUrl?: string | null;
 };
 
 /**

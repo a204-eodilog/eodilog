@@ -100,7 +100,8 @@ export function DateRangeSheet({ visible, value, onClose, onDone }: Props) {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="나중에 정할게요"
-          hitSlop={spacing[8]}
+          // 글자 줄 26에 위아래 9씩 넓혀 누르는 자리 44
+          hitSlop={9}
           onPress={() => onDone(null)}
           style={({ pressed }) => pressed && styles.pressed}
         >

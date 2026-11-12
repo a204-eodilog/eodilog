@@ -14,6 +14,8 @@ export type SavedItem = {
   area: string | null;
   /** 출처 배지. 응답에 출처 종류(SNS·블로그·캡처)가 없어 공동 피드에서 담은 것만 표시 */
   source: string | null;
+  /** 카드 사진 주소. 서버가 아직 주지 않아 진짜 서버에서는 null이다 */
+  imageUrl: string | null;
 };
 
 const METRO = /(특별시|광역시|특별자치시)$/;
@@ -69,6 +71,7 @@ export function toSavedItem(bookmark: Bookmark): SavedItem {
     city: parts[0] ?? null,
     area: parts.length > 0 ? parts.join(' ') : null,
     source: bookmark.sourceFeedId ? '공동 피드' : null,
+    imageUrl: place?.imageUrl ?? null,
   };
 }
 

@@ -8,6 +8,7 @@ export type IconName =
   | 'close'
   | 'plus'
   | 'check'
+  | 'check-all'
   | 'chevron-right'
   | 'chevron-down'
   | 'chevron-up'
@@ -54,6 +55,7 @@ export type IconName =
   | 'car'
   | 'bus'
   | 'eye'
+  | 'clipboard'
   | 'list'
   | 'send'
   | 'eye-off'
@@ -79,10 +81,15 @@ type IconProps = {
 };
 
 const PATHS: Record<IconName, string> = {
+  // 집게판. 붙여넣기(S11). 복사 아이콘은 복사로 읽혀 따로 둔다
+  clipboard:
+    'M9 5H7A1 1 0 0 0 6 6V20A1 1 0 0 0 7 21H17A1 1 0 0 0 18 20V6A1 1 0 0 0 17 5H15M9 3.5H15V6.5H9V3.5Z',
   back: 'M15 5L8 12L15 19',
   close: 'M6 6L18 18M18 6L6 18',
   plus: 'M12 5V19M5 12H19',
   check: 'M5 12.5L9.5 17L19 7',
+  // 겹친 체크. 알림 모두 읽음(S49)
+  'check-all': 'M2 12.5L6.5 17L15 8M11 16L12 17L21.5 7',
   'chevron-right': 'M9 5L16 12L9 19',
   // 펼치기·접기(S15 다음 계획 더 보기)
   'chevron-down': 'M5 9L12 16L19 9',

@@ -286,6 +286,8 @@ type MockBookmark = {
     provider: string | null;
     providerPlaceId: string | null;
     source: 'PROVIDER' | 'MANUAL';
+    /** 시험 사진. 화면이 샘플 사진으로 바꿔 그린다(lib/mock-photo) */
+    imageUrl?: string | null;
   };
   retainedPlace: { name: string; latitude: number; longitude: number };
   memo: string | null;
@@ -297,6 +299,7 @@ let bookmarks: MockBookmark[] = BOOKMARKS.map(
   ([name, address, latitude, longitude, sourceFeedId], i) => ({
     place: {
       id: `place-bookmark-${i + 1}`,
+      imageUrl: `/assets/sample-place-bookmark-${i + 1}/download`,
       name,
       address,
       latitude,
@@ -1696,6 +1699,8 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
       tripId: `${regionId}-trip-${n}`,
       title,
       coverPhotoId: null,
+      // 시험 사진. 화면이 샘플 사진으로 바꿔 그린다(lib/mock-photo)
+      coverImageUrl: `/assets/sample-cover-${regionId}-feed-${n}/download`,
       regions: [],
       startDate: start,
       endDate: end,
@@ -1761,6 +1766,7 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
         tripId: `trip-${id}`,
         title,
         coverPhotoId: null,
+        coverImageUrl: `/assets/sample-cover-${id}/download`,
         regions: [region(code, name)],
         startDate: start,
         endDate: end,
@@ -1778,7 +1784,13 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
     const place = (id: string, name: string, address: string) => ({
       type: 'PLACE' as const,
       feed: null,
-      place: { id, name, address, regionId: null },
+      place: {
+        id,
+        name,
+        address,
+        regionId: null,
+        imageUrl: `/assets/sample-place-${id}/download`,
+      },
       reason: '좋아요한 여행과 비슷해요',
     });
     return ok(

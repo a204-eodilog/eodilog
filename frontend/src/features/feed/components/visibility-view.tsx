@@ -124,12 +124,16 @@ function Row({ row, onToggle }: { row: ViewerRow; onToggle: (id: string) => void
             row.hidden ? styles.toggleShow : styles.toggleHide,
             pressed && styles.pressed,
           ]}
+          // 보이는 높이는 32, 누르는 자리는 위아래 6씩 넓혀 44
+          hitSlop={6}
           accessibilityRole="button"
           accessibilityLabel={`${name} ${row.hidden ? '다시 보이기' : '숨기기'}`}
         >
-          <Text style={[styles.toggleText, row.hidden && styles.toggleTextShow]}>
-            {row.hidden ? '다시 보이기' : '숨기기'}
-          </Text>
+          <Icon
+            name={row.hidden ? 'eye' : 'eye-off'}
+            size={18}
+            color={row.hidden ? colors.brand.primaryDark : colors.text.strong}
+          />
         </Pressable>
       )}
     </View>
@@ -174,8 +178,6 @@ const styles = StyleSheet.create({
   },
   toggleHide: { backgroundColor: colors.surface.default },
   toggleShow: { backgroundColor: colors.brand.primaryBg },
-  toggleText: { ...typography.captionMedium, color: colors.text.strong },
-  toggleTextShow: { ...typography.captionBold, color: colors.brand.primaryDark },
   empty: { ...typography.caption, color: colors.text.muted, paddingVertical: spacing[12] },
   note: { flexDirection: 'row', alignItems: 'center', gap: spacing[6] },
   noteText: { ...typography.caption, color: colors.text.sub },

@@ -223,6 +223,25 @@ describe('toRegionTripCards', () => {
     expect(cards.map((c) => c.feedId)).toEqual(['new', 'old']);
     expect(cards[0]).toMatchObject({ period: '01.17 – 01.18', nights: '1박 2일', coverUrl: null });
   });
+
+  it('표지 사진 주소가 오면 카드에 넘긴다', () => {
+    const [card] = toRegionTripCards([
+      {
+        id: 'f',
+        tripId: 't',
+        title: '겨울 바다 산책',
+        coverPhotoId: 'photo-1',
+        coverImageUrl: '/assets/sample-cover-f/download',
+        regions: [],
+        startDate: null,
+        endDate: null,
+        publishedAt: '2026-01-20T00:00:00Z',
+        likedByMe: false,
+        likeCount: 0,
+      },
+    ]);
+    expect(card.coverUrl).toBe('/assets/sample-cover-f/download');
+  });
 });
 
 describe('nightsLabel', () => {
@@ -234,6 +253,48 @@ describe('nightsLabel', () => {
 });
 
 describe('toRecommendations', () => {
+  it('표지 사진 주소가 오면 줄에 넘기고, 없으면 비운다', () => {
+    const feed = (id: string, coverImageUrl?: string) => ({
+      type: 'FEED' as const,
+      reason: '',
+      place: null,
+      feed: {
+        id,
+        tripId: 't',
+        title: id,
+        coverPhotoId: null,
+        coverImageUrl,
+        regions: [],
+        startDate: null,
+        endDate: null,
+        publishedAt: '',
+        likedByMe: false,
+        likeCount: 0,
+      },
+    });
+    const rows = toRecommendations([
+      feed('with', '/assets/sample-cover-with/download'),
+      feed('without'),
+      {
+        type: 'PLACE',
+        reason: '',
+        feed: null,
+        place: {
+          id: 'p',
+          name: '카페',
+          address: null,
+          regionId: null,
+          imageUrl: '/assets/sample-place-p/download',
+        },
+      },
+    ]);
+    expect(rows.map((r) => r.imageUrl)).toEqual([
+      '/assets/sample-cover-with/download',
+      null,
+      '/assets/sample-place-p/download',
+    ]);
+  });
+
   it('피드는 여행, 장소는 장소 줄로', () => {
     const rows = toRecommendations([
       {
