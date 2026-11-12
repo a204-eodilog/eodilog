@@ -9,6 +9,7 @@ from app.clients.gms import GmsClient
 from app.clients.kakao_routing import KakaoRoutingClient
 from app.clients.naver_local import NaverLocalClient
 from app.clients.page_meta import PageMetaFetcher
+from app.clients.stt import GmsTranscriber
 from app.core.budget import RequestBudgetMiddleware
 from app.core.config import Settings, get_settings
 from app.core.errors import TRACE_HEADER, register_error_handlers, resolve_trace_id
@@ -35,6 +36,8 @@ from app.features.route_legs.service import RouteLegCalculator
 from app.features.trip_recommendation.router import router as trip_recommendation_router
 from app.features.trip_recommendation.service import TripRecommender
 from app.features.visit_detection.router import router as visit_detection_router
+from app.features.voice_expense.router import router as voice_expense_router
+from app.features.voice_expense.service import VoiceExpenseDrafter
 from app.features.weather_alternatives.router import router as weather_alternatives_router
 from app.features.weather_alternatives.service import WeatherAlternativeSuggester
 
@@ -111,6 +114,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.itinerary_proposer = ItineraryProposer(routing=routing)
     app.state.route_leg_calculator = RouteLegCalculator(routing=routing)
     app.state.photo_classifier = build_photo_classifier(app.state.settings)
+    app.state.voice_expense_drafter = _build_voice_expense_drafter(
+        app.state.settings, app.state.http
+    )
 
     # 뒤에 등록한 미들웨어가 바깥을 감싼다. 예산 초과 503에도 trace가 추적 ID를 붙인다
     app.add_middleware(RequestBudgetMiddleware, seconds=app.state.settings.request_budget_seconds)
@@ -147,6 +153,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(recommendations_router)
     app.include_router(route_legs_router)
     app.include_router(visit_detection_router)
+    app.include_router(voice_expense_router)
 
     return app
 
@@ -173,6 +180,29 @@ def _build_llm(settings: Settings, http: httpx.AsyncClient) -> GmsClient:
         base_url=settings.gms_base_url,
         model=settings.llm_model,
         timeout_seconds=settings.llm_timeout_seconds,
+    )
+
+
+def _build_voice_expense_drafter(
+    settings: Settings, http: httpx.AsyncClient
+) -> VoiceExpenseDrafter:
+    return VoiceExpenseDrafter(
+        stt=GmsTranscriber(
+            http,
+            api_key=settings.gms_api_key,
+            base_url=settings.gms_base_url,
+            model=settings.stt_model,
+            timeout_seconds=settings.stt_timeout_seconds,
+        ),
+        llm=GmsClient(
+            http,
+            api_key=settings.gms_api_key,
+            base_url=settings.gms_base_url,
+            model=settings.llm_model,
+            timeout_seconds=settings.voice_llm_timeout_seconds,
+        ),
+        stt_timeout_seconds=settings.stt_timeout_seconds,
+        llm_timeout_seconds=settings.voice_llm_timeout_seconds,
     )
 
 
