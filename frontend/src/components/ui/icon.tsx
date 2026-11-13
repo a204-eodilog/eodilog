@@ -16,6 +16,7 @@ export type IconName =
   | 'home'
   | 'trip'
   | 'bookmark'
+  | 'bookmark-plus'
   | 'chat'
   | 'person'
   | 'people'
@@ -100,6 +101,8 @@ const PATHS: Record<IconName, string> = {
   home: 'M4 10.5L12 4L20 10.5V19A1 1 0 0 1 19 20H15V14H9V20H5A1 1 0 0 1 4 19V10.5Z',
   trip: 'M4 8H20V19A1 1 0 0 1 19 20H5A1 1 0 0 1 4 19V8Z',
   bookmark: 'M6 4H18V20L12 15.5L6 20V4Z',
+  // 저장 탭 북마크 윤곽 오른쪽 위에 작은 +. 저장 탭 머리의 장소 추가(S10)
+  'bookmark-plus': 'M12 4H5V20L9.5 16L14 20V10M18 3V9M15 6H21',
   chat: 'M4 6A2 2 0 0 1 6 4H18A2 2 0 0 1 20 6V15A2 2 0 0 1 18 17H9L4 21V6Z',
   person: 'M12 12A4 4 0 1 0 12 4A4 4 0 0 0 12 12ZM4 20C4 16.7 7.6 15 12 15C16.4 15 20 16.7 20 20',
   people:

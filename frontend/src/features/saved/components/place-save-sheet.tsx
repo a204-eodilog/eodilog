@@ -1,11 +1,17 @@
-import { router } from 'expo-router';
+import { router, usePathname } from 'expo-router';
 import { useRef, useState } from 'react';
 
 import { toast } from '@/components/ui';
 
 import { type SaveTarget, useSavePlaces } from '../hooks/use-bookmark-mutations';
 import { useTripOptions } from '../hooks/use-trip-options';
-import { placeSavedMessage, placeSaveState, type SaveChoice } from '../saved-rules';
+import {
+  placeSavedMessage,
+  placeSaveState,
+  SAVED_TAB_PATH,
+  type SaveChoice,
+  showSavedLink,
+} from '../saved-rules';
 
 import { PlaceSaveSheetView } from './place-save-sheet-view';
 
@@ -26,12 +32,15 @@ export type PlaceSaveSheetProps = {
   onClose: () => void;
   /** 저장한 뒤. 시트는 이미 닫혔고 토스트도 떠 있다. S12는 여기서 S10(개인) 또는 S20(그룹)으로 간다 */
   onSaved?: (target: SaveTarget) => void;
+  /** 개인 저장 뒤 onSaved가 S10으로 데려가면 true(S12). 완료 안내에 [보기]를 붙이지 않는다 */
+  opensSavedTab?: boolean;
 };
 
 /**
  * S08 장소 저장 시트. S07·N3·N7(A), S47(C), S12(B)에서 연다.
  * 나만 보기 → PUT /me/bookmarks/{placeId}, 동행과 같이 → PUT /trips/{tripId}/saved-places/{placeId}/me.
- * 성공하면 시트를 닫고 토스트("개인 즐겨찾기에 저장했어요" + [보기] → S10, "OO에 담았어요"),
+ * 성공하면 시트를 닫고 위 한 줄 안내를 띄운다. 개인은 "개인 즐겨찾기에 저장했어요" + [보기] → S10(
+ * 이미 S10이거나 S10으로 가면 [보기] 없이), 여행은 토스트("OO에 담았어요"),
  * 실패하면 시트에 오류 띠를 띄우고 [다시 저장].
  * 그룹 토스트의 [보기](→ S20 그룹 즐겨찾기, C)는 화면이 생기면 붙인다
  *
@@ -45,7 +54,9 @@ export function PlaceSaveSheet({
   memo,
   onClose,
   onSaved,
+  opensSavedTab = false,
 }: PlaceSaveSheetProps) {
+  const pathname = usePathname();
   const [choice, setChoice] = useState<SaveChoice>(initialChoice);
   const [tripId, setTripId] = useState<string | null>(null);
   const trips = useTripOptions(visible);
@@ -86,9 +97,13 @@ export function PlaceSaveSheet({
         onSuccess: () => {
           saving.current = false;
           close();
+          // 안내는 모두 화면 위 한 줄 알약(공통 toast). 개인 저장은 [보기] → S10을 붙이되,
+          // 이미 S10을 보고 있거나 S10으로 가면 [보기] 없이 짧게
           toast.success(
             placeSavedMessage(trip?.title ?? null),
-            trip ? undefined : { action: { label: '보기', onPress: () => router.push('/saved') } },
+            !trip && showSavedLink(pathname, opensSavedTab)
+              ? { action: { label: '보기', onPress: () => router.push(SAVED_TAB_PATH) } }
+              : undefined,
           );
           onSaved?.(saveTarget);
         },

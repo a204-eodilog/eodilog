@@ -64,6 +64,12 @@ export function destinationLabel(regionNames: string[]): string | null {
   return `${regionNames[0]} 외 ${regionNames.length - 1}곳`;
 }
 
+/** S15 대표 여행 카드의 기간·지역 한 줄 "11.12(목) – 11.14(토) · 부산". 둘 다 있을 때만 가운데점. 둘 다 없으면 null */
+export function periodPlaceLabel(range: string | null, place: string | null): string | null {
+  const parts = [range, place].filter((p): p is string => !!p);
+  return parts.length > 0 ? parts.join(' · ') : null;
+}
+
 function byStartAsc(a: Trip, b: Trip) {
   return (a.startDate ?? '').localeCompare(b.startDate ?? '');
 }

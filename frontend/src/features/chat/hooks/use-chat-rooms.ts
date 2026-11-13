@@ -23,7 +23,7 @@ export type ChatRoomRow = {
   time: string | null;
 };
 
-/** 맨 위 파랑 카드로 크게 보이는 지금 여행의 대화방(C안 "지금 여행 먼저", 2026-11-05 사용자 선택) */
+/** 맨 위 옅은 파랑 카드로 크게 보이는 지금 여행의 대화방(C안 "지금 여행 먼저", 2026-11-05 사용자 선택) */
 export type FeaturedChatRoom = ChatRoomRow & {
   /** "여행 중 · 2일차" 또는 "다가오는 여행 · D-17" */
   kicker: string;

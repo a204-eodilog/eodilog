@@ -20,6 +20,7 @@ import { EasyPager } from '@/components/ui/easy-pager';
 import { assetSource } from '@/lib/asset-image';
 import { colors, layout, motion, radius, spacing, typography } from '@/theme';
 
+import { recommendMetaLabel } from '../home-rules';
 import type { HomeRecommendation } from '../types';
 
 /** 접힌 시트 높이. 제목 + 카드 한 장 + 쪽 점 */
@@ -91,7 +92,8 @@ export function RecommendSheet({
       handleIndicatorStyle={styles.handle}
     >
       <View style={styles.head}>
-        <Icon name="heart" size={20} color={colors.brand.primary} />
+        {/* 피드 좋아요와 같은 코랄 레드. 이 섹션 하트에만 쓴다 */}
+        <Icon name="heart" size={20} color={colors.brand.accent} />
         <Text style={styles.title}>좋아요한 여행과 비슷해요</Text>
       </View>
       {status === 'loading' ? (
@@ -177,43 +179,48 @@ export function RecommendSheet({
   );
 }
 
+/**
+ * 추천 항목 사진. 사진이 보이면 사진 + 모서리 종류 배지(여행가방·위치 핀).
+ * 사진이 없거나, 불러오는 중이거나, 못 불러왔으면 연한 블루그레이 타일 가운데에 종류 아이콘 하나만 둔다(배지는 숨김)
+ */
 function Thumb({ item, size }: { item: HomeRecommendation; size: number }) {
   // 같은 지역 여행 시트와 같은 방식. 서버 사진 경로에 주소와 로그인 토큰을 붙이고, 테스트 모드에서는 샘플 사진으로 그린다
   const src = assetSource(item.imageUrl);
+  const uri = src?.uri ?? null;
+  // 어느 주소가 그려졌는지·실패했는지로 기억한다. 주소가 바뀌면 저절로 다시 불러오는 중이 된다
+  const [loadedUri, setLoadedUri] = useState<string | null>(null);
+  const [failedUri, setFailedUri] = useState<string | null>(null);
+  const showImage = src !== null && uri !== failedUri;
+  const loaded = showImage && uri === loadedUri;
+  const icon = item.kind === 'trip' ? 'trip' : 'map-pin';
+
   return (
-    <View style={{ width: size, height: size }}>
-      {src ? (
-        <Image source={src} style={styles.thumb} contentFit="cover" />
-      ) : (
-        <View style={[styles.thumb, styles.thumbEmpty]}>
-          <Icon name="image" size={20} color={colors.brand.primary} />
-        </View>
-      )}
-      <View style={styles.badge}>
-        <Icon
-          name={item.kind === 'trip' ? 'trip' : 'map-pin'}
-          size={14}
-          color={colors.text.default}
+    <View style={[styles.tile, { width: size, height: size }]}>
+      {loaded ? null : <Icon name={icon} size={22} color={colors.text.icon} />}
+      {showImage ? (
+        <Image
+          source={src}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+          onLoad={() => setLoadedUri(uri)}
+          onError={() => setFailedUri(uri)}
         />
-      </View>
+      ) : null}
+      {loaded ? (
+        <View style={styles.badge}>
+          <Icon name={icon} size={14} color={colors.text.default} />
+        </View>
+      ) : null}
     </View>
   );
 }
 
+/** 설명 한 줄(아이콘 없이 글자만) */
 function Meta({ item }: { item: HomeRecommendation }) {
   return (
-    <View style={styles.meta}>
-      <Icon name={item.kind === 'trip' ? 'people' : 'map-pin'} size={14} color={colors.text.icon} />
-      <Text style={styles.metaText} numberOfLines={1}>
-        {item.meta}
-      </Text>
-      {item.nights ? (
-        <>
-          <Icon name="moon" size={14} color={colors.text.icon} />
-          <Text style={styles.metaText}>{item.nights}</Text>
-        </>
-      ) : null}
-    </View>
+    <Text style={styles.metaText} numberOfLines={1}>
+      {recommendMetaLabel(item)}
+    </Text>
   );
 }
 
@@ -263,11 +270,13 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing[16] },
   rowText: { flex: 1, gap: spacing[6] },
   name: { ...typography.bodyBold, color: colors.text.default },
-  meta: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
-  metaText: { ...typography.caption, color: colors.text.icon, marginRight: spacing[8] },
-  thumb: { width: '100%', height: '100%', borderRadius: radius.md },
-  thumbEmpty: {
-    backgroundColor: colors.brand.primaryBg,
+  metaText: { ...typography.caption, color: colors.text.icon },
+  // 사진 자리. 사진이 없으면 이 타일과 아이콘만 보인다. 접힌 카드 배경(surface.default)과 구분되는 블루그레이
+  tile: {
+    flexShrink: 0,
+    borderRadius: radius.md,
+    overflow: 'hidden',
+    backgroundColor: colors.map.seaEdge,
     alignItems: 'center',
     justifyContent: 'center',
   },

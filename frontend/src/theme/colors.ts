@@ -9,6 +9,8 @@ export const colors = {
     primaryLight: '#C6E6FF',
     primarySoft: '#8DCDFF',
     primaryBg: '#EAF2FD',
+    /** primaryBg보다 한 단계 짙은 옅은 파랑. S46 지금 여행 대화방 카드 바탕(흰 말풍선이 또렷하게 보인다) */
+    primaryTint: '#E4EFFF',
     ai: '#5B3FD6',
     aiBg: '#EEEAFF',
     accent: '#FF7A59',

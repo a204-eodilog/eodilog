@@ -11,6 +11,7 @@ import {
   fillsFor,
   homeState,
   nightsLabel,
+  recommendMetaLabel,
   regionCodeInAddress,
   toRecommendations,
   toRegionMarks,
@@ -242,6 +243,18 @@ describe('toRegionTripCards', () => {
       },
     ]);
     expect(card.coverUrl).toBe('/assets/sample-cover-f/download');
+  });
+});
+
+describe('recommendMetaLabel', () => {
+  it('여행은 지역 · 기간, 기간이 없으면 지역만', () => {
+    expect(recommendMetaLabel({ meta: '제주', nights: '2박 3일' })).toBe('제주 · 2박 3일');
+    expect(recommendMetaLabel({ meta: '제주', nights: null })).toBe('제주');
+  });
+  it('장소는 주소 그대로', () => {
+    expect(recommendMetaLabel({ meta: '강원 강릉시 명주동', nights: null })).toBe(
+      '강원 강릉시 명주동',
+    );
   });
 });
 

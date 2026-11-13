@@ -2,7 +2,6 @@ import { describe, expect, it } from '@jest/globals';
 
 import {
   addCaptures,
-  addSections,
   canFind,
   candidateLetter,
   extractRegion,
@@ -373,34 +372,5 @@ describe('parseAddStart', () => {
   it('없거나 모르는 값이면 보통으로 연다', () => {
     expect(parseAddStart(undefined)).toBeNull();
     expect(parseAddStart('photo')).toBeNull();
-  });
-});
-
-describe('addSections', () => {
-  const none = { linkOpened: false, captureOpened: false, link: '', captureCount: 0 };
-
-  it('링크로 시작하면 링크 칸만, 시작 값이 없어도 링크로 시작한다', () => {
-    expect(addSections('link', none)).toEqual({ showLink: true, showCaptures: false });
-    expect(addSections(null, none)).toEqual({ showLink: true, showCaptures: false });
-  });
-
-  it('캡처로 시작하면 사진을 아직 안 골라도 캡처 칸만', () => {
-    expect(addSections('capture', none)).toEqual({ showLink: false, showCaptures: true });
-  });
-
-  it('[+ 캡처도 추가]·[+ 링크도 추가]를 누르면 둘 다 보인다', () => {
-    expect(addSections('link', { ...none, captureOpened: true })).toEqual({
-      showLink: true,
-      showCaptures: true,
-    });
-    expect(addSections('capture', { ...none, linkOpened: true })).toEqual({
-      showLink: true,
-      showCaptures: true,
-    });
-  });
-
-  it('이미 넣은 값이 있으면 칸을 숨기지 않는다', () => {
-    expect(addSections('capture', { ...none, link: 'https://a.com' }).showLink).toBe(true);
-    expect(addSections('link', { ...none, captureCount: 2 }).showCaptures).toBe(true);
   });
 });

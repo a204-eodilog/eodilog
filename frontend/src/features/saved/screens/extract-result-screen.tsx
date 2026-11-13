@@ -464,6 +464,8 @@ export function ExtractResultScreen() {
         places={placed.map((i) => ({ id: i.place.id, name: i.name }))}
         initialChoice="personal"
         memo={sent?.input.memo}
+        // 개인 저장이면 아래에서 S10으로 데려가 완료 안내에 [보기]를 붙이지 않는다
+        opensSavedTab
         onClose={() => setSaveOpen(false)}
         onSaved={(target) => {
           forgetExtraction(jobId);

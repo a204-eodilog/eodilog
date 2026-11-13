@@ -5,6 +5,7 @@ import {
   dayIndex,
   dDay,
   destinationLabel,
+  periodPlaceLabel,
   groupTrips,
   nextTodoLabel,
   placeNamesOfDay,
@@ -153,6 +154,15 @@ describe('companionsLabel', () => {
 
   it('혼자면 null', () => {
     expect(companionsLabel([me], 'me')).toBeNull();
+  });
+});
+
+describe('periodPlaceLabel', () => {
+  it('기간과 지역이 둘 다 있을 때만 가운데점', () => {
+    expect(periodPlaceLabel('11.12(목) – 11.14(토)', '부산')).toBe('11.12(목) – 11.14(토) · 부산');
+    expect(periodPlaceLabel('11.12(목) – 11.14(토)', null)).toBe('11.12(목) – 11.14(토)');
+    expect(periodPlaceLabel(null, '부산')).toBe('부산');
+    expect(periodPlaceLabel(null, null)).toBeNull();
   });
 });
 

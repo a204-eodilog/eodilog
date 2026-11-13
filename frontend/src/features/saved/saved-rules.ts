@@ -183,3 +183,14 @@ export function placeSaveState(input: {
 export function placeSavedMessage(tripTitle: string | null): string {
   return tripTitle ? `${tripTitle}에 담았어요` : '개인 즐겨찾기에 저장했어요';
 }
+
+/** 개인 저장 탭(S10 목록·지도)의 주소 */
+export const SAVED_TAB_PATH = '/saved';
+
+/**
+ * 개인 즐겨찾기 저장 완료 안내에 [보기](→ S10)를 붙일지.
+ * 지금 S10을 보고 있거나, 저장한 뒤 부르는 쪽이 S10으로 데려가면(S12) 볼 곳이 이미 눈앞이라 붙이지 않는다
+ */
+export function showSavedLink(pathname: string, opensSavedTab: boolean): boolean {
+  return !opensSavedTab && pathname !== SAVED_TAB_PATH;
+}

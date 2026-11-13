@@ -17,14 +17,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Stagger } from '@/components/ui/stagger';
 import { apiErrorCode } from '@/api/errors';
-import { Button, Header, Icon, type IconName, toast } from '@/components/ui';
+import { Button, Header, Icon, toast } from '@/components/ui';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { caret, colors, layout, radius, spacing, typography } from '@/theme';
 
 import type { CaptureFile } from '../api';
 import {
   addCaptures,
-  addSections,
   canFind,
   FEATURE_OFF_MESSAGE,
   isLink,
@@ -48,11 +47,11 @@ function guessType(uri: string): string {
 }
 
 /**
- * S11 링크·캡처 등록. S10 저장 없음의 시작 카드에서 오면(?start=) 그쪽으로 바로 시작한다.
- * - link(시작 값 없음도 같음: S10 [+]·S20): 링크 칸에 커서. 아래 [+ 캡처도 추가]
- * - capture: 들어오자마자 사진 고르기. "선택한 캡처 n/10" 썸네일 줄 아래 [+ 링크도 추가]
- * 둘 다 넣으면 어느 쪽에서 시작했든 링크 → 캡처 순서로 보이고, [장소 찾기] 한 번에 함께 보낸다.
- * 메모는 접어 두고 [메모 남기기]를 눌러야 펼친다.
+ * S11 링크·캡처 등록. 위에서부터 게시물 링크 → 캡처 이미지 → 메모 추가(접힘). 링크 칸과 캡처 줄은 처음부터 함께 보인다.
+ * - 시작 값 없음(S10 머리의 북마크 +·S20): 키보드를 올리지 않아 두 입력 방법이 바로 보인다
+ * - link(S10 저장 없음 [링크 붙여넣기]): 링크 칸에 커서
+ * - capture(S10 저장 없음 [캡처 올리기]): 들어오자마자 앨범을 연다
+ * 링크와 캡처는 서로의 값을 지키며, 둘 다 넣으면 [장소 찾기] 한 번에 메모와 함께 보낸다.
  * 링크가 웹 페이지 주소가 아니거나 파일 링크면 "지원하지 않는 형식"으로 바뀌고 보내지 않는다
  */
 export function LinkCaptureScreen() {
@@ -63,10 +62,8 @@ export function LinkCaptureScreen() {
   // 앨범이 닫힌 뒤에 읽을 지금 목록(비동기 pick 안에서 처음 그린 때의 captures를 쓰지 않게)
   const capturesNow = useRef<Capture[]>([]);
   const [memo, setMemo] = useState('');
+  // 메모는 접어서 시작한다. 다시 접어도 쓴 메모는 남는다
   const [memoOpen, setMemoOpen] = useState(false);
-  // [+ 링크도 추가]·[+ 캡처도 추가]로 연 칸. 값을 지워도 칸은 남긴다
-  const [linkOpened, setLinkOpened] = useState(false);
-  const [captureOpened, setCaptureOpened] = useState(false);
   // 클립보드에 있는 링크(값 문서 "복사한 링크 안내"). 붙여 넣었거나 이미 칸에 같은 링크가 있으면 숨긴다
   const [copied, setCopied] = useState<string | null>(null);
   const start = useStartExtraction();
@@ -81,12 +78,6 @@ export function LinkCaptureScreen() {
   const status = linkStatus(link);
   const unsupported = status === 'unsupported';
   const ready = canFind(link, captures.length);
-  const { showLink, showCaptures } = addSections(begin, {
-    linkOpened,
-    captureOpened,
-    link,
-    captureCount: captures.length,
-  });
 
   // 화면에 들어올 때마다 클립보드를 본다(다른 앱에서 링크를 복사해 돌아온 경우)
   useFocusEffect(
@@ -110,7 +101,6 @@ export function LinkCaptureScreen() {
       toast.show('복사한 링크가 없어요');
       return;
     }
-    setLinkOpened(true);
     setLink(value);
     setCopied(null);
   };
@@ -158,11 +148,6 @@ export function LinkCaptureScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [begin]);
 
-  const addCapture = () => {
-    setCaptureOpened(true);
-    void pick();
-  };
-
   const find = () => {
     if (!ready || sending.current) return;
     sending.current = true;
@@ -187,8 +172,10 @@ export function LinkCaptureScreen() {
     );
   };
 
-  const showCopied = showLink && copied !== null && copied !== link.trim() && !unsupported;
+  const showCopied = copied !== null && copied !== link.trim() && !unsupported;
   const full = captures.length >= MAX_CAPTURES;
+  // 누를 수 있거나 보내는 중이면 파랑, 아니면 회색 바탕에 읽을 수 있는 회색 글자
+  const findOn = ready || start.isPending;
 
   return (
     <View style={styles.screen}>
@@ -203,6 +190,8 @@ export function LinkCaptureScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <Stagger itemStyle={styles.staggerItem}>
+            <Text style={[typography.body, styles.sub2]}>링크나 캡처 중 하나만 넣어도 돼요</Text>
+
             {showCopied ? (
               <View style={styles.copied}>
                 <Icon name="copy" size={20} color={colors.brand.primaryDark} />
@@ -224,86 +213,98 @@ export function LinkCaptureScreen() {
               </View>
             ) : null}
 
-            {showLink ? (
-              <View style={styles.section}>
-                <SectionLabel icon="link" label="링크" />
-                <View>
-                  <TextInput
-                    {...caret}
-                    accessibilityLabel="링크"
-                    value={link}
-                    onChangeText={setLink}
-                    placeholder="링크를 붙여 넣어 주세요"
-                    // 링크로 시작했거나, [+ 링크도 추가]로 칸이 새로 생긴 때 바로 커서를 둔다
-                    autoFocus={begin !== 'capture' || linkOpened}
-                    placeholderTextColor={colors.text.sub}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    keyboardType="url"
-                    returnKeyType="done"
-                    style={[styles.inputText, styles.input, styles.linkInput]}
-                  />
-                  {link.length > 0 ? (
-                    <PressableScale
-                      accessibilityRole="button"
-                      accessibilityLabel="링크 지우기"
-                      hitSlop={8}
-                      onPress={() => setLink('')}
-                      style={({ pressed }) => [styles.clearLink, pressed && styles.pressed]}
-                    >
-                      <Icon name="close" size={14} color={colors.text.inverse} />
-                    </PressableScale>
-                  ) : (
-                    <PressableScale
-                      accessibilityRole="button"
-                      accessibilityLabel="붙여넣기"
-                      hitSlop={4}
-                      onPress={() => void paste()}
-                      style={({ pressed }) => [styles.pasteButton, pressed && styles.pressed]}
-                    >
-                      {/* 복사 아이콘은 "복사"로 읽혀 집게판 아이콘을 따로 쓴다 */}
-                      <Icon name="clipboard" size={18} color={colors.brand.primaryDark} />
-                    </PressableScale>
-                  )}
-                </View>
-                {unsupported ? (
-                  <>
-                    <View style={styles.errorLine} accessibilityLiveRegion="polite">
-                      <Icon name="alert" size={16} color={colors.status.danger} />
-                      <Text style={[typography.captionMedium, styles.danger]}>
-                        이 형식에서는 장소를 찾을 수 없어요
-                      </Text>
-                    </View>
-                    <View style={styles.guide}>
-                      <Text style={[typography.captionMedium, styles.sub]}>
-                        이런 것을 넣어 주세요
-                      </Text>
-                      <View style={styles.guideRow}>
-                        <Icon name="link" size={20} color={colors.text.icon} />
-                        <Text style={[typography.body, styles.text]}>
-                          SNS 게시물, 블로그 글 링크
-                        </Text>
-                      </View>
-                      <View style={styles.guideRow}>
-                        <Icon name="image" size={20} color={colors.text.icon} />
-                        <Text style={[typography.body, styles.text]}>캡처 이미지 (JPG, PNG)</Text>
-                      </View>
-                    </View>
-                  </>
-                ) : null}
-                {showCaptures ? null : <AddMore label="캡처도 추가" onPress={addCapture} />}
+            {/* 게시물 링크 */}
+            <View style={styles.section}>
+              <Text style={[typography.subBold, styles.text]}>게시물 링크</Text>
+              <View>
+                <TextInput
+                  {...caret}
+                  accessibilityLabel="게시물 링크"
+                  value={link}
+                  onChangeText={setLink}
+                  placeholder="SNS·블로그 링크"
+                  // 빈 화면의 [링크 붙여넣기]로 왔을 때만 바로 커서를 둔다. 머리 북마크 +로 오면 키보드를 올리지 않는다
+                  autoFocus={begin === 'link'}
+                  placeholderTextColor={colors.text.sub2}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="url"
+                  returnKeyType="done"
+                  style={[
+                    styles.inputText,
+                    styles.input,
+                    styles.linkInput,
+                    unsupported && styles.inputError,
+                  ]}
+                />
+                {link.length > 0 ? (
+                  <PressableScale
+                    accessibilityRole="button"
+                    accessibilityLabel="링크 지우기"
+                    hitSlop={8}
+                    onPress={() => setLink('')}
+                    style={({ pressed }) => [styles.clearLink, pressed && styles.pressed]}
+                  >
+                    <Icon name="close" size={14} color={colors.text.inverse} />
+                  </PressableScale>
+                ) : (
+                  <PressableScale
+                    accessibilityRole="button"
+                    accessibilityLabel="붙여넣기"
+                    onPress={() => void paste()}
+                    style={({ pressed }) => [styles.pasteButton, pressed && styles.pressed]}
+                  >
+                    <Text style={[typography.captionBold, styles.brand]}>붙여넣기</Text>
+                  </PressableScale>
+                )}
               </View>
-            ) : null}
+              {unsupported ? (
+                <>
+                  <View style={styles.errorLine} accessibilityLiveRegion="polite">
+                    <Icon name="alert" size={16} color={colors.status.danger} />
+                    <Text style={[typography.captionMedium, styles.danger]}>
+                      이 형식에서는 장소를 찾을 수 없어요
+                    </Text>
+                  </View>
+                  <View style={styles.guide}>
+                    <Text style={[typography.captionMedium, styles.sub]}>
+                      이런 것을 넣어 주세요
+                    </Text>
+                    <View style={styles.guideRow}>
+                      <Icon name="link" size={20} color={colors.text.icon} />
+                      <Text style={[typography.body, styles.text]}>SNS 게시물, 블로그 글 링크</Text>
+                    </View>
+                    <View style={styles.guideRow}>
+                      <Icon name="image" size={20} color={colors.text.icon} />
+                      <Text style={[typography.body, styles.text]}>캡처 이미지 (JPG, PNG)</Text>
+                    </View>
+                  </View>
+                </>
+              ) : null}
+            </View>
 
-            {showCaptures ? (
-              <View style={styles.section}>
-                <View style={styles.labelRow}>
-                  <Icon name="image" size={16} color={colors.text.icon} />
-                  <Text style={[typography.captionMedium, styles.sub]}>선택한 캡처</Text>
-                  <Text style={[typography.captionMedium, styles.dark]}>
-                    {captures.length}/{MAX_CAPTURES}
-                  </Text>
-                </View>
+            {/* 캡처 이미지. 고르기 전에는 [앨범에서 선택] 한 줄, 고르면 같은 자리에 썸네일 줄 */}
+            <View style={styles.section}>
+              <View style={styles.titleRow}>
+                <Text style={[typography.subBold, styles.text]}>캡처 이미지</Text>
+                <Text style={[typography.caption, styles.sub2]}>
+                  {captures.length > 0
+                    ? `${captures.length}/${MAX_CAPTURES}`
+                    : `최대 ${MAX_CAPTURES}장`}
+                </Text>
+              </View>
+              {captures.length === 0 ? (
+                <PressableScale
+                  accessibilityRole="button"
+                  accessibilityLabel={`앨범에서 캡처 선택, 최대 ${MAX_CAPTURES}장`}
+                  onPress={() => void pick()}
+                  style={({ pressed }) => [styles.albumRow, pressed && styles.pressed]}
+                >
+                  <Icon name="image" size={20} color={colors.text.icon} />
+                  <Text style={[typography.body, styles.text, styles.flex]}>앨범에서 선택</Text>
+                  <Icon name="chevron-right" size={18} color={colors.text.muted} />
+                </PressableScale>
+              ) : (
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
@@ -336,60 +337,57 @@ export function LinkCaptureScreen() {
                     </PressableScale>
                   )}
                 </ScrollView>
-                {showLink ? null : (
-                  <AddMore label="링크도 추가" onPress={() => setLinkOpened(true)} />
-                )}
-              </View>
-            ) : null}
+              )}
+            </View>
 
-            {memoOpen || memo.length > 0 ? (
-              <View style={styles.section}>
-                <View style={styles.labelRow}>
-                  <Icon name="pencil" size={16} color={colors.text.icon} />
-                  <Text style={[typography.captionMedium, styles.sub]}>메모</Text>
-                </View>
+            {/* 메모 추가(선택). 얇은 선 아래 한 줄, 누르면 그 자리에서 펼친다 */}
+            <View style={styles.memoBlock}>
+              <PressableScale
+                accessibilityRole="button"
+                accessibilityLabel="메모 추가, 선택"
+                accessibilityState={{ expanded: memoOpen }}
+                onPress={() => setMemoOpen((v) => !v)}
+                style={({ pressed }) => [styles.memoRow, pressed && styles.pressed]}
+              >
+                <Icon name="pencil" size={18} color={colors.text.icon} />
+                <Text style={[typography.body, styles.text]}>메모 추가</Text>
+                <Text style={[typography.caption, styles.sub2, styles.flex]}>선택</Text>
+                <Icon
+                  name={memoOpen ? 'chevron-up' : 'chevron-down'}
+                  size={18}
+                  color={colors.text.muted}
+                />
+              </PressableScale>
+              {memoOpen ? (
                 <TextInput
                   {...caret}
                   accessibilityLabel="메모"
                   value={memo}
                   onChangeText={setMemo}
                   placeholder="예: 노을 질 때 가 보기"
-                  placeholderTextColor={colors.text.sub}
+                  placeholderTextColor={colors.text.sub2}
                   maxLength={MEMO_MAX}
                   multiline
                   autoFocus
                   textAlignVertical="top"
                   style={[styles.inputText, styles.input, styles.memo]}
                 />
-              </View>
-            ) : (
-              <PressableScale
-                accessibilityRole="button"
-                accessibilityLabel="메모 남기기"
-                onPress={() => setMemoOpen(true)}
-                style={({ pressed }) => [styles.memoClosed, pressed && styles.pressed]}
-              >
-                <Icon name="pencil" size={18} color={colors.text.icon} />
-                <Text style={[typography.body, styles.sub, styles.flex]}>메모 남기기</Text>
-                {/* 아이콘 모음에 아래 꺾쇠가 없어 오른쪽 꺾쇠를 돌린다 */}
-                <View style={styles.down}>
-                  <Icon name="chevron-right" size={18} color={colors.text.muted} />
-                </View>
-              </PressableScale>
-            )}
+              ) : null}
+            </View>
           </Stagger>
         </ScrollView>
 
         <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom + spacing[12], 34) }]}>
           <Button
             label="장소 찾기"
-            icon="search"
             size="xl"
             block
+            variant={findOn ? 'primary' : 'neutral'}
             disabled={!ready}
             loading={start.isPending}
             onPress={find}
-            style={ready ? undefined : styles.findOff}
+            // 누를 수 없을 때도 흐리게 하지 않는다. 회색 바탕과 글자로만 구분해 문구가 또렷하다
+            style={findOn ? undefined : styles.findOff}
           />
         </View>
       </KeyboardAvoidingView>
@@ -397,43 +395,18 @@ export function LinkCaptureScreen() {
   );
 }
 
-function SectionLabel({ icon, label }: { icon: IconName; label: string }) {
-  return (
-    <View style={styles.labelRow}>
-      <Icon name={icon} size={16} color={colors.text.icon} />
-      <Text style={[typography.captionMedium, styles.sub]}>{label}</Text>
-    </View>
-  );
-}
-
-/** 다른 자료를 더 넣는 작은 보조 버튼([+ 캡처도 추가]·[+ 링크도 추가]) */
-function AddMore({ label, onPress }: { label: string; onPress: () => void }) {
-  return (
-    <PressableScale
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      hitSlop={8}
-      onPress={onPress}
-      style={({ pressed }) => [styles.addMore, pressed && styles.pressed]}
-    >
-      <Icon name="plus" size={16} color={colors.brand.primaryDark} />
-      <Text style={[typography.captionMedium, styles.dark]}>{label}</Text>
-    </PressableScale>
-  );
-}
-
 const THUMB = 80;
 
 const styles = StyleSheet.create({
   // 차례로 나타나는 구역을 감싼 칸. 한 구역이 여러 줄이면 그 사이 간격을 스크롤 내용과 같게 둔다
-  staggerItem: { gap: spacing[28] },
+  staggerItem: { gap: spacing[24] },
   screen: { flex: 1, backgroundColor: colors.surface.white },
   flex: { flex: 1 },
   body: {
-    paddingTop: spacing[16],
+    paddingTop: spacing[4],
     paddingHorizontal: layout.screenPaddingX,
     paddingBottom: spacing[24],
-    gap: spacing[28],
+    gap: spacing[24],
   },
   // 값 문서: 연파랑, 둥글기 16, 안쪽 14/8/14/18, 가로 간격 18
   copied: {
@@ -449,39 +422,41 @@ const styles = StyleSheet.create({
   },
   copiedTexts: { flex: 1 },
   copiedPaste: { height: 36, paddingHorizontal: spacing[12], justifyContent: 'center' },
-  section: { gap: spacing[12] },
-  labelRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
+  section: { gap: spacing[10] },
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   // 입력칸 글자. 줄 높이(lineHeight)를 주면 안드로이드가 커서를 칸 높이만큼 길게 그려서 주지 않는다(TextField와 같다)
   inputText: {
     fontFamily: typography.body.fontFamily,
     fontSize: typography.body.fontSize,
     includeFontPadding: false,
   },
-  // 회색 상자 입력칸(값 문서: 공통 TextField는 밑줄이라 모양이 다르다)
+  // 흰 바탕에 얇은 테두리 입력칸
   input: {
     color: colors.text.default,
-    backgroundColor: colors.surface.default,
+    backgroundColor: colors.surface.white,
+    borderWidth: 1,
+    borderColor: colors.line.strong,
     borderRadius: radius.md,
   },
+  inputError: { borderColor: colors.status.danger },
   // 안드로이드는 글 줄 높이(26) 때문에 자리 글자가 위로 붙어 가운데로 맞춘다
   linkInput: {
     height: 52,
     paddingVertical: 0,
     paddingLeft: spacing[16],
     // 오른쪽 [붙여넣기] 글자 버튼 자리
-    paddingRight: 96,
+    paddingRight: 88,
     textAlignVertical: 'center',
   },
+  // [붙여넣기] 파란 글자 버튼. 칸 높이 52를 다 누를 수 있다
   pasteButton: {
     position: 'absolute',
-    right: spacing[8],
-    top: 8,
-    paddingHorizontal: spacing[12],
-    height: 36,
-    borderRadius: radius.full,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    paddingHorizontal: spacing[16],
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surface.white,
   },
   // 링크 [×]: 캡처 빼기 버튼과 같은 모양
   clearLink: {
@@ -495,16 +470,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.gray[400],
   },
-  addMore: {
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[4],
-    height: 32,
-    paddingHorizontal: spacing[12],
-    borderRadius: radius.full,
-    backgroundColor: colors.brand.primaryBg,
-  },
   errorLine: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
   guide: {
     gap: spacing[12],
@@ -513,6 +478,18 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface.default,
   },
   guideRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[8] },
+  // [앨범에서 선택] 한 줄. 링크 칸과 같은 높이·테두리
+  albumRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[10],
+    height: 52,
+    paddingHorizontal: spacing[16],
+    borderWidth: 1,
+    borderColor: colors.line.strong,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface.white,
+  },
   // 빼기 버튼이 썸네일 밖으로 6 나와서 잘리지 않게 위·오른쪽 여유
   captures: { gap: spacing[8], paddingTop: spacing[6], paddingRight: spacing[6] },
   addCapture: {
@@ -541,27 +518,27 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.text.default,
   },
-  memo: { height: 88, paddingVertical: spacing[16], paddingHorizontal: spacing[18] },
-  memoClosed: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  // 메모: 위 얇은 선 아래 한 줄(누르는 칸 48)
+  memoBlock: {
     gap: spacing[8],
-    height: 52,
-    paddingHorizontal: spacing[16],
-    borderRadius: radius.md,
-    backgroundColor: colors.surface.default,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.line.strong,
+    paddingTop: spacing[4],
   },
-  down: { transform: [{ rotate: '90deg' }] },
+  memoRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[8], minHeight: 48 },
+  memo: { height: 96, paddingVertical: spacing[14], paddingHorizontal: spacing[16] },
   // 피그마는 오른쪽 아래 작은 알약 버튼. 이 화면의 마지막 행동이라 아래 꽉 찬 큰 버튼으로 둔다
   footer: {
     paddingTop: spacing[12],
     paddingHorizontal: layout.screenPaddingX,
   },
-  // 값 문서: 누를 수 없으면 흐림 0.32
-  findOff: { opacity: 0.32 },
+  // 누를 수 없을 때: 흐림 없이 회색 바탕(neutral)과 회색 글자(text.icon)로만 보인다
+  findOff: { opacity: 1 },
   pressed: { opacity: 0.6 },
   text: { color: colors.text.default },
   sub: { color: colors.text.icon },
+  sub2: { color: colors.text.sub },
+  brand: { color: colors.brand.primary },
   dark: { color: colors.brand.primaryDark },
   danger: { color: colors.status.danger },
 });
