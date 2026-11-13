@@ -4,6 +4,7 @@ import com.eodilog.global.common.error.ErrorCode;
 import org.springframework.http.HttpStatus;
 
 public enum ExpenseErrorCode implements ErrorCode {
+	INPUT_LIMIT_EXCEEDED(HttpStatus.UNPROCESSABLE_CONTENT, "경비는 한 번에 10건까지 등록할 수 있습니다."),
 
 	// 다른 여행의 경비·삭제된 경비도 같은 응답을 쓴다
 	EXPENSE_NOT_FOUND(HttpStatus.NOT_FOUND, "경비를 찾을 수 없습니다."),
