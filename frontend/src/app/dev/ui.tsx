@@ -362,7 +362,7 @@ export default function UiCatalog() {
             <Avatar name="지우" size="sm" me />
             <Avatar name="민준" size="md" />
             <Avatar name="서연" size="lg" />
-            <Avatar name="사진" size="lg" imageUrl="https://picsum.photos/seed/eodilog/80" />
+            <Avatar name="사진" size="lg" imageUrl="/assets/sample-ui-avatar/download" />
           </Row>
           <Row>
             <AvatarGroup people={[{ name: '지우', me: true }, { name: '민준' }]} />
