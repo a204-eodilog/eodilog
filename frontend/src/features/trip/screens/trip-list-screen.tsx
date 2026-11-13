@@ -108,6 +108,11 @@ export function TripListScreen() {
 
   return (
     <View style={styles.screen}>
+      {/* 상단 바("여행" + 새 여행)는 다른 탭처럼 고정하고 아래 내용만 스크롤한다(2026-11-13 사용자 요청).
+          여행 중·다가오는 여행이 있으면 상단 바도 파랑이라, 스크롤해도 파랑 블록과 이어져 보인다 */}
+      <View style={[{ paddingTop: insets.top }, featured ? styles.brandBar : styles.plainBar]}>
+        {header}
+      </View>
       <ScrollView
         style={styles.flex}
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing[32] }]}
@@ -116,18 +121,14 @@ export function TripListScreen() {
             refreshing={pulling}
             onRefresh={onPullRefresh}
             tintColor={onBrand ? colors.text.inverse : undefined}
-            progressViewOffset={insets.top}
           />
         }
       >
         {featured ? (
-          <View style={[styles.brand, { paddingTop: insets.top }]}>
-            {header}
+          <View style={styles.brand}>
             <UpcomingTripCard trip={featured} today={today} onPress={() => openTrip(featured)} />
           </View>
-        ) : (
-          <View style={{ paddingTop: insets.top }}>{header}</View>
-        )}
+        ) : null}
 
         {stale ? (
           <View style={styles.offline}>
@@ -220,6 +221,9 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
   },
+  // 고정 상단 바. 파랑 블록이 있으면 같은 파랑, 없으면 화면 바탕색
+  brandBar: { backgroundColor: colors.brand.primary },
+  plainBar: { backgroundColor: colors.surface.subtle },
   listCard: {
     marginHorizontal: spacing[16],
     paddingVertical: spacing[6],
