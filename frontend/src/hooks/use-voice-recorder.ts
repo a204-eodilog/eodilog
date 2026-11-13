@@ -166,6 +166,9 @@ export function useVoiceRecorder() {
     if (phase !== 'recording') return;
     let started = false;
     const timer = setInterval(() => {
+      // 멈춘 직후 이 타이머가 정리되기 전에 한 번 더 돌 수 있다. 그때 '녹음이 끊김'으로 보고 방금 녹음을
+      // 지우지 않도록, 녹음 중일 때만 본다
+      if (phaseRef.current !== 'recording') return;
       const now = recorder.getStatus();
       if (now.isRecording) started = true;
       setLevels((prev) => [...prev.slice(1), levelFromMetering(now.metering)]);
@@ -187,7 +190,11 @@ export function useVoiceRecorder() {
   useEffect(
     () => () => {
       if (phaseRef.current === 'recording') {
-        recorder.stop().catch(() => undefined);
+        // 녹음 중이던 파일도 멈춘 뒤 지운다(cancel과 같다)
+        recorder
+          .stop()
+          .catch(() => undefined)
+          .finally(() => deleteFile(recorder.uri));
         releaseAudioMode();
       }
       deleteFile(clipRef.current?.uri);

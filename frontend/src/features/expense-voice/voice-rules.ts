@@ -132,6 +132,10 @@ export type DraftItem = {
   form: ExpenseForm;
   /** 서버가 알아들은 시각. 없으면 저장할 때 지금 시각 */
   spentAt: string | null;
+  /** AI가 준 메모. 고치는 칸은 없고 그대로 저장한다 */
+  memo: string | null;
+  /** 서버가 확인이 필요하다고 표시한 칸(unresolvedFields). spentAt은 지금 시각으로 저장해 빼고 담는다 */
+  unresolved: string[];
   selected: boolean;
   /** 서버 경고. 사용자가 이 초안을 한 번 고치면 더 보이지 않는다(고친 값 기준으로만 검사) */
   serverWarnings: VoiceWarning[];
@@ -149,6 +153,8 @@ export function toDraftItems(result: VoiceDraftResult): DraftItem[] {
       participantMemberIds: d.draft.participantMemberIds,
     },
     spentAt: d.draft.spentAt,
+    memo: d.draft.memo,
+    unresolved: d.unresolvedFields.filter((field) => field !== 'spentAt'),
     selected: true,
     serverWarnings: d.warnings,
     edited: false,
@@ -184,11 +190,26 @@ export function draftProblems(item: DraftItem, activeMemberIds: readonly string[
     (w) => w.code !== 'SPENT_AT_UNKNOWN' && w.field !== 'spentAt' && w.code !== 'COUNT_MISMATCH',
   );
   const covered = new Set(fromServer.map((w) => w.field));
-  return [
+  const problems = [
     ...fromServer.map((w) => ({ field: w.field ?? '', message: w.message })),
     ...local.filter((p) => !covered.has(p.field)),
   ];
+  // 서버가 값을 채웠어도 unresolvedFields에 남긴 칸은 확인이 필요하다. 경고·빈 칸 검사로 이미 잡은 칸은 겹치지 않게 뺀다
+  const shown = new Set(problems.map((p) => p.field));
+  for (const field of item.unresolved) {
+    if (!shown.has(field))
+      problems.push({ field, message: UNRESOLVED_TEXT[field] ?? '이 값을 확인해 주세요' });
+  }
+  return problems;
 }
+
+/** unresolvedFields 칸별 안내. 계약 필드 이름 기준 */
+const UNRESOLVED_TEXT: Record<string, string> = {
+  amountMinor: '금액을 확인해 주세요',
+  title: '항목 이름을 확인해 주세요',
+  payerMemberId: '낸 사람을 확인해 주세요',
+  participantMemberIds: '나눌 사람을 확인해 주세요',
+};
 
 /** 말한 지출과 초안 수가 다를 수 있다는 전체 경고 */
 export function hasCountMismatch(result: VoiceDraftResult): boolean {
@@ -212,7 +233,7 @@ export function toBatchItems(items: DraftItem[], now: Date): ExpenseWrite[] {
     .filter((i) => i.selected)
     .map((i) => ({
       title: i.form.title.trim(),
-      memo: null,
+      memo: i.memo,
       amountMinor: parseAmount(i.form.amount) ?? 0,
       currency: 'KRW',
       payerMemberId: i.form.payerMemberId ?? '',

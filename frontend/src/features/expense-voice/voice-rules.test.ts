@@ -125,7 +125,32 @@ describe('저장 버튼', () => {
   });
 });
 
+describe('서버가 확인 필요로 표시한 칸(unresolvedFields)', () => {
+  it('값이 채워져 있어도 확인 필요로 보고, spentAt은 막지 않는다', () => {
+    const r = result();
+    r.drafts[0].unresolvedFields = ['spentAt', 'payerMemberId'];
+    const [taxi] = toDraftItems(r);
+    expect(draftProblems(taxi, ACTIVE)).toEqual([
+      { field: 'payerMemberId', message: '낸 사람을 확인해 주세요' },
+    ]);
+  });
+
+  it('사용자가 고치면 더 묻지 않는다', () => {
+    const r = result();
+    r.drafts[0].unresolvedFields = ['payerMemberId'];
+    const [taxi] = toDraftItems(r);
+    expect(draftProblems({ ...taxi, edited: true }, ACTIVE)).toEqual([]);
+  });
+});
+
 describe('일괄 저장 본문', () => {
+  it('AI가 준 메모를 그대로 보낸다', () => {
+    const r = result();
+    r.drafts[0].draft.memo = '공항 가는 길';
+    const [taxi] = toDraftItems(r);
+    expect(toBatchItems([taxi], new Date())[0].memo).toBe('공항 가는 길');
+  });
+
   it('고른 것만, 알아들은 시각은 그대로, 모르면 저장하는 지금', () => {
     const now = new Date('2026-11-12T09:00:00Z');
     const items = toDraftItems(result()).map((i) =>

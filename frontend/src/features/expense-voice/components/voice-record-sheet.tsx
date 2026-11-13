@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { Linking, Pressable, StyleSheet, Text } from 'react-native';
+import { getRecordingPermissionsAsync } from 'expo-audio';
+import { useEffect, useState } from 'react';
+import { AppState, Linking, Pressable, StyleSheet, Text } from 'react-native';
 
 import { Icon, toast } from '@/components/ui';
 import { useVoiceRecorder } from '@/hooks/use-voice-recorder';
@@ -36,6 +37,20 @@ export function VoiceRecordSheet({
   const recorder = useVoiceRecorder();
   const analysis = useVoiceAnalysis(tripId);
   const [denied, setDenied] = useState(false);
+
+  // [설정 열기]로 가서 마이크를 켜고 돌아오면 거부 화면을 풀고 녹음 준비로 돌아간다
+  useEffect(() => {
+    if (!denied) return;
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next !== 'active') return;
+      getRecordingPermissionsAsync()
+        .then((permission) => {
+          if (permission.granted) setDenied(false);
+        })
+        .catch(() => undefined);
+    });
+    return () => sub.remove();
+  }, [denied]);
 
   const cleanup = () => {
     analysis.reset();
