@@ -12,7 +12,7 @@ import { FeaturedRoomCard } from './featured-room-card';
 import { RoomRow } from './room-row';
 
 type Props = {
-  /** 맨 위 파랑 카드로 보일 지금 여행의 방. 없으면 목록만 */
+  /** 맨 위 옅은 파랑 카드로 보일 지금 여행의 방. 없으면 목록만 */
   featured: FeaturedChatRoom | null;
   /** 나머지 방(최근 메시지 순) */
   rows: ChatRoomRow[];
@@ -34,7 +34,7 @@ type Props = {
 
 /**
  * S46 대화방 목록(C안 "지금 여행 먼저", 2026-11-05 사용자 선택).
- * 지금 여행(여행 중 → 다가오는 여행)의 방은 파랑 카드로 크게, 나머지는 동행 얼굴과 함께 목록으로 둔다.
+ * 지금 여행(여행 중 → 다가오는 여행)의 방은 옅은 파랑 카드(흰 말풍선)로 크게, 나머지는 얼굴 묶음과 함께 흰 카드 목록으로 둔다.
  * 상태를 속성으로만 받아 서버·연결 없이 /dev/chats에서 그대로 그린다
  */
 export function ChatRoomListView({
@@ -133,7 +133,8 @@ const styles = StyleSheet.create({
   // 바탕은 옅은 회색, 대화방 하나가 흰 카드 하나다
   screen: { flex: 1, backgroundColor: colors.surface.subtle },
   rowCard: {
-    marginHorizontal: spacing[12],
+    // 위 여행 중 카드와 같은 좌우 20. 두 카드의 가장자리가 같은 선에 온다
+    marginHorizontal: layout.screenPaddingX,
     borderRadius: radius.lg,
     overflow: 'hidden',
     backgroundColor: colors.surface.white,
