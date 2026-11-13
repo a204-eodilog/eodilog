@@ -73,11 +73,28 @@ describe('확인이 필요한 칸', () => {
     expect(draftProblems(taxi, ACTIVE)).toEqual([]);
   });
 
-  it('서버 경고 문장을 쓰고, 같은 칸의 빈 칸 검사는 겹쳐 보이지 않는다', () => {
+  it('서버 경고 칸은 칸에 맞는 문장으로, 같은 칸의 빈 칸 검사는 겹쳐 보이지 않는다', () => {
     const [, coffee] = toDraftItems(result());
     expect(draftProblems(coffee, ACTIVE)).toEqual([
-      { field: 'amountMinor', message: '금액을 확인해 주세요.' },
+      { field: 'amountMinor', message: '금액을 확인해 주세요' },
       { field: 'participantMemberIds', message: '나눌 사람을 골라 주세요' },
+    ]);
+  });
+
+  it('한 칸에 서버 경고가 여러 개 와도 한 번만 보인다', () => {
+    const r = result();
+    const same = '인식 결과를 확인하고 필요한 값을 직접 선택해 주세요.';
+    r.drafts[0].draft.payerMemberId = null;
+    r.drafts[0].warnings = [
+      { code: 'MEMBER_NOT_FOUND', field: 'payerMemberId', message: same },
+      { code: 'PAYER_UNKNOWN', field: 'payerMemberId', message: same },
+      { code: 'MEMBER_NOT_FOUND', field: 'participantMemberIds', message: same },
+      { code: 'PARTICIPANTS_UNKNOWN', field: 'participantMemberIds', message: same },
+      { code: 'COUNT_MISMATCH', field: 'participantMemberIds', message: same },
+    ];
+    expect(draftProblems(toDraftItems(r)[0], ACTIVE)).toEqual([
+      { field: 'payerMemberId', message: '낸 사람을 확인해 주세요' },
+      { field: 'participantMemberIds', message: '나눌 사람을 확인해 주세요' },
     ]);
   });
 
