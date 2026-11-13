@@ -4,6 +4,7 @@ import {
   shortRegionName,
   shortSidoName,
   sidoCodeOf,
+  KOREA_MAP,
 } from '@/lib/korea-map';
 import { formatPeriodShort, formatTripNights } from '@/lib/format-date';
 import { colors } from '@/theme';
@@ -189,6 +190,22 @@ export function toRegionTripCards(feeds: readonly FeedCard[]): RegionTripCard[] 
 export const nightsLabel = formatTripNights;
 
 /** 추천 응답 → 시트 줄. 사진 주소는 응답에 있을 때만 넘긴다(서버는 아직 주지 않는다) */
+/**
+ * 주소 글자에서 지도 지역을 찾는다. "강릉 명주동" → 강릉시 코드.
+ * 장소 응답에는 지역 코드가 없어(서버 지역 ID만 있다) 주소 앞 두 낱말을 시군 이름과 견준다. 못 찾으면 null
+ */
+export function regionCodeInAddress(address: string | null): string | null {
+  if (!address) return null;
+  const words = address.split(/\s+/).slice(0, 2);
+  const hit = KOREA_MAP.sigungu.find((r) => {
+    // 지도 이름은 "강원특별자치도 강릉시"처럼 시도가 앞에 붙는다. 마지막 낱말(강릉시)이나 짧은 이름(강릉)과 견준다
+    const last = r.name.split(' ').pop();
+    const short = shortRegionName(r.name);
+    return words.some((w) => w === last || w === short);
+  });
+  return hit?.code ?? null;
+}
+
 export function toRecommendations(items: readonly DiscoveryItem[]): HomeRecommendation[] {
   return items.flatMap((item): HomeRecommendation[] => {
     if (item.type === 'FEED' && item.feed) {
@@ -202,6 +219,7 @@ export function toRecommendations(items: readonly DiscoveryItem[]): HomeRecommen
           meta: region ? shortRegionName(region.name) : item.reason,
           nights: nightsLabel(item.feed.startDate, item.feed.endDate),
           imageUrl: item.feed.coverImageUrl ?? null,
+          regionCode: region && findMapRegion(region.code) ? region.code : null,
         },
       ];
     }
@@ -215,6 +233,7 @@ export function toRecommendations(items: readonly DiscoveryItem[]): HomeRecommen
           meta: item.place.address ?? item.reason,
           nights: null,
           imageUrl: item.place.imageUrl ?? null,
+          regionCode: regionCodeInAddress(item.place.address),
         },
       ];
     }

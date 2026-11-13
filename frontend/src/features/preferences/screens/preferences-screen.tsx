@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
@@ -188,6 +189,7 @@ function PreferencesForm({
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
+          decelerationRate={SCROLL_DECELERATION}
           contentContainerStyle={[styles.content, forRecommendation && styles.contentTight]}
           keyboardShouldPersistTaps="handled"
         >

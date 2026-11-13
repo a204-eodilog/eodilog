@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { Image } from 'expo-image';
 import { useRef, useState } from 'react';
 import {
@@ -28,7 +29,8 @@ export type FeedDetailViewProps = {
   detail?: FeedDetail;
   onRetry: () => void;
   onLike: () => void;
-  onPhotos: () => void;
+  /** 사진을 누르면 그 사진부터 크게 본다 */
+  onPhotos: (index: number) => void;
   onSavePlace: (stop: FeedStop) => void;
   onPlace: (stop: FeedStop) => void;
 };
@@ -101,6 +103,7 @@ function Body({ detail, ...props }: FeedDetailViewProps & { detail: FeedDetail }
 
   return (
     <ScrollView
+      decelerationRate={SCROLL_DECELERATION}
       ref={scroll}
       contentContainerStyle={styles.content}
       onScroll={onScroll}
@@ -181,7 +184,7 @@ function Body({ detail, ...props }: FeedDetailViewProps & { detail: FeedDetail }
                 return (
                   <PressableScale
                     key={p.id}
-                    onPress={props.onPhotos}
+                    onPress={() => props.onPhotos(i)}
                     style={styles.photo}
                     accessibilityRole="button"
                     accessibilityLabel={last ? `사진 ${detail.morePhotos}장 더 보기` : '사진 보기'}

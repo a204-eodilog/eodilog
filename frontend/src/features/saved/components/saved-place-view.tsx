@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stagger } from '@/components/ui/stagger';
 import { Spinner } from '@/components/ui/spinner';
@@ -75,7 +76,7 @@ export function SavedPlaceView({
           ) : undefined
         }
       />
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView decelerationRate={SCROLL_DECELERATION} contentContainerStyle={styles.content}>
         <Stagger itemStyle={styles.staggerItem}>
           {lost ? (
             <View style={styles.map}>

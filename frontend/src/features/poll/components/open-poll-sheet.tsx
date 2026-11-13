@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { FadeIn } from '@/components/ui/fade-in';
@@ -169,6 +170,7 @@ export function OpenPollSheet({
         <Text style={styles.notice}>그룹 즐겨찾기에 장소가 없어요</Text>
       ) : (
         <ScrollView
+          decelerationRate={SCROLL_DECELERATION}
           style={styles.list}
           contentContainerStyle={styles.listContent}
           nestedScrollEnabled

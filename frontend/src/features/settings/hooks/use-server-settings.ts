@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { hasErrorCode, API_ERROR } from '@/api/errors';
@@ -8,7 +9,7 @@ import { ageBandLabel } from '@/features/auth/profile-rules';
 import { getPreferences, PREFERENCES_QUERY_KEY } from '@/features/preferences';
 import { getSettings, patchSettings } from '@/features/settings/api';
 import { settingsPatch } from '@/features/settings/settings-rules';
-import type { SettingsData } from '@/features/settings/types';
+import type { SettingsData, UserSettings } from '@/features/settings/types';
 import { ME_QUERY_KEY, useMe } from '@/hooks/use-me';
 
 export const SETTINGS_QUERY_KEY = ['me', 'settings'] as const;
@@ -30,7 +31,11 @@ export function useServerSettings() {
     retry: false,
   });
 
-  const save = useMutation({ mutationFn: patchSettings });
+  // 서버가 마지막으로 확인해 준 값과, 지금 보내는 중인지.
+  // 저장하는 동안 스위치를 잠그면 연달아 누를 때 두 번째가 씹히고 스위치가 되돌아가 버벅여 보인다.
+  // 그래서 화면은 누르는 대로 바로 바꾸고, 서버에는 하나씩 차례로 보낸다
+  const confirmed = useRef<UserSettings | null>(null);
+  const saving = useRef(false);
   const visibility = useMutation({
     mutationFn: (next: MyProfile['accountVisibility']) =>
       updateProfile({ accountVisibility: next }),
@@ -76,32 +81,53 @@ export function useServerSettings() {
       : undefined;
 
   function change(update: (previous: SettingsData) => SettingsData, failureMessage: string) {
-    if (!data || save.isPending) return;
-    const previous = data.settings;
-    const next = update(data).settings;
-    const body = settingsPatch(previous, next);
-    if (!body) return;
+    const current = queryClient.getQueryData<UserSettings>(SETTINGS_QUERY_KEY);
+    if (!data || !current) return;
+    const next = update({ ...data, settings: current }).settings;
+    if (!settingsPatch(current, next)) return;
+    // 보내는 중이 아니면 지금 값이 서버 값이다
+    if (!saving.current) confirmed.current = current;
     queryClient.setQueryData(SETTINGS_QUERY_KEY, next);
-    save.mutate(body, {
-      onSuccess: (saved) => queryClient.setQueryData(SETTINGS_QUERY_KEY, saved),
-      onError: (error) => {
-        if (hasErrorCode(error, API_ERROR.VERSION_CONFLICT)) {
-          // 다른 기기에서 먼저 바뀌었다. 되돌리지 말고 서버 값을 다시 받는다
-          void queryClient.invalidateQueries({ queryKey: SETTINGS_QUERY_KEY });
-          toast.error('설정이 바뀌어 다시 불러왔어요');
-          return;
-        }
-        queryClient.setQueryData(SETTINGS_QUERY_KEY, previous);
-        toast.error(failureMessage, {
-          action: { label: '다시 시도', onPress: () => change(update, failureMessage) },
-        });
-      },
-    });
+    void flush(() => change(update, failureMessage), failureMessage);
+  }
+
+  /** 화면 값과 서버 값이 같아질 때까지 하나씩 보낸다. 보내는 동안 또 바뀌면 끝난 뒤 이어서 보낸다 */
+  async function flush(retry: () => void, failureMessage: string) {
+    if (saving.current) return;
+    saving.current = true;
+    try {
+      for (;;) {
+        const base = confirmed.current;
+        const wanted = queryClient.getQueryData<UserSettings>(SETTINGS_QUERY_KEY);
+        const body = base && wanted ? settingsPatch(base, wanted) : null;
+        if (!body) return;
+        const saved = await patchSettings(body);
+        confirmed.current = saved;
+        // 그 사이 화면에서 더 바꾼 값은 남기고 버전만 서버 것으로 맞춘다
+        const latest = queryClient.getQueryData<UserSettings>(SETTINGS_QUERY_KEY);
+        queryClient.setQueryData(
+          SETTINGS_QUERY_KEY,
+          latest ? { ...latest, version: saved.version } : saved,
+        );
+      }
+    } catch (error) {
+      if (hasErrorCode(error, API_ERROR.VERSION_CONFLICT)) {
+        // 다른 기기에서 먼저 바뀌었다. 되돌리지 말고 서버 값을 다시 받는다
+        void queryClient.invalidateQueries({ queryKey: SETTINGS_QUERY_KEY });
+        toast.error('설정이 바뀌어 다시 불러왔어요');
+        return;
+      }
+      if (confirmed.current) queryClient.setQueryData(SETTINGS_QUERY_KEY, confirmed.current);
+      toast.error(failureMessage, { action: { label: '다시 시도', onPress: retry } });
+    } finally {
+      saving.current = false;
+    }
   }
 
   return {
     data,
-    pending: save.isPending || visibility.isPending,
+    // 설정 스위치는 저장 중에도 잠그지 않는다. 공개 설정만 답을 기다린다
+    pending: visibility.isPending,
     change,
     changeAccountVisibility,
     isPending: me.isPending || settings.isPending,

@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -74,7 +75,7 @@ export function UnplacedPhotosView(props: UnplacedPhotosViewProps) {
   return (
     <View style={styles.screen}>
       {header}
-      <ScrollView contentContainerStyle={styles.body}>
+      <ScrollView decelerationRate={SCROLL_DECELERATION} contentContainerStyle={styles.body}>
         <Stagger itemStyle={styles.staggerItem}>
           <Text style={[typography.caption, styles.hint]}>
             어디서 찍었는지 모르는 사진을 장소에 연결해요

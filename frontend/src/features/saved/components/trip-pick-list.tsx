@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { StyleSheet, Text, View } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 
@@ -29,6 +30,7 @@ type TripPickListProps = {
 export function TripPickList({ trips, selectedId, onSelect }: TripPickListProps) {
   return (
     <ScrollView
+      decelerationRate={SCROLL_DECELERATION}
       style={styles.scroll}
       contentContainerStyle={styles.list}
       accessibilityRole="radiogroup"

@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -253,7 +254,11 @@ export function PlacePickScreen() {
                   찾는 곳이 없으면 지도를 움직여 핀을 맞춰 주세요
                 </Text>
               ) : (
-                <ScrollView keyboardShouldPersistTaps="handled" style={styles.resultsScroll}>
+                <ScrollView
+                  decelerationRate={SCROLL_DECELERATION}
+                  keyboardShouldPersistTaps="handled"
+                  style={styles.resultsScroll}
+                >
                   {results.map(({ place, meters }, order) => (
                     <PressableScale
                       appear={order}

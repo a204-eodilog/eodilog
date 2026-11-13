@@ -56,6 +56,9 @@ public class SwaggerConfig {
 			boolean openApi31 = openApi.getSpecVersion() == SpecVersion.V31;
 			ModelConverters.getInstance(openApi31).readAll(ErrorResponse.class)
 					.forEach((name, schema) -> openApi.getComponents().addSchemas(name, schema));
+			ModelConverters.getInstance(openApi31)
+					.readAll(com.eodilog.expense.voice.VoiceExpenseResult.class)
+					.forEach((name, schema) -> openApi.getComponents().addSchemas(name, schema));
 			if (openApi.getPaths() == null) {
 				return;
 			}

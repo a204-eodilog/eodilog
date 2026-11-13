@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { Image } from 'expo-image';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -42,7 +43,11 @@ export function DestinationView(props: DestinationViewProps) {
         <SkeletonList style={styles.flex} />
       ) : (
         <>
-          <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            decelerationRate={SCROLL_DECELERATION}
+            contentContainerStyle={styles.content}
+            showsVerticalScrollIndicator={false}
+          >
             <Stagger itemStyle={styles.staggerItem}>
               <View style={styles.cover}>
                 <Icon name="image" size={32} color={colors.brand.primary} />

@@ -5,6 +5,9 @@ package com.eodilog.global.ai;
 public class AiServerException extends RuntimeException {
 
 	private final boolean retryable;
+	private int status;
+	private String providerCode;
+	private boolean timedOut;
 
 	public AiServerException(boolean retryable) {
 		super(retryable ? "AI server temporarily unavailable" : "AI server rejected the request");
@@ -14,5 +17,19 @@ public class AiServerException extends RuntimeException {
 	public boolean retryable() {
 		return retryable;
 	}
+	public AiServerException(boolean retryable, boolean timedOut) {
+		this(retryable);
+		this.timedOut = timedOut;
+	}
+	public boolean timedOut() { return timedOut; }
+	public AiServerException(int status, String providerCode) {
+		this(status >= 500);
+		this.status = status;
+		this.providerCode = java.util.Set.of("VALIDATION_ERROR", "INPUT_LIMIT_EXCEEDED", "INSUFFICIENT_DATA",
+				"VOICE_EXPENSE_UNSUPPORTED", "PROVIDER_UNAVAILABLE").contains(providerCode == null ? "" : providerCode)
+				? providerCode : null;
+	}
+	public int status() { return status; }
+	public String providerCode() { return providerCode; }
 
 }

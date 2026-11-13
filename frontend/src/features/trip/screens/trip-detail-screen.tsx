@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { router, useLocalSearchParams, type Href } from 'expo-router';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { Spinner } from '@/components/ui/spinner';
@@ -68,7 +69,7 @@ export function TripDetailScreen() {
     // 화면을 안드로이드 하단 버튼 줄(갤럭시 내비게이션 바) 위에서 끝낸다. 스크롤 끝에 여백만 주면
     // 내용이 화면에 딱 맞을 때 여행 메뉴 아래 줄(사진·평가·경비·게시·채팅)이 바에 가린다
     <View style={[styles.screen, { paddingBottom: insets.bottom }]}>
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView decelerationRate={SCROLL_DECELERATION} contentContainerStyle={styles.scroll}>
         <TripHero
           trip={trip}
           headline={view.headline}

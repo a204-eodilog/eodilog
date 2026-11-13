@@ -86,4 +86,6 @@ export const motion = {
    * 색이나 선 길이처럼 지원하지 않는 속성은 늘 false로 쓴다
    */
   native: Platform.OS !== 'web',
+  /** 아래에서 올라오는 창이 올라오고 내려가는 시간(ms). 2026-11-13 사용자 결정: 너무 빨라서 늦췄다 */
+  sheet: { duration: 380 },
 } as const;

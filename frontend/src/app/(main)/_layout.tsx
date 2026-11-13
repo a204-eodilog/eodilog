@@ -25,7 +25,8 @@ export default function MainLayout() {
         같은 방향의 더 빠른 종류로 바꿨다: 옆에서 400ms(slide_from_right) → 200ms(ios_from_right),
         아래에서 400ms(slide_from_bottom) → 350ms(fade_from_bottom)
       */}
-      <Stack screenOptions={{ headerShown: false, animation: 'ios_from_right' }}>
+      {/* 화면 넘김. 안드로이드에서 ios_from_right는 200ms라 너무 빨랐다. slide_from_right는 400ms다(2026-11-13 사용자 결정) */}
+      <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
         <Stack.Screen name="trips/new" options={{ animation: 'fade_from_bottom' }} />
       </Stack>
       <NotificationPopupHost />

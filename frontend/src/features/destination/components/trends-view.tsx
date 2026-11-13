@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { Image } from 'expo-image';
 import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -37,6 +38,7 @@ export function TrendsView(props: TrendsViewProps) {
         <SkeletonList style={styles.flex} />
       ) : (
         <FlatList
+          decelerationRate={SCROLL_DECELERATION}
           data={board.insufficient ? [] : board.rows}
           keyExtractor={(r) => r.regionId}
           contentContainerStyle={styles.content}

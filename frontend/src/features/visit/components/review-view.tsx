@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -74,7 +75,11 @@ export function ReviewView({
         onBack={onBack}
         right={people.length > 0 ? <AvatarGroup people={people} size="sm" /> : undefined}
       />
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        decelerationRate={SCROLL_DECELERATION}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
         <Stagger itemStyle={styles.staggerItem}>
           {writing && saveFailed ? (
             <View style={styles.failBox} accessibilityLiveRegion="polite">

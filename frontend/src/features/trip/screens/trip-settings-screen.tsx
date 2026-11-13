@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -265,6 +266,7 @@ export function TripSettingsScreen() {
         }
       />
       <ScrollView
+        decelerationRate={SCROLL_DECELERATION}
         contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + spacing[24] }]}
         keyboardShouldPersistTaps="handled"
       >

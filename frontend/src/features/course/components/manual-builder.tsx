@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -50,7 +51,7 @@ export function ManualBuilder(props: Props) {
 
   return (
     <>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView decelerationRate={SCROLL_DECELERATION} contentContainerStyle={styles.content}>
         <Text style={[typography.caption, styles.guide]}>
           날짜를 고르고 그룹 즐겨찾기 장소를 눌러 놓아요
         </Text>

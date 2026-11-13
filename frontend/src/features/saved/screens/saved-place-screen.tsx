@@ -118,8 +118,10 @@ export function SavedPlaceScreen() {
           setMemoKey((k) => k + 1);
           setMemoOpen(true);
         }}
-        // S07 친구 여행 상세(A)는 아직 없다
-        onOpenSource={() => toast.show('준비 중이에요')}
+        // 가져온 곳 줄은 원본 피드가 있을 때만 그려진다
+        onOpenSource={() => {
+          if (bookmark.sourceFeedId) router.push(`/feeds/${bookmark.sourceFeedId}`);
+        }}
         onAddToTrip={() => {
           setTripId(null);
           setAddOpen(true);
@@ -157,8 +159,16 @@ export function SavedPlaceScreen() {
           add.mutate(trip.id, {
             onSuccess: () => {
               setAddOpen(false);
-              // 값 문서의 [보기](→ S20 그룹 즐겨찾기, C)는 화면이 생기면 붙인다
-              toast.show(`${trip.title}에 담았어요`);
+              toast.show(`${trip.title}에 담았어요`, {
+                action: {
+                  label: '보기',
+                  onPress: () =>
+                    router.push({
+                      pathname: '/trips/[tripId]/favorites',
+                      params: { tripId: trip.id },
+                    }),
+                },
+              });
             },
             onError: () => toast.error('여행에 담지 못했어요. 다시 시도해 주세요'),
           });

@@ -30,6 +30,10 @@ jest.mock('../api', () => ({
 }));
 jest.mock('@/features/my-trips/api', () => ({ getAllMyTrips: jest.fn() }));
 jest.mock('@/features/trip/api', () => ({ getTrip: jest.fn() }));
+// 밀어 지우기는 기기의 움직임 모듈이 있어야 불러올 수 있어, 테스트에서는 줄을 그대로 그리는 가짜를 쓴다
+jest.mock('@/components/ui/swipe-to-delete', () => ({
+  SwipeToDelete: ({ children }: { children: React.ReactNode }) => children,
+}));
 jest.mock('@/components/ui', () => {
   const actual = jest.requireActual<typeof import('@/components/ui/icon')>('@/components/ui/icon');
   const { Pressable, Text, View } =

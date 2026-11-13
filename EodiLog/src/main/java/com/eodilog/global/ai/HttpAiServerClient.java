@@ -116,11 +116,21 @@ public class HttpAiServerClient implements AiServerClient {
 		} catch (RestClientResponseException ex) {
 			// 외부 응답/예외 메시지에는 자료·URL이 포함될 수 있어 상태와 분류만 기록한다.
 			log.warn("ai_call_failed path={} traceId={} status={}", path, traceId, ex.getStatusCode().value());
-			throw new AiServerException(ex.getStatusCode().is5xxServerError());
+			String code = null;
+			try {
+				if (ex.getResponseBodyAsByteArray().length <= 16384)
+					code = jsonMapper.readTree(ex.getResponseBodyAsString()).path("error").path("code").asString();
+			} catch (RuntimeException ignored) { }
+			throw new AiServerException(ex.getStatusCode().value(), code);
 		} catch (ResourceAccessException ex) {
 			// 연결 실패·읽기 타임아웃
 			log.warn("ai_call_unreachable path={} traceId={} exceptionClass={}", path, traceId, ex.getClass().getSimpleName());
-			throw new AiServerException(true);
+			boolean timedOut = false;
+			for (Throwable cause = ex; cause != null; cause = cause.getCause()) {
+				if (cause instanceof java.net.SocketTimeoutException
+						|| cause instanceof java.net.http.HttpTimeoutException) timedOut = true;
+			}
+			throw new AiServerException(true, timedOut);
 		}
 		return data(response);
 	}

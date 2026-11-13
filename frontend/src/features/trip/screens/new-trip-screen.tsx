@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -73,7 +74,11 @@ export function NewTripScreen() {
         // 안드로이드도 화면 끝까지 그리는 모드라 키보드만큼 직접 띄운다(채팅 화면과 같다). 그래야 [여행 만들기]가 키보드에 가리지 않는다
         behavior="padding"
       >
-        <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          decelerationRate={SCROLL_DECELERATION}
+          contentContainerStyle={styles.body}
+          keyboardShouldPersistTaps="handled"
+        >
           {/* 피그마 S16: 큰 질문 28, 아래 8 안내 15 */}
           <View style={styles.questionBlock}>
             {/* 큰 질문 → 안내가 한 줄씩 나타난다 */}

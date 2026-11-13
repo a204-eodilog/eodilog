@@ -1,3 +1,4 @@
+import { rememberMockUpload } from '@/lib/mock-photo';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -66,6 +67,9 @@ export function usePhotoUpload(tripId: string) {
         await putPhoto(intent, body, signal);
         if (signal.aborted) throw new Error('aborted');
         await completeAsset(assetId, signal);
+        // 테스트 모드의 가짜 서버에는 사진이 올라가지 않는다. 고른 사진을 기억해 두었다가 목록에서 그대로 보여 준다
+        // 기억한 주소는 테스트 모드에서 사진을 그릴 때만 쓰인다(실제 서버에서는 읽지 않는다)
+        rememberMockUpload(assetId, item.photo.uri);
         ready = true;
         patch(index, { ready });
       }

@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Spinner } from '@/components/ui/spinner';
@@ -61,7 +62,7 @@ export function BookmarkPickSheet({
       ) : bookmarks.length === 0 ? (
         <Text style={[typography.body, styles.empty]}>개인 즐겨찾기가 비어 있어요</Text>
       ) : (
-        <ScrollView style={styles.scroll}>
+        <ScrollView decelerationRate={SCROLL_DECELERATION} style={styles.scroll}>
           {bookmarks.map((b) => {
             const id = b.place?.id ?? null;
             const already = id !== null && inGroup.has(id);

@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams, usePreventRemove } from 'expo-router';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
@@ -140,7 +141,7 @@ export function DraftView(props: DraftViewProps) {
 
   return (
     <>
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView decelerationRate={SCROLL_DECELERATION} contentContainerStyle={styles.scroll}>
         <CourseMap items={items} legs={legs} badges={badges} tone="draft" />
         <View style={styles.content}>
           <DayTabs

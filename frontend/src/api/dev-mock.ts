@@ -1,3 +1,4 @@
+import { KOREA_MAP } from '@/lib/korea-map';
 import {
   AxiosError,
   type AxiosAdapter,
@@ -17,6 +18,7 @@ import { createNotificationMock } from './dev-mock-notification';
 import { createPollMock } from './dev-mock-poll';
 import { createRecommendMock } from './dev-mock-recommend';
 import { mockMyTimeline, mockTripSummary, mockTripTimeline } from './dev-mock-timeline';
+import { createVoiceExpenseMock } from './dev-mock-voice-expense';
 import { createWeatherMock } from './dev-mock-weather';
 
 import type { Follow, MyProfile, Session, UserCard } from './types';
@@ -246,7 +248,7 @@ const CROWD = Array.from({ length: 19 }, (_, i) =>
   i < FRIENDS.length ? FRIENDS[i] : user(`user-crowd-${i + 1}`, `동행${i + 1}`),
 );
 
-const REGIONS: Region[] = [
+const NAMED_REGIONS: Region[] = [
   ['region-busan', '2600000000', '부산광역시'],
   ['region-gangneung', '5115000000', '강원특별자치도 강릉시'],
   ['region-yeosu', '4613000000', '전라남도 여수시'],
@@ -254,6 +256,24 @@ const REGIONS: Region[] = [
   ['region-jongno', '1111000000', '서울특별시 종로구'],
   ['region-gyeongju', '4713000000', '경상북도 경주시'],
 ].map(([id, code, name]) => ({ id, code, name, parentId: null, latitude: null, longitude: null }));
+
+/**
+ * 여행지 검색(GET /regions)이 찾는 지역. 위 여섯 곳(다른 시험 자료가 id로 가리킨다)에 지도의 시도·시군구를 모두 더한다.
+ * 여섯 곳만 있을 때는 그 밖의 이름을 넣으면 "찾는 지역이 없어요"만 나와 검색이 안 되는 것처럼 보였다
+ */
+const REGIONS: Region[] = [
+  ...NAMED_REGIONS,
+  ...[...KOREA_MAP.sido, ...KOREA_MAP.sigungu]
+    .filter((r) => !NAMED_REGIONS.some((named) => named.code === r.code))
+    .map((r) => ({
+      id: `region-${r.code}`,
+      code: r.code,
+      name: r.name,
+      parentId: null,
+      latitude: null,
+      longitude: null,
+    })),
+];
 
 /** 홈 추천 장소·S07 예시 피드·N3 대표 장소에 나오는 예시 장소. N7 장소 정보와 S08 개인 저장이 쓴다 */
 const EXAMPLE_PLACES: Record<string, [string, string]> = {
@@ -534,6 +554,8 @@ const checklistMock = createChecklistMock({
   ok,
   fail,
 });
+/** 말로 경비 입력 가짜 서버(N10·N11). 음성 접수·분석 작업·일괄 저장 */
+const voiceExpenseMock = createVoiceExpenseMock({ getTrips: () => trips, meId: ME.id, ok, fail });
 /** 추천 결과 가짜 서버. 백엔드에 추천 API가 없다(Q-9-1) */
 const recommendMock = createRecommendMock({ getTrips: () => trips, ok, fail });
 /** 그룹 즐겨찾기 가짜 서버. 담는 장소는 개인 즐겨찾기나 추천 결과에서 찾는다 */
@@ -566,6 +588,8 @@ export const devMockControls = {
   notification: notificationMock.controls,
   /** 준비물: globalThis.__devMock.checklist.editByOther('trip-1'), failNextSuggestion() 등(준비물 quickstart) */
   checklist: checklistMock.controls,
+  /** 말로 경비 입력: globalThis.__devMock.voice.next('check'), failNextSave() */
+  voice: voiceExpenseMock.controls,
   /** 투표: globalThis.__devMock.poll.addCandidateByOther(), closeNow('tie') 등(투표 quickstart) */
   poll: pollMock.controls,
   /** 그룹 즐겨찾기: globalThis.__devMock.group.saveByOther('trip-1'), reset() */
@@ -928,6 +952,9 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
   const url = config.url ?? '';
   const params = (config.params ?? {}) as Record<string, string>;
 
+  // 말로 경비 입력은 다른 가짜 서버보다 먼저 답한다(그쪽 /jobs 처리가 모르는 작업을 404로 끝낸다)
+  const voice = voiceExpenseMock.handle(config, method, url);
+  if (voice) return voice;
   const chat = chatMock.handle(config, method, url, params);
   if (chat) return chat;
   // 그룹 즐겨찾기 GET /trips/{id}/saved-places는 그룹 가짜 서버가 먼저 답한다. 다른 가짜 서버의 같은 주소 처리보다 앞선다

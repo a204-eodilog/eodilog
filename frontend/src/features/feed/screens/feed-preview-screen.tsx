@@ -31,7 +31,7 @@ export function FeedPreviewScreen() {
           likeCount: f.likeCount + (f.likedByMe ? -1 : 1),
         }))
       }
-      onPhotos={say('사진 모두 보기로 가요')}
+      onPhotos={() => say('사진을 크게 봐요')()}
       onSavePlace={(s) => toast.show(`${s.name}: S08 장소 저장 시트를 열어요`)}
       onPlace={(s) => toast.show(`${s.name}: N7 장소 정보 시트를 열어요`)}
     />

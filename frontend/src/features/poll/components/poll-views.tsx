@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { useRef, type ReactNode } from 'react';
 import { ScrollView, type ScrollViewInstance, StyleSheet, Text, View } from 'react-native';
 
@@ -78,7 +79,11 @@ export function PollOpenView({
   const myNames = poll.candidates.filter((c) => mine.has(c.id)).map((c) => names[c.id]);
   return (
     <View style={styles.fill}>
-      <ScrollView ref={scrollRef} contentContainerStyle={styles.scroll}>
+      <ScrollView
+        decelerationRate={SCROLL_DECELERATION}
+        ref={scrollRef}
+        contentContainerStyle={styles.scroll}
+      >
         <Stagger itemStyle={styles.staggerItem}>
           <PollOpenHeaderCard
             remaining={remainingLabel(poll.closesAt, now)}
@@ -264,7 +269,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[16],
   },
   decideText: { ...typography.bodyMedium, color: colors.text.icon },
-  // 볼 수 없는 투표: 옅은 회색 카드에 까닭과 돌아가기를 한데 모은다
+  // 볼 수 없는 투표: 옅은 회색 카드에 까닭을 모은다. 돌아가기는 머리줄의 뒤로 버튼으로 한다
   goneCard: {
     alignSelf: 'stretch',
     alignItems: 'center',
@@ -292,15 +297,6 @@ const styles = StyleSheet.create({
     color: colors.text.sub,
     textAlign: 'center',
     marginTop: spacing[6],
-  },
-  goneBack: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: spacing[24],
-    backgroundColor: colors.brand.primary,
   },
   zeroNote: { ...typography.caption, color: colors.text.sub, marginTop: spacing[16] },
 });
@@ -346,7 +342,7 @@ export function PollResultView({
   const bottom = useSafeAreaInsets().bottom + spacing[16];
   return (
     <View style={styles.fill}>
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView decelerationRate={SCROLL_DECELERATION} contentContainerStyle={styles.scroll}>
         <Stagger itemStyle={styles.staggerItem}>
           {header}
           {between}
@@ -468,7 +464,7 @@ export function PollNoVotesView({
  * 볼 수 없는 투표(FR-022). 지워졌거나 다른 여행의 투표, 지금 동행이 아닌 여행의 투표.
  * 디자인이 없어 채팅 비참여자 차단 화면과 같은 모양으로 둔다 (가정 — 사용자 확인 필요, Q-4-6)
  */
-export function PollNotFoundView({ onBack }: { onBack: () => void }) {
+export function PollNotFoundView() {
   return (
     <View style={styles.zero}>
       <View style={styles.goneCard}>
@@ -485,14 +481,6 @@ export function PollNotFoundView({ onBack }: { onBack: () => void }) {
         <Text style={styles.goneBody} lineBreakStrategyIOS="hangul-word">
           지워졌거나, 지금 함께하지 않는 여행의 투표예요
         </Text>
-        <PressableScale
-          accessibilityRole="button"
-          accessibilityLabel="돌아가기"
-          onPress={onBack}
-          style={({ pressed }) => [styles.goneBack, pressed && styles.pressed]}
-        >
-          <Icon name="back" size={22} color={colors.text.inverse} />
-        </PressableScale>
       </View>
     </View>
   );

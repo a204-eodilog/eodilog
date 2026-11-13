@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -85,6 +86,7 @@ export function ExpenseListView({
       ) : (
         <>
           <FlatList
+            decelerationRate={SCROLL_DECELERATION}
             data={expenses}
             keyExtractor={(e) => e.id}
             contentContainerStyle={styles.content}

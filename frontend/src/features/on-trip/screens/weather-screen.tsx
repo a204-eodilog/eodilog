@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
@@ -120,7 +121,10 @@ export function WeatherView(props: WeatherViewProps) {
         subtitleIcon="trip"
         right={props.people.length > 0 ? <AvatarGroup people={props.people} max={3} /> : undefined}
       />
-      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: spacing[32] }]}>
+      <ScrollView
+        decelerationRate={SCROLL_DECELERATION}
+        contentContainerStyle={[styles.content, { paddingBottom: spacing[32] }]}
+      >
         <View style={styles.card}>
           <WeatherSummary
             weather={props.weather}
