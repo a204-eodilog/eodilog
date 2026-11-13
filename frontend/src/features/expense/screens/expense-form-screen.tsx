@@ -121,7 +121,7 @@ function ExpenseEditor({
         failed={save.isError}
         conflict={save.isError && expenseFailure(save.error) === 'conflict'}
         onDelete={mode === 'edit' ? () => setConfirmDelete(true) : undefined}
-        headerRight={
+        bottomLeft={
           mode === 'create' ? <VoiceEntryButton onPress={() => setVoiceOpen(true)} /> : undefined
         }
       />

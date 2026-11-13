@@ -352,7 +352,6 @@ export function ExtractResultScreen() {
                   const o = options[choiceIndex];
                   if (o) pickFor(asking.key, { place: o.place, evidence: o.evidence });
                 }}
-                style={styles.primary}
               />
             </View>
           </>
@@ -452,7 +451,7 @@ export function ExtractResultScreen() {
                 weight="medium"
                 disabled={placed.length === 0}
                 onPress={() => setSaveOpen(true)}
-                style={styles.primary}
+                style={styles.primaryCount}
               />
             </View>
           </>
@@ -686,5 +685,6 @@ const styles = StyleSheet.create({
     paddingTop: spacing[20],
   },
   notHere: { paddingHorizontal: spacing[12] },
-  primary: { paddingLeft: spacing[20], paddingRight: spacing[24] },
+  // 아이콘 옆에 곳 수가 붙는 알약이라 좌우 여백을 둔다
+  primaryCount: { paddingLeft: spacing[20], paddingRight: spacing[24] },
 });

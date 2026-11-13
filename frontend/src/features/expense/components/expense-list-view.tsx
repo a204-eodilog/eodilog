@@ -174,7 +174,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: layout.screenPaddingX,
     paddingTop: spacing[12],
   },
-  calculate: { alignSelf: 'flex-end', paddingLeft: spacing[20], paddingRight: spacing[24] },
+  // 아이콘만 있는 동그란 버튼이라 좌우 여백을 따로 주지 않는다. 글자 버튼 때 여백(20·24)이 남아 아이콘이 왼쪽으로 밀렸다
+  calculate: { alignSelf: 'flex-end' },
   text: { color: colors.text.default },
   sub: { color: colors.text.icon },
 });

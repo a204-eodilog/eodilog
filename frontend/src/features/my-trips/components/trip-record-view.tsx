@@ -192,13 +192,7 @@ export function TripRecordView({
             />
           </>
         ) : (
-          <Button
-            label="공동 피드 게시"
-            icon="upload"
-            weight="medium"
-            onPress={onPublish}
-            style={styles.publish}
-          />
+          <Button label="공동 피드 게시" icon="upload" weight="medium" onPress={onPublish} />
         )}
       </View>
     </View>
@@ -326,7 +320,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: layout.screenPaddingX,
     paddingTop: spacing[12],
   },
-  publish: { paddingLeft: spacing[20], paddingRight: spacing[24] },
   text: { color: colors.text.default },
   sub: { color: colors.text.icon },
 });
