@@ -188,6 +188,11 @@ export function toRegionTripCards(feeds: readonly FeedCard[]): RegionTripCard[] 
 /** "2박 3일", 하루면 "당일치기", 날짜가 없으면 null. 공통 formatTripNights와 같은 문구 */
 export const nightsLabel = formatTripNights;
 
+/** S05 추천 시트 설명 한 줄. 여행은 "제주 · 2박 3일"(기간이 없으면 지역만), 장소는 "강원 강릉시 명주동" */
+export function recommendMetaLabel(item: Pick<HomeRecommendation, 'meta' | 'nights'>): string {
+  return item.nights ? `${item.meta} · ${item.nights}` : item.meta;
+}
+
 /** 추천 응답 → 시트 줄. 사진 주소는 응답에 있을 때만 넘긴다(서버는 아직 주지 않는다) */
 export function toRecommendations(items: readonly DiscoveryItem[]): HomeRecommendation[] {
   return items.flatMap((item): HomeRecommendation[] => {

@@ -64,7 +64,8 @@ export function PlaceInfoSheetView(props: PlaceInfoSheetViewProps) {
           </View>
           {info.reason ? (
             <View style={styles.line}>
-              <Icon name="heart" size={18} color={colors.brand.primary} />
+              {/* 좋아요에서 온 추천 이유. 홈 추천 시트 하트와 같은 코랄 레드 */}
+              <Icon name="heart" size={18} color={colors.brand.accent} />
               <Text style={styles.lineText}>{info.reason}</Text>
             </View>
           ) : null}
