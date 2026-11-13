@@ -20,6 +20,7 @@ import {
   replaceItinerary,
   requestAutoCourse,
 } from '../api';
+import { clearRouteAttempts, markRouteAttempt } from '../route-attempts';
 import { httpError, item, itinerary, place, sampleCourse, savedPlace } from '../testing';
 import type { Itinerary, ItineraryProposal, ItineraryWrite } from '../types';
 
@@ -246,6 +247,7 @@ const day1 = (b: ItineraryWrite) => b.items.filter((i) => i.day === 1).map((i) =
 
 beforeEach(() => {
   mockNoTime = 'pending';
+  clearRouteAttempts();
   jest.clearAllMocks();
   mockParams.entry = undefined;
   mockParams.split = undefined;
@@ -786,6 +788,24 @@ describe('경로 계산 전', () => {
     expect(screen.queryByText('두 곳 사이 경로를 찾지 못했어요')).toBeNull();
     expect(screen.queryByText('이동 시간을 못 구했어요')).toBeNull();
     expect(screen.queryByText(/0분/)).toBeNull();
+  });
+
+  it('계산을 요청해 본 코스인데 시간이 없으면 못 구한 것으로 보인다', async () => {
+    mockGet.mockResolvedValue(sampleCourse(false));
+    markRouteAttempt('trip-1', 3);
+    await renderScreen();
+    expect(await screen.findByText('두 곳 사이 경로를 찾지 못했어요')).toBeTruthy();
+    expect(screen.getAllByText('이동 시간을 못 구했어요')).toHaveLength(2);
+  });
+
+  it('요청해 본 코스라도 고치는 중이면 계산 전으로 보인다', async () => {
+    mockGet.mockResolvedValue(sampleCourse(false));
+    markRouteAttempt('trip-1', 3);
+    await renderScreen();
+    await fireEvent.press(await screen.findByLabelText('서면 돼지국밥집 고치기'));
+    await fireEvent.press(screen.getByLabelText('위로'));
+    expect(screen.queryByText('이동 시간을 못 구했어요')).toBeNull();
+    expect(screen.getAllByText(/계산 전/).length).toBeGreaterThan(0);
   });
 });
 
