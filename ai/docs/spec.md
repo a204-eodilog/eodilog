@@ -513,6 +513,7 @@ sources:
 ```
 
 - `payer.kind`: `SELF | NAMED | UNKNOWN`. `participants.mode`: `NAMED | ALL_ACTIVE | UNKNOWN`. `includeSpeaker`는 모르면 `null`. `names`에는 화자를 넣지 않는다. `headcount`는 말한 인원수(없으면 나열한 사람 수)이며 `ALL_ACTIVE`에도 붙을 수 있다. 백엔드가 현재 멤버 수와 비교할 수 있다.
+- 사람 수만 말했을 때([규칙 1](../../docs/plan/voice-expense-participant-rules-2026-11-13.md)): 낸 사람이 이름(`NAMED`)이고 `includeSpeaker`가 `true`이며, 나 + 낸 사람 + `names`의 수가 `headcount`와 같으면 낸 사람을 `names`에 넣고 `mode`를 `NAMED`로 정한다. 이때는 `PARTICIPANTS_UNKNOWN`·`COUNT_MISMATCH`를 붙이지 않는다. 예: "지민이가 냈고 나랑 둘이 나눠" → `names: ["지민"]`. 낸 사람이 나이거나, 나를 넣는지 모르거나, 받아쓴 글에 없는 이름을 뺐으면 지금처럼 비우고 경고한다. 말한 인원이 여행 인원 전체와 같은지(규칙 2)는 멤버 수를 아는 백엔드가 판단한다.
 - 받아쓴 글에 없는 값은 버린다: 금액(글에서 읽은 금액 중 하나여야 함, `2만4천`·`만 2천`·`12,000`·`1.5만` 등), 이름, `transcriptSegment`, `spentAtExpression`. 버린 칸은 경고로 알린다. confidence 수치는 만들지 않는다.
 - `spentAt`(UTC)은 표현에 날짜(오늘·어제·N일·요일 등)와 시각(N시·HH:MM 등)이 모두 있을 때만. 아니면 `null`이고 표현이 있으면 `spentAtExpression`에 남긴다.
 - '합계 3만 원'처럼 다른 항목의 합인 금액은 항목에서 뺀다. 말한 합계와 항목 합이 다르면 전체 경고 `TOTAL_MISMATCH`.

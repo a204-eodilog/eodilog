@@ -17,6 +17,7 @@ from fastapi.testclient import TestClient
 from app.core.config import Settings
 from app.features.voice_expense.amounts import amounts_in
 from app.features.voice_expense.audio import AudioInvalid, inspect_m4a
+from app.features.voice_expense.service import SYSTEM_PROMPT
 from app.main import create_app
 
 PATH = "/ai/v1/voice-expense-drafts"
@@ -472,6 +473,155 @@ def test_spoken_headcount_that_differs_from_names_is_warned(client):
     only = post(client).json()["data"]["items"][0]
 
     assert [w["code"] for w in only["warnings"]] == ["COUNT_MISMATCH"]
+
+
+def coffee(text: str, payer: dict, participants: dict, **overrides) -> dict:
+    return {
+        "items": [
+            item(
+                segment=text,
+                title="커피",
+                amount=12000,
+                payer=payer,
+                participants=participants,
+                **overrides,
+            )
+        ]
+    }
+
+
+JIMIN = {"kind": "NAMED", "name": "지민"}
+SELF = {"kind": "SELF", "name": None}
+
+
+@respx.mock
+@pytest.mark.parametrize(
+    "participants",
+    [
+        # 같은 녹음인데 LLM이 낸 사람을 names에 넣을 때도, 안 넣고 UNKNOWN으로 줄 때도 있다
+        {"mode": "UNKNOWN", "includeSpeaker": True, "names": [], "headcount": 2},
+        {"mode": "NAMED", "includeSpeaker": True, "names": [], "headcount": 2},
+        {"mode": "NAMED", "includeSpeaker": True, "names": ["지민"], "headcount": 2},
+    ],
+)
+def test_payer_fills_participants_when_only_headcount_was_said(client, participants):
+    """규칙 1(docs/plan/voice-expense-participant-rules-2026-11-13.md §4).
+
+    나 + 낸 사람 + 이름 말한 사람 수가 말한 인원과 같으면 그 사람들로 정한다.
+    LLM 판단이 흔들려도 결과는 매번 같다.
+    """
+    text = "커피 1만 2천원은 지민이가 냈고 나랑 둘이 나눠"
+    respx.post(STT_URL).mock(return_value=stt_reply(text))
+    respx.post(LLM_URL).mock(
+        return_value=llm_reply(coffee(text, JIMIN, participants, uncertain=["participants"]))
+    )
+
+    only = post(client).json()["data"]["items"][0]
+
+    assert only["participants"] == {
+        "mode": "NAMED",
+        "includeSpeaker": True,
+        "names": ["지민"],
+        "headcount": 2,
+    }
+    assert only["warnings"] == []
+
+
+@respx.mock
+def test_payer_joins_other_named_people_to_reach_headcount(client):
+    text = "커피 1만 2천원은 지민이가 냈고 서준이랑 나랑 셋이 나눠"
+    respx.post(STT_URL).mock(return_value=stt_reply(text))
+    respx.post(LLM_URL).mock(
+        return_value=llm_reply(
+            coffee(
+                text,
+                JIMIN,
+                {"mode": "NAMED", "includeSpeaker": True, "names": ["서준"], "headcount": 3},
+            )
+        )
+    )
+
+    only = post(client).json()["data"]["items"][0]
+
+    assert only["participants"]["names"] == ["서준", "지민"]
+    assert only["participants"]["mode"] == "NAMED"
+    assert only["warnings"] == []
+
+
+@respx.mock
+@pytest.mark.parametrize(
+    ("text", "payer", "participants", "code"),
+    [
+        # 낸 사람이 나면 사람이 늘지 않으므로 누구인지 모른다
+        (
+            "커피 1만 2천원 내가 냈고 둘이 나눠",
+            SELF,
+            {"mode": "UNKNOWN", "includeSpeaker": True, "names": [], "headcount": 2},
+            "PARTICIPANTS_UNKNOWN",
+        ),
+        # 나를 빼면 규칙 1을 쓰지 않는다
+        (
+            "커피 1만 2천원은 지민이가 냈고 나 빼고 셋이 나눠",
+            JIMIN,
+            {"mode": "UNKNOWN", "includeSpeaker": False, "names": [], "headcount": 3},
+            "PARTICIPANTS_UNKNOWN",
+        ),
+        # 나를 넣는지 모르면 쓰지 않는다
+        (
+            "커피 1만 2천원은 지민이가 냈고 둘이 나눠",
+            JIMIN,
+            {"mode": "UNKNOWN", "includeSpeaker": None, "names": [], "headcount": 2},
+            "PARTICIPANTS_UNKNOWN",
+        ),
+        # 모아도 인원과 다르면 그대로 둔다
+        (
+            "커피 1만 2천원은 지민이가 냈고 나랑 넷이 나눠",
+            JIMIN,
+            {"mode": "UNKNOWN", "includeSpeaker": True, "names": [], "headcount": 4},
+            "PARTICIPANTS_UNKNOWN",
+        ),
+        (
+            "커피 1만 2천원은 지민이가 냈고 서준이랑 나랑 넷이 나눠",
+            JIMIN,
+            {"mode": "NAMED", "includeSpeaker": True, "names": ["서준"], "headcount": 4},
+            "COUNT_MISMATCH",
+        ),
+    ],
+)
+def test_payer_rule_leaves_unclear_cases_for_the_user(client, text, payer, participants, code):
+    respx.post(STT_URL).mock(return_value=stt_reply(text))
+    respx.post(LLM_URL).mock(return_value=llm_reply(coffee(text, payer, participants)))
+
+    only = post(client).json()["data"]["items"][0]
+
+    assert [w["code"] for w in only["warnings"]] == [code]
+    assert "지민" not in only["participants"]["names"]
+
+
+@respx.mock
+def test_payer_rule_is_skipped_when_a_name_was_dropped(client):
+    """받아쓴 글에 없는 이름을 뺐다면 LLM 결과를 믿지 않는다."""
+    text = "커피 1만 2천원은 지민이가 냈고 나랑 둘이 나눠"
+    respx.post(STT_URL).mock(return_value=stt_reply(text))
+    respx.post(LLM_URL).mock(
+        return_value=llm_reply(
+            coffee(
+                text,
+                JIMIN,
+                {"mode": "NAMED", "includeSpeaker": True, "names": ["가람"], "headcount": 2},
+            )
+        )
+    )
+
+    only = post(client).json()["data"]["items"][0]
+
+    assert only["participants"]["names"] == []
+    assert [w["code"] for w in only["warnings"]] == ["PARTICIPANTS_UNKNOWN"]
+
+
+def test_prompt_tells_llm_to_count_the_named_payer():
+    assert "나랑 둘이" in SYSTEM_PROMPT
+    assert "낸 사람도 names에 넣는다" in SYSTEM_PROMPT
 
 
 @pytest.mark.parametrize(

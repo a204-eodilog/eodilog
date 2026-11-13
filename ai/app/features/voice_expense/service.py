@@ -72,6 +72,8 @@ SYSTEM_PROMPT = f"""너는 여행 앱 '어디로그'의 공동 경비 받아적�
   빠지면 false, 모르면 null. '우리 모두', '다 같이'처럼 분명할 때만 mode "ALL_ACTIVE".
   이름을 말했으면 "NAMED". '셋이'처럼 인원만 말하고 누구인지 모르면 mode "UNKNOWN".
   '내가 냈다'만으로 화자를 나누는 사람에 넣지 않는다.
+  '지민이가 냈고 나랑 둘이 나눠'처럼 낸 사람을 이름으로 말하고 '나랑 둘이'처럼 인원만 말하면, 말한 인원이
+  나 + 낸 사람과 맞을 때 낸 사람도 names에 넣는다(mode "NAMED", names ["지민"], headcount 2).
   headcount는 '셋이', '우리 넷'처럼 말한 인원수(mode와 상관없이 적는다), 없으면 나열한 사람 수,
   모르면 null.
 - '둘 다 내가 냈어'처럼 여러 지출에 걸친 말은 그 말이 가리키는 지출에만 적용한다. 근거 없이 넓히지 않는다.
@@ -322,9 +324,10 @@ def _item(raw: dict, transcript: str, spoken: set[int], reference_at: datetime) 
         codes.append("PAYER_UNKNOWN")
 
     participants, dropped = _participants(raw.get("participants"), transcript)
-    if participants.mode == "UNKNOWN" or dropped:
+    participants, settled = _with_payer(participants, payer, dropped)
+    if not settled and (participants.mode == "UNKNOWN" or dropped):
         codes.append("PARTICIPANTS_UNKNOWN")
-    elif participants.mode == "NAMED" and participants.headcount is not None:
+    elif not settled and participants.mode == "NAMED" and participants.headcount is not None:
         listed = len(participants.names) + (1 if participants.include_speaker else 0)
         if listed != participants.headcount:
             codes.append("COUNT_MISMATCH")
@@ -335,7 +338,11 @@ def _item(raw: dict, transcript: str, spoken: set[int], reference_at: datetime) 
 
     uncertain = raw.get("uncertain")
     if isinstance(uncertain, list):
-        codes += [_UNCERTAIN[field] for field in uncertain if field in _UNCERTAIN]
+        codes += [
+            _UNCERTAIN[field]
+            for field in uncertain
+            if field in _UNCERTAIN and not (settled and field == "participants")
+        ]
 
     order = list(_WARNINGS)
     return ExpenseItem(
@@ -396,6 +403,35 @@ def _participants(raw: object, transcript: str) -> tuple[Participants, bool]:
         headcount=_positive_int(raw.get("headcount"), MAX_HEADCOUNT),
     )
     return participants, dropped
+
+
+def _with_payer(
+    participants: Participants, payer: Payer, dropped: bool
+) -> tuple[Participants, bool]:
+    """(분담자, 규칙으로 확정했는지). docs/plan/voice-expense-participant-rules-2026-11-13.md 규칙 1.
+
+    '지민이가 냈고 나랑 둘이'처럼 인원만 말하면 LLM이 낸 사람을 names에 넣을 때도 있고 빼고 UNKNOWN으로
+    줄 때도 있다. 나 + 낸 사람 + 이름 말한 사람 수가 말한 인원과 같을 때만 그 사람들로 정한다.
+    낸 사람이 나(SELF)이거나, 나를 넣는지 모르거나, 받아쓴 글에 없는 이름을 뺐다면 확정하지 않는다.
+    """
+    if (
+        dropped
+        or participants.mode == "ALL_ACTIVE"
+        or participants.include_speaker is not True
+        or participants.headcount is None
+        or payer.kind != "NAMED"
+        or payer.name is None
+    ):
+        return participants, False
+    names = list(participants.names)
+    if payer.name not in names:
+        names.append(payer.name)
+    if 1 + len(names) != participants.headcount or len(names) > MAX_NAMES:
+        return participants, False
+    settled = Participants(
+        mode="NAMED", include_speaker=True, names=names, headcount=participants.headcount
+    )
+    return settled, True
 
 
 def _spent_at(
