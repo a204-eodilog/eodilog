@@ -57,7 +57,7 @@ export function RegionSearchScreen({
           autoFocus
           value={input}
           onChangeText={setInput}
-          placeholder="지역 이름으로 찾아보세요"
+          placeholder="강릉, 해운대처럼 지역 이름"
           placeholderTextColor={colors.text.muted}
           returnKeyType="search"
           style={styles.input}
@@ -86,7 +86,7 @@ export function RegionSearchScreen({
               <EmptyState
                 icon="map-pin"
                 title="어디로 떠날까요?"
-                description="시·군·구 이름을 입력해 보세요"
+                description={'시·군·구 이름으로 찾아요\n장소는 여행을 만든 뒤 코스에서 넣어요'}
               />
             </View>
           ) : isError ? (
@@ -98,7 +98,9 @@ export function RegionSearchScreen({
               <EmptyState
                 icon="search"
                 title="찾는 지역이 없어요"
-                description="다른 이름으로 찾아보세요"
+                // 장소 이름(성산일출봉 등)을 치면 여기로 온다. 지역 목록은 시·군·구 245곳뿐이라는 것을 알려 준다
+                // (2026-11-13 사용자 결정: 장소로 찾아 지역을 알려 주는 기능은 시연 뒤로)
+                description={'장소 이름 말고 지역 이름으로 찾아 주세요\n예) 성산일출봉 → 서귀포'}
               />
             </View>
           ) : (

@@ -112,11 +112,6 @@ export function FriendsView({
                 <Icon name="person-plus" size={18} color={colors.text.inverse} />
               </View>
             </PressableScale>
-            <TabPill
-              tab={tab}
-              counts={{ following: board.following.length, followers: board.followers.length }}
-              onTab={setTab}
-            />
             {board.requests.length > 0 ? (
               <View style={styles.section}>
                 <View style={styles.headingRow}>
@@ -190,6 +185,12 @@ export function FriendsView({
                 <Text style={styles.caption}>여행 그룹과 채팅 이력은 그대로 닫혀 있어요</Text>
               </Card>
             ) : null}
+            {/* 탭은 탭이 바꾸는 목록 바로 위에 둔다(받은 요청은 그 위, 2026-11-13 사용자 결정: 탭과 목록이 떨어져 헷갈림) */}
+            <TabPill
+              tab={tab}
+              counts={{ following: board.following.length, followers: board.followers.length }}
+              onTab={setTab}
+            />
             <View style={styles.peopleSection}>
               {tab === 'followers' || previewTrips ? (
                 <Text style={styles.caption}>
@@ -435,6 +436,7 @@ const styles = StyleSheet.create({
   heading: { ...typography.title3, color: colors.text.default },
   caption: { ...typography.caption, color: colors.text.icon },
   section: { gap: spacing[12] },
+  // 파란 탭 카드와 그 탭이 바꾸는 목록을 가깝게 붙인다
   peopleSection: {
     gap: spacing[12],
     padding: spacing[16],
