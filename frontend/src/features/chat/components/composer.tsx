@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
-import { Keyboard, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useState } from 'react';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon } from '@/components/ui';
 import { PressableScale } from '@/components/ui/pressable-scale';
+// 자판이 떠 있으면 하단 안전 영역(내비게이션 바) 여백을 빼서 입력 칸이 자판에 바로 붙게 한다
+import { useKeyboardVisible } from '@/hooks/use-keyboard-visible';
 import { caret, colors, fontFamily, radius, spacing, typography } from '@/theme';
 
 import { MESSAGE_MAX_LENGTH, validateMessageText } from '../chat-rules';
@@ -15,23 +17,6 @@ type Props = {
   /** /dev/chats 미리보기용 처음 글 */
   initialText?: string;
 };
-
-/** 키보드가 떠 있는지. 떠 있으면 하단 안전 영역(내비게이션 바) 여백을 빼서 입력 칸이 키보드에 바로 붙게 한다 */
-function useKeyboardVisible() {
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    // iOS는 키보드가 오르기 전에(Will), 안드로이드는 올라온 뒤에(Did)만 알려 준다
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-    const show = Keyboard.addListener(showEvent, () => setVisible(true));
-    const hide = Keyboard.addListener(hideEvent, () => setVisible(false));
-    return () => {
-      show.remove();
-      hide.remove();
-    };
-  }, []);
-  return visible;
-}
 
 /**
  * S47 입력 칸(피그마 201-25186). 회색 알약 입력 + 파랑 보내기 버튼.

@@ -169,7 +169,6 @@ export function ReviewView({
             disabled={!canSave}
             loading={saving}
             onPress={onSave}
-            style={styles.save}
           />
         </View>
       ) : null}
@@ -235,7 +234,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: layout.screenPaddingX,
     paddingTop: spacing[12],
   },
-  save: { paddingLeft: spacing[20], paddingRight: spacing[24] },
   text: { color: colors.text.default },
   sub: { color: colors.text.icon },
 });

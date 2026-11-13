@@ -4,7 +4,7 @@ import { AppState, Linking, Pressable, StyleSheet, Text } from 'react-native';
 
 import { Icon, toast } from '@/components/ui';
 import { useVoiceRecorder } from '@/hooks/use-voice-recorder';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, radius, size, spacing, typography } from '@/theme';
 
 import { useVoiceAnalysis } from '../hooks/use-voice-analysis';
 
@@ -118,18 +118,20 @@ export function VoiceRecordSheet({
   );
 }
 
-/** S35 지출 추가 상단 바 오른쪽 [🎤 말로 한 번에] */
+/**
+ * S35 지출 추가 아래 줄 왼쪽 [🎤 말로 한 번에]. 저장 버튼과 같은 높이(48)의 알약.
+ * 엄지가 닿는 자리라 상단 바 오른쪽에서 옮겼다(2026-11-13 사용자 결정)
+ */
 export function VoiceEntryButton({ onPress }: { onPress: () => void }) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel="말로 한 번에 지출 기록"
       onPress={onPress}
-      hitSlop={6}
       style={({ pressed }) => [styles.pill, pressed && styles.pressed]}
     >
-      <Icon name="mic" size={16} color={colors.brand.primaryDark} />
-      <Text style={[typography.captionMedium, styles.pillText]}>말로 한 번에</Text>
+      <Icon name="mic" size={20} color={colors.brand.primaryDark} />
+      <Text style={[typography.bodyBold, styles.pillText]}>말로 한 번에</Text>
     </Pressable>
   );
 }
@@ -138,10 +140,10 @@ const styles = StyleSheet.create({
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing[4],
-    paddingLeft: spacing[10],
-    paddingRight: spacing[12],
-    paddingVertical: spacing[6],
+    gap: spacing[8],
+    height: size.button.lg,
+    paddingLeft: spacing[18],
+    paddingRight: spacing[20],
     borderRadius: radius.full,
     backgroundColor: colors.brand.primaryBg,
   },

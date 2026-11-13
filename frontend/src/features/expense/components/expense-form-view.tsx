@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stagger } from '@/components/ui/stagger';
 import { Button, Header, Icon, TextField } from '@/components/ui';
 import { PressableScale } from '@/components/ui/pressable-scale';
+import { useKeyboardVisible } from '@/hooks/use-keyboard-visible';
 import { AMOUNT_MAX_LENGTH, formatThousands } from '@/lib/format-number';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -47,8 +48,11 @@ export type ExpenseFormViewProps = {
   conflict?: boolean;
   /** edit에서만. [삭제] → S50 확인 시트 */
   onDelete?: () => void;
-  /** 상단 바 오른쪽. 지출 추가의 [말로 한 번에](N10) */
-  headerRight?: ReactNode;
+  /**
+   * 아래 줄 왼쪽, 저장 버튼 옆. 지출 추가의 [말로 한 번에](N10).
+   * 엄지가 닿는 자리라 상단 바에서 옮겼다(2026-11-13 사용자 결정). 자판이 떠 있으면 숨긴다
+   */
+  bottomLeft?: ReactNode;
   /** 제목을 바꿔 쓸 때. 말로 입력한 초안 고치기(N11)는 "초안 고치기" */
   titleOverride?: string;
   /** 저장 버튼 글자를 바꿔 쓸 때. 초안 고치기는 "적용" */
@@ -73,12 +77,13 @@ export function ExpenseFormView({
   failed = false,
   conflict = false,
   onDelete,
-  headerRight,
+  bottomLeft,
   titleOverride,
   saveLabel,
   notice,
 }: ExpenseFormViewProps) {
   const insets = useSafeAreaInsets();
+  const keyboardVisible = useKeyboardVisible();
   const readOnly = mode === 'view';
   const ordered = [...members].sort((a, b) => a.joinOrder - b.joinOrder);
   const chosen = new Set(form.participantMemberIds);
@@ -98,8 +103,6 @@ export function ExpenseFormView({
         subtitle={tripTitle}
         subtitleIcon="trip"
         onBack={onClose}
-        right={headerRight}
-        sideWidth={headerRight ? 128 : undefined}
       />
       <KeyboardAvoidingView
         style={styles.flex}
@@ -189,6 +192,9 @@ export function ExpenseFormView({
               { paddingBottom: Math.max(insets.bottom + spacing[16], spacing[20]) },
             ]}
           >
+            {bottomLeft && !keyboardVisible ? (
+              <View style={styles.bottomLeft}>{bottomLeft}</View>
+            ) : null}
             {onDelete ? (
               <PressableScale
                 accessibilityRole="button"
@@ -299,6 +305,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: layout.screenPaddingX,
     paddingTop: spacing[12],
   },
+  // 왼쪽 칸이 남은 폭을 차지해 저장 버튼은 오른쪽 끝에 그대로 남는다
+  bottomLeft: { flex: 1, alignItems: 'flex-start' },
   delete: { paddingHorizontal: spacing[16], paddingVertical: spacing[12] },
   pressed: { opacity: 0.6 },
   text: { color: colors.text.default },

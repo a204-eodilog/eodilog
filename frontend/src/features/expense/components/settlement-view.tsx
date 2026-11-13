@@ -300,7 +300,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  recalculate: { alignSelf: 'flex-end', paddingLeft: spacing[12], paddingRight: spacing[16] },
+  recalculate: { alignSelf: 'flex-end' },
   // 이전 결과는 흐리게(Figma 0.48), 섹션 사이 28
   previous: { opacity: 0.48, gap: spacing[28] },
 });

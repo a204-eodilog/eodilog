@@ -180,7 +180,6 @@ export function SavedPlaceView({
           weight="medium"
           disabled={!editable || busy}
           onPress={onAddToTrip}
-          style={styles.add}
         />
       </View>
     </View>
@@ -264,5 +263,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: layout.screenPaddingX,
     paddingTop: spacing[12],
   },
-  add: { paddingLeft: spacing[20], paddingRight: spacing[24] },
 });

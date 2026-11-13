@@ -112,7 +112,6 @@ export function AddToTripSheet({
           disabled={!ready || empty || selectedId === null}
           loading={adding}
           onPress={onAdd}
-          style={styles.add}
         />
       </View>
     </BottomSheet>
@@ -137,7 +136,6 @@ const styles = StyleSheet.create({
   footer: { flexDirection: 'row', justifyContent: 'flex-end', paddingTop: spacing[20] },
   // 값 문서: 여행이 없으면 버튼 줄을 흐림 0.40
   dim: { opacity: 0.4 },
-  add: { paddingLeft: spacing[20], paddingRight: spacing[24] },
   text: { color: colors.text.default },
   sub: { color: colors.text.icon, flexShrink: 1 },
 });
