@@ -42,7 +42,7 @@
    - 고른 칩: 배경 `colors.brand.primaryLight`, 이름 `colors.brand.primaryDark`
    - 안 고른 칩: 배경 `colors.surface.default`, 이름 `colors.text.icon`
    - 내 이름 뒤에 " (나)"
-3. **나눌 사람** — 제목 오른쪽 끝에 "2명 선택" `typography.caption` `colors.text.icon`. 여러 명 고르는 칩, 모양은 낸 사람과 같고 고른 칩은 이름 뒤에 체크(`Icon check`, 16)
+3. **나눌 사람** — 제목 오른쪽 끝에 "2명 선택" `typography.caption` `colors.text.icon`. 여러 명 고르는 칩, 모양은 낸 사람과 같고 고른 칩은 색만 바뀐다(2026-11-13 사용자 결정: 낸 사람 칩과 모양을 맞춰 체크 표시를 뺌)
    - 칩 아래 안내 "10원 단위로 올려서 나눠요"(2026-11-13 사용자 요청: "나눌 사람" 제목과 겹치는 앞부분을 뺌) — 13/20 보통 굵기 `colors.text.icon` (토큰 없음, 아래 참고)
 4. **항목 이름** — 입력 상자 높이 48, 배경 `colors.surface.default`, 둥글기 `radius.md`(12), 좌우 여백 16, 글자 `typography.body`
 5. **아래 버튼** — 오른쪽 정렬, 알약 주 버튼 48: 체크 아이콘(흰색, 20) + "저장"
