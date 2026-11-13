@@ -83,6 +83,25 @@ class JobIntegrationTest {
         assertThatThrownBy(() -> tx.execute(s -> service.submit(submission(JobKind.ROUTE_RECALCULATION)))).isInstanceOf(IllegalStateException.class);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM jobs", Integer.class)).isZero();
     }
+
+    @Test void voiceJobsNeverRetryOnTimeoutOrExpiredLease() {
+        var id=submit();
+        jdbc.update("update jobs set kind='VOICE_EXPENSE_DRAFT' where id=?",id);
+        var claimed=claim();
+        tx.executeWithoutResult(s->store.failure(claimed,JobFailure.TIMEOUT,clock.instant(),properties));
+        assertThat(state(id)).isEqualTo("FAILED");
+        assertThat(jdbc.queryForObject("select error_code from jobs where id=?",String.class,id)).isEqualTo("VOICE_PROCESSING_TIMEOUT");
+
+        var expired=submit();
+        jdbc.update("update jobs set kind='VOICE_EXPENSE_DRAFT' where id=?",expired);
+        claim();
+        clock.now=clock.instant().plus(properties.lease()).plusSeconds(1);
+        var next=tx.execute(s->store.claim(clock.instant(),properties,registry.kinds()));
+        assertThat(next).isEmpty();
+        assertThat(state(expired)).isEqualTo("FAILED");
+        assertThat(jdbc.queryForObject("select error_code from jobs where id=?",String.class,expired)).isEqualTo("VOICE_PROCESSING_INTERRUPTED");
+        assertThat(jdbc.queryForObject("select attempt from jobs where id=?",Integer.class,expired)).isEqualTo(1);
+    }
     @Test void domainRollbackAndUncommittedIsolation() throws Exception {
         try (var executor = Executors.newSingleThreadExecutor()) {
             tx.executeWithoutResult(s -> {

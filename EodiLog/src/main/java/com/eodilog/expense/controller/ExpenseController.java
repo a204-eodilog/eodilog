@@ -43,6 +43,19 @@ public class ExpenseController {
 
 	private final ExpenseService expenseService;
 
+	@PostMapping("/batch")
+	@Operation(summary = "경비 일괄 등록", description = "ACTIVE 멤버. 1~10건을 입력 순서대로 하나의 트랜잭션에서 등록한다. 한 건이라도 실패하면 모두 취소하며, Idempotency-Key가 같으면 최초 응답을 반환한다. 음성 초안은 사용자 확인 후 이 API로 저장한다.")
+	@ApiResponse(responseCode = "201", description = "전체 등록 성공")
+	@ApiResponse(responseCode = "422", description = "INPUT_LIMIT_EXCEEDED 또는 INVALID_PARTICIPANTS 또는 CURRENCY_MISMATCH")
+	@ApiResponse(responseCode = "409", description = "IDEMPOTENCY_KEY_REUSED 또는 REQUEST_IN_PROGRESS")
+	public ResponseEntity<DataResponse<com.eodilog.expense.dto.ExpenseBatchResponse>> createBatch(
+			@Parameter(hidden = true) @AuthenticationPrincipal AuthUser user, @PathVariable UUID tripId,
+			@RequestHeader(name = IdempotencyService.HEADER_NAME, required = false) String key,
+			@RequestBody com.eodilog.expense.dto.CreateExpensesRequest request) {
+		return ResponseEntity.status(HttpStatus.CREATED).body(DataResponse.of(
+				expenseService.createBatch(CurrentUser.requireUserId(user), tripId, key, request)));
+	}
+
 	@Operation(summary = "경비 목록", description = """
 			여행의 ACTIVE 멤버만 조회한다. 최근 등록 순(createdAt DESC, id DESC)이며 삭제한 경비는 뺀다.
 			여행에서 나간 멤버도 과거 결제자·분담자로 그대로 보여 준다. 다음 페이지는 page.nextCursor를 cursor로 보낸다.""")

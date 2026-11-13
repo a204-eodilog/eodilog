@@ -1,9 +1,10 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { ConfirmSheet, ErrorState, Header } from '@/components/ui';
 import { SkeletonList } from '@/components/ui/skeleton';
+import { VoiceEntryButton, VoiceRecordSheet } from '@/features/expense-voice';
 import { formatThousands } from '@/lib/format-number';
 import { colors } from '@/theme';
 
@@ -90,6 +91,10 @@ function ExpenseEditor({
         },
   );
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // 말로 한 번에(N10). 초안 확인에서 [다시 녹음]으로 돌아오면 ?voice=1로 열린 채 시작한다
+  const { voice } = useLocalSearchParams<{ voice?: string }>();
+  const [voiceOpen, setVoiceOpen] = useState(mode === 'create' && voice === '1');
+  const exampleName = active.find((m) => m.id !== myMemberId)?.user.nickname;
   const save = useSaveExpense(tripId, expense);
   const remove = useDeleteExpense(tripId);
 
@@ -116,7 +121,24 @@ function ExpenseEditor({
         failed={save.isError}
         conflict={save.isError && expenseFailure(save.error) === 'conflict'}
         onDelete={mode === 'edit' ? () => setConfirmDelete(true) : undefined}
+        headerRight={
+          mode === 'create' ? <VoiceEntryButton onPress={() => setVoiceOpen(true)} /> : undefined
+        }
       />
+      {mode === 'create' ? (
+        <VoiceRecordSheet
+          tripId={tripId}
+          visible={voiceOpen}
+          onClose={() => setVoiceOpen(false)}
+          onManual={() => setVoiceOpen(false)}
+          onDone={(jobId) => {
+            setVoiceOpen(false);
+            // 초안 확인에서 뒤로 가면 지출 추가가 아니라 경비 목록으로 간다
+            router.replace(`/trips/${tripId}/expenses/voice/${jobId}` as Href);
+          }}
+          exampleName={exampleName}
+        />
+      ) : null}
       {expense ? (
         <ConfirmSheet
           visible={confirmDelete}
