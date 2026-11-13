@@ -52,6 +52,14 @@ export type ExpenseFormViewProps = {
   conflict?: boolean;
   /** edit에서만. [삭제] → S50 확인 시트 */
   onDelete?: () => void;
+  /** 상단 바 오른쪽. 지출 추가의 [말로 한 번에](N10) */
+  headerRight?: ReactNode;
+  /** 제목을 바꿔 쓸 때. 말로 입력한 초안 고치기(N11)는 "초안 고치기" */
+  titleOverride?: string;
+  /** 저장 버튼 글자를 바꿔 쓸 때. 초안 고치기는 "적용" */
+  saveLabel?: string;
+  /** 금액 위에 보이는 안내. 초안 고치기는 그 초안이 나온 말 */
+  notice?: ReactNode;
 };
 
 /** S35 지출 추가·수정 화면. 상태: 지출 추가 / 지출 저장 실패 */
@@ -70,6 +78,10 @@ export function ExpenseFormView({
   failed = false,
   conflict = false,
   onDelete,
+  headerRight,
+  titleOverride,
+  saveLabel,
+  notice,
 }: ExpenseFormViewProps) {
   const insets = useSafeAreaInsets();
   const readOnly = mode === 'view';
@@ -87,10 +99,12 @@ export function ExpenseFormView({
     <View style={styles.screen}>
       <Header
         close
-        title={TITLES[mode]}
+        title={titleOverride ?? TITLES[mode]}
         subtitle={tripTitle}
         subtitleIcon="trip"
         onBack={onClose}
+        right={headerRight}
+        sideWidth={headerRight ? 128 : undefined}
       />
       <KeyboardAvoidingView
         style={styles.flex}
@@ -98,6 +112,7 @@ export function ExpenseFormView({
       >
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           {failed ? <SaveFailedBox conflict={conflict} /> : null}
+          {notice}
 
           <Section title="금액">
             <TextField
@@ -188,7 +203,7 @@ export function ExpenseFormView({
               </Pressable>
             ) : null}
             <Button
-              label={failed ? '다시 저장' : '저장'}
+              label={failed ? '다시 저장' : (saveLabel ?? '저장')}
               onPress={onSave}
               disabled={!canSave}
               loading={saving}

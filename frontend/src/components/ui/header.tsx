@@ -25,6 +25,11 @@ export type HeaderProps = {
    * 기본은 bodyBold(16)로 S35 경비·S36 정산 문서 기준이다
    */
   largeTitle?: boolean;
+  /**
+   * 양쪽 칸 너비(기본 72). 오른쪽에 글자 버튼(S35 [말로 한 번에])을 둘 때 넓힌다.
+   * 제목이 가운데 오도록 왼쪽도 같은 너비가 된다
+   */
+  sideWidth?: number;
 };
 
 /** 상세·입력 화면 상단 바. 56 높이, 왼쪽 뒤로, 가운데 제목, 오른쪽 버튼. */
@@ -37,14 +42,16 @@ export function Header({
   onBack,
   right,
   largeTitle = false,
+  sideWidth,
 }: HeaderProps) {
+  const side = sideWidth ? [styles.side, { width: sideWidth }] : styles.side;
   const insets = useSafeAreaInsets();
   const goBack = onBack ?? (() => (router.canGoBack() ? router.back() : router.replace('/')));
 
   return (
     <View style={[styles.wrap, { paddingTop: insets.top }]}>
       <View style={styles.bar}>
-        <View style={styles.side}>
+        <View style={side}>
           {hideBack ? null : (
             <Pressable
               accessibilityRole="button"
@@ -79,7 +86,7 @@ export function Header({
             </Text>
           ) : null}
         </View>
-        <View style={[styles.side, styles.right]}>{right}</View>
+        <View style={[side, styles.right]}>{right}</View>
       </View>
     </View>
   );
