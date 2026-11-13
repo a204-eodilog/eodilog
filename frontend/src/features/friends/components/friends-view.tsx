@@ -95,33 +95,6 @@ export function FriendsView({
           ]}
         >
           <Stagger itemStyle={styles.staggerItem}>
-            {/* 머리 카드. 큰 숫자 두 개가 곧 탭이다. 오른쪽 동그라미는 친구 찾기 */}
-            <View style={styles.hero}>
-              <View accessibilityRole="tablist" style={styles.tabs}>
-                {(['following', 'followers'] as const).map((key, order) => (
-                  <PressableScale
-                    appear={order}
-                    appearFrom="pop"
-                    key={key}
-                    accessibilityRole="tab"
-                    accessibilityState={{ selected: tab === key }}
-                    onPress={() => setTab(key)}
-                    style={[styles.tab, tab === key && styles.selectedTab]}
-                  >
-                    <Text style={styles.tabCount}>{board[key].length}</Text>
-                    <Text style={styles.tabLabel}>{key === 'following' ? '팔로잉' : '팔로워'}</Text>
-                  </PressableScale>
-                ))}
-              </View>
-              <PressableScale
-                onPress={onFind}
-                accessibilityRole="button"
-                accessibilityLabel="친구 찾기"
-                style={styles.find}
-              >
-                <Icon name="person-plus" size={22} color={colors.brand.primary} />
-              </PressableScale>
-            </View>
             {board.requests.length > 0 ? (
               <View style={styles.section}>
                 <View style={styles.headingRow}>
@@ -193,91 +166,127 @@ export function FriendsView({
                 <Text style={styles.caption}>여행 그룹과 채팅 이력은 그대로 닫혀 있어요</Text>
               </Card>
             ) : null}
-            <View style={styles.peopleSection}>
-              <View style={styles.listHeading}>
-                <Text style={styles.heading}>
-                  {tab === 'following' ? '팔로잉' : '팔로워'} {rows.length}
-                </Text>
-                <Text style={styles.caption}>
-                  {tab === 'followers'
-                    ? '나를 팔로우하는 사람'
-                    : previewTrips
-                      ? '함께 간 여행과 동행 중인 여행'
-                      : ''}
-                </Text>
-              </View>
-              {rows.length === 0 ? (
-                <View style={styles.emptyList}>
-                  <EmptyState
-                    icon="people"
-                    title={
-                      tab === 'following' ? '아직 팔로우한 사람이 없어요' : '아직 팔로워가 없어요'
-                    }
-                    description={
-                      tab === 'following'
-                        ? '닉네임으로 찾아 팔로우해 보세요'
-                        : '나를 팔로우하는 사람이 여기에 보여요'
-                    }
-                  />
+            <View style={styles.tabGroup}>
+              {/* 머리 카드. 큰 숫자 두 개가 곧 탭이다. 오른쪽 동그라미는 친구 찾기.
+                탭이 바꾸는 목록 바로 위에 둔다(받은 요청은 그 위, 2026-11-13 사용자 결정: 탭과 목록이 떨어져 헷갈림) */}
+              <View style={styles.hero}>
+                <View accessibilityRole="tablist" style={styles.tabs}>
+                  {(['following', 'followers'] as const).map((key, order) => (
+                    <PressableScale
+                      appear={order}
+                      appearFrom="pop"
+                      key={key}
+                      accessibilityRole="tab"
+                      accessibilityState={{ selected: tab === key }}
+                      onPress={() => setTab(key)}
+                      style={[styles.tab, tab === key && styles.selectedTab]}
+                    >
+                      <Text style={styles.tabCount}>{board[key].length}</Text>
+                      <Text style={styles.tabLabel}>
+                        {key === 'following' ? '팔로잉' : '팔로워'}
+                      </Text>
+                    </PressableScale>
+                  ))}
                 </View>
-              ) : (
-                rows.map((follow, order) => {
-                  const person = tab === 'following' ? follow.followee : follow.follower;
-                  const fresh = tab === 'followers' && accepted?.follower.id === person.id;
-                  const blocked = pendingIds.includes(person.id);
-                  return (
-                    <View key={follow.id} style={[styles.row, order > 0 && styles.rowRule]}>
-                      <PressableScale
-                        style={[styles.person, styles.flex]}
-                        accessibilityRole="button"
-                        accessibilityLabel={person.nickname + ' 프로필'}
-                        disabled={blocked}
-                        onPress={() => onPerson(person)}
-                      >
-                        <Avatar
-                          name={person.nickname}
-                          imageUrl={person.profileImageUrl}
-                          size="lg"
-                        />
-                        <View style={styles.flex}>
-                          <View style={styles.names}>
-                            <Text style={[styles.name, styles.shrink]} numberOfLines={1}>
-                              {person.nickname}
-                            </Text>
-                            {fresh ? <Tag label="새 팔로워" tone="brand" /> : null}
+                <PressableScale
+                  onPress={onFind}
+                  accessibilityRole="button"
+                  accessibilityLabel="친구 찾기"
+                  style={styles.find}
+                >
+                  <Icon name="person-plus" size={22} color={colors.brand.primary} />
+                </PressableScale>
+              </View>
+              <View style={styles.peopleSection}>
+                <View style={styles.listHeading}>
+                  <Text style={styles.heading}>
+                    {tab === 'following' ? '팔로잉' : '팔로워'} {rows.length}
+                  </Text>
+                  <Text style={styles.caption}>
+                    {tab === 'followers'
+                      ? '나를 팔로우하는 사람'
+                      : previewTrips
+                        ? '함께 간 여행과 동행 중인 여행'
+                        : ''}
+                  </Text>
+                </View>
+                {rows.length === 0 ? (
+                  <View style={styles.emptyList}>
+                    <EmptyState
+                      icon="people"
+                      title={
+                        tab === 'following' ? '아직 팔로우한 사람이 없어요' : '아직 팔로워가 없어요'
+                      }
+                      description={
+                        tab === 'following'
+                          ? '닉네임으로 찾아 팔로우해 보세요'
+                          : '나를 팔로우하는 사람이 여기에 보여요'
+                      }
+                    />
+                  </View>
+                ) : (
+                  rows.map((follow, order) => {
+                    const person = tab === 'following' ? follow.followee : follow.follower;
+                    const fresh = tab === 'followers' && accepted?.follower.id === person.id;
+                    const blocked = pendingIds.includes(person.id);
+                    return (
+                      <View key={follow.id} style={[styles.row, order > 0 && styles.rowRule]}>
+                        <PressableScale
+                          style={[styles.person, styles.flex]}
+                          accessibilityRole="button"
+                          accessibilityLabel={person.nickname + ' 프로필'}
+                          disabled={blocked}
+                          onPress={() => onPerson(person)}
+                        >
+                          <Avatar
+                            name={person.nickname}
+                            imageUrl={person.profileImageUrl}
+                            size="lg"
+                          />
+                          <View style={styles.flex}>
+                            <View style={styles.names}>
+                              <Text style={[styles.name, styles.shrink]} numberOfLines={1}>
+                                {person.nickname}
+                              </Text>
+                              {fresh ? <Tag label="새 팔로워" tone="brand" /> : null}
+                            </View>
+                            {fresh ? (
+                              <Text style={styles.caption}>
+                                {requestDate(follow.acceptedAt ?? follow.requestedAt)}부터 나를
+                                팔로우해요
+                              </Text>
+                            ) : previewTrips?.[person.id] ? (
+                              <Text style={styles.caption}>{previewTrips[person.id]}</Text>
+                            ) : null}
                           </View>
-                          {fresh ? (
-                            <Text style={styles.caption}>
-                              {requestDate(follow.acceptedAt ?? follow.requestedAt)}부터 나를
-                              팔로우해요
-                            </Text>
-                          ) : previewTrips?.[person.id] ? (
-                            <Text style={styles.caption}>{previewTrips[person.id]}</Text>
-                          ) : null}
-                        </View>
-                      </PressableScale>
-                      <PressableScale
-                        style={styles.more}
-                        accessibilityRole="button"
-                        accessibilityLabel={
-                          person.nickname + (tab === 'following' ? ' 팔로우 해제' : ' 팔로워 삭제')
-                        }
-                        accessibilityState={{ disabled: blocked }}
-                        disabled={blocked}
-                        onPress={() =>
-                          setConfirm({ follow, kind: tab === 'following' ? 'unfollow' : 'remove' })
-                        }
-                      >
-                        {blocked ? (
-                          <Spinner color={colors.brand.primary} />
-                        ) : (
-                          <Icon name="more" size={20} color={colors.text.muted} />
-                        )}
-                      </PressableScale>
-                    </View>
-                  );
-                })
-              )}
+                        </PressableScale>
+                        <PressableScale
+                          style={styles.more}
+                          accessibilityRole="button"
+                          accessibilityLabel={
+                            person.nickname +
+                            (tab === 'following' ? ' 팔로우 해제' : ' 팔로워 삭제')
+                          }
+                          accessibilityState={{ disabled: blocked }}
+                          disabled={blocked}
+                          onPress={() =>
+                            setConfirm({
+                              follow,
+                              kind: tab === 'following' ? 'unfollow' : 'remove',
+                            })
+                          }
+                        >
+                          {blocked ? (
+                            <Spinner color={colors.brand.primary} />
+                          ) : (
+                            <Icon name="more" size={20} color={colors.text.muted} />
+                          )}
+                        </PressableScale>
+                      </View>
+                    );
+                  })
+                )}
+              </View>
             </View>
           </Stagger>
         </ScrollView>
@@ -349,6 +358,8 @@ const styles = StyleSheet.create({
   heading: { ...typography.title3, color: colors.text.default },
   caption: { ...typography.caption, color: colors.text.icon },
   section: { gap: spacing[12] },
+  // 파란 탭 카드와 그 탭이 바꾸는 목록을 가깝게 붙인다
+  tabGroup: { gap: spacing[12] },
   peopleSection: {
     gap: spacing[12],
     padding: spacing[16],
