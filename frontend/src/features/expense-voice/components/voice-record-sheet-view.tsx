@@ -166,7 +166,8 @@ function renderBody(p: VoiceRecordSheetViewProps): ReactNode {
               </Text>
             </View>
           </View>
-          <Text style={[typography.caption, styles.sub]}>
+          {/* 아래 버튼 줄과 붙어 보이지 않게 한 칸 띄운다 */}
+          <Text style={[typography.caption, styles.sub, styles.beforeFooter]}>
             {s.autoStopped
               ? '말이 끊겼다면 다시 녹음하거나, 남은 지출은 나중에 따로 넣어 주세요'
               : '보내면 지출 초안을 만들어요. 저장은 확인한 뒤에 해요'}
@@ -364,6 +365,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   text: { color: colors.text.default },
   sub: { color: colors.text.icon },
+  beforeFooter: { marginBottom: spacing[20] },
   muted: { color: colors.text.muted },
   brand: { color: colors.brand.primaryDark },
   hidden: { opacity: 0 },
