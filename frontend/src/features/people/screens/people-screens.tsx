@@ -51,6 +51,8 @@ function useFollowToggle() {
       void queryClient.invalidateQueries({ queryKey: ['me', 'following-count'] });
       void queryClient.invalidateQueries({ queryKey: SUGGESTIONS_KEY });
       void queryClient.invalidateQueries({ queryKey: ['users'] });
+      // S43 친구 목록(['friends', 'board']). 안 하면 N9에서 팔로우를 끊고 돌아와도 팔로잉에 그대로 남는다
+      void queryClient.invalidateQueries({ queryKey: ['friends'] });
       // 안 하면 팔로우하고 돌아와도 홈이 "팔로우한 사람이 없어요"로 남는다
       void markHomeStale(queryClient);
     },

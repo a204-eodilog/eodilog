@@ -97,7 +97,7 @@ export function ChecklistView(props: ChecklistViewProps) {
           <ChecklistEmpty
             onSuggest={props.onSuggest}
             suggesting={props.suggesting}
-            onAddDirect={() => setAddOpen(true)}
+            onAddDirect={addOpen ? undefined : () => setAddOpen(true)}
           />
           {addOpen ? (
             <View style={styles.emptyAdd}>
@@ -274,7 +274,15 @@ const styles = StyleSheet.create({
     paddingTop: spacing[16],
     paddingBottom: 110,
   },
-  emptyAdd: { paddingHorizontal: layout.screenPaddingX, marginTop: spacing[24] },
+  // 빈 화면 입력 줄은 위 안내 묶음처럼 가운데에 모은다. 화면 끝까지 늘리면 오른쪽 흐린 + 때문에 왼쪽으로 쏠려 보인다
+  // (2026-11-13 사용자 지적)
+  emptyAdd: {
+    width: '100%',
+    maxWidth: 320 + layout.screenPaddingX * 2,
+    alignSelf: 'center',
+    paddingHorizontal: layout.screenPaddingX,
+    marginTop: spacing[24],
+  },
   emptyCard: { paddingHorizontal: layout.screenPaddingX, paddingTop: spacing[16] },
   bottom: {
     flexDirection: 'row',

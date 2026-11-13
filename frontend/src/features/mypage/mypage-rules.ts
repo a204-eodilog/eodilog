@@ -68,10 +68,10 @@ export function regionIdsToLookUp(trips: readonly MyTrip[], feeds: readonly MyFe
   ];
 }
 
-/** "다녀온 여행 4개 · 게시한 여행 1개", 없으면 "아직 기록한 여행이 없어요" */
+/** "다녀온 여행 4개 · 게시 1개", 없으면 "아직 기록한 여행이 없어요" */
 export function profileLine(s: Pick<MyPageSummary, 'visitedCount' | 'postedCount'>): string {
   if (s.visitedCount === 0) return '아직 기록한 여행이 없어요';
-  return `다녀온 여행 ${s.visitedCount}개 · 게시한 여행 ${s.postedCount}개`;
+  return `다녀온 여행 ${s.visitedCount}개 · 게시 ${s.postedCount}개`;
 }
 
 /** "7개 · 핀 없는 여행 1개 포함" */

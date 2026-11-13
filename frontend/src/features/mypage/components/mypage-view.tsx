@@ -1,10 +1,10 @@
 import { SCROLL_DECELERATION } from '@/theme/scroll';
-import { Image } from 'expo-image';
 import { useState } from 'react';
 import { type LayoutChangeEvent, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
+  Avatar,
   Button,
   ErrorState,
   Icon,
@@ -15,7 +15,6 @@ import {
 import { Stagger } from '@/components/ui/stagger';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { SkeletonList } from '@/components/ui/skeleton';
-import { assetSource } from '@/lib/asset-image';
 import { findMapRegion, MAINLAND_BOUNDS, mapFit } from '@/lib/korea-map';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -68,7 +67,7 @@ export function MyPageView(props: MyPageViewProps) {
             <View style={styles.profile}>
               <View style={styles.profileTop}>
                 <View style={styles.ring}>
-                  <ProfileFace imageUrl={summary.profileImageUrl} />
+                  <Avatar name={summary.nickname} imageUrl={summary.profileImageUrl} size={76} me />
                 </View>
                 <View style={styles.stats}>
                   <Stat label="여행" value={summary.tripCount} onPress={props.onTrips} />
@@ -104,23 +103,17 @@ export function MyPageView(props: MyPageViewProps) {
               </View>
             </View>
 
-            {/* 내 여행 지도: 제목과 지도를 8 간격으로 묶어 한 구역으로 읽힌다 */}
-            <View style={styles.mapSection}>
-              <Text style={styles.sectionTitle} accessibilityRole="header">
-                내 여행 지도
-              </Text>
-              <MapCard {...props} summary={summary} />
-            </View>
+            <MapCard {...props} summary={summary} />
 
             {state === 'ready' ? (
               <View style={styles.legend}>
                 <View style={styles.legendItem}>
                   <View style={styles.legendDot} />
-                  <Text style={styles.legendText}>게시한 여행</Text>
+                  <Text style={styles.legendText}>게시됨</Text>
                 </View>
                 <View style={styles.legendItem}>
                   <Icon name="lock" size={14} color={colors.text.icon} />
-                  <Text style={styles.legendText}>나만 보는 여행</Text>
+                  <Text style={styles.legendText}>비공개 · 나만 봐요</Text>
                 </View>
               </View>
             ) : null}
@@ -147,33 +140,6 @@ export function MyPageView(props: MyPageViewProps) {
         </ScrollView>
       )}
     </SafeAreaView>
-  );
-}
-
-/** 프로필 얼굴 지름. 파랑 고리 안에 둔다 */
-const FACE = 76;
-
-/**
- * S37 프로필 얼굴(마이페이지 메인 전용). 등록한 사진이 있으면 사진, 없거나 못 받으면
- * 연파랑 원 가운데 파란 사람 실루엣(하단 마이페이지 탭 선택 아이콘과 같은 채운 모양). 닉네임 첫 글자는 넣지 않는다
- */
-function ProfileFace({ imageUrl }: { imageUrl: string | null | undefined }) {
-  const source = assetSource(imageUrl);
-  // 사진을 받지 못한 주소. 주소가 바뀌면 다시 받아 본다
-  const [failedUrl, setFailedUrl] = useState<string | null>(null);
-  const showPhoto = source !== null && failedUrl !== imageUrl;
-  return (
-    <View style={styles.face}>
-      <Icon name="person" size={40} color={colors.brand.primary} filled />
-      {showPhoto ? (
-        <Image
-          source={source}
-          style={[StyleSheet.absoluteFill, styles.faceRound]}
-          contentFit="cover"
-          onError={() => setFailedUrl(imageUrl ?? null)}
-        />
-      ) : null}
-    </View>
   );
 }
 
@@ -429,16 +395,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.brand.primary,
   },
-  face: {
-    width: FACE,
-    height: FACE,
-    borderRadius: radius.full,
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.brand.primaryBg,
-  },
-  faceRound: { borderRadius: radius.full },
   stats: { flex: 1, flexDirection: 'row' },
   stat: {
     flex: 1,
@@ -463,9 +419,6 @@ const styles = StyleSheet.create({
   },
   profileButtonText: { ...typography.captionBold, color: colors.text.default },
   sub: { ...typography.caption, color: colors.text.sub },
-  // "내 여행 지도" 제목(페이지 제목보다 작은 굵은 글씨)과 지도 사이 8
-  mapSection: { gap: spacing[8] },
-  sectionTitle: { ...typography.title3, color: colors.text.default },
   mapCard: {
     height: MAP_HEIGHT,
     borderRadius: radius.xxl,

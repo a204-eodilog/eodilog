@@ -1,6 +1,6 @@
 import { StyleSheet, Text } from 'react-native';
 
-import { Avatar, Icon } from '@/components/ui';
+import { Avatar } from '@/components/ui';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, radius, spacing, typography } from '@/theme';
 
@@ -8,7 +8,10 @@ type MemberChipProps = {
   name: string;
   me?: boolean;
   selected: boolean;
-  /** 여러 명 고르기(나눌 사람)면 고른 칩 이름 뒤에 체크를 붙인다 */
+  /**
+   * 여러 명 고르기(나눌 사람). 화면 읽기 기능에 체크 상자로 알린다.
+   * 보이는 모양은 낸 사람 칩과 같게 색만 바꾼다(2026-11-13 사용자 결정: 체크 표시 뺌. "N명 선택"이 여러 명 고르기를 알려 준다)
+   */
   multiple?: boolean;
   disabled?: boolean;
   onPress: () => void;
@@ -42,9 +45,6 @@ export function MemberChip({
       <Text style={[typography.bodyMedium, selected ? styles.textSelected : styles.textIdle]}>
         {label}
       </Text>
-      {multiple && selected ? (
-        <Icon name="check" size={16} color={colors.brand.primaryDark} />
-      ) : null}
     </PressableScale>
   );
 }
