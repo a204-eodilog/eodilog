@@ -1,3 +1,4 @@
+import { BottomSheetTextInput, useBottomSheetInternal } from '@gorhom/bottom-sheet';
 import { type ReactNode, useState } from 'react';
 import {
   Platform,
@@ -56,6 +57,8 @@ export function TextField({
   onBlur,
   ...inputProps
 }: TextFieldProps) {
+  // 아래에서 올라오는 창 안이면 창용 입력 칸을 쓴다. 그래야 글자판이 뜰 때 창이 글자판 위로 올라간다
+  const Input = useBottomSheetInternal(true) ? BottomSheetTextInput : TextInput;
   const [focused, setFocused] = useState(false);
   const filled = variant === 'filled';
   const lineColor = error
@@ -88,7 +91,7 @@ export function TextField({
             boxStyle,
           ]}
         >
-          <TextInput
+          <Input
             {...caret}
             {...inputProps}
             maxLength={maxLength}
@@ -111,7 +114,7 @@ export function TextField({
           {trailing}
         </View>
       ) : (
-        <TextInput
+        <Input
           {...caret}
           {...inputProps}
           maxLength={maxLength}
@@ -172,12 +175,14 @@ const styles = StyleSheet.create({
     includeFontPadding: false,
     textAlignVertical: 'center',
   },
+  // 큰 입력 칸. 제목 글꼴(주아)은 글자 위쪽이 높아, 글꼴 여백을 빼면 안드로이드에서 글자 윗부분이 잘린다.
+  // 그래서 글꼴 여백을 그대로 두고 칸 높이를 넉넉히 잡는다
   inputLarge: {
     fontFamily: typography.title1.fontFamily,
     fontSize: 22,
     color: colors.text.default,
-    paddingVertical: spacing[10],
-    includeFontPadding: false,
+    minHeight: 56,
+    paddingVertical: spacing[8],
     textAlignVertical: 'center',
   },
   box: {
