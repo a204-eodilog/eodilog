@@ -4,6 +4,11 @@ import type { ExpenseInput, SettlementState, TripMember } from './types';
 
 /** 서버 규칙: 경비 이름은 앞뒤 공백을 뺀 1~200자 */
 export const TITLE_MAX_LENGTH = 200;
+/**
+ * 입력칸에서 막는 길이. 목록 한 줄에 들어가게 서버보다 짧게 막고 남은 글자 수를 보여 준다
+ * (2026-11-13 사용자 결정). 저장 검사는 서버 규칙(TITLE_MAX_LENGTH)을 그대로 쓴다
+ */
+export const TITLE_INPUT_MAX_LENGTH = 30;
 
 /** 이름 뒤에 붙는 '이/가'. 받침이 있으면 '이' */
 export function subjectParticle(name: string): string {

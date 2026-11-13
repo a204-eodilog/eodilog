@@ -8,7 +8,7 @@ import { PressableScale } from '@/components/ui/pressable-scale';
 import { AMOUNT_MAX_LENGTH, formatThousands } from '@/lib/format-number';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
-import { type ExpenseForm, TITLE_MAX_LENGTH } from '../expense-rules';
+import { type ExpenseForm, TITLE_INPUT_MAX_LENGTH } from '../expense-rules';
 import type { TripMember } from '../types';
 
 import { MemberChip } from './member-chip';
@@ -160,9 +160,7 @@ export function ExpenseFormView({
                 ))}
               </View>
               {/* Figma는 13/20 보통 굵기인데 글자 토큰에 없어 caption(12/20)으로 쓴다 */}
-              <Text style={[typography.caption, styles.sub]}>
-                10원 단위로 올려서 나눠요
-              </Text>
+              <Text style={[typography.caption, styles.sub]}>10원 단위로 올려서 나눠요</Text>
             </Section>
 
             <Section title="항목 이름">
@@ -170,8 +168,7 @@ export function ExpenseFormView({
                 variant="filled"
                 value={form.title}
                 onChangeText={(v) => onChange({ title: v })}
-                maxLength={TITLE_MAX_LENGTH}
-                hideCount
+                maxLength={TITLE_INPUT_MAX_LENGTH}
                 editable={!readOnly}
                 accessibilityLabel="항목 이름"
                 returnKeyType="done"
