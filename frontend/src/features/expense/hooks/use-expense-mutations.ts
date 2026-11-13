@@ -4,6 +4,7 @@ import { useRef } from 'react';
 import { apiErrorCode } from '@/api/errors';
 
 import { createExpense, deleteExpense, newIdempotencyKey, updateExpense } from '../api';
+import { nextCreateAttempt, type CreateAttempt } from '../create-attempt';
 import type { Expense, ExpenseInput } from '../types';
 
 import { expenseKeys } from './use-expense-board';
@@ -46,21 +47,26 @@ function useRefetchOnStale(tripId: string) {
 }
 
 /**
- * 지출 등록·수정. 등록은 [다시 저장]을 눌러도 같은 Idempotency-Key를 보내
- * 응답만 놓친 경우에도 두 번 등록되지 않는다. 성공하면 키를 새로 만든다.
+ * 지출 등록·수정. 등록은 같은 입력으로 [다시 저장]을 누르면 같은 Idempotency-Key와 지출 시각을 보내
+ * 응답만 놓친 경우에도 두 번 등록되지 않는다. 입력을 고쳤거나 성공한 뒤에는 둘 다 새로 만든다.
  * 수정은 화면에 지금 있는 지출의 version을 보낸다(충돌 뒤 다시 읽으면 새 version이 들어온다).
  */
 export function useSaveExpense(tripId: string, editing?: Expense) {
   const refresh = useRefreshExpenses(tripId);
   const refetchOnStale = useRefetchOnStale(tripId);
-  const key = useRef(newIdempotencyKey());
+  const attempt = useRef<CreateAttempt | null>(null);
   return useMutation({
-    mutationFn: (input: ExpenseInput) =>
-      editing
-        ? updateExpense(tripId, editing.id, input, editing.version)
-        : createExpense(tripId, input, key.current),
+    mutationFn: (input: ExpenseInput) => {
+      if (editing) return updateExpense(tripId, editing.id, input, editing.version);
+      const next = nextCreateAttempt(attempt.current, input, () => ({
+        key: newIdempotencyKey(),
+        spentAt: new Date().toISOString(),
+      }));
+      attempt.current = next;
+      return createExpense(tripId, input, next.key, next.spentAt);
+    },
     onSuccess: async () => {
-      key.current = newIdempotencyKey();
+      attempt.current = null;
       await refresh();
     },
     onError: editing ? refetchOnStale : undefined,
