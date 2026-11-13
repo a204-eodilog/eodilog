@@ -1,7 +1,14 @@
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { BottomSheet, Button, Icon, type IconName, MascotTraveler, Spinner } from '@/components/ui';
+import {
+  BottomSheet,
+  Button,
+  Icon,
+  type IconName,
+  MascotCalculating,
+  Spinner,
+} from '@/components/ui';
 import { VOICE_MAX_DURATION_MS, formatClock } from '@/lib/voice-recording';
 import { colors, radius, spacing, typography } from '@/theme';
 
@@ -302,10 +309,10 @@ function Steps({ step }: { step: AnalysisStep }) {
   const now = ORDER.indexOf(step);
   return (
     <>
-      {/* 기다리는 동안 보이는 마스코트 자리. 지금은 첫 방문 화면의 걷는 여행자를 임시로 쓰고,
-          수첩에 적는 새 동작이 나오면 그림만 바꾼다(2026-11-13 사용자 결정) */}
+      {/* 기다리는 동안 보이는 마스코트 자리. 영수증을 보며 계산기를 두드리는 여행자(2026-11-13 사용자가 만든 동작).
+          동작을 바꾸려면 assets/mascot/expense-calc.gif만 바꾼다 */}
       <View style={styles.mascot}>
-        <MascotTraveler size={140} />
+        <MascotCalculating size={140} />
         <Text style={[typography.bodyMedium, styles.text]}>말한 지출을 정리하고 있어요</Text>
       </View>
       <View style={styles.steps}>
