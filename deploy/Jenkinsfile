@@ -1,0 +1,38 @@
+// 백엔드·AI 배포 작업(eodilog-backend). dev에 병합되면 c6g의 deploy/deploy.sh를 실행한다
+// Jenkins는 신호만 보낸다. 받기·빌드·교체는 모두 c6g가 하므로 여기서 저장소를 받지 않는다
+// 준비물(deploy/README.md "자동 배포"): 자격 증명 c6g-deploy(SSH 키), GitLab 웹훅
+// dev push 트리거와 웹훅 비밀 토큰은 eodilog-web처럼 작업 설정 화면에서 건다(여기에 적으면 화면에서 넣은 토큰이 지워진다)
+pipeline {
+    agent any
+
+    environment {
+        // c6g 탄력적 IP. 서버에서만 22번으로 들어갈 수 있다
+        C6G = 'ubuntu@BACKEND_SERVER_IP'
+    }
+
+    options {
+        skipDefaultCheckout(true)
+        // 병합이 연달아 와도 하나씩 돈다. 기다리던 것은 그때의 dev 최신을 배포한다
+        disableConcurrentBuilds()
+        buildDiscarder(logRotator(numToKeepStr: '20'))
+        timeout(time: 30, unit: 'MINUTES')
+        timestamps()
+    }
+
+    stages {
+        stage('Deploy on c6g') {
+            steps {
+                // 이 키는 c6g에서 배포 스크립트만 실행할 수 있다(authorized_keys의 command=). 뒤의 deploy는 스크립트가 받는 명령이다
+                // 바뀐 것이 없으면 스크립트가 바로 끝난다. 실패하면 0이 아닌 값으로 끝나 이 작업도 실패로 표시된다
+                withCredentials([sshUserPrivateKey(credentialsId: 'c6g-deploy', keyFileVariable: 'KEY')]) {
+                    sh '''#!/bin/bash
+set -euo pipefail
+ssh -i "$KEY" -o IdentitiesOnly=yes -o BatchMode=yes \
+    -o StrictHostKeyChecking=accept-new -o ServerAliveInterval=30 \
+    "$C6G" deploy
+'''
+                }
+            }
+        }
+    }
+}

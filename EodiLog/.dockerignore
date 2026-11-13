@@ -1,0 +1,8 @@
+# 이미지에는 빌드에 필요한 파일만 넣는다. .env(로컬 비밀)는 절대 넣지 않는다
+*
+!gradlew
+!settings.gradle
+!build.gradle
+!gradle
+!src
+!docker

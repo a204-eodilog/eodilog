@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 운영 이미지의 ImageMagick 정책. 서버는 HEIC를 읽어 JPEG로 바꾸는 데만 쓴다(ImageSanitizer). -->
+<!-- 요청마다 -limit으로 메모리·디스크를 다시 제한하고, 여기서는 그 밖의 형식과 외부 프로그램 호출을 막는다. -->
+<policymap>
+  <policy domain="resource" name="memory" value="256MiB"/>
+  <policy domain="resource" name="map" value="256MiB"/>
+  <policy domain="resource" name="disk" value="256MiB"/>
+  <policy domain="resource" name="time" value="60"/>
+  <policy domain="delegate" rights="none" pattern="*"/>
+  <policy domain="path" rights="none" pattern="@*"/>
+  <policy domain="coder" rights="none" pattern="*"/>
+  <policy domain="coder" rights="read | write" pattern="{HEIC,HEIF,JPEG,JPG,INFO}"/>
+</policymap>
