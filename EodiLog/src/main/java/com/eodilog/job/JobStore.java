@@ -50,6 +50,8 @@ public class JobStore {
         return Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM users WHERE id=? AND status='ACTIVE')", Boolean.class, userId));
     }
     Optional<Row> claim(Instant now, JobProperties p, Set<JobKind> kinds) {
+        // 원음은 실행 후 삭제한다. 만료된 음성 실행을 다른 worker가 재실행하지 않는다.
+        jdbc.update("UPDATE jobs SET status='FAILED',error_code='VOICE_PROCESSING_INTERRUPTED',finished_at=?,execution_id=NULL,lease_until=NULL WHERE kind='VOICE_EXPENSE_DRAFT' AND status='RUNNING' AND lease_until<=?", time(now), time(now));
         // Expired last attempts become terminal even after a process restart.
         jdbc.update("UPDATE jobs SET status='FAILED',error_code='TIMEOUT',finished_at=?,execution_id=NULL,lease_until=NULL WHERE status='RUNNING' AND lease_until<=? AND attempt>=?", time(now), time(now), p.maxAttempts());
         // Only kinds this instance can execute, so an instance without the handler never cancels them.
@@ -77,6 +79,8 @@ public class JobStore {
             json.writeValueAsString(result), time(now), c.jobId());
     }
     void failure(JobContext c, JobFailure failure, Instant now, JobProperties p) {
+        if (c.submission().kind() == JobKind.VOICE_EXPENSE_DRAFT && failure.retryable())
+            failure = failure == JobFailure.TIMEOUT ? JobFailure.VOICE_PROCESSING_TIMEOUT : JobFailure.VOICE_PROCESSING_INTERRUPTED;
         boolean retry = failure.retryable() && c.attempt() < p.maxAttempts();
         jdbc.update("UPDATE jobs SET status=?,error_code=?,next_attempt_at=?,finished_at=?,execution_id=NULL,lease_until=NULL WHERE id=?",
             retry ? "QUEUED" : failure == JobFailure.POLICY_REVOKED ? "CANCELLED" : "FAILED", failure.name(), time(now.plus(p.retryDelay())), retry ? null : time(now), c.jobId());

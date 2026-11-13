@@ -79,6 +79,26 @@ class HttpAiServerClientTest {
 	}
 
 	@Test
+	void keepsOnlyKnownProviderErrorCodeAndTimeoutClassification() {
+		RestClient.Builder builder = RestClient.builder();
+		MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+		server.expect(requestTo(BASE_URL + "/ai/v1/checklist-suggestions"))
+				.andRespond(withStatus(HttpStatus.UNPROCESSABLE_CONTENT).contentType(MediaType.APPLICATION_JSON)
+						.body("{\"error\":{\"code\":\"INSUFFICIENT_DATA\",\"message\":\"private transcript\"}}"));
+		assertThatThrownBy(() -> client(builder,"secret").post("/ai/v1/checklist-suggestions",JOB_ID,body()))
+				.isInstanceOfSatisfying(AiServerException.class,ex -> {
+					assertThat(ex.status()).isEqualTo(422);
+					assertThat(ex.providerCode()).isEqualTo("INSUFFICIENT_DATA");
+					assertThat(ex.getMessage()).doesNotContain("private transcript");
+				});
+		server.verify();
+		assertThat(new AiServerException(400,"private text").providerCode()).isNull();
+		assertThatThrownBy(() -> respondingWith(b -> withException(new SocketTimeoutException("private timeout")))
+				.post("/ai/v1/checklist-suggestions",JOB_ID,body()))
+				.isInstanceOfSatisfying(AiServerException.class,ex -> assertThat(ex.timedOut()).isTrue());
+	}
+
+	@Test
 	void sendsMultipartFieldsAndFilesInUtf8() {
 		RestClient.Builder builder = RestClient.builder();
 		MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();

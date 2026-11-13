@@ -1,0 +1,25 @@
+-- jobs와 독립적인 음성 저장 의도 기록: job 등록 전 실패·job 삭제 뒤에도 원음 정리가 가능해야 한다.
+CREATE TABLE voice_expense_uploads (
+ id uuid PRIMARY KEY,
+ requested_by_user_id uuid NOT NULL,
+ trip_id uuid NOT NULL,
+ object_key text NOT NULL UNIQUE,
+ job_id uuid UNIQUE,
+ created_at timestamptz NOT NULL,
+ expires_at timestamptz NOT NULL,
+ audio_deleted_at timestamptz
+);
+CREATE INDEX voice_expense_uploads_expiry_idx ON voice_expense_uploads(expires_at);
+
+ALTER TABLE jobs DROP CONSTRAINT jobs_kind_check;
+ALTER TABLE jobs ADD CONSTRAINT jobs_kind_check CHECK (kind IN (
+ 'PLACE_EXTRACTION','TRIP_RECOMMENDATION','ITINERARY_PROPOSAL','WEATHER_ALTERNATIVES',
+ 'CHECKLIST_SUGGESTIONS','PHOTO_CLASSIFICATION','VISIT_DETECTION','ROUTE_RECALCULATION',
+ 'LEAVE_CLEANUP','PHOTO_DELETE','TRIP_DELETE','ACCOUNT_DELETE','PREFERENCE_INFERENCE',
+ 'OWN_RECORDS_DELETE','VOICE_EXPENSE_DRAFT'));
+ALTER TABLE jobs DROP CONSTRAINT jobs_error_code_check;
+ALTER TABLE jobs ADD CONSTRAINT jobs_error_code_check CHECK (error_code IN (
+ 'TEMPORARY_FAILURE','TIMEOUT','EXECUTION_FAILED','POLICY_REVOKED','INSUFFICIENT_DATA',
+ 'VOICE_AUDIO_INVALID','VOICE_INPUT_LIMIT_EXCEEDED','VOICE_NO_SPEECH_OR_EXPENSE',
+ 'VOICE_EXPENSE_UNSUPPORTED','VOICE_PROVIDER_UNAVAILABLE','VOICE_PROCESSING_TIMEOUT',
+ 'VOICE_PROCESSING_INTERRUPTED'));
