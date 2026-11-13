@@ -1,9 +1,12 @@
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Easing, withTiming, type EntryExitAnimationFunction } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Toaster, toast as sonner } from 'sonner-native';
 
 import { haptic } from '@/lib/haptics';
 import { colors, radius, spacing, typography } from '@/theme';
+
+import { Icon } from './icon';
 
 import {
   SNACKBAR_DURATION_MS,
@@ -52,7 +55,56 @@ export const toast = {
     haptic.error();
     return sonner.error(message, options('error', message, opts));
   },
+  /**
+   * 완료 확인을 화면 위 한 줄 스낵바로. [민트 체크] 문구 ... [보기]처럼 세 요소를 한 줄에 둔다.
+   * 버튼이 없어도 위 자리에 뜬다(다른 안내처럼 아래 토스트로 옮겨 가지 않는다). 버튼이 있으면 4초, 없으면 2초.
+   * 지금은 개인 즐겨찾기 저장 완료(S08)에만 쓴다
+   */
+  check: (message: string, opts?: ToastOptions) => {
+    const id = `check-${Date.now()}`;
+    const action = opts?.action;
+    return sonner.custom(
+      <CheckSnackbar
+        message={message}
+        action={
+          action
+            ? {
+                label: action.label,
+                onPress: () => {
+                  sonner.dismiss(id);
+                  action.onPress();
+                },
+              }
+            : undefined
+        }
+      />,
+      { id, duration: action ? SNACKBAR_DURATION_MS : TOAST_DURATION_MS },
+    );
+  },
 };
+
+/** toast.check의 모양. 짙은 차콜 바탕, 기본 높이 52, 큰 글자·좁은 화면에서는 문구가 두 줄로 늘어난다 */
+function CheckSnackbar({ message, action }: { message: string; action?: ToastAction }) {
+  return (
+    <View style={styles.check} accessibilityLiveRegion="polite">
+      <View style={styles.checkLead}>
+        <Icon name="check" size={18} color={colors.status.successMid} />
+        <Text style={[typography.bodyMedium, styles.checkText]}>{message}</Text>
+      </View>
+      {action ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={action.label}
+          onPress={action.onPress}
+          hitSlop={spacing[8]}
+          style={({ pressed }) => [styles.checkAction, pressed && styles.pressed]}
+        >
+          <Text style={[typography.bodyMedium, styles.checkActionText]}>{action.label}</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
 
 /** 스낵바가 내려오는 시간과 출발 높이. 라이브러리 기본은 20px만 움직여 내려오는 느낌이 없다 */
 const ENTER_MS = 350;
@@ -108,6 +160,45 @@ const toastOptions = {
   },
   actionButtonTextStyle: { ...typography.bodyMedium, color: colors.brand.primarySoft },
 };
+
+const styles = StyleSheet.create({
+  // 좌우 16(기본 스낵바와 같은 자리), 기본 높이 52, 둥글기 12, 가벼운 그림자
+  check: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[8],
+    minHeight: 52,
+    marginHorizontal: spacing[16],
+    // 위아래 4: [보기] 누르는 칸 44가 들어가도 기본 높이 52를 넘지 않는다. 문구가 두 줄이면 그만큼 늘어난다
+    paddingVertical: spacing[4],
+    paddingLeft: spacing[16],
+    paddingRight: spacing[8],
+    borderRadius: radius.md,
+    backgroundColor: colors.text.strong,
+    shadowColor: '#000',
+    shadowOpacity: 0.16,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  // 체크와 문구는 8 간격으로 묶고, 문구가 길면 이 묶음 안에서 줄을 바꾼다
+  checkLead: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[8],
+    paddingRight: spacing[8],
+  },
+  checkText: { flexShrink: 1, color: colors.text.inverse },
+  // [보기] 바탕·테두리 없는 글자 버튼. 누르는 칸 높이 44
+  checkAction: {
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingHorizontal: spacing[8],
+  },
+  checkActionText: { color: colors.brand.primarySoft },
+  pressed: { opacity: 0.6 },
+});
 
 /**
  * 앱 시작 레이아웃에 한 번만 둔다. 자리가 둘이다.

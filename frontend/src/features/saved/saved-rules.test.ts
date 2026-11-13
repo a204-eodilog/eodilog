@@ -7,6 +7,7 @@ import {
   cityGroups,
   masonryColumns,
   placeSavedMessage,
+  showSavedLink,
   placeSaveState,
   regionFor,
   syncedAtLabel,
@@ -213,6 +214,18 @@ describe('placeSaveState (S08)', () => {
       placeSaveState({ ...base, choice: 'personal', tripsStatus: 'error', selectedTripId: null })
         .canSave,
     ).toBe(true);
+  });
+});
+
+describe('showSavedLink (S08 저장 완료 [보기])', () => {
+  it('홈·장소 상세 등 다른 화면에서 저장하면 붙인다', () => {
+    expect(showSavedLink('/home', false)).toBe(true);
+    expect(showSavedLink('/feeds/f1', false)).toBe(true);
+    expect(showSavedLink('/saved/b1', false)).toBe(true);
+  });
+  it('개인 저장 탭을 보고 있거나 저장 뒤 그리로 가면 붙이지 않는다', () => {
+    expect(showSavedLink('/saved', false)).toBe(false);
+    expect(showSavedLink('/saved/extract/j1', true)).toBe(false);
   });
 });
 
