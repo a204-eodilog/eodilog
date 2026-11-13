@@ -13,7 +13,7 @@ const CARD_GAP = spacing[10];
 type SavedMapProps = {
   items: SavedItem[];
   onOpen: (item: SavedItem) => void;
-  /** 아래 떠 있는 [+]·탭 바에 카드가 가리지 않게 띄울 높이 */
+  /** 카드 아래와 탭 바 사이 높이. 지도 로고(NAVER)가 카드 아래에 보이게 띄운다 */
   bottomInset: number;
 };
 

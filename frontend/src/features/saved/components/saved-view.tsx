@@ -27,8 +27,11 @@ export type SavedViewProps = {
   onAdd: (start?: AddStart) => void;
 };
 
-const FAB = 56;
-const FAB_GAP = spacing[20];
+/**
+ * 지도 아래 장소 카드와 탭 바 사이 높이. 떠 있던 [+]를 머리로 옮겨 카드를 내리고,
+ * 카드 아래 지도 로고(NAVER)가 가리지 않는 만큼만 띄운다(간격 토큰은 32까지라 값으로 쓴다)
+ */
+const MAP_CARD_BOTTOM = 40;
 
 /**
  * S10 개인 즐겨찾기(저장 탭 첫 화면). 상태: 목록 보기 / 지도 보기 / 저장 없음 / 연결 끊김.
@@ -49,8 +52,27 @@ export function SavedView({
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
+      {/* 첫 줄: 제목 + 장소 추가. 목록·지도·저장 없음 모두 같은 자리에서 S11을 연다 */}
       <View style={styles.bar}>
-        <Text style={[typography.title1, styles.text]}>저장</Text>
+        <Text style={[typography.title1, styles.text]} accessibilityRole="header">
+          저장
+        </Text>
+        <PressableScale
+          accessibilityRole="button"
+          accessibilityLabel="링크나 캡처로 장소 추가"
+          onPress={() => onAdd()}
+          style={({ pressed }) => [styles.add, pressed && styles.pressed]}
+        >
+          <Icon name="bookmark-plus" size={24} color={colors.brand.primary} />
+        </PressableScale>
+      </View>
+
+      {/* 둘째 줄: 개인·그룹 + 목록·지도 */}
+      <View style={styles.kinds}>
+        <View style={styles.kindGroup}>
+          <KindButton icon="person" label="개인" selected onPress={() => undefined} />
+          <KindButton icon="people" label="그룹" selected={false} onPress={onGroup} />
+        </View>
         <View style={styles.toggle} accessibilityRole="tablist">
           <ToggleButton
             icon="list"
@@ -65,11 +87,6 @@ export function SavedView({
             onPress={() => onView('map')}
           />
         </View>
-      </View>
-
-      <View style={styles.kinds}>
-        <KindButton icon="person" label="개인" selected onPress={() => undefined} />
-        <KindButton icon="people" label="그룹" selected={false} onPress={onGroup} />
       </View>
 
       {offlineSince ? (
@@ -130,18 +147,7 @@ export function SavedView({
           </View>
         </ScrollView>
       ) : (
-        <SavedMap items={items} onOpen={onOpen} bottomInset={FAB + FAB_GAP * 2} />
-      )}
-
-      {empty ? null : (
-        <PressableScale
-          accessibilityRole="button"
-          accessibilityLabel="링크·캡처 등록"
-          onPress={() => onAdd()}
-          style={({ pressed }) => [styles.fab, pressed && styles.pressed]}
-        >
-          <Icon name="plus" size={28} color={colors.text.inverse} />
-        </PressableScale>
+        <SavedMap items={items} onOpen={onOpen} bottomInset={MAP_CARD_BOTTOM} />
       )}
     </View>
   );
@@ -247,8 +253,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingLeft: layout.screenPaddingX,
-    paddingRight: spacing[16],
+    paddingHorizontal: layout.screenPaddingX,
+  },
+  // 장소 추가 아이콘 24, 누르는 칸 48. 아이콘 오른쪽 끝이 아래 내용 오른쪽 끝과 맞도록 칸 여백만큼 밖으로 뺀다
+  add: {
+    width: 48,
+    height: 48,
+    marginRight: -(48 - 24) / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   toggle: {
     flexDirection: 'row',
@@ -267,11 +280,13 @@ const styles = StyleSheet.create({
   toggleSelected: { backgroundColor: colors.surface.white },
   kinds: {
     flexDirection: 'row',
-    gap: spacing[10],
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: layout.screenPaddingX,
     paddingTop: spacing[4],
     paddingBottom: spacing[12],
   },
+  kindGroup: { flexDirection: 'row', gap: spacing[10] },
   // 아이콘만으로는 뜻을 알기 어려워 글자를 붙인다(피그마는 아이콘만, 52x36)
   kind: {
     height: 36,
@@ -305,8 +320,7 @@ const styles = StyleSheet.create({
   list: {
     paddingHorizontal: layout.screenPaddingX,
     paddingTop: spacing[16],
-    // [+] 버튼에 마지막 카드가 가리지 않게
-    paddingBottom: FAB + FAB_GAP * 2,
+    paddingBottom: spacing[24],
     gap: spacing[24],
   },
   listHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
@@ -336,16 +350,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.surface.white,
-  },
-  fab: {
-    position: 'absolute',
-    right: FAB_GAP,
-    bottom: FAB_GAP,
-    width: FAB,
-    height: FAB,
-    borderRadius: radius.full,
-    backgroundColor: colors.brand.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });
