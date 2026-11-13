@@ -1,26 +1,30 @@
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { CenterNotice, toast } from '@/components/ui';
+import { CenterNotice } from '@/components/ui';
 import { SkeletonList } from '@/components/ui/skeleton';
 import { colors } from '@/theme';
 
 import { SavedView } from '../components/saved-view';
+import { GroupTripSheet } from '../components/group-trip-sheet';
 import { useBookmarks, useOnline, useSavedView } from '../hooks/use-bookmarks';
+import { useTripOptions } from '../hooks/use-trip-options';
 import { syncedAtLabel, toSavedItem } from '../saved-rules';
-
-const notReady = () => toast.show('준비 중이에요');
 
 /**
  * S10 개인 즐겨찾기. 저장 탭 첫 화면.
- * 카드·핀은 S14 저장 장소 상세, [+]는 S11 링크·캡처 등록으로 간다. S20 그룹 즐겨찾기(C)는 아직 없어 준비 중 안내를 띄운다
+ * 카드·핀은 S14 저장 장소 상세, [+]는 S11 링크·캡처 등록으로 간다. [그룹]은 여행을 고르는 시트를 열고, 고른 여행의 S20 그룹 즐겨찾기(C)로 간다
  */
 export function SavedScreen() {
   const insets = useSafeAreaInsets();
   const bookmarks = useBookmarks();
   const online = useOnline();
   const [view, setView] = useSavedView();
+  const [groupOpen, setGroupOpen] = useState(false);
+  // 그룹 시트를 열 때만 내 여행을 읽는다
+  const trips = useTripOptions(groupOpen);
 
   if (!bookmarks.data) {
     // 받아 둔 목록 없이 연결이 끊기면 조회가 멈춘(paused) 채 isError가 되지 않아 로딩만 돈다.
@@ -54,18 +58,31 @@ export function SavedScreen() {
   }
 
   return (
-    <SavedView
-      items={bookmarks.data.map(toSavedItem)}
-      view={view}
-      onView={setView}
-      // 연결이 끊겼으면 마지막으로 받아 온 목록을 그대로 두고 기준 시각을 알린다
-      offlineSince={online ? null : syncedAtLabel(bookmarks.dataUpdatedAt)}
-      onGroup={notReady}
-      onOpen={(item) => router.push({ pathname: '/saved/[key]', params: { key: item.key } })}
-      onAdd={(start) =>
-        router.push(start ? { pathname: '/saved/add', params: { start } } : '/saved/add')
-      }
-    />
+    <>
+      <SavedView
+        items={bookmarks.data.map(toSavedItem)}
+        view={view}
+        onView={setView}
+        // 연결이 끊겼으면 마지막으로 받아 온 목록을 그대로 두고 기준 시각을 알린다
+        offlineSince={online ? null : syncedAtLabel(bookmarks.dataUpdatedAt)}
+        onGroup={() => setGroupOpen(true)}
+        onOpen={(item) => router.push({ pathname: '/saved/[key]', params: { key: item.key } })}
+        onAdd={(start) =>
+          router.push(start ? { pathname: '/saved/add', params: { start } } : '/saved/add')
+        }
+      />
+      <GroupTripSheet
+        visible={groupOpen}
+        trips={trips.trips}
+        tripsStatus={trips.status}
+        onRetryTrips={trips.retry}
+        onClose={() => setGroupOpen(false)}
+        onPick={(tripId) => {
+          setGroupOpen(false);
+          router.push({ pathname: '/trips/[tripId]/favorites', params: { tripId } });
+        }}
+      />
+    </>
   );
 }
 

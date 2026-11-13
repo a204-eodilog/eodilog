@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -287,6 +288,7 @@ export function ExtractResultScreen() {
               </View>
             </View>
             <ScrollView
+              decelerationRate={SCROLL_DECELERATION}
               style={styles.list}
               contentContainerStyle={styles.candidates}
               accessibilityRole="radiogroup"
@@ -372,7 +374,11 @@ export function ExtractResultScreen() {
                     : '다시 찾으려면 뒤로 가 주세요'}
               </Text>
             </View>
-            <ScrollView style={styles.list} contentContainerStyle={styles.rows}>
+            <ScrollView
+              decelerationRate={SCROLL_DECELERATION}
+              style={styles.list}
+              contentContainerStyle={styles.rows}
+            >
               {items.map((item) => {
                 const itemPlace = item.place;
                 return (

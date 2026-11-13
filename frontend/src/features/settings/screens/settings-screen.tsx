@@ -1,11 +1,12 @@
-import * as Clipboard from 'expo-clipboard';
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { router } from 'expo-router';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { BackHandler, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Stagger } from '@/components/ui/stagger';
-import { Avatar, Button, ConfirmSheet, ErrorState, Header, toast } from '@/components/ui';
+import { Avatar, ConfirmSheet, ErrorState, Header, Icon, toast } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { SkeletonList } from '@/components/ui/skeleton';
 import { signOut, withdraw } from '@/features/auth/logout';
 import {
@@ -134,16 +135,6 @@ export function SettingsView({
     );
   }
 
-  async function copyProfileLink() {
-    try {
-      const copied = await Clipboard.setStringAsync(profile.profileUrl);
-      if (!copied) throw new Error('복사 실패');
-      toast.success(preview ? '예시 프로필 링크를 복사했어요' : '프로필 링크를 복사했어요');
-    } catch {
-      toast.error('링크를 복사하지 못했어요');
-    }
-  }
-
   async function logout() {
     if (logoutLock.current) return;
     if (preview) {
@@ -188,52 +179,39 @@ export function SettingsView({
       {detail === null ? (
         <>
           <Header title="프로필과 설정" />
-          <ScrollView contentContainerStyle={styles.content}>
+          <ScrollView decelerationRate={SCROLL_DECELERATION} contentContainerStyle={styles.content}>
             <Stagger itemStyle={styles.staggerItem}>
               {previewControls}
 
-              <View style={styles.profile}>
-                <Avatar
-                  name={profile.nickname}
-                  imageUrl={profile.profileImageUrl}
-                  size={size.button.xl}
-                  me
-                />
+              {/* 맨 위 카드를 누르면 프로필 수정으로 간다. 여행 취향도 그 안에서 고친다 */}
+              <PressableScale
+                onPress={() =>
+                  preview
+                    ? setDetail('profile')
+                    : router.push({ pathname: '/profile', params: { from: 'settings' } })
+                }
+                style={({ pressed }) => [styles.profile, pressed && styles.pressed]}
+                accessibilityRole="button"
+                accessibilityLabel={`${profile.nickname}, 프로필 수정`}
+              >
+                <View style={styles.ring}>
+                  <Avatar
+                    name={profile.nickname}
+                    imageUrl={profile.profileImageUrl}
+                    size={size.button.xl}
+                    me
+                  />
+                </View>
                 <View style={styles.profileText}>
                   <Text style={styles.name}>{profile.nickname}</Text>
-                  {data.handleLabel ? <Text style={styles.handle}>{data.handleLabel}</Text> : null}
+                  <Text style={styles.handle}>
+                    {data.preferences.length > 0
+                      ? `프로필 수정 · 여행 취향 ${data.preferences.length}개`
+                      : '프로필과 여행 취향 수정'}
+                  </Text>
                 </View>
-                <Button
-                  label="링크 복사"
-                  icon="copy"
-                  size="sm"
-                  variant="neutral"
-                  onPress={copyProfileLink}
-                />
-              </View>
-              <SettingsSection title="내 정보">
-                <SettingsRow
-                  icon="person"
-                  label="프로필 수정"
-                  onPress={() =>
-                    preview
-                      ? setDetail('profile')
-                      : router.push({ pathname: '/profile', params: { from: 'settings' } })
-                  }
-                />
-                <SettingsRow
-                  icon="star"
-                  label="여행 취향"
-                  value={
-                    data.preferences.length > 0 ? `${data.preferences.length}개 선택` : '선택 안 함'
-                  }
-                  onPress={() =>
-                    preview
-                      ? setDetail('preferences')
-                      : router.push({ pathname: '/preferences', params: { from: 'settings' } })
-                  }
-                />
-              </SettingsSection>
+                <Icon name="chevron-right" size={20} color={colors.text.muted} />
+              </PressableScale>
               <SettingsSection title="앱 설정">
                 <SettingsRow icon="bulb" label="AI 기능 설정" onPress={() => setDetail('ai')} />
               </SettingsSection>
@@ -367,7 +345,7 @@ export function SettingsView({
       {detail === 'ai' ? (
         <View style={styles.screen}>
           <Header title="AI 기능 설정" onBack={() => setDetail(null)} />
-          <ScrollView contentContainerStyle={styles.content}>
+          <ScrollView decelerationRate={SCROLL_DECELERATION} contentContainerStyle={styles.content}>
             <Stagger itemStyle={styles.staggerItem}>
               <Text style={styles.caption}>AI가 도와줄 일과 실행 방식을 선택해 주세요.</Text>
               <SettingsSection title="AI 기능">
@@ -460,12 +438,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexWrap: 'wrap',
     gap: spacing[14],
-    // 프로필은 파랑 카드(마이페이지와 같은 얼굴)
+    // 프로필은 흰 카드(마이페이지 프로필과 같은 얼굴)
     padding: spacing[20],
     borderRadius: radius.xxl,
-    backgroundColor: colors.brand.primary,
+    backgroundColor: colors.surface.white,
   },
-  handle: { ...typography.caption, color: colors.onBrand.textSoft },
+  handle: { ...typography.caption, color: colors.text.sub },
+  // 얼굴 둘레의 파랑 고리
+  ring: {
+    padding: 3,
+    borderRadius: radius.full,
+    borderWidth: 2,
+    borderColor: colors.brand.primary,
+  },
   provider: {
     width: 30,
     height: 30,
@@ -475,7 +460,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.external.kakao,
   },
   profileText: { flex: 1 },
-  name: { ...typography.title1, color: colors.text.inverse },
+  pressed: { opacity: 0.7 },
+  name: { ...typography.title2, color: colors.text.default },
   caption: { ...typography.caption, color: colors.text.icon },
   copy: { backgroundColor: colors.surface.white, borderRadius: radius.full },
   preferences: { paddingVertical: spacing[12], gap: spacing[12] },

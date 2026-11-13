@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -125,7 +126,7 @@ export function SavedView({
           </View>
         </View>
       ) : view === 'list' ? (
-        <ScrollView contentContainerStyle={styles.list}>
+        <ScrollView decelerationRate={SCROLL_DECELERATION} contentContainerStyle={styles.list}>
           <View style={styles.listHead}>
             <Text style={[typography.captionMedium, styles.sub]}>{items.length}곳</Text>
             <Text style={[typography.caption, styles.sub2]}>최근 저장한 순</Text>

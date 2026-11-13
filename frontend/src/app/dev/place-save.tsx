@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -45,7 +46,11 @@ export default function PlaceSaveStates() {
   const close = () => setExample(null);
 
   return (
-    <ScrollView contentContainerStyle={styles.menu} style={styles.screen}>
+    <ScrollView
+      decelerationRate={SCROLL_DECELERATION}
+      contentContainerStyle={styles.menu}
+      style={styles.screen}
+    >
       <Text style={typography.title2}>S08 장소 저장 시트</Text>
       <View style={styles.row}>
         {EXAMPLES.map((e) => (

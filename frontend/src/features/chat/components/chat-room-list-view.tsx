@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import type { ReactNode } from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
@@ -94,6 +95,7 @@ export function ChatRoomListView({
         </View>
       ) : (
         <FlatList
+          decelerationRate={SCROLL_DECELERATION}
           style={styles.flex}
           data={rows}
           keyExtractor={(row) => row.room.id}

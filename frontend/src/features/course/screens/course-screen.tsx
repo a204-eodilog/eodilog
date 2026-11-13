@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -26,7 +27,6 @@ import {
   editedLine,
   hasUnavailable,
   latestQueriedAt,
-  noTimeDefault,
   toDraft,
   type CourseDraft,
   type DraftItem,
@@ -89,7 +89,7 @@ export function CourseView(props: CourseViewProps) {
     const legs = dayLegs(draft, selected);
     body = (
       <>
-        <ScrollView contentContainerStyle={styles.scroll}>
+        <ScrollView decelerationRate={SCROLL_DECELERATION} contentContainerStyle={styles.scroll}>
           <CourseMap
             items={items}
             legs={legs}
@@ -125,6 +125,8 @@ export function CourseView(props: CourseViewProps) {
               legs={legs}
               mode="view"
               tone="saved"
+              // 구하는 중이면 계산 중, 구해 봤는데 없으면 시간 모름, 아직이면 계산 전
+              noTime={props.routeFail ? 'failed' : props.recalcBusy ? 'working' : 'pending'}
               onRemove={(i) => {
                 const item = items[i];
                 if (item) props.onRemove(item);
@@ -229,8 +231,19 @@ export function CourseScreen() {
   const days = dayCount(trip.data?.startDate ?? null, trip.data?.endDate ?? null);
   const draft = data && trip.data ? toDraft(data, days) : null;
   const editor = members.find((m) => m.id === data?.updatedByMemberId)?.user.nickname ?? '동행';
-  // 경로 계산이 생기기 전에는 시간 없는 구간이 실패가 아니라 계산 전이라 실패 안내를 띄우지 않는다(Q-6-6)
-  const failed = noTimeDefault() === 'failed' && data ? hasUnavailable(data) : false;
+  // 서버는 코스를 저장할 때마다 구간 시간을 비운다. 시간 없는 구간이 있으면 화면이 한 번 계산을 요청하고,
+  // 같은 코스(버전)에는 다시 요청하지 않는다. 요청해 봤는데도 남아 있으면 못 구한 것이라 실패 안내를 띄운다
+  const unavailable = data !== undefined && !empty && hasUnavailable(data);
+  const version = data?.version;
+  const attempted = version !== undefined && recalc.attempted(version);
+  const startRecalc = recalc.start;
+  useEffect(() => {
+    // 요청하면 바로 '해 봤다'로 적히므로 다시 그려져도 두 번 요청하지 않는다
+    if (unavailable && !attempted && version !== undefined) {
+      void startRecalc(version, { silent: true });
+    }
+  }, [unavailable, attempted, version, startRecalc]);
+  const failed = unavailable && attempted && !recalc.busy;
   const queried = data ? latestQueriedAt(data) : null;
 
   const notFound =

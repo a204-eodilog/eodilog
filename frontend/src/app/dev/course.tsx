@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -179,7 +180,11 @@ export default function DevCourse() {
 
   const groups = [...new Set(EXAMPLES.map((e) => e.group))];
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.menu}>
+    <ScrollView
+      decelerationRate={SCROLL_DECELERATION}
+      style={styles.screen}
+      contentContainerStyle={styles.menu}
+    >
       {groups.map((group) => (
         <View key={group} style={styles.group}>
           <Text style={[typography.subBold, styles.heading]}>{group}</Text>

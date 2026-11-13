@@ -163,3 +163,43 @@ export function sketchPoints(
     y: offY + (ys[i] - minY) * s,
   }));
 }
+
+export type MonthGroup<T> = {
+  /** "2026-11". 날짜를 안 정한 여행은 "none" */
+  key: string;
+  /** 달 숫자 "11월". 날짜를 안 정했으면 "미정" */
+  month: string;
+  /** "2026년". 날짜를 안 정했으면 null */
+  year: string | null;
+  entries: T[];
+};
+
+/**
+ * 타임라인을 여행 시작 달마다 묶는다. 받은 순서(최신순, 날짜 없는 여행은 맨 아래)를 그대로 지킨다.
+ * 여행이 한 줄로 죽 이어지면 언제 것인지 가려 보기 어려워 달 머리로 나눈다
+ */
+export function groupByMonth<T>(
+  entries: readonly T[],
+  startDateOf: (entry: T) => string | null,
+): MonthGroup<T>[] {
+  const groups: MonthGroup<T>[] = [];
+  for (const entry of entries) {
+    const date = startDateOf(entry);
+    const key = date ? date.slice(0, 7) : 'none';
+    const last = groups[groups.length - 1];
+    if (last && last.key === key) {
+      last.entries.push(entry);
+      continue;
+    }
+    groups.push({
+      key,
+      month: date ? `${Number(date.slice(5, 7))}월` : '미정',
+      year: date ? `${date.slice(0, 4)}년` : null,
+      entries: [entry],
+    });
+  }
+  return groups;
+}
+
+/** 여행 카드에 처음 보이는 장소 줄 수. 넘치면 접어 두고 화살표로 편다 */
+export const ROWS_SHOWN = 3;

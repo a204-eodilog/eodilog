@@ -1,14 +1,13 @@
 import { useMemo, useRef, useState } from 'react';
-import { ScrollView, type ScrollViewInstance, StyleSheet, View } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { MapMarker, MapView, type MapViewRef } from '@/components/map';
-import { layout, spacing } from '@/theme';
+import { EasyPager } from '@/components/ui/easy-pager';
+import { layout } from '@/theme';
 
 import { cityGroups, regionFor, type SavedItem } from '../saved-rules';
 
-import { MAP_CARD_WIDTH, MapPlaceCard } from './map-place-card';
-
-const CARD_GAP = spacing[10];
+import { MapPlaceCard } from './map-place-card';
 
 type SavedMapProps = {
   items: SavedItem[];
@@ -22,8 +21,8 @@ type SavedMapProps = {
  * 카드를 넘기면 해당 핀을 강조한다. 지도는 공통 MapView(A, 웹 미리보기는 회색 대체 화면)
  */
 export function SavedMap({ items, onOpen, bottomInset }: SavedMapProps) {
+  const { width } = useWindowDimensions();
   const map = useRef<MapViewRef>(null);
-  const cards = useRef<ScrollViewInstance>(null);
   const groups = useMemo(() => cityGroups(items), [items]);
   const [city, setCity] = useState<string | null>(null);
   const [focused, setFocused] = useState(0);
@@ -33,8 +32,6 @@ export function SavedMap({ items, onOpen, bottomInset }: SavedMapProps) {
   const openCity = (name: string) => {
     setCity(name);
     setFocused(0);
-    // 카드를 넘긴 뒤 다른 지역을 눌러도 첫 카드가 보이게 가로 위치도 처음으로 돌린다(강조 핀과 맞춘다)
-    cards.current?.scrollTo({ x: 0, animated: false });
     const region = regionFor(groups.find((g) => g.city === name)?.items ?? []);
     if (region) map.current?.animateRegionTo?.(region);
   };
@@ -74,27 +71,24 @@ export function SavedMap({ items, onOpen, bottomInset }: SavedMapProps) {
           : null}
       </MapView>
 
-      <ScrollView
-        ref={cards}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        snapToInterval={MAP_CARD_WIDTH + CARD_GAP}
-        decelerationRate="fast"
-        onMomentumScrollEnd={(e) =>
-          setFocused(Math.round(e.nativeEvent.contentOffset.x / (MAP_CARD_WIDTH + CARD_GAP)))
-        }
+      {/* 조금만 밀어도 한 장씩, 늘 같은 빠르기로 넘어간다(easy-pager). 지역을 바꾸면 첫 카드로 돌아간다 */}
+      <EasyPager
+        step={width}
+        count={shown.length}
+        onPage={setFocused}
+        resetKey={city}
         style={[styles.cards, { bottom: bottomInset }]}
-        contentContainerStyle={styles.cardRow}
       >
         {shown.map((item, i) => (
-          <MapPlaceCard
-            key={item.key}
-            item={item}
-            highlighted={city !== null && i === focused}
-            onPress={() => onOpen(item)}
-          />
+          <View key={item.key} style={[styles.page, { width }]}>
+            <MapPlaceCard
+              item={item}
+              highlighted={city !== null && i === focused}
+              onPress={() => onOpen(item)}
+            />
+          </View>
         ))}
-      </ScrollView>
+      </EasyPager>
     </View>
   );
 }
@@ -102,5 +96,6 @@ export function SavedMap({ items, onOpen, bottomInset }: SavedMapProps) {
 const styles = StyleSheet.create({
   wrap: { flex: 1 },
   cards: { position: 'absolute', left: 0, right: 0, flexGrow: 0 },
-  cardRow: { paddingHorizontal: layout.screenPaddingX, gap: CARD_GAP },
+  // 한 쪽에 카드 한 장. 카드는 화면 여백만 남기고 가로를 채운다
+  page: { paddingHorizontal: layout.screenPaddingX },
 });

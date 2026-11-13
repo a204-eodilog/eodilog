@@ -71,15 +71,19 @@ export async function calculateSettlement(
   return data.data;
 }
 
-/** 지출 등록. Idempotency-Key 필수, 지출 시각은 등록하는 지금으로 보낸다(화면에 날짜 칸이 없다) */
+/**
+ * 지출 등록. Idempotency-Key 필수. 지출 시각은 화면에 날짜 칸이 없어 등록을 처음 누른 때를 쓴다.
+ * 다시 보낼 때는 키와 지출 시각을 처음 것 그대로 넘긴다. 서버가 같은 키에 다른 본문을 거절해서다(create-attempt.ts)
+ */
 export async function createExpense(
   tripId: string,
   input: ExpenseInput,
   idempotencyKey: string,
+  spentAt: string,
 ): Promise<Expense> {
   const { data } = await apiClient.post<DataResponse<Expense>>(
     `/trips/${tripId}/expenses`,
-    { ...input, currency: 'KRW', spentAt: new Date().toISOString() },
+    { ...input, currency: 'KRW', spentAt },
     { headers: { 'Idempotency-Key': idempotencyKey } },
   );
   return data.data;

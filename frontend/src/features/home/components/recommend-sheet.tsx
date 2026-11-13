@@ -3,11 +3,9 @@ import BottomSheet, {
   useBottomSheetTimingConfigs,
 } from '@gorhom/bottom-sheet';
 import { Image } from 'expo-image';
-import { useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Spinner } from '@/components/ui/spinner';
-// 시트 안 가로 목록은 제스처 핸들러 스크롤이어야 시트 끌기와 손가락을 나눠 가진다(안드로이드)
-import { ScrollView } from 'react-native-gesture-handler';
 import Animated, {
   Easing,
   Extrapolation,
@@ -18,14 +16,15 @@ import Animated, {
 
 import { Icon } from '@/components/ui';
 import { PressableScale } from '@/components/ui/pressable-scale';
+import { EasyPager } from '@/components/ui/easy-pager';
 import { assetSource } from '@/lib/asset-image';
 import { colors, layout, motion, radius, spacing, typography } from '@/theme';
 
 import { recommendMetaLabel } from '../home-rules';
 import type { HomeRecommendation } from '../types';
 
-/** 접힌 시트 높이. 제목 + 가로 카드 한 줄 */
-export const SHEET_COLLAPSED = 176;
+/** 접힌 시트 높이. 제목 + 카드 한 장 + 쪽 점 */
+export const SHEET_COLLAPSED = 192;
 
 type Props = {
   items: readonly HomeRecommendation[];
@@ -33,10 +32,24 @@ type Props = {
   /** 처음 펼친 채로 보여 줄지 (미리보기 '추천 시트 펼침') */
   initialExpanded?: boolean;
   onPress: (item: HomeRecommendation) => void;
+  /** 접힌 창에서 지금 보고 있는 카드. 지도에 그 지역을 표시하는 데 쓴다. 창을 펼치면 null */
+  onFocus?: (item: HomeRecommendation | null) => void;
 };
 
 /** S05 아래 시트 "좋아요한 여행과 비슷해요". 접으면 가로 카드, 펼치면 세로 목록 */
-export function RecommendSheet({ items, status, initialExpanded = false, onPress }: Props) {
+export function RecommendSheet({
+  items,
+  status,
+  initialExpanded = false,
+  onPress,
+  onFocus,
+}: Props) {
+  const { width } = useWindowDimensions();
+  // 카드 한 장이 화면 한 쪽이다. 옆으로 밀면 한 장씩 넘어간다
+  const page = width;
+  const [current, setCurrent] = useState(0);
+  const shown = Math.min(current, Math.max(items.length - 1, 0));
+  const focused = items[shown];
   const snapPoints = useMemo(() => [SHEET_COLLAPSED, '80%'], []);
   // 어느 쪽을 누를 수 있는지. 올라가기 시작할 때 바로 바꾼다(다 올라온 뒤에 바꾸면 그동안 목록을 못 누른다)
   const [expanded, setExpanded] = useState(initialExpanded);
@@ -56,6 +69,12 @@ export function RecommendSheet({ items, status, initialExpanded = false, onPress
   const listStyle = useAnimatedStyle(() => ({
     opacity: interpolate(position.value, [0.1, 0.6], [0, 1], Extrapolation.CLAMP),
   }));
+
+  // 접힌 창에서 보고 있는 카드를 알린다. 펼치면 여러 줄이 한꺼번에 보이므로 표시를 거둔다
+  useEffect(() => {
+    onFocus?.(expanded || status !== 'ready' ? null : (focused ?? null));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expanded, status, focused?.id]);
 
   return (
     <BottomSheet
@@ -121,31 +140,38 @@ export function RecommendSheet({ items, status, initialExpanded = false, onPress
             accessibilityElementsHidden={expanded}
             importantForAccessibility={expanded ? 'no-hide-descendants' : 'auto'}
           >
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.cardsScroll}
-              contentContainerStyle={styles.cards}
-            >
+            {/* 조금만 밀어도 한 장씩, 늘 같은 빠르기로 넘어간다(easy-pager) */}
+            <EasyPager step={page} count={items.length} onPage={setCurrent}>
               {items.map((item, order) => (
-                <PressableScale
-                  appear={order}
-                  appearFrom="pop"
-                  key={item.id}
-                  onPress={() => onPress(item)}
-                  style={styles.card}
-                  accessibilityRole="button"
-                >
-                  <Thumb item={item} size={56} />
-                  <View style={styles.rowText}>
-                    <Text style={styles.name} numberOfLines={1}>
-                      {item.title}
-                    </Text>
-                    <Meta item={item} />
-                  </View>
-                </PressableScale>
+                <View key={item.id} style={[styles.page, { width: page }]}>
+                  <PressableScale
+                    appear={order === 0 ? 0 : undefined}
+                    appearFrom="pop"
+                    onPress={() => onPress(item)}
+                    style={styles.card}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${item.title}, ${order + 1} / ${items.length}`}
+                  >
+                    <Thumb item={item} size={56} />
+                    <View style={styles.rowText}>
+                      <Text style={styles.name} numberOfLines={1}>
+                        {item.title}
+                      </Text>
+                      <Meta item={item} />
+                    </View>
+                    <Icon name="chevron-right" size={20} color={colors.text.muted} />
+                  </PressableScale>
+                </View>
               ))}
-            </ScrollView>
+            </EasyPager>
+            {/* 몇 번째 카드인지. 지금 카드의 점만 길고 파랗다 */}
+            {items.length > 1 ? (
+              <View style={styles.dots} pointerEvents="none">
+                {items.map((item, order) => (
+                  <View key={item.id} style={[styles.dot, order === shown && styles.dotOn]} />
+                ))}
+              </View>
+            ) : null}
           </Animated.View>
         </View>
       )}
@@ -221,9 +247,18 @@ const styles = StyleSheet.create({
   // 가로 카드는 세로 목록 위에 겹쳐 둔다. 시트가 올라가면 흐려지며 목록이 드러난다
   cardsLayer: { position: 'absolute', top: 0, left: 0, right: 0 },
   cardsScroll: { flexGrow: 0 },
-  cards: { paddingHorizontal: layout.screenPaddingX, gap: spacing[12], alignItems: 'flex-start' },
+  // 한 쪽에 카드 한 장. 카드는 화면 여백만 남기고 가로를 채운다
+  page: { paddingHorizontal: layout.screenPaddingX },
+  dots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: spacing[6],
+    paddingTop: spacing[10],
+  },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.gray[300] },
+  dotOn: { width: 18, backgroundColor: colors.brand.primary },
   card: {
-    width: 260,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[14],

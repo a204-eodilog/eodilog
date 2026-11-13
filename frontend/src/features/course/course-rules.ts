@@ -269,12 +269,12 @@ export function legLabel(leg: DayLeg): string | null {
 }
 
 /**
- * 시간이 없는 구간을 어떻게 보일지. pending은 "계산 전", failed는 "못 구했어요"와 다시 계산.
- * 백엔드에는 아직 경로 계산이 없어 저장한 구간이 모두 UNAVAILABLE이다. 이 값은 '조회 실패'와 '아직 조회 안 함'을
- * 함께 뜻해서 구분할 수 없다. 그래서 경로 계산이 생기기 전까지는 계산 전으로 보이고, 실패 화면은 미리보기에서만 쓴다
- * (가정 — 사용자 확인 필요, Q-6-6)
+ * 시간이 없는 구간을 어떻게 보일지. pending은 "계산 전", working은 "계산 중", failed는 "못 구했어요"와 다시 계산.
+ * 서버는 코스를 저장할 때마다 모든 구간을 UNAVAILABLE로 되돌리고, 이 값은 '조회 실패'와 '아직 조회 안 함'을
+ * 함께 뜻해서 구분할 수 없다. 그래서 기본은 계산 전이고, 그 코스에 계산을 요청해 봤는지(route-attempts)를 아는
+ * 화면이 working·failed를 넘긴다
  */
-export type NoTime = 'pending' | 'failed';
+export type NoTime = 'pending' | 'working' | 'failed';
 
 export function noTimeDefault(): NoTime {
   return 'pending';

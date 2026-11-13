@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import { Platform, StyleSheet, Switch, Text, View } from 'react-native';
+import { ReactNode, useEffect, useState } from 'react';
+import { Animated, Easing, Platform, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { Card, Icon, type IconName } from '@/components/ui';
 import { PressableScale } from '@/components/ui/pressable-scale';
@@ -126,6 +126,21 @@ export function AiModeSelector<T extends string>({
   disabled: boolean;
   onChange: (value: T) => void;
 }) {
+  // 고른 칸 뒤의 흰 바탕. 다른 칸을 고르면 그쪽으로 미끄러진다(글자는 제자리)
+  const [width, setWidth] = useState(0);
+  const index = options.findIndex((o) => o.value === value);
+  const slide = useState(() => new Animated.Value(Math.max(index, 0)))[0];
+  useEffect(() => {
+    if (index < 0) return;
+    Animated.timing(slide, {
+      toValue: index,
+      duration: 240,
+      easing: Easing.bezier(0.165, 0.84, 0.44, 1),
+      useNativeDriver: true,
+    }).start();
+  }, [index, slide]);
+  const cell =
+    (width - SEGMENT_PAD * 2 - SEGMENT_GAP * (options.length - 1)) / Math.max(options.length, 1);
   return (
     <View style={styles.aiItem}>
       <View style={styles.aiHeading}>
@@ -135,10 +150,32 @@ export function AiModeSelector<T extends string>({
           <Text style={styles.caption}>{description}</Text>
         </View>
       </View>
-      <View accessibilityRole="radiogroup" accessibilityLabel={label} style={styles.segments}>
-        {options.map((option, order) => (
+      <View
+        accessibilityRole="radiogroup"
+        accessibilityLabel={label}
+        style={styles.segments}
+        onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
+      >
+        {width > 0 && index >= 0 ? (
+          <Animated.View
+            style={[
+              styles.thumb,
+              {
+                width: cell,
+                transform: [
+                  {
+                    translateX: slide.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0, cell + SEGMENT_GAP],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          />
+        ) : null}
+        {options.map((option) => (
           <PressableScale
-            appear={order}
             key={option.value}
             accessibilityRole="radio"
             accessibilityLabel={label + ', ' + option.label}
@@ -152,7 +189,6 @@ export function AiModeSelector<T extends string>({
             }}
             style={({ pressed }) => [
               styles.segment,
-              value === option.value && styles.selected,
               option.disabled && styles.disabled,
               pressed && styles.pressed,
             ]}
@@ -166,6 +202,9 @@ export function AiModeSelector<T extends string>({
     </View>
   );
 }
+
+const SEGMENT_PAD = spacing[4];
+const SEGMENT_GAP = spacing[2];
 
 const styles = StyleSheet.create({
   section: { gap: spacing[10] },
@@ -194,8 +233,8 @@ const styles = StyleSheet.create({
   aiHeading: { flexDirection: 'row', alignItems: 'center', gap: spacing[14] },
   segments: {
     flexDirection: 'row',
-    gap: spacing[2],
-    padding: spacing[4],
+    gap: SEGMENT_GAP,
+    padding: SEGMENT_PAD,
     borderRadius: radius.full,
     backgroundColor: colors.line.default,
   },
@@ -207,7 +246,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: radius.full,
   },
-  selected: { backgroundColor: colors.surface.white },
+  // 고른 칸 뒤에 깔리는 흰 바탕
+  thumb: {
+    position: 'absolute',
+    top: SEGMENT_PAD,
+    bottom: SEGMENT_PAD,
+    left: SEGMENT_PAD,
+    borderRadius: radius.full,
+    backgroundColor: colors.surface.white,
+  },
   option: { ...typography.captionMedium, color: colors.text.icon },
   optionSelected: { color: colors.text.default },
   disabled: { opacity: 0.4 },

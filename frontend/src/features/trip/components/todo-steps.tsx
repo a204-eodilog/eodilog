@@ -22,7 +22,7 @@ export function TodoSteps({ nickname, view, onAction, onPublish }: Props) {
       <Text style={[typography.title2, styles.greeting]}>
         {nickname ? <Text style={styles.nickname}>{nickname}</Text> : null}
         {nickname ? '님, ' : ''}
-        {current ? `${current.label}부터 해 볼까요?` : '오늘 코스를 확인해요'}
+        {view.greeting ?? (current ? `${current.label}부터 해 볼까요?` : '오늘 코스를 확인해요')}
       </Text>
 
       {view.steps.map((step, i) => (

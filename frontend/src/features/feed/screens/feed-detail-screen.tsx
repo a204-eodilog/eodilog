@@ -1,14 +1,11 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 
-import { toast } from '@/components/ui';
+import { ImageViewer } from '@/components/ui/image-viewer';
 import { PlaceInfoSheet, usePlaceSave } from '@/features/place';
 
 import { FeedDetailView } from '../components/feed-detail-view';
 import { useFeed } from '../hooks/use-feed';
-
-// 사진 모두 보기는 아직 없다
-const soon = () => toast.show('준비 중이에요');
 
 /** S07 친구 여행 상세 /feeds/[feedId] */
 export function FeedDetailScreen() {
@@ -16,6 +13,8 @@ export function FeedDetailScreen() {
   const feed = useFeed(feedId ?? '');
   const [placeId, setPlaceId] = useState<string | null>(null);
   const placeSave = usePlaceSave();
+  // 크게 볼 사진의 순서. null이면 닫힘
+  const [photoIndex, setPhotoIndex] = useState<number | null>(null);
   return (
     <>
       <FeedDetailView
@@ -23,7 +22,7 @@ export function FeedDetailScreen() {
         detail={feed.detail}
         onRetry={feed.retry}
         onLike={feed.toggleLike}
-        onPhotos={soon}
+        onPhotos={setPhotoIndex}
         onSavePlace={(stop) => placeSave.open({ id: stop.placeId, name: stop.name })}
         onPlace={(stop) => setPlaceId(stop.placeId)}
       />
@@ -36,6 +35,11 @@ export function FeedDetailScreen() {
         }}
       />
       {placeSave.sheet}
+      <ImageViewer
+        images={feed.detail?.photos ?? []}
+        index={photoIndex}
+        onClose={() => setPhotoIndex(null)}
+      />
     </>
   );
 }

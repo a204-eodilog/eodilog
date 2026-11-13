@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { Image } from 'expo-image';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -71,7 +72,7 @@ export function TripRecordView({
   return (
     <View style={styles.screen}>
       <Header onBack={onBack} title="내 여행 기록" />
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView decelerationRate={SCROLL_DECELERATION} contentContainerStyle={styles.content}>
         <Stagger itemStyle={styles.staggerItem}>
           {/* 머리 카드. 여행 상세와 같은 파랑 블록에 여행 이름을 크게, 기간과 동행은 반투명 칩으로 */}
           <View style={styles.hero}>

@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams, usePreventRemove } from 'expo-router';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
@@ -140,7 +141,7 @@ export function DraftView(props: DraftViewProps) {
 
   return (
     <>
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView decelerationRate={SCROLL_DECELERATION} contentContainerStyle={styles.scroll}>
         <CourseMap items={items} legs={legs} badges={badges} tone="draft" />
         <View style={styles.content}>
           <DayTabs
@@ -692,6 +693,17 @@ export function CourseEditScreen() {
           }
           void recalc.start(itinerary.data.version);
         }}
+        // 저장된 코스를 그대로 보고 있을 때만: 구하는 중이면 계산 중, 구해 봤는데 없으면 못 구한 것.
+        // 고치는 중이거나 추천안이면 아직 구해 본 적이 없으니 기본(계산 전)이다
+        noTime={
+          dirty || origin !== 'saved' || !itinerary.data
+            ? undefined
+            : recalc.busy
+              ? 'working'
+              : recalc.attempted(itinerary.data.version)
+                ? 'failed'
+                : undefined
+        }
         onRedo={() => void runAuto()}
         redoBusy={auto.status === 'requesting'}
         replacesCourse={origin === 'proposal' && savedHasCourse}

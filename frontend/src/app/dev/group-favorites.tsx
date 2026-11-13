@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -46,7 +47,11 @@ export default function DevGroupFavorites() {
   if (state) return <DevScreen key={state} state={state} />;
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.menu}>
+    <ScrollView
+      decelerationRate={SCROLL_DECELERATION}
+      style={styles.screen}
+      contentContainerStyle={styles.menu}
+    >
       <Text style={[typography.subBold, styles.heading]}>S20 그룹 즐겨찾기</Text>
       <View style={styles.row}>
         {EXAMPLES.map((e) => (

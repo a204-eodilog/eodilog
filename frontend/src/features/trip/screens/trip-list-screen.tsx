@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { router, useFocusEffect } from 'expo-router';
 import { setStatusBarStyle } from 'expo-status-bar';
 import { useCallback, useState } from 'react';
@@ -11,7 +12,6 @@ import { SkeletonList } from '@/components/ui/skeleton';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
-import { TripCard } from '../components/trip-card';
 import { TripRow } from '../components/trip-row';
 import { UpcomingTripCard } from '../components/upcoming-trip-card';
 import { useMyTrips } from '../hooks/use-my-trips';
@@ -38,7 +38,6 @@ export function TripListScreen() {
   // 화면 위 동그라미(RefreshControl)를 띄우지 않는다
   const { refreshing: pulling, onRefresh: onPullRefresh } = usePullRefresh(refetch);
   // 다음 계획이 3개를 넘으면 접어 둔다. 펼친 것은 이 탭을 보는 동안만 기억한다
-  const [nextExpanded, setNextExpanded] = useState(false);
 
   const sections = listState.kind === 'ready' ? listState.sections : null;
   const featured = sections?.featured ?? null;
@@ -113,12 +112,12 @@ export function TripListScreen() {
   }
 
   const stale = listState.kind === 'ready' && listState.stale;
-  const next = visibleNextTrips(sections.next, nextExpanded);
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
       {header}
       <ScrollView
+        decelerationRate={SCROLL_DECELERATION}
         style={styles.flex}
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing[32] }]}
         refreshControl={<RefreshControl refreshing={pulling} onRefresh={onPullRefresh} />}
@@ -142,56 +141,71 @@ export function TripListScreen() {
           </View>
         ) : null}
 
-        {sections.next.length > 0 ? (
-          <View style={styles.section}>
-            <SectionTitle title="다음 계획" count={sections.next.length} />
-            <View style={styles.listCard}>
-              {next.shown.map((trip, i) => (
-                <FadeIn key={trip.id} index={i}>
-                  {i > 0 ? <View style={styles.divider} /> : null}
-                  <TripRow trip={trip} kind="next" today={today} onPress={() => openTrip(trip)} />
-                </FadeIn>
-              ))}
-            </View>
-            {next.canToggle ? (
-              <PressableScale
-                accessibilityRole="button"
-                accessibilityLabel={
-                  nextExpanded ? '다음 계획 접기' : `다음 계획 ${next.hiddenCount}개 더 보기`
-                }
-                onPress={() => setNextExpanded((v) => !v)}
-                style={({ pressed }) => [styles.more, pressed && styles.pressed]}
-              >
-                <Text style={[typography.bodyMedium, styles.moreLabel]}>
-                  {nextExpanded ? '접기' : `더 보기 ${next.hiddenCount}`}
-                </Text>
-                <Icon
-                  name={nextExpanded ? 'chevron-up' : 'chevron-down'}
-                  size={18}
-                  color={colors.text.icon}
-                />
-              </PressableScale>
-            ) : null}
-          </View>
-        ) : null}
-
-        {sections.past.length > 0 ? (
-          <View style={styles.section}>
-            <SectionTitle title="다녀온 여행" count={sections.past.length} />
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.cardRow}
-            >
-              {sections.past.map((trip, order) => (
-                <FadeIn key={trip.id} index={order} from="right">
-                  <TripCard trip={trip} kind="past" today={today} onPress={() => openTrip(trip)} />
-                </FadeIn>
-              ))}
-            </ScrollView>
-          </View>
-        ) : null}
+        {/* 다음 계획과 다녀온 여행은 같은 모양이다: 흰 카드 한 장에 줄로 담고, 많으면 화살표로 접고 편다 */}
+        <TripSection
+          title="다음 계획"
+          kind="next"
+          trips={sections.next}
+          today={today}
+          onOpen={openTrip}
+        />
+        <TripSection
+          title="다녀온 여행"
+          kind="past"
+          trips={sections.past}
+          today={today}
+          onOpen={openTrip}
+        />
       </ScrollView>
+    </View>
+  );
+}
+
+/**
+ * 여행 목록 한 구역. 제목과 개수, 흰 카드 안의 여행 줄, 줄이 많으면 아래 화살표로 접고 편다.
+ * 화살표에는 글자를 두지 않는다(2026-11-13 사용자 결정). 화면 읽어 주기에는 "더 보기"·"접기"로 읽힌다
+ */
+function TripSection({
+  title,
+  kind,
+  trips,
+  today,
+  onOpen,
+}: {
+  title: string;
+  kind: 'next' | 'past';
+  trips: readonly Trip[];
+  today: string;
+  onOpen: (trip: Trip) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  if (trips.length === 0) return null;
+  const list = visibleNextTrips(trips, expanded);
+  return (
+    <View style={styles.section}>
+      <SectionTitle title={title} count={trips.length} />
+      <View style={styles.listCard}>
+        {list.shown.map((trip, i) => (
+          <FadeIn key={trip.id} index={i}>
+            {i > 0 ? <View style={styles.divider} /> : null}
+            <TripRow trip={trip} kind={kind} today={today} onPress={() => onOpen(trip)} />
+          </FadeIn>
+        ))}
+      </View>
+      {list.canToggle ? (
+        <PressableScale
+          accessibilityRole="button"
+          accessibilityLabel={expanded ? `${title} 접기` : `${title} ${list.hiddenCount}개 더 보기`}
+          onPress={() => setExpanded((v) => !v)}
+          style={({ pressed }) => [styles.more, pressed && styles.pressed]}
+        >
+          <Icon
+            name={expanded ? 'chevron-up' : 'chevron-down'}
+            size={20}
+            color={colors.text.icon}
+          />
+        </PressableScale>
+      ) : null}
     </View>
   );
 }
@@ -260,20 +274,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: layout.screenPaddingX,
   },
   count: { color: colors.brand.primary },
-  cardRow: { paddingHorizontal: layout.screenPaddingX, gap: spacing[10] },
   // 더 보기·접기. 누르는 칸 44
+  // 접고 펴는 화살표. 글자 없이 동그라미만
   more: {
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing[4],
     alignSelf: 'center',
-    minHeight: layout.minTouchTarget,
-    paddingHorizontal: spacing[20],
+    width: layout.minTouchTarget,
+    height: layout.minTouchTarget,
     borderRadius: radius.full,
     backgroundColor: colors.surface.white,
   },
-  moreLabel: { color: colors.text.icon },
   // 줄 사이 선은 이름 글자 시작에 맞춘다(화면 여백 20 + 달력 칸 48 + 간격 14)
   divider: {
     height: StyleSheet.hairlineWidth,

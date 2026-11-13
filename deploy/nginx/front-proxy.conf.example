@@ -1,0 +1,51 @@
+# 프론트 서버(eodilog.example.com, 서울) nginx에 넣을 설정. <C6G_IP>는 c6g(시드니)의 탄력적 IP로 바꾼다
+# /etc/nginx/eodilog-backend.crt는 c6g에서 만든 backend.crt를 복사한 파일이다(개인 키는 복사하지 않는다)
+#
+# 서울↔시드니 왕복이 약 0.14초라, 요청마다 새로 연결하면(TCP+TLS) 한 번에 0.5초 가까이 더 걸린다.
+# 그래서 c6g로 가는 연결을 열어 두고 다시 쓴다(keepalive).
+
+# ── 1부: http 블록 안에 둔다. 보통 /etc/nginx/conf.d/eodilog-upstream.conf 파일로 만들면 된다 ──
+upstream eodilog_backend {
+    server <C6G_IP>:443;
+    keepalive 16;
+    keepalive_timeout 60s;
+}
+
+# ── 2부: 기존 eodilog.example.com 443 server 블록 안에 붙여 넣는다 ──
+
+    location /api/ {
+        proxy_pass https://eodilog_backend;
+        # c6g의 자체 서명 인증서만 믿는다. 두 서버 사이 구간도 암호화된다
+        proxy_ssl_verify on;
+        proxy_ssl_trusted_certificate /etc/nginx/eodilog-backend.crt;
+        proxy_ssl_name eodilog-backend;
+        proxy_ssl_server_name on;
+        proxy_ssl_session_reuse on;
+
+        # 연결 재사용(keepalive)에 필요하다
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        # 음성 경비 녹음(요청 12MB)이 지나간다. c6g의 backend.conf와 같은 값으로 둔다
+        client_max_body_size 12m;
+        proxy_read_timeout 90s;
+    }
+
+    location = /ws {
+        proxy_pass https://eodilog_backend;
+        proxy_ssl_verify on;
+        proxy_ssl_trusted_certificate /etc/nginx/eodilog-backend.crt;
+        proxy_ssl_name eodilog-backend;
+        proxy_ssl_server_name on;
+
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_read_timeout 1h;
+        proxy_send_timeout 1h;
+    }

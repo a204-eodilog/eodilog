@@ -1,14 +1,16 @@
+import { Easing } from 'react-native-reanimated';
 import {
   BottomSheetBackdrop,
   type BottomSheetBackdropProps,
   BottomSheetModal,
+  useBottomSheetTimingConfigs,
   BottomSheetView,
 } from '@gorhom/bottom-sheet';
 import { type ReactNode, useCallback, useEffect, useRef } from 'react';
 import { BackHandler, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, radius, spacing, typography, motion } from '@/theme';
 
 import { Stagger } from './stagger';
 
@@ -99,12 +101,22 @@ export function BottomSheet({
     [locked],
   );
 
+  const animationConfigs = useBottomSheetTimingConfigs({
+    duration: motion.sheet.duration,
+    easing: Easing.out(Easing.cubic),
+  });
+
   return (
     <BottomSheetModal
       ref={ref}
       onDismiss={handleDismiss}
       enableDynamicSizing
       enablePanDownToClose={!locked}
+      // 창이 올라오고 내려가는 빠르기. 기본값은 너무 빨라 툭 튀어나와 보였다
+      animationConfigs={animationConfigs}
+      // 입력 칸을 누르면 창이 글자판 위로 올라가고, 글자판이 내려가면 제자리로 돌아온다
+      keyboardBehavior="interactive"
+      keyboardBlurBehavior="restore"
       backdropComponent={renderBackdrop}
       backgroundStyle={styles.sheet}
       handleIndicatorStyle={styles.handle}

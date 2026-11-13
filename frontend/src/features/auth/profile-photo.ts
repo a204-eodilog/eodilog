@@ -1,6 +1,9 @@
 import { apiClient } from '@/api/client';
 import type { DataResponse } from '@/api/types';
+import { env } from '@/config/env';
 import { completeAsset, putPhoto, readPhoto, type UploadIntent } from '@/features/photo';
+
+import { rememberMockUpload } from '@/lib/mock-photo';
 
 import { type PickedPhoto, profilePhotoProblem } from './profile-rules';
 
@@ -24,5 +27,7 @@ export async function uploadProfilePhoto(photo: PickedPhoto): Promise<string> {
   });
   await putPhoto(data.data, bytes);
   await completeAsset(data.data.assetId);
+  // 테스트 모드의 가짜 서버에는 사진이 올라가지 않는다. 고른 사진을 기억해 두었다가 그대로 보여 준다
+  if (env.devMock) rememberMockUpload(data.data.assetId, photo.uri);
   return data.data.assetId;
 }

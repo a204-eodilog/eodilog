@@ -9,6 +9,7 @@ import {
   summaryCells,
   tripLength,
   tripTag,
+  groupByMonth,
 } from './timeline-rules';
 import type { PlaceTimelineItem, TimelineItem, TripSummary } from './types';
 
@@ -179,5 +180,25 @@ describe('sketchPoints', () => {
     expect(
       sketchPoints([{ id: 'a', latitude: 35, longitude: 129 }], 300, 200, 20)[0],
     ).toMatchObject({ x: 150, y: 100 });
+  });
+});
+
+describe('groupByMonth', () => {
+  const start = (d: string | null) => d;
+
+  it('같은 달에 시작한 여행을 한 묶음으로 모은다', () => {
+    const groups = groupByMonth(['2026-11-30', '2026-11-12', '2026-10-04', null], start);
+    expect(groups.map((g) => [g.key, g.month, g.year, g.entries.length])).toEqual([
+      ['2026-11', '11월', '2026년', 2],
+      ['2026-10', '10월', '2026년', 1],
+      ['none', '미정', null, 1],
+    ]);
+  });
+
+  it('받은 순서를 바꾸지 않는다', () => {
+    expect(groupByMonth(['2026-03-02', '2026-03-01'], start)[0].entries).toEqual([
+      '2026-03-02',
+      '2026-03-01',
+    ]);
   });
 });

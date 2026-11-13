@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
@@ -61,7 +62,11 @@ export default function ReviewStates() {
 
   if (!view) {
     return (
-      <ScrollView contentContainerStyle={styles.menu} style={styles.screen}>
+      <ScrollView
+        decelerationRate={SCROLL_DECELERATION}
+        contentContainerStyle={styles.menu}
+        style={styles.screen}
+      >
         <View style={styles.row}>
           <Button label="작성" variant="neutral" onPress={() => open('write')} />
           <Button label="남긴 뒤" variant="neutral" onPress={() => open('done')} />

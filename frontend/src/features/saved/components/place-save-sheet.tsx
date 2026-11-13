@@ -39,7 +39,7 @@ export type PlaceSaveSheetProps = {
 /**
  * S08 장소 저장 시트. S07·N3·N7(A), S47(C), S12(B)에서 연다.
  * 나만 보기 → PUT /me/bookmarks/{placeId}, 동행과 같이 → PUT /trips/{tripId}/saved-places/{placeId}/me.
- * 성공하면 시트를 닫고 안내를 띄운다. 개인은 위 한 줄 스낵바(체크 + "개인 즐겨찾기에 저장했어요" + [보기] → S10.
+ * 성공하면 시트를 닫고 위 한 줄 안내를 띄운다. 개인은 "개인 즐겨찾기에 저장했어요" + [보기] → S10(
  * 이미 S10이거나 S10으로 가면 [보기] 없이), 여행은 토스트("OO에 담았어요"),
  * 실패하면 시트에 오류 띠를 띄우고 [다시 저장].
  * 그룹 토스트의 [보기](→ S20 그룹 즐겨찾기, C)는 화면이 생기면 붙인다
@@ -97,17 +97,14 @@ export function PlaceSaveSheet({
         onSuccess: () => {
           saving.current = false;
           close();
-          if (trip) {
-            toast.success(placeSavedMessage(trip.title));
-          } else {
-            // 개인 저장: 체크·문구·[보기]를 한 줄로 위에. 이미 S10을 보고 있거나 S10으로 가면 [보기] 없이 짧게
-            toast.check(
-              placeSavedMessage(null),
-              showSavedLink(pathname, opensSavedTab)
-                ? { action: { label: '보기', onPress: () => router.push(SAVED_TAB_PATH) } }
-                : undefined,
-            );
-          }
+          // 안내는 모두 화면 위 한 줄 알약(공통 toast). 개인 저장은 [보기] → S10을 붙이되,
+          // 이미 S10을 보고 있거나 S10으로 가면 [보기] 없이 짧게
+          toast.success(
+            placeSavedMessage(trip?.title ?? null),
+            !trip && showSavedLink(pathname, opensSavedTab)
+              ? { action: { label: '보기', onPress: () => router.push(SAVED_TAB_PATH) } }
+              : undefined,
+          );
           onSaved?.(saveTarget);
         },
       },

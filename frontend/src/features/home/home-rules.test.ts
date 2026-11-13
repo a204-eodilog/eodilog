@@ -12,6 +12,7 @@ import {
   homeState,
   nightsLabel,
   recommendMetaLabel,
+  regionCodeInAddress,
   toRecommendations,
   toRegionMarks,
 } from './home-rules';
@@ -262,6 +263,18 @@ describe('nightsLabel', () => {
     expect(nightsLabel('2026-11-14', '2026-11-16')).toBe('2박 3일');
     expect(nightsLabel('2026-11-14', '2026-11-14')).toBe('당일치기');
     expect(nightsLabel(null, '2026-11-14')).toBeNull();
+  });
+});
+
+describe('regionCodeInAddress', () => {
+  it('주소 앞 두 낱말에서 시군을 찾는다', () => {
+    expect(regionCodeInAddress('강원 강릉시 견소동')).toBe('5115000000');
+    expect(regionCodeInAddress('강릉 명주동')).toBe('5115000000');
+  });
+
+  it('주소가 없거나 아는 시군이 없으면 null', () => {
+    expect(regionCodeInAddress(null)).toBeNull();
+    expect(regionCodeInAddress('어딘가 모르는곳')).toBeNull();
   });
 });
 

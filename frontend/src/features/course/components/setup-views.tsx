@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stagger } from '@/components/ui/stagger';
@@ -70,7 +71,7 @@ export function ChooseView({
   autoUnavailable = false,
 }: ChooseProps) {
   return (
-    <ScrollView contentContainerStyle={styles.content}>
+    <ScrollView decelerationRate={SCROLL_DECELERATION} contentContainerStyle={styles.content}>
       <Stagger itemStyle={styles.staggerItem}>
         <Text style={[typography.bodyBold, styles.heading]}>이 내용으로 짜요</Text>
         <View style={styles.summary}>
@@ -210,7 +211,7 @@ export function NoDatesView({ regionName, value, onChange, onNext, saving }: NoD
 
   return (
     <>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView decelerationRate={SCROLL_DECELERATION} contentContainerStyle={styles.content}>
         <Stagger itemStyle={styles.staggerItem}>
           <Text style={[typography.caption, styles.muted]}>기간을 넣으면 날짜별로 나눠 짜요</Text>
           <View style={styles.steps}>

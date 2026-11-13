@@ -11,6 +11,7 @@ import { useConnectionStore } from '@/realtime/connection-store';
 import { undoApply } from '@/features/proposal/api';
 
 import { getItinerary, getJob, recalculateRoutes } from '../api';
+import { clearRouteAttempts } from '../route-attempts';
 import { httpError, itinerary, sampleCourse } from '../testing';
 import type { Itinerary } from '../types';
 
@@ -19,15 +20,6 @@ import { CourseScreen } from './course-screen';
 const mockParams: { tripId: string; applied?: string } = { tripId: 'trip-1' };
 const mockRouter = { replace: jest.fn(), back: jest.fn(), push: jest.fn(), setParams: jest.fn() };
 
-// 경로 계산이 생긴 뒤의 실패 화면도 확인할 수 있게 시간 없는 구간을 보이는 방식을 바꿔 끼운다
-let mockNoTime: 'pending' | 'failed' = 'pending';
-jest.mock('../course-rules', () => {
-  const actual = jest.requireActual<Record<string, unknown>>('../course-rules');
-  return {
-    ...actual,
-    noTimeDefault: () => mockNoTime,
-  };
-});
 jest.mock('@/config/env', () => ({
   env: { appEnv: 'local', apiBaseUrl: 'http://test', kakaoRedirectUri: null, devMock: false },
 }));
@@ -129,8 +121,19 @@ function renderScreen(cached?: Itinerary) {
   );
 }
 
+const JOB_DONE = {
+  id: 'job-1',
+  kind: 'ROUTE_RECALCULATION',
+  status: 'SUCCEEDED',
+  progress: 100,
+  result: null,
+  error: null,
+  createdAt: '',
+  finishedAt: '',
+} as const;
+
 beforeEach(() => {
-  mockNoTime = 'pending';
+  clearRouteAttempts();
   jest.clearAllMocks();
   mockGet.mockResolvedValue(sampleCourse(true));
 });
@@ -164,47 +167,79 @@ describe('S24 코스', () => {
     });
   });
 
-  it('경로 계산 전이면 실패 카드 없이 구간마다 계산 전으로 보인다', async () => {
-    mockGet.mockResolvedValue(sampleCourse(false));
-    await renderScreen();
-    expect(await screen.findAllByText('대중교통 · 계산 전')).toHaveLength(2);
-    expect(screen.queryByLabelText(/이동 시간을 새로 구하지 못했어요/)).toBeNull();
-    expect(screen.queryByLabelText('다시 계산')).toBeNull();
-  });
-
-  it('구간 시간을 못 구했으면 카드를 보이고 다시 계산하면 코스를 다시 받는다', async () => {
-    mockNoTime = 'failed';
+  it('시간 없는 구간이 있으면 한 번 스스로 계산을 요청하고 끝나면 시간을 보인다', async () => {
     mockGet.mockResolvedValueOnce(sampleCourse(false));
     mockRecalc.mockResolvedValue({ jobId: 'job-1', status: 'QUEUED', statusUrl: '' });
-    mockJob.mockResolvedValue({
-      id: 'job-1',
-      kind: 'ROUTE_RECALCULATION',
-      status: 'SUCCEEDED',
-      progress: 100,
-      result: null,
-      error: null,
-      createdAt: '',
-      finishedAt: '',
-    });
+    mockJob.mockResolvedValue(JOB_DONE);
+    await renderScreen();
+    expect(await screen.findByText('대중교통 22분')).toBeTruthy();
+    expect(mockRecalc).toHaveBeenCalledTimes(1);
+    expect(mockRecalc).toHaveBeenCalledWith('trip-1', 3);
+    expect(screen.queryByLabelText(/이동 시간을 새로 구하지 못했어요/)).toBeNull();
+    // 사용자가 누른 것이 아니라 안내를 띄우지 않는다
+    expect(toast.error).not.toHaveBeenCalled();
+    expect(toast.show).not.toHaveBeenCalled();
+  });
+
+  it('계산하는 동안은 실패 카드 없이 계산 중으로 보인다', async () => {
+    mockGet.mockResolvedValue(sampleCourse(false));
+    mockRecalc.mockReturnValue(new Promise(() => {}));
+    await renderScreen();
+    expect(await screen.findAllByText('대중교통 · 계산 중')).toHaveLength(2);
+    expect(screen.queryByLabelText(/이동 시간을 새로 구하지 못했어요/)).toBeNull();
+  });
+
+  it('구해 봤는데도 시간이 없으면 카드를 보이고 다시 계산하면 코스를 다시 받는다', async () => {
+    mockGet.mockResolvedValue(sampleCourse(false));
+    mockRecalc.mockResolvedValue({ jobId: 'job-1', status: 'QUEUED', statusUrl: '' });
+    mockJob.mockResolvedValue(JOB_DONE);
     await renderScreen();
     expect(await screen.findByLabelText(/이동 시간을 새로 구하지 못했어요/)).toBeTruthy();
     expect(screen.getAllByText('대중교통 · 시간 모름')).toHaveLength(2);
+    expect(mockRecalc).toHaveBeenCalledTimes(1);
+    expect(toast.show).not.toHaveBeenCalled();
+    mockGet.mockResolvedValue(sampleCourse(true));
     await fireEvent.press(screen.getByLabelText('다시 계산'));
-    expect(mockRecalc).toHaveBeenCalledWith('trip-1', 3);
-    await waitFor(() => expect(mockGet).toHaveBeenCalledTimes(2));
+    expect(mockRecalc).toHaveBeenCalledTimes(2);
     expect(await screen.findByText('대중교통 22분')).toBeTruthy();
+    expect(screen.queryByLabelText(/이동 시간을 새로 구하지 못했어요/)).toBeNull();
   });
 
-  it('다시 계산 작업이 실패하면 안내한다', async () => {
-    mockNoTime = 'failed';
+  it('다시 계산을 눌렀는데도 못 구한 구간이 남으면 알린다', async () => {
+    mockGet.mockResolvedValue(sampleCourse(false));
+    mockRecalc.mockResolvedValue({ jobId: 'job-1', status: 'QUEUED', statusUrl: '' });
+    mockJob.mockResolvedValue(JOB_DONE);
+    await renderScreen();
+    await fireEvent.press(await screen.findByLabelText('다시 계산'));
+    await waitFor(() =>
+      expect(toast.show).toHaveBeenCalledWith('이동 시간을 구하지 못한 구간이 있어요'),
+    );
+    expect(screen.getByLabelText(/이동 시간을 새로 구하지 못했어요/)).toBeTruthy();
+  });
+
+  it('스스로 요청한 계산이 실패하면 조용히 카드만 보이고, 다시 눌러 실패하면 안내한다', async () => {
     mockGet.mockResolvedValue(sampleCourse(false));
     mockRecalc.mockRejectedValue(new Error('network'));
     await renderScreen();
-    await fireEvent.press(await screen.findByLabelText('다시 계산'));
+    const again = await screen.findByLabelText('다시 계산');
+    expect(toast.error).not.toHaveBeenCalled();
+    await fireEvent.press(again);
     await waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith('이동 시간을 다시 구하지 못했어요'),
     );
     expect(screen.getByLabelText(/이동 시간을 새로 구하지 못했어요/)).toBeTruthy();
+  });
+
+  it('같은 코스에는 화면을 다시 열어도 스스로 또 요청하지 않는다', async () => {
+    mockGet.mockResolvedValue(sampleCourse(false));
+    mockRecalc.mockResolvedValue({ jobId: 'job-1', status: 'QUEUED', statusUrl: '' });
+    mockJob.mockResolvedValue(JOB_DONE);
+    const first = await renderScreen();
+    await screen.findByLabelText('다시 계산');
+    await first.unmount();
+    await renderScreen();
+    expect(await screen.findByLabelText('다시 계산')).toBeTruthy();
+    expect(mockRecalc).toHaveBeenCalledTimes(1);
   });
 
   it('빼기는 그 장소를 뺀 AI 변경안으로 간다', async () => {

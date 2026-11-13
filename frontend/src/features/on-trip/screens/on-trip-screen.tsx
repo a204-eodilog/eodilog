@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { router, useLocalSearchParams, type Href } from 'expo-router';
 import { useEffect, useState, type ReactNode } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -128,6 +129,7 @@ export function OnTripView(props: OnTripViewProps) {
   } else {
     body = (
       <ScrollView
+        decelerationRate={SCROLL_DECELERATION}
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing[24] }]}
       >
         <PhaseRow phase={props.phase} now={props.now} />

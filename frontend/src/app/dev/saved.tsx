@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
@@ -55,7 +56,11 @@ export default function SavedStates() {
       setExample(e);
     };
     return (
-      <ScrollView contentContainerStyle={styles.menu} style={styles.screen}>
+      <ScrollView
+        decelerationRate={SCROLL_DECELERATION}
+        contentContainerStyle={styles.menu}
+        style={styles.screen}
+      >
         <View style={styles.row}>
           <Button label="목록 보기" variant="neutral" onPress={() => open('list')} />
           <Button label="지도 보기" variant="neutral" onPress={() => open('map')} />

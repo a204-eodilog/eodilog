@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import * as Clipboard from 'expo-clipboard';
 import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
@@ -112,6 +113,7 @@ export function TripInviteScreen() {
     <View style={styles.screen}>
       <Header title="동행 초대" largeTitle />
       <ScrollView
+        decelerationRate={SCROLL_DECELERATION}
         contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + spacing[24] }]}
       >
         <View style={styles.tripLine}>

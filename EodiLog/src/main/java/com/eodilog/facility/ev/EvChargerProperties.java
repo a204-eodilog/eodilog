@@ -14,7 +14,9 @@ import org.springframework.validation.annotation.Validated;
  * 키가 비어 있으면 서버는 뜨고 갱신만 하지 않는다. 충전소 조회는 첫 적재 전이라 503이 된다.
  *
  * <p>호출량: 5분마다 변경분 1번(하루 약 288번) + 전국 수신 1번당 53번(53만 대 ÷ 9,999). 전국 수신은 하루
- * {@code maxFullRefreshesPerDay}번까지만 한다. 변경분은 최근 {@code statusPeriodMinutes}분(5분 간격보다 1분 길게 겹쳐 빈틈을 막는다. 7분이면 낮 시간에 9,999건을 넘어 두 번 부르게 된다)
+ * {@code maxFullRefreshesPerDay}번까지만 한다. 포털이 호출 열 번에 한두 번꼴로 30~60초 응답하지 않다가 504·503을 주므로
+ * (2026-11-13 서울·시드니 실측, 바로 다시 부르면 된다) 전국 수신은 실패한 쪽만 {@code pageAttempts}번까지 다시 부른다.
+ * 변경분은 최근 {@code statusPeriodMinutes}분(5분 간격보다 1분 길게 겹쳐 빈틈을 막는다. 7분이면 낮 시간에 9,999건을 넘어 두 번 부르게 된다)
  */
 @Validated
 @ConfigurationProperties("app.facilities.ev")
@@ -33,7 +35,9 @@ public record EvChargerProperties(
 		@NotBlank @DefaultValue("0 0 4 * * *") String fullRefreshCron,
 		@NotNull @DefaultValue("30m") Duration lease,
 		@NotNull @DefaultValue("5s") Duration connectTimeout,
-		@NotNull @DefaultValue("60s") Duration readTimeout) {
+		@NotNull @DefaultValue("60s") Duration readTimeout,
+		@Min(1) @Max(10) @DefaultValue("5") int pageAttempts,
+		@NotNull @DefaultValue("3s") Duration pageRetryDelay) {
 
 	public EvChargerProperties {
 		serviceKey = serviceKey == null ? "" : serviceKey.strip();

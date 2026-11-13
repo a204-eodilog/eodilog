@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Stagger } from '@/components/ui/stagger';
 import { Spinner } from '@/components/ui/spinner';
@@ -95,7 +96,7 @@ export function PhotoEditView(props: PhotoEditViewProps) {
   return (
     <View style={styles.screen}>
       {header}
-      <ScrollView contentContainerStyle={styles.body}>
+      <ScrollView decelerationRate={SCROLL_DECELERATION} contentContainerStyle={styles.body}>
         <Stagger itemStyle={styles.staggerItem}>
           <View style={styles.head}>
             <View style={styles.flex}>

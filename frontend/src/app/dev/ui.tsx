@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -208,7 +209,7 @@ export default function UiCatalog() {
         hideBack
         right={<Icon name="bell" color={colors.text.default} />}
       />
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView decelerationRate={SCROLL_DECELERATION} contentContainerStyle={styles.content}>
         <Section title="버튼">
           <Row>
             <Button label="주 버튼" />
