@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -78,7 +79,7 @@ export function PhotoUploadView(props: PhotoUploadViewProps) {
     return (
       <View style={styles.screen}>
         {header}
-        <ScrollView contentContainerStyle={styles.body}>
+        <ScrollView decelerationRate={SCROLL_DECELERATION} contentContainerStyle={styles.body}>
           <Stagger itemStyle={styles.staggerItem}>
             <View style={styles.titleRow}>
               <Text style={[typography.title3, styles.text]}>고른 사진</Text>
@@ -126,7 +127,7 @@ export function PhotoUploadView(props: PhotoUploadViewProps) {
   return (
     <View style={styles.screen}>
       {header}
-      <ScrollView contentContainerStyle={styles.body}>
+      <ScrollView decelerationRate={SCROLL_DECELERATION} contentContainerStyle={styles.body}>
         <Stagger itemStyle={styles.staggerItem}>
           {isFailed ? (
             <View style={[styles.box, styles.failBox]}>

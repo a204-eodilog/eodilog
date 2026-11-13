@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -89,7 +90,7 @@ export function CourseView(props: CourseViewProps) {
     const legs = dayLegs(draft, selected);
     body = (
       <>
-        <ScrollView contentContainerStyle={styles.scroll}>
+        <ScrollView decelerationRate={SCROLL_DECELERATION} contentContainerStyle={styles.scroll}>
           <CourseMap
             items={items}
             legs={legs}

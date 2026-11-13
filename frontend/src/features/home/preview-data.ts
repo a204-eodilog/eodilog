@@ -48,6 +48,7 @@ export const PREVIEW_RECOMMENDATIONS: HomeRecommendation[] = [
     meta: '하늘',
     nights: '2박 3일',
     imageUrl: null,
+    regionCode: null,
   },
   {
     id: 'r2',
@@ -57,6 +58,7 @@ export const PREVIEW_RECOMMENDATIONS: HomeRecommendation[] = [
     meta: '강릉 명주동',
     nights: null,
     imageUrl: null,
+    regionCode: null,
   },
   {
     id: 'r3',
@@ -66,6 +68,7 @@ export const PREVIEW_RECOMMENDATIONS: HomeRecommendation[] = [
     meta: '가람',
     nights: '1박 2일',
     imageUrl: null,
+    regionCode: null,
   },
   {
     id: 'r4',
@@ -75,6 +78,7 @@ export const PREVIEW_RECOMMENDATIONS: HomeRecommendation[] = [
     meta: '강릉 견소동',
     nights: null,
     imageUrl: null,
+    regionCode: null,
   },
   {
     id: 'r5',
@@ -84,6 +88,7 @@ export const PREVIEW_RECOMMENDATIONS: HomeRecommendation[] = [
     meta: '다온',
     nights: '1박 2일',
     imageUrl: null,
+    regionCode: null,
   },
   {
     id: 'r6',
@@ -93,6 +98,7 @@ export const PREVIEW_RECOMMENDATIONS: HomeRecommendation[] = [
     meta: '강릉 저동',
     nights: null,
     imageUrl: null,
+    regionCode: null,
   },
 ];
 

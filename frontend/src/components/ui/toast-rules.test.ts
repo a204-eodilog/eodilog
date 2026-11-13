@@ -29,11 +29,11 @@ describe('toastKind', () => {
 });
 
 describe('toastPlacement', () => {
-  it('스낵바는 기본 자리에 4초 보인다', () => {
+  it('버튼이 붙었거나 긴 안내는 4초 보인다', () => {
     expect(toastPlacement('snackbar')).toEqual({ duration: 4000 });
   });
 
-  it('토스트는 아래 자리에 2초 보인다', () => {
-    expect(toastPlacement('toast')).toEqual({ toasterId: 'toast', duration: 2000 });
+  it('짧은 확인은 2초 보이고, 자리는 따로 두지 않는다', () => {
+    expect(toastPlacement('toast')).toEqual({ duration: 2000 });
   });
 });

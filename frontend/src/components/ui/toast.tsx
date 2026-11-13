@@ -1,138 +1,197 @@
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Easing, withTiming, type EntryExitAnimationFunction } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Toaster, toast as sonner } from 'sonner-native';
 
 import { haptic } from '@/lib/haptics';
 import { colors, radius, spacing, typography } from '@/theme';
 
-import {
-  SNACKBAR_DURATION_MS,
-  TOAST_CHANNEL,
-  TOAST_DURATION_MS,
-  toastKind,
-  toastPlacement,
-  type ToastTone,
-} from './toast-rules';
+import { Icon, type IconName } from './icon';
+import { SNACKBAR_DURATION_MS, toastKind, toastPlacement, type ToastTone } from './toast-rules';
 
-/** 스낵바 오른쪽 글자 버튼. "보기", "되돌리기" */
+/** 안내 오른쪽 알약 버튼. "보기", "되돌리기" */
 export type ToastAction = { label: string; onPress: () => void };
 
 type ToastOptions = {
-  /** 버튼이 있으면 스낵바로 보인다(누를 시간을 주려고 4초) */
+  /** 버튼이 있으면 누를 시간을 주려고 4초 보인다 */
   action?: ToastAction;
 };
 
-/** 버튼이 있거나 실패면 스낵바 자리로, 아니면 토스트 자리로 보낸다(toast-rules) */
-function options(tone: ToastTone, message: string, opts?: ToastOptions) {
-  const placement = toastPlacement(toastKind(tone, !!opts?.action, message));
-  if (!opts?.action) return placement;
-  const { label, onPress } = opts.action;
-  return { ...placement, action: { label, onClick: onPress } };
+/** 안내 왼쪽 동그라미. 색과 그림으로 잘 됨, 안 됨, 알림을 가른다(색만으로 가르지 않는다) */
+const TONE: Record<ToastTone, { icon: IconName; color: string; bg: string }> = {
+  plain: { icon: 'bell', color: colors.brand.primary, bg: colors.brand.primaryBg },
+  success: { icon: 'check', color: colors.status.success, bg: colors.status.successBg },
+  error: { icon: 'alert', color: colors.status.danger, bg: colors.status.dangerBg },
+};
+
+function ToneIcon({ tone }: { tone: ToastTone }) {
+  const t = TONE[tone];
+  return (
+    <View style={[styles.tone, { backgroundColor: t.bg }]}>
+      <Icon name={t.icon} size={15} color={t.color} />
+    </View>
+  );
+}
+
+let seq = 0;
+
+/**
+ * 안내 한 장. 흰 알약이 글자 길이만큼만 차지하고 화면 위 가운데에 선다.
+ * 왼쪽 동그라미, 글, (있으면) 오른쪽 알약 버튼이 한 줄에 놓인다. 글이 길면 글만 줄을 바꾼다.
+ * 라이브러리의 기본 카드는 글 칸이 남는 폭을 다 차지하거나, 줄이면 글이 잘려서 직접 그린다
+ */
+function ToastCard({
+  tone,
+  message,
+  action,
+  onAction,
+}: {
+  tone: ToastTone;
+  message: string;
+  action?: ToastAction;
+  onAction: () => void;
+}) {
+  return (
+    <View style={styles.card} accessibilityRole="alert">
+      <ToneIcon tone={tone} />
+      <Text style={styles.message}>{message}</Text>
+      {action ? (
+        <Pressable
+          onPress={onAction}
+          accessibilityRole="button"
+          accessibilityLabel={action.label}
+          hitSlop={8}
+          style={({ pressed }) => [styles.action, pressed && styles.pressed]}
+        >
+          <Text style={styles.actionText}>{action.label}</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+function present(tone: ToastTone, message: string, opts?: ToastOptions) {
+  const id = `toast-${(seq += 1)}`;
+  const { duration } = toastPlacement(toastKind(tone, !!opts?.action, message));
+  return sonner.custom(
+    <ToastCard
+      tone={tone}
+      message={message}
+      action={opts?.action}
+      onAction={() => {
+        opts?.action?.onPress();
+        sonner.dismiss(id);
+      }}
+    />,
+    { id, duration },
+  );
 }
 
 /**
  * 짧은 안내. 화면 어디서든 toast.show('문구')로 띄운다. 앱 시작 레이아웃에 <ToastHost />가 한 번 있어야 한다.
  *
- * 두 가지 모양으로 나뉜다(2026-11-11 사용자 결정, toast-rules).
- * - 토스트: "링크를 복사했어요", "저장했어요", "준비 중이에요" 같은 짧은 확인. 화면 아래에서 제자리에 서서히 나타났다 2초 뒤 사라진다
- * - 스낵바: 버튼이 붙은 안내와 실패 안내. 화면 위에서 내려와 4초 보이고 위로 밀어 닫는다
- *
- * 부르는 쪽은 고르지 않는다. 버튼을 넘기거나 toast.error를 쓰거나 글이 길면(20자부터) 스낵바가 된다.
+ * 모든 안내는 화면 위에서 내려오는 흰 알약이다(2026-11-13 사용자 결정, toast-rules).
+ * 짧은 확인은 2초, 버튼이 붙었거나 실패거나 글이 길면(20자부터) 4초 보인다. 위로 밀면 바로 닫힌다.
  * toast.success('강릉 바다 여행에 담았어요', { action: { label: '보기', onPress: openTrip } })
  */
 export const toast = {
   /** 기본 안내 */
-  show: (message: string, opts?: ToastOptions) => sonner(message, options('plain', message, opts)),
+  show: (message: string, opts?: ToastOptions) => present('plain', message, opts),
   /** 잘 됐을 때. "링크를 복사했어요" */
-  success: (message: string, opts?: ToastOptions) =>
-    sonner.success(message, options('success', message, opts)),
+  success: (message: string, opts?: ToastOptions) => present('success', message, opts),
   /** 안 됐을 때. 다시 시도가 필요하면 화면 안 오류 상태를 쓰고, 여기는 가벼운 실패에만 */
   error: (message: string, opts?: ToastOptions) => {
     // 실패 안내가 뜰 때 실패 진동
     haptic.error();
-    return sonner.error(message, options('error', message, opts));
+    return present('error', message, opts);
   },
 };
 
-/** 스낵바가 내려오는 시간과 출발 높이. 라이브러리 기본은 20px만 움직여 내려오는 느낌이 없다 */
-const ENTER_MS = 350;
-const ENTER_FROM_Y = -120;
-const easeOut = Easing.bezierFn(0.165, 0.84, 0.44, 1);
+/** 내려오는 시간과 출발 높이. 라이브러리 기본은 20px만 움직여 내려오는 느낌이 없다 */
+const ENTER_MS = 420;
+const EXIT_MS = 220;
+const FROM_Y = -120;
+/** 자리를 조금 지나쳤다가 돌아와 멈춘다 */
+const overshoot = Easing.out(Easing.back(1.4));
+const easeIn = Easing.bezierFn(0.4, 0, 1, 1);
 
-/** 스낵바: 화면 위 바깥에서 떨어져 자리에 멈춘다 */
-const slideDown: EntryExitAnimationFunction = () => {
+/** 화면 위 바깥에서 떨어져 살짝 튕기며 자리에 멈춘다 */
+const dropIn: EntryExitAnimationFunction = () => {
   'worklet';
   return {
-    initialValues: { opacity: 0, transform: [{ translateY: ENTER_FROM_Y }] },
+    initialValues: { opacity: 0, transform: [{ translateY: FROM_Y }, { scale: 0.92 }] },
     animations: {
       opacity: withTiming(1, { duration: ENTER_MS / 2 }),
-      transform: [{ translateY: withTiming(0, { duration: ENTER_MS, easing: easeOut }) }],
+      transform: [
+        { translateY: withTiming(0, { duration: ENTER_MS, easing: overshoot }) },
+        { scale: withTiming(1, { duration: ENTER_MS, easing: overshoot }) },
+      ],
     },
   };
 };
 
-/** 토스트가 나타나고 사라지는 시간 */
-const FADE_MS = 150;
-
-/** 토스트: 움직이지 않고 제자리에서 서서히 나타난다 */
-const fadeIn: EntryExitAnimationFunction = () => {
+/** 왔던 위쪽으로 빠르게 올라가 사라진다 */
+const liftOut: EntryExitAnimationFunction = () => {
   'worklet';
   return {
-    initialValues: { opacity: 0 },
-    animations: { opacity: withTiming(1, { duration: FADE_MS }) },
+    initialValues: { opacity: 1, transform: [{ translateY: 0 }, { scale: 1 }] },
+    animations: {
+      opacity: withTiming(0, { duration: EXIT_MS }),
+      transform: [
+        { translateY: withTiming(FROM_Y / 2, { duration: EXIT_MS, easing: easeIn }) },
+        { scale: withTiming(0.96, { duration: EXIT_MS, easing: easeIn }) },
+      ],
+    },
   };
 };
 
-/** 토스트: 제자리에서 서서히 사라진다 */
-const fadeOut: EntryExitAnimationFunction = () => {
-  'worklet';
-  return {
-    initialValues: { opacity: 1 },
-    animations: { opacity: withTiming(0, { duration: FADE_MS }) },
-  };
-};
-
-/** 하단 탭 바의 높이(위아래 여백 포함). 토스트를 그 위에 띄운다 */
-const TAB_BAR_HEIGHT = 64;
-
-const toastOptions = {
-  style: {
-    backgroundColor: colors.text.strong,
-    borderRadius: radius.md,
-    borderWidth: 0,
+const styles = StyleSheet.create({
+  // 흰 알약. 글자 길이만큼만 차지하고 가운데에 선다. 어느 화면 위에서도 떠 보이게 옅은 테두리와 그림자를 둔다
+  card: {
+    alignSelf: 'center',
+    maxWidth: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[8],
+    paddingVertical: spacing[8],
+    paddingLeft: spacing[8],
+    paddingRight: spacing[14],
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.line.default,
+    backgroundColor: colors.surface.white,
+    boxShadow: `0 8px 24px ${colors.shadow}`,
   },
-  titleStyle: { ...typography.bodyMedium, color: colors.text.inverse },
-  actionButtonStyle: {
-    backgroundColor: 'transparent',
-    paddingHorizontal: spacing[8],
+  tone: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  actionButtonTextStyle: { ...typography.bodyMedium, color: colors.brand.primarySoft },
-};
+  // 길면 줄어들어 줄을 바꾼다. 짧으면 글자 폭 그대로
+  message: { ...typography.subBold, flexShrink: 1, color: colors.text.default },
+  action: {
+    marginLeft: spacing[4],
+    paddingVertical: spacing[4],
+    paddingHorizontal: spacing[12],
+    borderRadius: radius.full,
+    backgroundColor: colors.brand.primaryBg,
+  },
+  actionText: { ...typography.captionBold, color: colors.brand.primary },
+  pressed: { opacity: 0.7 },
+});
 
 /**
- * 앱 시작 레이아웃에 한 번만 둔다. 자리가 둘이다.
- * - 스낵바(이름 없는 기본 자리): 화면 위. offset을 주지 않으면 상태 표시줄 높이 + 8만큼 띄우고, 위로 밀면 닫힌다
- * - 토스트: 화면 아래 탭 바 위. 저절로 닫힌다
+ * 앱 시작 레이아웃에 한 번만 둔다. 자리는 화면 위 하나다.
+ * offset을 주지 않으면 상태 표시줄 높이 + 8만큼 띄우고, 위로 밀면 닫힌다
  */
 export function ToastHost() {
-  const insets = useSafeAreaInsets();
   return (
-    <>
-      <Toaster
-        position="top-center"
-        duration={SNACKBAR_DURATION_MS}
-        swipeToDismissDirection="up"
-        animation={{ enter: slideDown }}
-        toastOptions={toastOptions}
-      />
-      <Toaster
-        id={TOAST_CHANNEL}
-        position="bottom-center"
-        duration={TOAST_DURATION_MS}
-        offset={insets.bottom + TAB_BAR_HEIGHT + spacing[8]}
-        animation={{ enter: fadeIn, exit: fadeOut }}
-        toastOptions={toastOptions}
-      />
-    </>
+    <Toaster
+      position="top-center"
+      duration={SNACKBAR_DURATION_MS}
+      swipeToDismissDirection="up"
+      animation={{ enter: dropIn, exit: liftOut }}
+    />
   );
 }

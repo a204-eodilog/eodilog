@@ -80,8 +80,7 @@ export function MyTripRecordScreen() {
         review={reviewSummary(record.items, record.visits)}
         expense={expenseSummary(record.expenses, record.settlement)}
         onPhotos={() => router.push(`/trips/${tripId}/photos`)}
-        // S24 코스 화면은 아직 없다
-        onCourse={notReady}
+        onCourse={() => router.push(`/trips/${tripId}/course`)}
         onReview={() => router.push(`/trips/${tripId}/visits`)}
         onExpense={() => router.push(`/trips/${tripId}/expenses`)}
         // 지도 핀 고치기 화면은 아직 없다

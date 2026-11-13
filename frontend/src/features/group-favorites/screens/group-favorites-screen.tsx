@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState, type ReactNode } from 'react';
@@ -143,6 +144,7 @@ export function GroupFavoritesView(props: GroupFavoritesViewProps) {
   } else {
     body = (
       <FlatList
+        decelerationRate={SCROLL_DECELERATION}
         testID="favorites-list"
         data={items}
         keyExtractor={(i) => i.place.id}

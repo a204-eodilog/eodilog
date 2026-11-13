@@ -1,3 +1,4 @@
+import { KOREA_MAP } from '@/lib/korea-map';
 import {
   AxiosError,
   type AxiosAdapter,
@@ -247,7 +248,7 @@ const CROWD = Array.from({ length: 19 }, (_, i) =>
   i < FRIENDS.length ? FRIENDS[i] : user(`user-crowd-${i + 1}`, `동행${i + 1}`),
 );
 
-const REGIONS: Region[] = [
+const NAMED_REGIONS: Region[] = [
   ['region-busan', '2600000000', '부산광역시'],
   ['region-gangneung', '5115000000', '강원특별자치도 강릉시'],
   ['region-yeosu', '4613000000', '전라남도 여수시'],
@@ -255,6 +256,24 @@ const REGIONS: Region[] = [
   ['region-jongno', '1111000000', '서울특별시 종로구'],
   ['region-gyeongju', '4713000000', '경상북도 경주시'],
 ].map(([id, code, name]) => ({ id, code, name, parentId: null, latitude: null, longitude: null }));
+
+/**
+ * 여행지 검색(GET /regions)이 찾는 지역. 위 여섯 곳(다른 시험 자료가 id로 가리킨다)에 지도의 시도·시군구를 모두 더한다.
+ * 여섯 곳만 있을 때는 그 밖의 이름을 넣으면 "찾는 지역이 없어요"만 나와 검색이 안 되는 것처럼 보였다
+ */
+const REGIONS: Region[] = [
+  ...NAMED_REGIONS,
+  ...[...KOREA_MAP.sido, ...KOREA_MAP.sigungu]
+    .filter((r) => !NAMED_REGIONS.some((named) => named.code === r.code))
+    .map((r) => ({
+      id: `region-${r.code}`,
+      code: r.code,
+      name: r.name,
+      parentId: null,
+      latitude: null,
+      longitude: null,
+    })),
+];
 
 /** 홈 추천 장소·S07 예시 피드·N3 대표 장소에 나오는 예시 장소. N7 장소 정보와 S08 개인 저장이 쓴다 */
 const EXAMPLE_PLACES: Record<string, [string, string]> = {

@@ -11,6 +11,7 @@ import {
   shortRegionName,
   tripDetailView,
   tripListState,
+  tripProgress,
   tripStatus,
 } from './trip-rules';
 import type { Trip, TripMember } from './types';
@@ -90,6 +91,22 @@ describe('tripStatus', () => {
   it('서버 status가 계획 중으로 남아 있어도 날짜가 지나면 여행 중', () => {
     const stale = trip({ status: 'PLANNING', startDate: TODAY, endDate: '2026-10-29' });
     expect(tripStatus(stale, TODAY)).toBe('ONGOING');
+  });
+});
+
+describe('tripProgress', () => {
+  it('여행 중이면 며칠 가운데 몇째 날인지 준다', () => {
+    expect(tripProgress(trip({ startDate: '2026-10-27', endDate: '2026-10-29' }), TODAY)).toEqual({
+      day: 2,
+      total: 3,
+    });
+  });
+
+  it('여행 중이 아니거나 기간이 없으면 null', () => {
+    expect(
+      tripProgress(trip({ startDate: '2026-12-01', endDate: '2026-12-03' }), TODAY),
+    ).toBeNull();
+    expect(tripProgress(trip({}), TODAY)).toBeNull();
   });
 });
 

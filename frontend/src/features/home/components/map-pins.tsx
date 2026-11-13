@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { colors, radius, spacing, typography } from '@/theme';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -13,7 +14,6 @@ import Animated, {
 
 import { Icon } from '@/components/ui';
 import { PressableScale } from '@/components/ui/pressable-scale';
-import { colors, radius, spacing, typography } from '@/theme';
 
 import { markFill } from '../home-rules';
 import type { RegionGroup, RegionMark } from '../types';
@@ -23,11 +23,14 @@ const SHADOW = `0 2px 10px ${colors.shadow}`;
 /** 전국 보기 핀. 흰 알약(지역 이름 + 친구 수) 아래 지역 점. pulse면 점에서 원이 퍼진다 */
 export function RegionPill({
   mark,
+  active = false,
   onPress,
   pulse = false,
   pulseDelayMs = 0,
 }: {
   mark: RegionMark;
+  /** 추천 카드가 가리키는 지역이면 이름표를 파랑으로 그린다 */
+  active?: boolean;
   onPress?: () => void;
   pulse?: boolean;
   /** 퍼지는 원을 시작할 때(ms). 핀이 다 올라온 뒤에 시작해야 나타나는 동안 버벅이지 않는다 */
@@ -40,10 +43,10 @@ export function RegionPill({
       accessibilityLabel={`${mark.name}, 친구 ${mark.memberCount}명`}
       style={styles.pillWrap}
     >
-      <View style={styles.pill}>
-        <Text style={styles.pillName}>{mark.name}</Text>
-        <Icon name="people" size={14} color={colors.text.icon} />
-        <Text style={styles.pillCount}>{mark.memberCount}</Text>
+      <View style={[styles.pill, active && styles.pillActive]}>
+        <Text style={[styles.pillName, active && styles.onActive]}>{mark.name}</Text>
+        <Icon name="people" size={14} color={active ? colors.text.inverse : colors.text.icon} />
+        <Text style={[styles.pillCount, active && styles.onActive]}>{mark.memberCount}</Text>
       </View>
       <View style={styles.dotWrap}>
         {/* 시군구가 작으면(전주·해운대) 칠한 면적이 안 보여서 점 둘레에도 같은 색을 깐다 */}
@@ -58,11 +61,14 @@ export function RegionPill({
 /** 여러 지역을 묶은 핀. "강원 8곳 · 친구 5", "강릉·평창 외 1곳 · 친구 6". 누르면 그곳으로 한 단계 확대 */
 export function GroupPill({
   group,
+  active = false,
   onPress,
   pulse = false,
   pulseDelayMs = 0,
 }: {
   group: RegionGroup;
+  /** 추천 카드가 가리키는 지역이 이 묶음 안에 있으면 이름표를 파랑으로 그린다 */
+  active?: boolean;
   onPress?: () => void;
   pulse?: boolean;
   pulseDelayMs?: number;
@@ -74,10 +80,10 @@ export function GroupPill({
       accessibilityLabel={`${group.label}, 친구 ${group.memberCount}명. 눌러서 확대`}
       style={styles.pillWrap}
     >
-      <View style={styles.pill}>
-        <Text style={styles.pillName}>{group.label}</Text>
-        <Icon name="people" size={14} color={colors.text.icon} />
-        <Text style={styles.pillCount}>{group.memberCount}</Text>
+      <View style={[styles.pill, active && styles.pillActive]}>
+        <Text style={[styles.pillName, active && styles.onActive]}>{group.label}</Text>
+        <Icon name="people" size={14} color={active ? colors.text.inverse : colors.text.icon} />
+        <Text style={[styles.pillCount, active && styles.onActive]}>{group.memberCount}</Text>
       </View>
       <View style={styles.dotWrap}>
         <View style={[styles.halo, { backgroundColor: markFill(group.memberCount) }]} />
@@ -159,6 +165,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface.white,
     boxShadow: SHADOW,
   },
+  // 추천 카드가 가리키는 지역의 이름표. 흰 바탕 대신 파랑
+  pillActive: { backgroundColor: colors.brand.primary },
+  onActive: { color: colors.text.inverse },
   pillName: { ...typography.captionBold, color: colors.text.default, marginRight: spacing[2] },
   pillCount: { ...typography.captionBold, color: colors.brand.primary },
   dotWrap: { width: 12, height: 12, alignItems: 'center', justifyContent: 'center' },

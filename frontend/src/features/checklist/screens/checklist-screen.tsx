@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { KeyboardAvoidingView, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -85,7 +86,11 @@ export function ChecklistView(props: ChecklistViewProps) {
     body = <ErrorState {...errorLook(props.error)} description={null} onRetry={props.onRetry} />;
   } else if (items.length === 0) {
     body = (
-      <ScrollView contentContainerStyle={styles.emptyScroll} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        decelerationRate={SCROLL_DECELERATION}
+        contentContainerStyle={styles.emptyScroll}
+        keyboardShouldPersistTaps="handled"
+      >
         {/* 실패 카드는 목록 상태처럼 위에 두고, 안내 묶음만 남은 공간 가운데에 둔다 */}
         {failCard ? <View style={styles.emptyCard}>{failCard}</View> : null}
         <View style={styles.empty}>
@@ -105,7 +110,11 @@ export function ChecklistView(props: ChecklistViewProps) {
   } else {
     body = (
       <>
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          decelerationRate={SCROLL_DECELERATION}
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+        >
           {failCard}
           <ChecklistProgress items={items} />
           <View style={styles.list}>

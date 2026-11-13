@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -150,6 +151,7 @@ export function PlaceSearchScreen() {
         />
       ) : (
         <FlatList
+          decelerationRate={SCROLL_DECELERATION}
           data={query ? results : []}
           keyExtractor={(p) => p.id}
           keyboardShouldPersistTaps="handled"

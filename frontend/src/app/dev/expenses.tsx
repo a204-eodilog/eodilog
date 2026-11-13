@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
@@ -206,7 +207,11 @@ export default function ExpenseStates() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.menu} style={styles.screen}>
+    <ScrollView
+      decelerationRate={SCROLL_DECELERATION}
+      contentContainerStyle={styles.menu}
+      style={styles.screen}
+    >
       <View style={styles.row}>
         <Button label="기본" variant="neutral" onPress={() => setView('list')} />
         <Button label="지출 없음" variant="neutral" onPress={() => setView('empty')} />
