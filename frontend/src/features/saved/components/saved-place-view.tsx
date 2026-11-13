@@ -1,4 +1,5 @@
 import { SCROLL_DECELERATION } from '@/theme/scroll';
+import { Image } from 'expo-image';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stagger } from '@/components/ui/stagger';
 import { Spinner } from '@/components/ui/spinner';
@@ -7,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MapMarker, MapView } from '@/components/map';
 import { Button, Header, Icon } from '@/components/ui';
 import { PressableScale } from '@/components/ui/pressable-scale';
+import { assetSource } from '@/lib/asset-image';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 type SavedPlaceViewProps = {
@@ -16,6 +18,8 @@ type SavedPlaceViewProps = {
   latitude: number;
   longitude: number;
   memo: string | null;
+  /** 장소 사진 주소. 목록 카드와 같은 값이다. 서버가 아직 주지 않아 진짜 서버에서는 없다 */
+  imageUrl?: string | null;
   /** feed: 공동 피드에서 담음 / lost: 원본을 볼 수 없음(사진 대신 작은 지도) / none: 그 밖 */
   source: 'feed' | 'lost' | 'none';
   /** 장소가 사라져 장소 id가 없으면 메모 고치기·저장 해제를 할 수 없다 */
@@ -32,7 +36,8 @@ type SavedPlaceViewProps = {
 
 /**
  * S14 저장 장소 상세. 상태: 기본 / 원본 공동 피드 삭제·볼 수 없음. 그룹에 추가는 AddToTripSheet.
- * 즐겨찾기 응답에 사진·키워드가 없어 사진 자리는 회색, 키워드 태그는 그리지 않는다
+ * 사진이 있으면 목록 카드와 같은 사진을 보이고, 없으면 연파랑 상자에 북마크 아이콘을 보인다.
+ * 즐겨찾기 응답에 사진·키워드가 없어 진짜 서버에서는 늘 사진 없는 모습이고, 키워드 태그는 그리지 않는다
  */
 export function SavedPlaceView({
   name,
@@ -40,6 +45,7 @@ export function SavedPlaceView({
   latitude,
   longitude,
   memo,
+  imageUrl,
   source,
   editable,
   busy = false,
@@ -51,6 +57,7 @@ export function SavedPlaceView({
 }: SavedPlaceViewProps) {
   const insets = useSafeAreaInsets();
   const lost = source === 'lost';
+  const photo = assetSource(imageUrl);
 
   return (
     <View style={styles.screen}>
@@ -94,7 +101,12 @@ export function SavedPlaceView({
               </MapView>
             </View>
           ) : (
-            <View style={styles.photo} />
+            <View style={styles.photo}>
+              <Icon name="bookmark" size={32} color={colors.brand.primary} />
+              {photo ? (
+                <Image source={photo} style={StyleSheet.absoluteFill} contentFit="cover" />
+              ) : null}
+            </View>
           )}
 
           <View style={styles.info}>
@@ -211,7 +223,14 @@ const styles = StyleSheet.create({
     paddingBottom: spacing[24],
     gap: spacing[28],
   },
-  photo: { height: 196, borderRadius: radius.lg, backgroundColor: colors.line.default },
+  photo: {
+    height: 196,
+    borderRadius: radius.lg,
+    backgroundColor: colors.brand.primaryBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
   map: { height: 140, borderRadius: radius.lg, overflow: 'hidden' },
   info: { gap: spacing[12] },
   metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[14] },

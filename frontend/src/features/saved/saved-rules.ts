@@ -158,6 +158,19 @@ export function regionFor(items: SavedItem[]): MapRegion | null {
   };
 }
 
+/**
+ * 카드를 넘겼을 때 그 장소 하나를 확대해 보이는 범위. 장소는 가로 가운데에 오고,
+ * 세로는 가운데보다 조금 아래에 와서 화면 아래 카드 바로 위에 핀이 보인다(regionFor에 한 곳을 넣었을 때와 같은 높이)
+ */
+export function regionForPlace(item: SavedItem): MapRegion {
+  return {
+    latitude: item.latitude - MIN_SPAN * 0.8,
+    longitude: item.longitude - MIN_SPAN * 0.8,
+    latitudeDelta: MIN_SPAN * 2.1,
+    longitudeDelta: MIN_SPAN * 1.6,
+  };
+}
+
 /** S08 저장 위치 선택. 나만 보기 / 동행과 같이 */
 export type SaveChoice = 'personal' | 'trip';
 
