@@ -174,8 +174,7 @@ function renderBody(p: VoiceRecordSheetViewProps): ReactNode {
               </Text>
             </View>
           </View>
-          {/* 아래 버튼 줄과 붙어 보이지 않게 한 칸 띄운다 */}
-          <Text style={[typography.caption, styles.sub, styles.beforeFooter]}>
+          <Text style={[typography.caption, styles.sub]}>
             {s.autoStopped
               ? '말이 끊겼다면 다시 녹음하거나, 남은 지출은 나중에 따로 넣어 주세요'
               : '보내면 지출 초안을 만들어요. 저장은 확인한 뒤에 해요'}
@@ -369,11 +368,11 @@ function Levels({ levels }: { levels: number[] }) {
 }
 
 const styles = StyleSheet.create({
-  body: { gap: spacing[16] },
+  // 아래 버튼 줄(녹음 끝·실패·파일 큼)과 붙어 보이지 않게 본문 아래를 띄운다
+  body: { gap: spacing[16], marginBottom: spacing[20] },
   flex: { flex: 1 },
   text: { color: colors.text.default },
   sub: { color: colors.text.icon },
-  beforeFooter: { marginBottom: spacing[20] },
   muted: { color: colors.text.muted },
   brand: { color: colors.brand.primaryDark },
   hidden: { opacity: 0 },

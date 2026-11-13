@@ -58,6 +58,8 @@ export function VoiceDraftCard({
         <Text style={[typography.bodyBold, amount ? styles.text : styles.muted]}>
           {amount ? formatWon(amount) : '금액 없음'}
         </Text>
+        {/* 카드를 누르면 고칠 수 있다는 것을 보이게 한다(2026-11-13 사용자 요청). 누르는 곳은 카드 전체 */}
+        <Icon name="pencil" size={18} color={colors.text.icon} />
       </View>
       <View style={styles.indent}>
         <Line label="낸 사람" value={payerName} missing={!payer} />
