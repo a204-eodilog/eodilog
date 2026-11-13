@@ -18,7 +18,7 @@ import org.springframework.stereotype.Service;
  * <li>{@link #dailyRefresh()}: 하루 한 번 전국 수신. 새로 생기거나 없어진 충전소를 맞춘다</li>
  * </ul>
  *
- * 전국 수신은 하루 {@code maxFullRefreshesPerDay}번까지만 한다. 빈틈을 메우지 못하면 다음 전국 수신까지 상태를 숨긴다.
+ * 전국 수신은 하루 {@code maxFullRefreshesPerDay}번까지만 하고, 실패한 쪽은 그 쪽만 다시 부른다. 빈틈을 메우지 못하면 다음 전국 수신까지 상태를 숨긴다.
  * 서버가 여러 대면 임대를 잡은 한 대만 갱신한다
  */
 @Slf4j
@@ -76,7 +76,7 @@ public class EvChargerSync {
 			long chargers = 0;
 			do {
 				page++;
-				var result = client.infoPage(page, properties.pageSize());
+				var result = infoPage(page);
 				total = result.totalCount();
 				if (total > 0 && result.items().isEmpty()) throw new EvChargerUnavailableException("EV charger page " + page + " is empty");
 				chargers += store.upsertInfo(result.items(), runStart);
@@ -91,6 +91,22 @@ public class EvChargerSync {
 		} catch (EvChargerUnavailableException e) {
 			log.warn("EV charger full refresh failed: {}", e.getMessage());
 			return false;
+		}
+	}
+
+	/**
+	 * 전국 수신의 한 쪽. 포털이 가끔 한 번씩 응답하지 않으므로 그 쪽만 pageAttempts번까지 다시 부른다. 한 번 실패로 53쪽을
+	 * 처음부터 다시 받으면 끝까지 받을 확률이 거의 없다(호출 실패 10%면 0.4%). 끝내 실패하면 이번 전국 수신을 그만둔다
+	 */
+	private EvChargerClient.Page<EvChargerClient.ChargerInfo> infoPage(int page) {
+		for (int attempt = 1; ; attempt++) {
+			try {
+				return client.infoPage(page, properties.pageSize());
+			} catch (EvChargerUnavailableException e) {
+				if (attempt >= properties.pageAttempts()) throw e;
+				log.info("EV charger page {} failed ({}/{}): {}", page, attempt, properties.pageAttempts(), e.getMessage());
+				if (!pause(properties.pageRetryDelay())) throw e;
+			}
 		}
 	}
 
