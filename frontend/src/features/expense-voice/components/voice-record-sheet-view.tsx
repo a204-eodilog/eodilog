@@ -48,7 +48,8 @@ export type VoiceRecordSheetViewProps = {
 };
 
 /**
- * 예시 문장. 사람 수만 말하면("셋이") 서버가 사람을 고르지 않으므로, 예시는 "우리 모두"와 이름으로 말한다.
+ * 예시 문장. 사람 수만 말하면("둘이", "셋이") 서버가 누구인지 정하지 못해 나눌 사람이 빈다
+ * (2026-11-13 실제 서버 확인). 그래서 예시는 "우리 모두"나 이름으로 말한다.
  * 한눈에 읽히게 지출 하나를 한 줄로, "무엇 금액, 누가 냈고 누구랑 나눠" 순서로 맞춘다
  */
 export function voiceExample(name = '민지'): string[] {
@@ -56,7 +57,7 @@ export function voiceExample(name = '민지'): string[] {
   const batchim = last >= 0xac00 && last <= 0xd7a3 && (last - 0xac00) % 28 !== 0;
   return [
     '택시비 2만 4천 원, 내가 냈고 우리 모두 나눠',
-    `커피 1만 2천 원, ${name}${batchim ? '이' : '가'} 냈고 나랑 둘이 나눠`,
+    `커피 1만 2천 원, ${name}${batchim ? '이' : '가'} 냈고 ${name}${batchim ? '이랑' : '랑'} 나랑 나눠`,
   ];
 }
 
