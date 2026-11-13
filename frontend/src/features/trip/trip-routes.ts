@@ -9,6 +9,8 @@ export function todoHref(target: TodoTarget, tripId: string): string | null {
   switch (target) {
     case 'favorites':
       return `/trips/${tripId}/favorites`;
+    case 'polls':
+      return `/trips/${tripId}/polls`;
     case 'course':
       return `/trips/${tripId}/course`;
     case 'today':

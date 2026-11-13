@@ -132,10 +132,23 @@ export type TodoStep = {
 };
 
 /** 지금 할 일 버튼이 가는 곳. 아직 없는 화면은 준비 중 안내를 띄운다 */
-export type TodoTarget = 'favorites' | 'course' | 'today' | 'photos' | 'feed';
+export type TodoTarget = 'favorites' | 'polls' | 'course' | 'today' | 'photos' | 'feed';
+
+/**
+ * 계획 중인 여행이 어디까지 왔는지. 여행 상세의 단계를 실제 진행에 맞추는 데 쓴다.
+ * 아직 받지 못한 값은 null이다. 모르는 것을 '했다'고도 '안 했다'고도 말하지 않는다
+ */
+export type TripProgress = {
+  /** 그룹 즐겨찾기에 모은 장소 수 */
+  savedPlaceCount: number | null;
+  /** 코스에 넣은 장소 수 */
+  coursePlaceCount: number | null;
+};
 
 export type TripDetailView = {
   headline: string;
+  /** 인사 뒤에 붙는 말. 없으면 지금 단계 이름으로 "…부터 해 볼까요?"를 만든다 */
+  greeting?: string;
   steps: TodoStep[];
   action: { label: string; target: TodoTarget } | null;
   /** 단계 대신 보이는 한 줄. 여행 중의 오늘 코스 요약 */
@@ -168,13 +181,15 @@ export function todayCourseNote(todayPlaces: readonly string[] | null): string |
 
 /**
  * 여행 상세의 큰 제목과 단계. 여행지가 정해진 여행은 지역 투표를 건너뛴다(결정 F-12).
- * todayPlaces는 여행 중일 때 오늘 갈 곳 이름. 모르면 null
+ * todayPlaces는 여행 중일 때 오늘 갈 곳 이름. 모르면 null.
+ * progress는 계획 중일 때 모은 장소와 코스. 모르면 null이고, 그때는 진행을 보지 않은 기본 단계를 보인다
  */
 export function tripDetailView(
   trip: Trip,
   regionNames: string[],
   today: string,
   todayPlaces: readonly string[] | null = null,
+  progress: TripProgress | null = null,
 ): TripDetailView {
   const place = destinationLabel(regionNames);
   // 여행지가 없으면 여행 이름을 쓴다. "겨울 여행 여행"처럼 겹치지 않게 '여행'을 붙이지 않는다
@@ -206,29 +221,60 @@ export function tripDetailView(
     };
   }
 
+  const saved = progress?.savedPlaceCount ?? null;
+  const inCourse = progress?.coursePlaceCount ?? null;
+  // 코스에 장소가 있으면 모으기는 끝난 것이다. 그룹 즐겨찾기를 거치지 않고 코스에 바로 넣었어도 그렇다
+  const hasCourse = inCourse !== null && inCourse > 0;
+  const hasSaved = hasCourse || (saved !== null && saved > 0);
+
   if (!place) {
+    // 장소를 모았으면 다음은 어디로 갈지 정하는 투표다
     return {
       headline: '두근두근,\n어디로 떠날까요?',
       steps: [
-        { label: '장소 모으기', state: 'current' },
-        { label: '지역 투표', state: 'upcoming' },
+        { label: '장소 모으기', state: hasSaved ? 'done' : 'current' },
+        { label: '지역 투표', state: hasSaved ? 'current' : 'upcoming' },
         { label: '코스 짜기', state: 'upcoming' },
       ],
-      action: { label: '장소 모으기', target: 'favorites' },
+      action: hasSaved
+        ? { label: '지역 투표', target: 'polls' }
+        : { label: '장소 모으기', target: 'favorites' },
       note: null,
       showPublish: false,
     };
   }
 
   const d = dDay(trip, today);
+  const headline = d === null ? `두근두근,\n${place} 여행` : `두근두근,\n${place} 여행 D-${d}`;
+
+  if (hasCourse) {
+    // 코스까지 짰으면 더 시킬 일이 없다. 떠날 준비가 됐다고 알리고 코스를 다시 볼 수 있게 한다
+    return {
+      headline,
+      greeting: '떠날 준비가 됐어요',
+      steps: [
+        { label: '장소 모으기', state: 'done' },
+        { label: '코스 짜기', state: 'done' },
+        { label: '여행 떠나기', state: 'current' },
+      ],
+      action: { label: '코스 보기', target: 'course' },
+      note: null,
+      showPublish: false,
+    };
+  }
+
+  // 모은 장소가 없다고 확인됐을 때만 모으기부터 권한다. 아직 모르면(null) 전처럼 코스 짜기를 권한다
+  const nothingSaved = saved === 0 && inCourse === 0;
   return {
-    headline: d === null ? `두근두근,\n${place} 여행` : `두근두근,\n${place} 여행 D-${d}`,
+    headline,
     steps: [
-      { label: '장소 모으기', state: 'done' },
-      { label: '코스 짜기', state: 'current' },
+      { label: '장소 모으기', state: nothingSaved ? 'current' : 'done' },
+      { label: '코스 짜기', state: nothingSaved ? 'upcoming' : 'current' },
       { label: '여행 떠나기', state: 'upcoming' },
     ],
-    action: { label: '코스 짜기', target: 'course' },
+    action: nothingSaved
+      ? { label: '장소 모으기', target: 'favorites' }
+      : { label: '코스 짜기', target: 'course' },
     note: null,
     showPublish: false,
   };

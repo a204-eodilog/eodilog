@@ -34,8 +34,27 @@ describe('보내기 전 확인', () => {
     expect(validateMessageText('😀'.repeat(1001))).toBe('tooLong');
   });
 
-  it('NUL 문자만 지우고 나머지는 그대로 둔다', () => {
-    expect(cleanMessageText(' 안\0녕 ')).toBe(' 안녕 ');
+  it('NUL 문자를 지운다', () => {
+    expect(cleanMessageText('안\0녕')).toBe('안녕');
+  });
+
+  it('앞뒤 공백과 줄바꿈을 지운다', () => {
+    expect(cleanMessageText(' 안\0녕 ')).toBe('안녕');
+    expect(cleanMessageText('안녕\n')).toBe('안녕');
+    expect(cleanMessageText('\n\n  안녕  \n')).toBe('안녕');
+  });
+
+  it('글 중간의 줄바꿈과 공백은 그대로 둔다', () => {
+    expect(cleanMessageText('첫 줄\n\n둘째  줄\n')).toBe('첫 줄\n\n둘째  줄');
+  });
+
+  it('길이는 앞뒤 공백을 지운 글로 센다', () => {
+    expect(validateMessageText('가'.repeat(1000) + '\n')).toBe('ok');
+    expect(validateMessageText('  ' + '가'.repeat(1001))).toBe('tooLong');
+  });
+
+  it('NUL 문자만 있으면 empty', () => {
+    expect(validateMessageText('\0')).toBe('empty');
   });
 });
 

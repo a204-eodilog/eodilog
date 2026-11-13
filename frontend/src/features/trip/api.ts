@@ -117,3 +117,15 @@ export async function deleteTrip(tripId: string, expectedVersion: number): Promi
   });
   return data.data;
 }
+
+/**
+ * 그룹 즐겨찾기에 모은 장소 수. 여행 상세의 단계(장소 모으기)를 실제 진행에 맞추는 데만 쓴다.
+ * 목록은 필요 없어 한 건만 받고 totals를 읽는다. 응답은 DataResponse로 감싸지 않은 {items, totals, page}다
+ */
+export async function getSavedPlaceCount(tripId: string, signal?: AbortSignal): Promise<number> {
+  const { data } = await apiClient.get<{ totals: { allPlaceCount: number } }>(
+    `/trips/${tripId}/saved-places`,
+    { params: { filter: 'ALL', limit: 1 }, signal },
+  );
+  return data.totals.allPlaceCount;
+}

@@ -41,6 +41,12 @@ type Props = {
   noTime?: NoTime;
 };
 
+const NO_TIME_LABEL: Record<NoTime, string> = {
+  pending: '계산 전',
+  working: '계산 중',
+  failed: '시간 모름',
+};
+
 /** 고른 날의 장소 줄과 장소 사이 구간 칩(Figma 201-12879 목록, 201-13969 목록, 201-13272 구간) */
 export function CourseDayList(props: Props) {
   const { items, legs, mode, tone } = props;
@@ -139,7 +145,7 @@ function LegRow({
       >
         <Icon name={MODE_ICON[leg.mode]} size={14} color={colors.text.icon} />
         <Text style={[typography.captionMedium, styles.legText]}>
-          {label ?? `${MODE_LABEL[leg.mode]} · ${noTime === 'pending' ? '계산 전' : '시간 모름'}`}
+          {label ?? `${MODE_LABEL[leg.mode]} · ${NO_TIME_LABEL[noTime]}`}
         </Text>
       </PressableScale>
     </View>

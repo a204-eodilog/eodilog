@@ -12,14 +12,18 @@ export const MESSAGE_MAX_LENGTH = 1000;
  * 서버도 코드 포인트로 세므로 이모지 하나는 1이다
  */
 export function validateMessageText(text: string): 'ok' | 'empty' | 'tooLong' {
-  if (text.trim() === '') return 'empty';
-  if (Array.from(text).length > MESSAGE_MAX_LENGTH) return 'tooLong';
+  const cleaned = cleanMessageText(text);
+  if (cleaned === '') return 'empty';
+  if (Array.from(cleaned).length > MESSAGE_MAX_LENGTH) return 'tooLong';
   return 'ok';
 }
 
-/** 서버는 NUL 문자가 든 본문을 400으로 거절한다. 입력에 섞여 들어온 것은 지우고 나머지는 그대로 보낸다 */
+/**
+ * 보낼 본문. 앞뒤 공백과 줄바꿈을 지운다. 글 중간의 줄바꿈은 일부러 넣은 것이라 그대로 둔다.
+ * 서버는 NUL 문자가 든 본문을 400으로 거절하므로 입력에 섞여 들어온 것도 지운다
+ */
 export function cleanMessageText(text: string): string {
-  return text.replace(/\0/g, '');
+  return text.replace(/\0/g, '').trim();
 }
 
 /**
