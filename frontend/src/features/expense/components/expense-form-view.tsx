@@ -161,7 +161,7 @@ export function ExpenseFormView({
               </View>
               {/* Figma는 13/20 보통 굵기인데 글자 토큰에 없어 caption(12/20)으로 쓴다 */}
               <Text style={[typography.caption, styles.sub]}>
-                고른 사람끼리 똑같이 나눠요 · 1명 금액은 10원 단위로 올려요
+                10원 단위로 올려서 나눠요
               </Text>
             </Section>
 
