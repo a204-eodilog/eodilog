@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Spinner } from '@/components/ui/spinner';
@@ -91,7 +92,11 @@ export function AddCandidateSheet({
         ) : options.length === 0 ? (
           <Text style={styles.empty}>더 넣을 수 있는 곳이 없어요</Text>
         ) : (
-          <ScrollView style={styles.list} nestedScrollEnabled>
+          <ScrollView
+            decelerationRate={SCROLL_DECELERATION}
+            style={styles.list}
+            nestedScrollEnabled
+          >
             {options.map((o) => {
               const checked = selected.includes(o.key);
               return (

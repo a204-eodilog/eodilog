@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { SectionList, StyleSheet, Text, View } from 'react-native';
@@ -8,11 +9,12 @@ import { Header, Icon } from '@/components/ui';
 import { FadeIn } from '@/components/ui/fade-in';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { SkeletonList } from '@/components/ui/skeleton';
+import { SwipeToDelete } from '@/components/ui/swipe-to-delete';
 import { colors, layout, spacing, typography } from '@/theme';
 
 import { NotificationRow } from '../components/notification-row';
 import { NotificationsEmpty, NotificationsError } from '../components/notification-states';
-import { useNotifications } from '../hooks/use-notifications';
+import { useDismissNotification, useNotifications } from '../hooks/use-notifications';
 import { useOpenNotification } from '../hooks/use-open-notification';
 import { toSections, type NotificationLine, type Section } from '../notification-rules';
 
@@ -26,6 +28,9 @@ export type NotificationsViewProps = {
   onBack: () => void;
   onReadAll: () => void;
   onOpen: (line: NotificationLine) => void;
+  /** 줄을 왼쪽으로 밀어 지운다. 없으면 밀 수 없다 */
+  onDismiss?: (line: NotificationLine) => Promise<boolean>;
+
   onRetry: () => void;
   onEndReached?: () => void;
 };
@@ -57,6 +62,7 @@ export function NotificationsView(props: NotificationsViewProps) {
         <NotificationsEmpty />
       ) : (
         <SectionList
+          decelerationRate={SCROLL_DECELERATION}
           testID="notification-list"
           sections={sections.map((s) => ({ title: s.title, data: s.lines }))}
           keyExtractor={(line) => line.id}
@@ -73,7 +79,16 @@ export function NotificationsView(props: NotificationsViewProps) {
           )}
           renderItem={({ item, index }) => (
             <FadeIn index={index}>
-              <NotificationRow line={item} onPress={() => props.onOpen(item)} />
+              {props.onDismiss ? (
+                <SwipeToDelete
+                  label="알림 지우기"
+                  onDelete={() => props.onDismiss?.(item) ?? false}
+                >
+                  <NotificationRow line={item} onPress={() => props.onOpen(item)} />
+                </SwipeToDelete>
+              ) : (
+                <NotificationRow line={item} onPress={() => props.onOpen(item)} />
+              )}
             </FadeIn>
           )}
           ItemSeparatorComponent={Gap}
@@ -101,6 +116,8 @@ const Gap = () => <View style={styles.gap} />;
 export function NotificationsScreen() {
   const list = useNotifications();
   const open = useOpenNotification();
+  const dismiss = useDismissNotification();
+
   const [now] = useState(() => new Date());
   const sections = useMemo(
     () => toSections(list.items, now, list.myTripIds),
@@ -120,6 +137,7 @@ export function NotificationsScreen() {
         // 나간 여행 표시가 있어도 여행을 받아 보고 정한다. 표시는 내 여행 목록으로 짐작한 것이다
         if (n) void open(n);
       }}
+      onDismiss={(line) => dismiss(line.id)}
       onRetry={list.retry}
       onEndReached={list.loadMore}
     />

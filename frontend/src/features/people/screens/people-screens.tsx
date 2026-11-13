@@ -4,6 +4,11 @@ import { useState } from 'react';
 
 import type { UserCard } from '@/api/types';
 import { toast } from '@/components/ui';
+import {
+  acceptFollowRequest,
+  getFollowRequests,
+  rejectFollowRequest,
+} from '@/features/friends/api';
 import { markHomeStale } from '@/features/home/home-cache';
 
 import {
@@ -37,7 +42,11 @@ function useFollowToggle() {
       return { ...user, followingStatus: 'NONE' as const };
     },
     onSuccess: (next) => {
+      // 누른 결과를 꼭 알린다. 안내가 없으면 눌렸는지 알 수 없다
       if (next.followingStatus === 'REQUESTED') toast.show('팔로우 요청을 보냈어요');
+      else if (next.followingStatus === 'ACCEPTED')
+        toast.success(`${next.nickname}님을 팔로우했어요`);
+      else toast.show(`${next.nickname}님 팔로우를 끊었어요`);
       void queryClient.invalidateQueries({ queryKey: ['me', 'following'] });
       void queryClient.invalidateQueries({ queryKey: ['me', 'following-count'] });
       void queryClient.invalidateQueries({ queryKey: SUGGESTIONS_KEY });
@@ -103,8 +112,36 @@ export function UserProfileScreen() {
     enabled: !!user.data && !locked,
   });
   const follow = useFollowToggle();
+  const queryClient = useQueryClient();
+  // 이 사람이 나에게 보낸 팔로우 요청. 수락·거절은 요청 번호로 하므로 받은 요청 목록에서 찾는다
+  const requested = user.data?.followedByStatus === 'REQUESTED';
+  const requests = useQuery({
+    queryKey: ['me', 'follow-requests'],
+    queryFn: ({ signal }) => getFollowRequests(signal),
+    enabled: requested,
+  });
+  const request = requests.data?.find((r) => r.follower.id === userId);
+  const answer = useMutation({
+    mutationFn: async (accept: boolean) => {
+      if (!request) throw new Error('요청을 찾지 못했어요');
+      if (accept) await acceptFollowRequest(request.id);
+      else await rejectFollowRequest(request.id);
+      return accept;
+    },
+    onSuccess: (accept) => {
+      const name = user.data?.nickname ?? '';
+      if (accept) toast.success(`${name}님의 팔로우 요청을 수락했어요`);
+      else toast.show(`${name}님의 팔로우 요청을 거절했어요`);
+      void queryClient.invalidateQueries({ queryKey: ['users'] });
+      void queryClient.invalidateQueries({ queryKey: ['me', 'follow-requests'] });
+      void queryClient.invalidateQueries({ queryKey: ['friends'] });
+    },
+    onError: () => toast.error('요청에 답하지 못했어요. 다시 시도해 주세요'),
+  });
   return (
     <ProfileView
+      onAnswerRequest={request ? (accept) => answer.mutate(accept) : undefined}
+      answering={answer.isPending}
       state={stateOf(user)}
       profile={user.data}
       feeds={feeds.data ?? []}

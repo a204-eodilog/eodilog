@@ -16,6 +16,10 @@ import { GroupFavoritesScreen } from './group-favorites-screen';
 const mockParams = { tripId: 'trip-1' };
 const mockRouter = { replace: jest.fn(), back: jest.fn(), push: jest.fn() };
 
+// 카드 넘김은 기기의 움직임 모듈이 있어야 불러올 수 있어, 테스트에서는 카드를 그대로 그리는 가짜를 쓴다
+jest.mock('@/components/ui/easy-pager', () => ({
+  EasyPager: ({ children }: { children: React.ReactNode }) => children,
+}));
 jest.mock('@/config/env', () => ({
   env: { appEnv: 'local', apiBaseUrl: 'http://test', kakaoRedirectUri: null, devMock: false },
 }));
@@ -528,10 +532,11 @@ describe('지도에서 후보 고르기', () => {
     await fireEvent.press(
       screen.getByLabelText(`${items[0].place.name}, ${items[0].savedCount}명이 담았어요`),
     );
-    const card = screen.getByRole('checkbox');
+    // 지도 아래에는 장소마다 카드가 한 장씩 있다. 누른 핀의 장소가 첫 카드다
+    const card = screen.getAllByRole('checkbox')[0];
     expect(card.props.accessibilityState).toEqual({ checked: false });
     await fireEvent.press(card);
-    expect(screen.getByRole('checkbox').props.accessibilityState).toEqual({ checked: true });
+    expect(screen.getAllByRole('checkbox')[0].props.accessibilityState).toEqual({ checked: true });
     expect(screen.getByText('1곳으로 투표 열기')).toBeTruthy();
     expect(screen.queryByLabelText('내 메모')).toBeNull();
   });

@@ -17,7 +17,7 @@ import {
 import { Pop } from '@/components/ui/pop';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { SkeletonList } from '@/components/ui/skeleton';
-import { findMapRegion, type MapPoint } from '@/lib/korea-map';
+import { findMapRegion, type MapPoint, sidoCodeOf } from '@/lib/korea-map';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 import { clusterMarks, fillStepsFor, groupBySido, isGroup } from '../home-rules';
@@ -178,6 +178,11 @@ function MapBody(props: HomeViewProps) {
     setZoomTo((prev) => ({ key: (prev?.key ?? 0) + 1, point: g.point, scale: next + 0.1 }));
   };
 
+  // 추천 창에서 보고 있는 카드의 지역. 그 지역(같은 시도)의 이름표만 파랑으로 바꿔 어디인지 알린다
+  const [spotCode, setSpotCode] = useState<string | null>(null);
+  const spotSido = spotCode ? sidoCodeOf(spotCode) : undefined;
+  const inSpot = (code: string) => !!spotSido && sidoCodeOf(code) === spotSido;
+
   const pins = useMemo<KoreaMapPin[]>(() => {
     if (state === 'no-friends') {
       return INVITE_SPOTS.flatMap((code) => {
@@ -220,6 +225,7 @@ function MapBody(props: HomeViewProps) {
             children: (
               <RegionPill
                 mark={item}
+                active={inSpot(item.regionCode)}
                 onPress={press}
                 pulse={item.regionCode === top}
                 pulseDelayMs={enterDelay(item.regionCode) + MAP_MOTION.pinRiseMs}
@@ -241,6 +247,7 @@ function MapBody(props: HomeViewProps) {
           children: (
             <GroupPill
               group={item}
+              active={item.marks.some((m) => inSpot(m.regionCode))}
               pulse={item.marks.some((m) => m.regionCode === top)}
               pulseDelayMs={enterDelay(last.regionCode) + MAP_MOTION.pinRiseMs}
               onPress={() => openGroup(item)}
@@ -250,7 +257,7 @@ function MapBody(props: HomeViewProps) {
       ];
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state, marks, stage, onRegion, lockedFriends, fillSteps, order, top, entered]);
+  }, [state, marks, stage, onRegion, lockedFriends, fillSteps, order, top, entered, spotSido]);
 
   const focus = props.initialZoom ? findMapRegion(props.initialZoom.regionCode) : undefined;
   const ready = state === 'ready';
@@ -301,6 +308,7 @@ function MapBody(props: HomeViewProps) {
           status={props.recommendationsStatus ?? 'ready'}
           initialExpanded={props.initialSheetExpanded}
           onPress={props.onRecommendation}
+          onFocus={(item) => setSpotCode(item?.regionCode ?? null)}
         />
       ) : (
         <EmptyCard {...props} />

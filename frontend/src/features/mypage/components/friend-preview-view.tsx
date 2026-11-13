@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { Image } from 'expo-image';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -49,7 +50,11 @@ export function FriendPreviewView(props: FriendPreviewViewProps) {
           description="친구가 팔로우하면 그 친구에게 보이는 모습을 미리 볼 수 있어요"
         />
       ) : (
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          decelerationRate={SCROLL_DECELERATION}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+        >
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
