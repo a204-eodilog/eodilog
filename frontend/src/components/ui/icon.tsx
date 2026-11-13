@@ -69,7 +69,9 @@ export type IconName =
   | 'cloud-off'
   | 'umbrella'
   | 'bag'
-  | 'zap';
+  | 'zap'
+  | 'mic'
+  | 'mic-off';
 
 type IconProps = {
   name: IconName;
@@ -183,6 +185,11 @@ const PATHS: Record<IconName, string> = {
   bag: 'M6 7H18L19 21H5L6 7ZM9 10V6A3 3 0 0 1 15 6V10',
   /** S25 주변 편의시설 칸 */
   zap: 'M13 2L4 14H12L11 22L20 10H12L13 2Z',
+  /** S35 [말로 한 번에], N10 녹음 */
+  mic: 'M12 3A3 3 0 0 1 15 6V11A3 3 0 0 1 9 11V6A3 3 0 0 1 12 3ZM5 11A7 7 0 0 0 19 11M12 18V21',
+  /** N10 마이크 권한 거부 */
+  'mic-off':
+    'M15 9.3V6A3 3 0 0 0 9.3 4.7M9 9V11A3 3 0 0 0 13.6 13.5M5 11A7 7 0 0 0 16.3 16.5M19 11A7 7 0 0 1 18.4 13.8M12 18V21M4 4L20 20',
 };
 
 /** 채워도 선으로만 남겨야 하는 부분. 가방 손잡이처럼 몸통과 따로 그린다. */
