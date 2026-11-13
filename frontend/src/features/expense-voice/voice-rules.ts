@@ -189,9 +189,14 @@ export function draftProblems(item: DraftItem, activeMemberIds: readonly string[
   const fromServer = item.serverWarnings.filter(
     (w) => w.code !== 'SPENT_AT_UNKNOWN' && w.field !== 'spentAt' && w.code !== 'COUNT_MISMATCH',
   );
-  const covered = new Set(fromServer.map((w) => w.field));
-  const problems = [
-    ...fromServer.map((w) => ({ field: w.field ?? '', message: w.message })),
+  // 실제 서버는 한 칸에 경고를 여러 개(MEMBER_NOT_FOUND·PARTICIPANTS_UNKNOWN 등) 붙이고 문장도 모두 같다
+  // (2026-11-13 로컬 연동 확인). 칸마다 한 번만, 칸에 맞는 문장으로 보인다
+  const covered = new Set(fromServer.map((w) => w.field ?? ''));
+  const problems: DraftProblem[] = [
+    ...[...covered].map((field) => ({
+      field,
+      message: UNRESOLVED_TEXT[field] ?? fromServer.find((w) => (w.field ?? '') === field)!.message,
+    })),
     ...local.filter((p) => !covered.has(p.field)),
   ];
   // 서버가 값을 채웠어도 unresolvedFields에 남긴 칸은 확인이 필요하다. 경고·빈 칸 검사로 이미 잡은 칸은 겹치지 않게 뺀다

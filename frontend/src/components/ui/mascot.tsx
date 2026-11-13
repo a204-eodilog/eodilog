@@ -14,3 +14,18 @@ export function MascotTraveler({ size = 200 }: { size?: number }) {
     />
   );
 }
+
+/**
+ * 영수증을 보며 계산기를 두드리는 여행자. 말로 경비 입력(N10) 분석 중 화면에 쓴다.
+ * 걷는 여행자와 같은 캐릭터·같은 형식(400×400, 36장, 장당 140ms, 한 바퀴 약 5초)이다
+ */
+export function MascotCalculating({ size = 200 }: { size?: number }) {
+  return (
+    <Image
+      source={require('@/assets/mascot/expense-calc.gif')}
+      style={{ width: size, height: size }}
+      contentFit="contain"
+      accessibilityLabel="영수증을 보며 계산기를 두드리는 여행자"
+    />
+  );
+}

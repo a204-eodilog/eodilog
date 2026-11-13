@@ -1,7 +1,14 @@
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { BottomSheet, Button, Icon, type IconName, Spinner } from '@/components/ui';
+import {
+  BottomSheet,
+  Button,
+  Icon,
+  type IconName,
+  MascotCalculating,
+  Spinner,
+} from '@/components/ui';
 import { VOICE_MAX_DURATION_MS, formatClock } from '@/lib/voice-recording';
 import { colors, radius, spacing, typography } from '@/theme';
 
@@ -41,12 +48,17 @@ export type VoiceRecordSheetViewProps = {
 };
 
 /**
- * 예시 문장. 사람 수만 말하면("셋이") 서버가 사람을 고르지 않으므로, 예시는 "우리 모두"와 이름으로 말한다
+ * 예시 문장. 사람 수만 말하면("둘이", "셋이") 서버가 누구인지 정하지 못해 나눌 사람이 빈다
+ * (2026-11-13 실제 서버 확인). 그래서 예시는 "우리 모두"나 이름으로 말한다.
+ * 한눈에 읽히게 지출 하나를 한 줄로, "무엇 금액, 누가 냈고 누구랑 나눠" 순서로 맞춘다
  */
-export function voiceExample(name = '민지'): string {
+export function voiceExample(name = '민지'): string[] {
   const last = name.charCodeAt(name.length - 1);
   const batchim = last >= 0xac00 && last <= 0xd7a3 && (last - 0xac00) % 28 !== 0;
-  return `택시비 2만 4천 원 내가 냈고 우리 모두 나눠. 커피 만 2천 원은 ${name}${batchim ? '이' : '가'} 냈고 나랑 둘이 나눠.`;
+  return [
+    '택시비 2만 4천 원, 내가 냈고 우리 모두 나눠',
+    `커피 1만 2천 원, ${name}${batchim ? '이' : '가'} 냈고 ${name}${batchim ? '이랑' : '랑'} 나랑 나눠`,
+  ];
 }
 
 export function VoiceRecordSheetView(props: VoiceRecordSheetViewProps) {
@@ -87,7 +99,11 @@ function renderBody(p: VoiceRecordSheetViewProps): ReactNode {
           </Text>
           <View style={styles.example}>
             <Text style={[typography.captionMedium, styles.sub]}>이렇게 말해 보세요</Text>
-            <Text style={[typography.body, styles.text]}>{voiceExample(p.exampleName)}</Text>
+            {voiceExample(p.exampleName).map((line) => (
+              <Text key={line} style={[typography.body, styles.text]}>
+                “{line}”
+              </Text>
+            ))}
           </View>
           <View style={styles.center}>
             <Pressable
@@ -302,6 +318,12 @@ function Steps({ step }: { step: AnalysisStep }) {
   const now = ORDER.indexOf(step);
   return (
     <>
+      {/* 기다리는 동안 보이는 마스코트 자리. 영수증을 보며 계산기를 두드리는 여행자(2026-11-13 사용자가 만든 동작).
+          동작을 바꾸려면 assets/mascot/expense-calc.gif만 바꾼다 */}
+      <View style={styles.mascot}>
+        <MascotCalculating size={140} />
+        <Text style={[typography.bodyMedium, styles.text]}>말한 지출을 정리하고 있어요</Text>
+      </View>
       <View style={styles.steps}>
         {STEPS.map((s, i) => {
           const done = i < now;
@@ -347,7 +369,8 @@ function Levels({ levels }: { levels: number[] }) {
 }
 
 const styles = StyleSheet.create({
-  body: { gap: spacing[16] },
+  // 아래 버튼 줄(녹음 끝·실패·파일 큼)과 붙어 보이지 않게 본문 아래를 띄운다
+  body: { gap: spacing[16], marginBottom: spacing[20] },
   flex: { flex: 1 },
   text: { color: colors.text.default },
   sub: { color: colors.text.icon },
@@ -412,6 +435,7 @@ const styles = StyleSheet.create({
   },
   noticeWarn: { backgroundColor: colors.status.warningBg2 },
   noticeDanger: { backgroundColor: colors.status.dangerBg },
+  mascot: { alignItems: 'center', gap: spacing[4] },
   steps: { gap: spacing[14], paddingVertical: spacing[4] },
   stepRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[12] },
   stepDone: { width: 24, height: 24, backgroundColor: colors.brand.primary },
