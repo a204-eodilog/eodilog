@@ -10,6 +10,7 @@ import {
   showSavedLink,
   placeSaveState,
   regionFor,
+  regionForPlace,
   syncedAtLabel,
   toSavedItem,
 } from './saved-rules';
@@ -176,6 +177,20 @@ describe('regionFor', () => {
     const r = regionFor([toSavedItem(bookmark('a', null, 37, 128))]);
     expect(r?.latitudeDelta).toBeCloseTo(0.042);
     expect(regionFor([])).toBeNull();
+  });
+});
+
+describe('regionForPlace', () => {
+  it('장소가 가로 가운데, 세로는 가운데보다 조금 아래에 온다', () => {
+    const item = toSavedItem(bookmark('a', null, 37.8, 128.9));
+    const r = regionForPlace(item);
+    // 가로는 가운데
+    expect(r.longitude + r.longitudeDelta / 2).toBeCloseTo(128.9);
+    // 세로는 장소가 범위 안이고 가운데보다 아래다. 화면 아래 카드 바로 위에 핀이 온다
+    const below = 37.8 - r.latitude;
+    const above = r.latitude + r.latitudeDelta - 37.8;
+    expect(below).toBeGreaterThan(0);
+    expect(above).toBeGreaterThan(below);
   });
 });
 

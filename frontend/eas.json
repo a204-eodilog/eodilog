@@ -11,6 +11,7 @@
     "preview": {
       "distribution": "internal",
       "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://eodilog.example.com",
         "EXPO_PUBLIC_KAKAO_REDIRECT_URI": "https://eodilog.example.com/oauth/kakao"
       }
     },
@@ -26,6 +27,7 @@
     "production": {
       "autoIncrement": true,
       "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://eodilog.example.com",
         "EXPO_PUBLIC_KAKAO_REDIRECT_URI": "https://eodilog.example.com/oauth/kakao"
       }
     }

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, jest } from '@jest/globals';
 
-import { assetSource } from './asset-image';
+import { assetSource, sourceKey } from './asset-image';
 
 // jest.mock은 불러오기보다 먼저 실행되도록 맨 위로 끌어올려진다
 // 테스트 모드 경우를 보려고 값을 바꿀 수 있게 둔다
@@ -28,9 +28,9 @@ describe('assetSource', () => {
   });
 
   it('이미 /api/v1이 붙어 있으면 두 번 붙이지 않는다', () => {
-    expect(assetSource('/api/v1/assets/a1/download')?.uri).toBe(
-      'http://test/api/v1/assets/a1/download',
-    );
+    expect(assetSource('/api/v1/assets/a1/download')).toMatchObject({
+      uri: 'http://test/api/v1/assets/a1/download',
+    });
   });
 
   it('전체 주소는 그대로, 비었으면 null', () => {
@@ -49,18 +49,28 @@ describe('assetSource', () => {
   });
 
   it('시험 사진처럼 생긴 주소도 테스트 모드가 아니면 서버에서 받는다', () => {
-    expect(assetSource('/api/v1/assets/sample-1/download')?.uri).toBe(
-      'http://test/api/v1/assets/sample-1/download',
-    );
+    expect(assetSource('/api/v1/assets/sample-1/download')).toMatchObject({
+      uri: 'http://test/api/v1/assets/sample-1/download',
+    });
   });
 
-  it('테스트 모드에서는 시험 사진만 샘플 사진으로 그리고 나머지 가짜 주소는 그리지 않는다', () => {
+  it('테스트 모드에서는 시험 사진만 앱 안의 샘플 그림으로 그리고 나머지 가짜 주소는 그리지 않는다', () => {
     mockEnv.devMock = true;
-    expect(assetSource('/api/v1/assets/asset-seed-1/download')).toEqual({
-      uri: 'https://picsum.photos/seed/asset-seed-1/600/600',
-    });
+    const sample = assetSource('/api/v1/assets/asset-seed-1/download');
+    expect(sample).not.toBeNull();
+    // 인터넷 주소가 아니라 앱에 넣어 둔 그림이다. 외부 사이트가 멈춰도 나온다
+    expect(JSON.stringify(sample)).not.toContain('http');
     // 테스트 모드에서 방금 올린 사진
     expect(assetSource('/api/v1/assets/asset-999/download')).toBeNull();
     expect(assetSource('file:///data/cache/a.jpg')).toEqual({ uri: 'file:///data/cache/a.jpg' });
+  });
+});
+
+describe('sourceKey', () => {
+  it('서버 사진은 주소, 앱 안의 그림은 번호로 구분하고 없으면 null', () => {
+    expect(sourceKey({ uri: 'http://test/a.jpg' })).toBe('http://test/a.jpg');
+    expect(sourceKey(7)).toBe('bundled:7');
+    expect(sourceKey(7)).not.toBe(sourceKey(8));
+    expect(sourceKey(null)).toBeNull();
   });
 });

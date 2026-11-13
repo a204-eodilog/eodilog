@@ -17,7 +17,7 @@ import Animated, {
 import { Icon } from '@/components/ui';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { EasyPager } from '@/components/ui/easy-pager';
-import { assetSource } from '@/lib/asset-image';
+import { assetSource, sourceKey } from '@/lib/asset-image';
 import { colors, layout, motion, radius, spacing, typography } from '@/theme';
 
 import { recommendMetaLabel } from '../home-rules';
@@ -186,7 +186,8 @@ export function RecommendSheet({
 function Thumb({ item, size }: { item: HomeRecommendation; size: number }) {
   // 같은 지역 여행 시트와 같은 방식. 서버 사진 경로에 주소와 로그인 토큰을 붙이고, 테스트 모드에서는 샘플 사진으로 그린다
   const src = assetSource(item.imageUrl);
-  const uri = src?.uri ?? null;
+  // 테스트 모드의 샘플 그림은 주소가 아니라 앱 안의 그림이라 구분용 이름으로 기억한다
+  const uri = sourceKey(src);
   // 어느 주소가 그려졌는지·실패했는지로 기억한다. 주소가 바뀌면 저절로 다시 불러오는 중이 된다
   const [loadedUri, setLoadedUri] = useState<string | null>(null);
   const [failedUri, setFailedUri] = useState<string | null>(null);
