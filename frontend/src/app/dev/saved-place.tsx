@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
@@ -34,7 +35,11 @@ export default function SavedPlaceStates() {
       setAddOpen(e === 'add' || e === 'noTrip' || e === 'tripsError');
     };
     return (
-      <ScrollView contentContainerStyle={styles.menu} style={styles.screen}>
+      <ScrollView
+        decelerationRate={SCROLL_DECELERATION}
+        contentContainerStyle={styles.menu}
+        style={styles.screen}
+      >
         <View style={styles.row}>
           <Button label="기본" variant="neutral" onPress={() => open('basic')} />
           <Button label="원본 볼 수 없음" variant="neutral" onPress={() => open('lost')} />

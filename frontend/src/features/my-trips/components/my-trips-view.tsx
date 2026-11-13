@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -29,6 +30,7 @@ export function MyTripsView({ trips, myUserId, onOpen, onBack }: MyTripsViewProp
         <EmptyState icon="trip" title="아직 여행이 없어요" />
       ) : (
         <ScrollView
+          decelerationRate={SCROLL_DECELERATION}
           contentContainerStyle={[styles.content, { paddingBottom: spacing[32] + insets.bottom }]}
         >
           {/* 맨 위 요약. 여행이 모두 몇 개인지 큰 숫자로 먼저 보인다 */}

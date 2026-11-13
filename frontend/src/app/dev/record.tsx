@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
@@ -88,7 +89,11 @@ export default function RecordStates() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.menu} style={styles.screen}>
+    <ScrollView
+      decelerationRate={SCROLL_DECELERATION}
+      contentContainerStyle={styles.menu}
+      style={styles.screen}
+    >
       <View style={styles.row}>
         <Button label="게시 전" variant="neutral" onPress={() => setView('draft')} />
         <Button label="게시됨" variant="neutral" onPress={() => setView('published')} />

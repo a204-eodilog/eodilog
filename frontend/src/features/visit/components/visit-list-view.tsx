@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -60,6 +61,7 @@ export function VisitListView({
         />
       ) : (
         <ScrollView
+          decelerationRate={SCROLL_DECELERATION}
           contentContainerStyle={[
             styles.content,
             { paddingBottom: Math.max(insets.bottom, spacing[24]) },
