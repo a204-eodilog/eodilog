@@ -2,6 +2,8 @@ import { useRef, type ReactNode } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import Swipeable, { type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 
+import Animated, { type SharedValue, useAnimatedStyle } from 'react-native-reanimated';
+
 import { haptic } from '@/lib/haptics';
 import { colors, radius, spacing } from '@/theme';
 
@@ -39,17 +41,26 @@ export function SwipeToDelete({ children, onDelete, label }: SwipeToDeleteProps)
         friction={1.2}
         rightThreshold={width * 0.3}
         overshootRight={false}
-        renderRightActions={() => (
-          <View style={[styles.behind, { width }]}>
-            <Icon name="trash" size={22} color={colors.text.inverse} />
-          </View>
-        )}
+        renderRightActions={(_progress, drag) => <Behind drag={drag} width={width} />}
         onSwipeableOpen={() => void remove()}
       >
         {/* 줄 바탕이 투명하면 뒤의 빨간 바탕이 밀기 전에도 비쳐 보인다. 화면 바탕색으로 덮는다 */}
         <View style={styles.front}>{children}</View>
       </Swipeable>
     </View>
+  );
+}
+
+/**
+ * 줄 뒤의 빨간 바탕. 줄을 밀고 있을 때만 보인다.
+ * 늘 그려 두면, 줄이 서서히 나타나는 동안(화면에 들어올 때) 반투명한 줄 너머로 빨강이 비쳐 화면 전체가 빨갛게 번쩍였다
+ */
+function Behind({ drag, width }: { drag: SharedValue<number>; width: number }) {
+  const shown = useAnimatedStyle(() => ({ opacity: drag.get() < -1 ? 1 : 0 }));
+  return (
+    <Animated.View style={[styles.behind, { width }, shown]}>
+      <Icon name="trash" size={22} color={colors.text.inverse} />
+    </Animated.View>
   );
 }
 
