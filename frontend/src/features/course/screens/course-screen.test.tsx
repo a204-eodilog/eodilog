@@ -157,7 +157,7 @@ describe('S24 코스', () => {
 
   it('편집을 누르면 코스 짜기로 간다', async () => {
     await renderScreen();
-    await fireEvent.press(await screen.findByText('편집'));
+    await fireEvent.press(await screen.findByLabelText('편집'));
     expect(mockRouter.push).toHaveBeenCalledWith({
       pathname: '/trips/[tripId]/course/edit',
       params: { tripId: 'trip-1' },
@@ -169,7 +169,7 @@ describe('S24 코스', () => {
     await renderScreen();
     expect(await screen.findAllByText('대중교통 · 계산 전')).toHaveLength(2);
     expect(screen.queryByLabelText(/이동 시간을 새로 구하지 못했어요/)).toBeNull();
-    expect(screen.queryByText('다시 계산')).toBeNull();
+    expect(screen.queryByLabelText('다시 계산')).toBeNull();
   });
 
   it('구간 시간을 못 구했으면 카드를 보이고 다시 계산하면 코스를 다시 받는다', async () => {
@@ -189,7 +189,7 @@ describe('S24 코스', () => {
     await renderScreen();
     expect(await screen.findByLabelText(/이동 시간을 새로 구하지 못했어요/)).toBeTruthy();
     expect(screen.getAllByText('대중교통 · 시간 모름')).toHaveLength(2);
-    await fireEvent.press(screen.getByText('다시 계산'));
+    await fireEvent.press(screen.getByLabelText('다시 계산'));
     expect(mockRecalc).toHaveBeenCalledWith('trip-1', 3);
     await waitFor(() => expect(mockGet).toHaveBeenCalledTimes(2));
     expect(await screen.findByText('대중교통 22분')).toBeTruthy();
@@ -200,7 +200,7 @@ describe('S24 코스', () => {
     mockGet.mockResolvedValue(sampleCourse(false));
     mockRecalc.mockRejectedValue(new Error('network'));
     await renderScreen();
-    await fireEvent.press(await screen.findByText('다시 계산'));
+    await fireEvent.press(await screen.findByLabelText('다시 계산'));
     await waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith('이동 시간을 다시 구하지 못했어요'),
     );

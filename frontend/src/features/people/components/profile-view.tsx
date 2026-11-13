@@ -1,8 +1,10 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Stagger } from '@/components/ui/stagger';
 import { Spinner } from '@/components/ui/spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, Button, ErrorState, Header, KoreaMap } from '@/components/ui';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { useTripPinMap } from '@/features/mypage';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -33,37 +35,43 @@ export function ProfileView(props: ProfileViewProps) {
       {props.state === 'error' ? (
         <ErrorState title="프로필을 불러오지 못했어요" onRetry={props.onRetry} />
       ) : props.state === 'loading' || !p ? (
-        <Spinner style={styles.flex} color={colors.brand.primary} />
+        <SkeletonList style={styles.flex} />
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
-          <View style={styles.profile}>
-            <Avatar name={p.nickname} imageUrl={p.profileImageUrl} size={48} />
-            <View style={styles.profileText}>
-              <Text style={styles.name}>{p.nickname}</Text>
+          <Stagger itemStyle={styles.staggerItem}>
+            {/* 프로필 카드. 파랑 띠 위에 얼굴이 걸치고, 이름·숫자·팔로우가 가운데에 모인다 */}
+            <View style={styles.card}>
+              <View style={styles.band} />
+              <View style={styles.face}>
+                <Avatar name={p.nickname} imageUrl={p.profileImageUrl} size={76} />
+              </View>
+              <Text style={styles.name} numberOfLines={1}>
+                {p.nickname}
+              </Text>
               <Text style={styles.stats}>{profileStats(p, isLocked(p))}</Text>
+              <View style={styles.follow}>
+                <FollowButton
+                  state={followButtonState(p)}
+                  privateAccount={p.accountVisibility === 'PRIVATE'}
+                  loading={props.following}
+                  onPress={props.onFollow}
+                />
+              </View>
             </View>
-          </View>
-          <View style={styles.follow}>
-            <FollowButton
-              state={followButtonState(p)}
-              privateAccount={p.accountVisibility === 'PRIVATE'}
-              loading={props.following}
-              onPress={props.onFollow}
-            />
-          </View>
-          {isLocked(p) ? (
-            <View style={styles.locked}>
-              <Text style={styles.lockedTitle}>비공개 계정이에요</Text>
-              <Text style={styles.lockedDesc}>팔로우가 수락되면 여행을 볼 수 있어요</Text>
-            </View>
-          ) : (
-            <FeedMap
-              feeds={props.feeds}
-              state={props.feedsState ?? 'ready'}
-              onRetry={props.onRetryFeeds}
-              onFeed={props.onFeed}
-            />
-          )}
+            {isLocked(p) ? (
+              <View style={styles.locked}>
+                <Text style={styles.lockedTitle}>비공개 계정이에요</Text>
+                <Text style={styles.lockedDesc}>팔로우가 수락되면 여행을 볼 수 있어요</Text>
+              </View>
+            ) : (
+              <FeedMap
+                feeds={props.feeds}
+                state={props.feedsState ?? 'ready'}
+                onRetry={props.onRetryFeeds}
+                onFeed={props.onFeed}
+              />
+            )}
+          </Stagger>
         </ScrollView>
       )}
     </SafeAreaView>
@@ -92,7 +100,13 @@ function FeedMap({
           <>
             <Text style={styles.lockedDesc}>공동 피드를 불러오지 못했어요</Text>
             {onRetry ? (
-              <Button label="다시 시도" size="sm" variant="secondary" onPress={onRetry} />
+              <Button
+                label="다시 시도"
+                icon="refresh"
+                size="sm"
+                variant="secondary"
+                onPress={onRetry}
+              />
             ) : null}
           </>
         )}
@@ -126,7 +140,9 @@ function FeedMap({
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.surface.white },
+  // 차례로 나타나는 구역을 감싼 칸. 한 구역이 여러 줄이면 그 사이 간격을 스크롤 내용과 같게 둔다
+  staggerItem: { gap: spacing[16] },
+  screen: { flex: 1, backgroundColor: colors.surface.subtle },
   flex: { flex: 1 },
   content: {
     paddingHorizontal: layout.screenPaddingX,
@@ -134,11 +150,24 @@ const styles = StyleSheet.create({
     paddingBottom: spacing[32],
     gap: spacing[16],
   },
-  profile: { flexDirection: 'row', alignItems: 'center', gap: spacing[14] },
-  profileText: { flex: 1, minWidth: 0, gap: 2 },
-  name: { ...typography.title2, color: colors.text.default },
-  stats: { ...typography.caption, color: colors.text.sub },
-  follow: { flexDirection: 'row' },
+  card: {
+    alignItems: 'center',
+    paddingBottom: spacing[20],
+    borderRadius: radius.xxl,
+    overflow: 'hidden',
+    backgroundColor: colors.surface.white,
+  },
+  band: { alignSelf: 'stretch', height: 72, backgroundColor: colors.brand.primary },
+  // 얼굴이 띠에 반쯤 걸친다. 흰 테두리로 띠와 나눈다
+  face: {
+    marginTop: -42,
+    padding: 4,
+    borderRadius: radius.full,
+    backgroundColor: colors.surface.white,
+  },
+  name: { ...typography.title1, color: colors.text.default, marginTop: spacing[8] },
+  stats: { ...typography.caption, color: colors.text.sub, marginTop: spacing[2] },
+  follow: { marginTop: spacing[14] },
   locked: { alignItems: 'center', gap: spacing[4], paddingVertical: spacing[8] },
   lockedTitle: { ...typography.bodyBold, color: colors.text.strong },
   lockedDesc: { ...typography.caption, color: colors.text.sub },

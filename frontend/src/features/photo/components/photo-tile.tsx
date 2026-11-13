@@ -1,8 +1,9 @@
 import { Image } from 'expo-image';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Spinner } from '@/components/ui/spinner';
 
 import { Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, radius, spacing, typography } from '@/theme';
 
 import type { UploadStatus } from '../types';
@@ -45,7 +46,7 @@ export function PhotoTile({
 
   return (
     <View style={{ width: size }}>
-      <Pressable
+      <PressableScale
         accessibilityRole={picking ? 'checkbox' : 'image'}
         accessibilityState={picking ? { checked: selected } : undefined}
         accessibilityLabel={`${label}, ${stateLabel}`}
@@ -79,7 +80,7 @@ export function PhotoTile({
             </View>
           </>
         ) : null}
-      </Pressable>
+      </PressableScale>
       {failed ? <Text style={[typography.micro, styles.failText]}>실패</Text> : null}
     </View>
   );

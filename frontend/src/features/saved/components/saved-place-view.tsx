@@ -1,9 +1,11 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Stagger } from '@/components/ui/stagger';
 import { Spinner } from '@/components/ui/spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MapMarker, MapView } from '@/components/map';
 import { Button, Header, Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 type SavedPlaceViewProps = {
@@ -55,7 +57,7 @@ export function SavedPlaceView({
         onBack={onBack}
         right={
           editable ? (
-            <Pressable
+            <PressableScale
               accessibilityRole="button"
               accessibilityLabel="저장 해제"
               accessibilityState={{ disabled: busy, busy }}
@@ -69,112 +71,114 @@ export function SavedPlaceView({
               ) : (
                 <Icon name="bookmark" color={colors.brand.primary} filled />
               )}
-            </Pressable>
+            </PressableScale>
           ) : undefined
         }
       />
       <ScrollView contentContainerStyle={styles.content}>
-        {lost ? (
-          <View style={styles.map}>
-            <MapView
-              initialRegion={{
-                latitude: latitude - 0.01,
-                longitude: longitude - 0.01,
-                latitudeDelta: 0.02,
-                longitudeDelta: 0.02,
-              }}
-              isScrollGesturesEnabled={false}
-              isZoomGesturesEnabled={false}
-            >
-              <MapMarker latitude={latitude} longitude={longitude} label={name} dot="brand" />
-            </MapView>
-          </View>
-        ) : (
-          <View style={styles.photo} />
-        )}
+        <Stagger itemStyle={styles.staggerItem}>
+          {lost ? (
+            <View style={styles.map}>
+              <MapView
+                initialRegion={{
+                  latitude: latitude - 0.01,
+                  longitude: longitude - 0.01,
+                  latitudeDelta: 0.02,
+                  longitudeDelta: 0.02,
+                }}
+                isScrollGesturesEnabled={false}
+                isZoomGesturesEnabled={false}
+              >
+                <MapMarker latitude={latitude} longitude={longitude} label={name} dot="brand" />
+              </MapView>
+            </View>
+          ) : (
+            <View style={styles.photo} />
+          )}
 
-        <View style={styles.info}>
-          <Text style={[typography.title1, styles.text]}>{name}</Text>
-          <View style={styles.metaRow}>
-            {area ? (
+          <View style={styles.info}>
+            <Text style={[typography.title1, styles.text]}>{name}</Text>
+            <View style={styles.metaRow}>
+              {area ? (
+                <View style={styles.meta}>
+                  <Icon name="map-pin" size={16} color={colors.text.icon} />
+                  <Text style={[typography.caption, styles.sub]}>{area}</Text>
+                </View>
+              ) : null}
               <View style={styles.meta}>
-                <Icon name="map-pin" size={16} color={colors.text.icon} />
-                <Text style={[typography.caption, styles.sub]}>{area}</Text>
+                <Icon name="lock" size={16} color={colors.text.icon} />
+                <Text style={[typography.caption, styles.sub]}>나만 봐요</Text>
               </View>
-            ) : null}
-            <View style={styles.meta}>
-              <Icon name="lock" size={16} color={colors.text.icon} />
-              <Text style={[typography.caption, styles.sub]}>나만 봐요</Text>
             </View>
           </View>
-        </View>
 
-        <View style={styles.section}>
-          <View style={styles.label}>
-            <Icon name="pencil" size={16} color={colors.text.icon} />
-            <Text style={[typography.captionMedium, styles.sub]}>내 메모</Text>
-          </View>
-          <View style={styles.memoBox}>
-            <Text style={[typography.body, memo ? styles.text : styles.placeholder, styles.flex]}>
-              {memo || '메모가 없어요'}
-            </Text>
-            {editable ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="메모 고치기"
-                accessibilityState={{ disabled: busy }}
-                disabled={busy}
-                onPress={onEditMemo}
-                style={({ pressed }) => [styles.memoButton, pressed && styles.pressed]}
-              >
-                <Icon name="pencil" size={18} color={colors.text.default} />
-              </Pressable>
-            ) : null}
-          </View>
-        </View>
-
-        {source !== 'none' ? (
           <View style={styles.section}>
             <View style={styles.label}>
-              <Icon name="link" size={16} color={colors.text.icon} />
-              <Text style={[typography.captionMedium, styles.sub]}>가져온 곳</Text>
+              <Icon name="pencil" size={16} color={colors.text.icon} />
+              <Text style={[typography.captionMedium, styles.sub]}>내 메모</Text>
             </View>
-            {lost ? (
-              <View style={[styles.sourceRow, styles.sourceLost]}>
-                <View style={styles.sourceCircle}>
-                  <Icon name="link" size={20} color={colors.text.icon} />
-                </View>
-                <Text style={[typography.body, styles.sub]}>원본을 더 볼 수 없어요</Text>
-              </View>
-            ) : (
-              // 즐겨찾기 응답에 피드 제목·올린 사람이 없어 이름 대신 "공동 피드"로 보여 준다
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="가져온 공동 피드 열기"
-                onPress={onOpenSource}
-                style={({ pressed }) => [styles.sourceRow, pressed && styles.pressed]}
-              >
-                <View style={[styles.sourceCircle, styles.sourceCircleBrand]}>
-                  <Icon name="trip" size={20} color={colors.brand.primary} />
-                </View>
-                <View style={styles.flex}>
-                  <Text style={[typography.bodyBold, styles.text]}>공동 피드</Text>
-                  <Text style={[typography.caption, styles.sub]}>이 피드에서 담았어요</Text>
-                </View>
-                <Icon name="chevron-right" size={20} color={colors.text.icon} />
-              </Pressable>
-            )}
+            <View style={styles.memoBox}>
+              <Text style={[typography.body, memo ? styles.text : styles.placeholder, styles.flex]}>
+                {memo || '메모가 없어요'}
+              </Text>
+              {editable ? (
+                <PressableScale
+                  accessibilityRole="button"
+                  accessibilityLabel="메모 고치기"
+                  accessibilityState={{ disabled: busy }}
+                  disabled={busy}
+                  onPress={onEditMemo}
+                  style={({ pressed }) => [styles.memoButton, pressed && styles.pressed]}
+                >
+                  <Icon name="pencil" size={18} color={colors.text.default} />
+                </PressableScale>
+              ) : null}
+            </View>
           </View>
-        ) : null}
+
+          {source !== 'none' ? (
+            <View style={styles.section}>
+              <View style={styles.label}>
+                <Icon name="link" size={16} color={colors.text.icon} />
+                <Text style={[typography.captionMedium, styles.sub]}>가져온 곳</Text>
+              </View>
+              {lost ? (
+                <View style={[styles.sourceRow, styles.sourceLost]}>
+                  <View style={styles.sourceCircle}>
+                    <Icon name="link" size={20} color={colors.text.icon} />
+                  </View>
+                  <Text style={[typography.body, styles.sub]}>원본을 더 볼 수 없어요</Text>
+                </View>
+              ) : (
+                // 즐겨찾기 응답에 피드 제목·올린 사람이 없어 이름 대신 "공동 피드"로 보여 준다
+                <PressableScale
+                  accessibilityRole="button"
+                  accessibilityLabel="가져온 공동 피드 열기"
+                  onPress={onOpenSource}
+                  style={({ pressed }) => [styles.sourceRow, pressed && styles.pressed]}
+                >
+                  <View style={[styles.sourceCircle, styles.sourceCircleBrand]}>
+                    <Icon name="trip" size={20} color={colors.brand.primary} />
+                  </View>
+                  <View style={styles.flex}>
+                    <Text style={[typography.bodyBold, styles.text]}>공동 피드</Text>
+                    <Text style={[typography.caption, styles.sub]}>이 피드에서 담았어요</Text>
+                  </View>
+                  <Icon name="chevron-right" size={20} color={colors.text.icon} />
+                </PressableScale>
+              )}
+            </View>
+          ) : null}
+        </Stagger>
       </ScrollView>
 
       <View style={[styles.bottom, { paddingBottom: Math.max(insets.bottom, BOTTOM_GAP) }]}>
         <Button
           label="그룹에 추가"
+          icon="plus"
           weight="medium"
           disabled={!editable || busy}
           onPress={onAddToTrip}
-          leading={<Icon name="plus" size={20} color={colors.text.inverse} />}
           style={styles.add}
         />
       </View>
@@ -186,6 +190,8 @@ export function SavedPlaceView({
 const BOTTOM_GAP = 34;
 
 const styles = StyleSheet.create({
+  // 차례로 나타나는 구역을 감싼 칸. 한 구역이 여러 줄이면 그 사이 간격을 스크롤 내용과 같게 둔다
+  staggerItem: { gap: spacing[28] },
   screen: { flex: 1, backgroundColor: colors.surface.white },
   flex: { flex: 1 },
   pressed: { opacity: 0.8 },

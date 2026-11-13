@@ -1,7 +1,8 @@
 import { Image } from 'expo-image';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { assetSource } from '@/lib/asset-image';
 import { colors, radius, spacing, typography } from '@/theme';
 
@@ -22,7 +23,7 @@ type BookmarkCardProps = {
 export function BookmarkCard({ item, photoHeight, onPress }: BookmarkCardProps) {
   const src = assetSource(item.imageUrl);
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={[item.name, item.area, item.source].filter(Boolean).join(', ')}
       onPress={onPress}
@@ -47,7 +48,7 @@ export function BookmarkCard({ item, photoHeight, onPress }: BookmarkCardProps) 
           </Text>
         ) : null}
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }
 

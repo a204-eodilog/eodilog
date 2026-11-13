@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, radius, spacing, typography } from '@/theme';
 
 import type { OutboxItem } from '../types';
@@ -26,7 +27,7 @@ export function OutboxBubble({ item, onRetry, onDiscard }: Props) {
             <Text style={[typography.captionMedium, styles.failedText]}>못 보냈어요</Text>
           </View>
           <View style={styles.actions}>
-            <Pressable
+            <PressableScale
               accessibilityRole="button"
               accessibilityLabel="이 메시지 지우기"
               onPress={() => onDiscard(item.clientMessageId)}
@@ -34,17 +35,16 @@ export function OutboxBubble({ item, onRetry, onDiscard }: Props) {
               style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
             >
               <Icon name="trash" size={14} color={colors.text.sub} />
-            </Pressable>
+            </PressableScale>
             {item.failure === 'retry' ? (
-              <Pressable
+              <PressableScale
                 accessibilityRole="button"
                 accessibilityLabel="다시 보내기"
                 onPress={() => onRetry(item.clientMessageId)}
                 style={({ pressed }) => [styles.retry, pressed && styles.pressed]}
               >
                 <Icon name="refresh" size={14} color={colors.status.danger} />
-                <Text style={[typography.captionMedium, styles.failedText]}>다시 보내기</Text>
-              </Pressable>
+              </PressableScale>
             ) : null}
           </View>
         </View>

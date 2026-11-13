@@ -1,7 +1,8 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Spinner } from '@/components/ui/spinner';
 
 import { BottomSheet, Button, Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, layout, spacing, typography } from '@/theme';
 
 import type { TripsStatus } from '../hooks/use-trip-options';
@@ -54,7 +55,7 @@ export function AddToTripSheet({
             </Text>
           </View>
         </View>
-        <Pressable
+        <PressableScale
           accessibilityRole="button"
           accessibilityLabel="닫기"
           hitSlop={8}
@@ -63,7 +64,7 @@ export function AddToTripSheet({
           style={styles.close}
         >
           <Icon name="close" color={colors.text.default} />
-        </Pressable>
+        </PressableScale>
       </View>
 
       <View style={styles.body}>
@@ -81,10 +82,10 @@ export function AddToTripSheet({
             </Text>
             <Button
               label="다시 시도"
+              icon="refresh"
               size="sm"
               variant="secondary"
               onPress={onRetryTrips}
-              leading={<Icon name="refresh" size={16} color={colors.brand.primary} />}
             />
           </View>
         ) : empty ? (
@@ -106,11 +107,11 @@ export function AddToTripSheet({
       <View style={[styles.footer, !ready || empty ? styles.dim : null]}>
         <Button
           label="추가"
+          icon="plus"
           weight="medium"
           disabled={!ready || empty || selectedId === null}
           loading={adding}
           onPress={onAdd}
-          leading={<Icon name="plus" size={20} color={colors.text.inverse} />}
           style={styles.add}
         />
       </View>

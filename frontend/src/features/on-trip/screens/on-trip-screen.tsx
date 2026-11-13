@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams, type Href } from 'expo-router';
 import { useEffect, useState, type ReactNode } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Spinner } from '@/components/ui/spinner';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { errorLook } from '@/api/error-look';
@@ -122,7 +122,7 @@ export function OnTripView(props: OnTripViewProps) {
 
   let body: ReactNode;
   if (props.status === 'loading') {
-    body = <Spinner color={colors.brand.primary} style={styles.loading} />;
+    body = <SkeletonList style={styles.loading} />;
   } else if (props.status === 'error') {
     body = <ErrorState {...errorLook(props.error)} description={null} onRetry={props.onRetry} />;
   } else {

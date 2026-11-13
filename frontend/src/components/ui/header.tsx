@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, layout, spacing, typography } from '@/theme';
 
+import { FadeIn } from './fade-in';
 import { Icon, type IconName } from './icon';
 
 export type HeaderProps = {
@@ -65,11 +66,15 @@ export function Header({
           )}
         </View>
         <View style={styles.center}>
-          {title ? (
-            <Text
-              style={[largeTitle ? typography.title1 : typography.bodyBold, styles.title]}
-              numberOfLines={1}
-            >
+          {title && largeTitle ? (
+            // 큰 제목은 화면을 열 때 가려진 틀 아래에서 솟아오른다
+            <FadeIn from="mask">
+              <Text style={[typography.title1, styles.title]} numberOfLines={1}>
+                {title}
+              </Text>
+            </FadeIn>
+          ) : title ? (
+            <Text style={[typography.bodyBold, styles.title]} numberOfLines={1}>
               {title}
             </Text>
           ) : null}

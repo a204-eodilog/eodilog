@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, radius, spacing, typography } from '@/theme';
 
 const CHIP_HEIGHT = 40;
@@ -24,7 +25,7 @@ function MyPreferenceChip({
       style={[styles.chip, styles.removable, tone === 'chosen' ? styles.chosen : styles.inferred]}
     >
       <Text style={[typography.bodyMedium, styles.chosenText]}>{label}</Text>
-      <Pressable
+      <PressableScale
         accessibilityRole="button"
         accessibilityLabel={`${label} 빼기`}
         hitSlop={6}
@@ -32,7 +33,7 @@ function MyPreferenceChip({
         style={({ pressed }) => [styles.removeButton, pressed && styles.pressed]}
       >
         <Icon name="close" size={16} color={colors.brand.primaryDark} />
-      </Pressable>
+      </PressableScale>
     </View>
   );
 }
@@ -50,14 +51,14 @@ export function InferredChip({ label, onRemove }: { label: string; onRemove: () 
 /** 더할 수 있는 추천 취향(흰 바탕 테두리 "+ 산"). Figma S03 "이런 취향은 어때요?" */
 export function SuggestChip({ label, onAdd }: { label: string; onAdd: () => void }) {
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={`${label} 더하기`}
       onPress={onAdd}
       style={({ pressed }) => [styles.suggest, pressed && styles.pressed]}
     >
       <Text style={[typography.bodyMedium, styles.suggestText]}>+ {label}</Text>
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -75,7 +76,7 @@ export function ToggleChip({
   onToggle: () => void;
 }) {
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="checkbox"
       accessibilityState={{ checked: selected }}
       aria-checked={selected}
@@ -91,7 +92,7 @@ export function ToggleChip({
       <Text style={[typography.bodyMedium, selected ? styles.chosenText : styles.idleText]}>
         {label}
       </Text>
-    </Pressable>
+    </PressableScale>
   );
 }
 

@@ -133,13 +133,13 @@ export function VoiceDraftsView({
           leading={<Icon name="mic" size={20} color={colors.text.icon} />}
         />
         <Button
+          // 공통 규칙: 저장은 check, 다시 시도는 refresh 아이콘만. 몇 건인지는 count로 붙인다
           label={saveFailed ? '다시 저장' : `${save.count}건 저장`}
+          icon={saveFailed ? 'refresh' : 'check'}
+          count={saveFailed ? undefined : save.count}
           onPress={onSave}
           disabled={!save.canSave}
           loading={saving}
-          leading={
-            <Icon name={saveFailed ? 'refresh' : 'check'} size={20} color={colors.text.inverse} />
-          }
         />
       </View>
     </View>

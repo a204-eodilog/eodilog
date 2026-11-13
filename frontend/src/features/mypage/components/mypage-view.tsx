@@ -1,13 +1,5 @@
 import { useState } from 'react';
-import {
-  type LayoutChangeEvent,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import { Spinner } from '@/components/ui/spinner';
+import { type LayoutChangeEvent, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
@@ -19,6 +11,9 @@ import {
   KoreaMap,
   type KoreaMapPin,
 } from '@/components/ui';
+import { Stagger } from '@/components/ui/stagger';
+import { PressableScale } from '@/components/ui/pressable-scale';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { findMapRegion, MAINLAND_BOUNDS, mapFit } from '@/lib/korea-map';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -59,62 +54,61 @@ export function MyPageView(props: MyPageViewProps) {
       {state === 'error' ? (
         <ErrorState title="마이페이지를 불러오지 못했어요" onRetry={props.onRetry} />
       ) : state === 'loading' || !summary ? (
-        <Spinner style={styles.flex} color={colors.brand.primary} />
+        <SkeletonList style={styles.flex} />
       ) : (
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <View style={styles.profile}>
-            <Avatar name={summary.nickname} imageUrl={summary.profileImageUrl} size={48} me />
-            <View style={styles.profileText}>
-              <Text style={styles.name} numberOfLines={1}>
-                {summary.nickname}
-              </Text>
-              <Text style={styles.sub}>{profileLine(summary)}</Text>
-            </View>
-          </View>
-
-          <MapCard {...props} summary={summary} />
-
-          {state === 'ready' ? (
-            <View style={styles.legend}>
-              <View style={styles.legendItem}>
-                <View style={styles.legendDot} />
-                <Text style={styles.legendText}>게시됨</Text>
-              </View>
-              <View style={styles.legendItem}>
-                <Icon name="lock" size={14} color={colors.text.icon} />
-                <Text style={styles.legendText}>비공개 · 나만 봐요</Text>
+          <Stagger itemStyle={styles.staggerItem}>
+            <View style={styles.profile}>
+              <Avatar name={summary.nickname} imageUrl={summary.profileImageUrl} size={56} me />
+              <View style={styles.profileText}>
+                <Text style={styles.name} numberOfLines={1}>
+                  {summary.nickname}
+                </Text>
+                <Text style={styles.onBrand}>{profileLine(summary)}</Text>
               </View>
             </View>
-          ) : null}
 
-          {summary.tripCount > 0 ? (
-            <Pressable
-              onPress={props.onTrips}
-              style={({ pressed }) => [styles.trips, pressed && styles.pressed]}
-              accessibilityRole="button"
-              accessibilityLabel={`내 여행 목록, ${tripListLine(summary)}`}
-            >
-              <View style={styles.tileIcon}>
-                <Icon name="list" size={22} color={colors.brand.primary} />
-              </View>
-              <View style={styles.flex}>
-                <Text style={styles.tripsTitle}>내 여행 목록</Text>
-                <Text style={styles.sub}>{tripListLine(summary)}</Text>
-              </View>
-              <Icon name="chevron-right" size={20} color={colors.text.muted} />
-            </Pressable>
-          ) : null}
+            <MapCard {...props} summary={summary} />
 
-          <View style={styles.tiles}>
-            <Tile icon="clock" label="타임라인" onPress={props.onTimeline} />
-            <Tile
-              icon="people"
-              label="친구"
-              count={summary.friendCount === null ? null : `${summary.friendCount}명`}
-              onPress={props.onFriends}
-            />
-            <Tile icon="gear" label="설정" onPress={props.onSettings} />
-          </View>
+            {state === 'ready' ? (
+              <View style={styles.legend}>
+                <View style={styles.legendItem}>
+                  <View style={styles.legendDot} />
+                  <Text style={styles.legendText}>게시됨</Text>
+                </View>
+                <View style={styles.legendItem}>
+                  <Icon name="lock" size={14} color={colors.text.icon} />
+                  <Text style={styles.legendText}>비공개 · 나만 봐요</Text>
+                </View>
+              </View>
+            ) : null}
+
+            {/* 메뉴. 한 카드에 줄로 둔다. 이름 옆에 설명이나 숫자가 함께 보인다 */}
+            <View style={styles.menu}>
+              {summary.tripCount > 0 ? (
+                <>
+                  <Tile
+                    icon="list"
+                    label="내 여행 목록"
+                    note={tripListLine(summary)}
+                    accessibilityLabel={`내 여행 목록, ${tripListLine(summary)}`}
+                    onPress={props.onTrips}
+                  />
+                  <View style={styles.rule} />
+                </>
+              ) : null}
+              <Tile icon="clock" label="타임라인" onPress={props.onTimeline} />
+              <View style={styles.rule} />
+              <Tile
+                icon="people"
+                label="친구"
+                count={summary.friendCount === null ? null : `${summary.friendCount}명`}
+                onPress={props.onFriends}
+              />
+              <View style={styles.rule} />
+              <Tile icon="gear" label="설정" onPress={props.onSettings} />
+            </View>
+          </Stagger>
         </ScrollView>
       )}
     </SafeAreaView>
@@ -147,8 +141,8 @@ function MapCard(props: MyPageViewProps & { summary: MyPageSummary }) {
           </Text>
           <Button
             label="여행 만들기"
+            icon="plus"
             onPress={props.onNewTrip}
-            leading={<Icon name="plus" size={18} color={colors.text.inverse} />}
             style={styles.emptyButton}
           />
         </View>
@@ -261,7 +255,7 @@ export function TripPin({
     />
   );
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
       style={[styles.pinWrap, move]}
       accessibilityRole="button"
@@ -279,41 +273,52 @@ export function TripPin({
         </Text>
       </View>
       {below ? null : dot}
-    </Pressable>
+    </PressableScale>
   );
 }
 
 function Tile({
   icon,
   label,
+  note,
   count,
+  accessibilityLabel,
   onPress,
 }: {
   icon: IconName;
   label: string;
+  /** 이름 아래 설명 줄 */
+  note?: string;
+  /** 오른쪽 숫자("2명") */
   count?: string | null;
+  accessibilityLabel?: string;
   onPress: () => void;
 }) {
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
       style={({ pressed }) => [styles.tile, pressed && styles.pressed]}
       accessibilityRole="button"
-      accessibilityLabel={count ? `${label} ${count}` : label}
+      accessibilityLabel={accessibilityLabel ?? (count ? `${label} ${count}` : label)}
     >
       <View style={styles.tileIcon}>
         <Icon name={icon} size={20} color={colors.brand.primary} />
       </View>
-      <Text style={styles.tileLabel}>
-        {label}
-        {count ? <Text style={styles.tileCount}> {count}</Text> : null}
-      </Text>
-    </Pressable>
+      <View style={styles.flex}>
+        <Text style={styles.tileLabel}>{label}</Text>
+        {note ? <Text style={styles.sub}>{note}</Text> : null}
+      </View>
+      {count ? <Text style={styles.tileCount}>{count}</Text> : null}
+      <Icon name="chevron-right" size={18} color={colors.text.muted} />
+    </PressableScale>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.surface.white },
+  // 차례로 나타나는 구역을 감싼 칸. 한 구역이 여러 줄이면 그 사이 간격을 스크롤 내용과 같게 둔다
+  staggerItem: { gap: spacing[20] },
+  // 바탕은 옅은 회색, 내용은 카드에 담는다
+  screen: { flex: 1, backgroundColor: colors.surface.subtle },
   flex: { flex: 1 },
   pressed: { opacity: 0.7 },
   content: {
@@ -324,15 +329,22 @@ const styles = StyleSheet.create({
   },
   bar: { height: 56, justifyContent: 'center', paddingHorizontal: layout.screenPaddingX },
   pageTitle: { ...typography.title1, color: colors.text.default },
-  profile: { flexDirection: 'row', alignItems: 'center', gap: spacing[14] },
+  // 프로필은 파랑 카드. 여행 탭·기록 화면의 파랑 머리와 같은 얼굴이다
+  profile: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[14],
+    padding: spacing[20],
+    borderRadius: radius.xxl,
+    backgroundColor: colors.brand.primary,
+  },
   profileText: { flex: 1, minWidth: 0, gap: 2 },
-  name: { ...typography.title2, color: colors.text.default },
+  name: { ...typography.title1, color: colors.text.inverse },
+  onBrand: { ...typography.caption, color: colors.onBrand.textSoft },
   sub: { ...typography.caption, color: colors.text.sub },
   mapCard: {
     height: MAP_HEIGHT,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.line.default,
+    borderRadius: radius.xxl,
     overflow: 'hidden',
     backgroundColor: colors.map.seaMid,
   },
@@ -356,26 +368,19 @@ const styles = StyleSheet.create({
     backgroundColor: colors.brand.primary,
   },
   legendText: { ...typography.caption, color: colors.text.sub },
-  trips: {
+  menu: {
+    paddingVertical: spacing[6],
+    paddingHorizontal: spacing[16],
+    borderRadius: radius.xl,
+    backgroundColor: colors.surface.white,
+  },
+  rule: { height: 1, marginLeft: 54, backgroundColor: colors.line.default },
+  tile: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[14],
-    padding: spacing[18],
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.line.default,
-    backgroundColor: colors.surface.white,
-  },
-  tripsTitle: { ...typography.bodyBold, color: colors.text.default },
-  tiles: { flexDirection: 'row', gap: spacing[10] },
-  tile: {
-    flex: 1,
-    alignItems: 'center',
-    gap: spacing[10],
-    paddingVertical: spacing[16],
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.line.default,
+    minHeight: 64,
+    paddingVertical: spacing[10],
   },
   tileIcon: {
     width: 40,
@@ -385,8 +390,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  tileLabel: { ...typography.captionBold, color: colors.text.default },
-  tileCount: { ...typography.caption, color: colors.text.sub },
+  tileLabel: { ...typography.bodyBold, color: colors.text.default },
+  tileCount: { ...typography.bodyMedium, color: colors.brand.primary },
   pinWrap: { alignItems: 'center', gap: spacing[4], marginBottom: -5 },
   pin: {
     flexDirection: 'row',

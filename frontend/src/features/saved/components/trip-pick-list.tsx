@@ -1,7 +1,8 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 
 import { Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, radius, spacing, typography } from '@/theme';
 
 export type TripOption = {
@@ -36,7 +37,7 @@ export function TripPickList({ trips, selectedId, onSelect }: TripPickListProps)
       {trips.map((trip) => {
         const selected = trip.id === selectedId;
         return (
-          <Pressable
+          <PressableScale
             key={trip.id}
             accessibilityRole="radio"
             accessibilityLabel={[trip.title, trip.period, trip.companions]
@@ -75,7 +76,7 @@ export function TripPickList({ trips, selectedId, onSelect }: TripPickListProps)
             <View style={[styles.radio, selected && styles.radioOn]}>
               {selected ? <View style={styles.radioDot} /> : null}
             </View>
-          </Pressable>
+          </PressableScale>
         );
       })}
     </ScrollView>

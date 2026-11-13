@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Calendar, LocaleConfig, type DateData } from 'react-native-calendars';
 
 import { BottomSheet, Button, Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { addDays, daysBetween, formatRange, seoulToday } from '@/lib/seoul-date';
 import { colors, radius, spacing, typography } from '@/theme';
 
@@ -87,6 +88,7 @@ export function DateRangeSheet({ visible, value, onClose, onDone }: Props) {
       footer={
         <Button
           label="선택"
+          icon="check"
           size="lg"
           block
           disabled={!complete}
@@ -97,7 +99,7 @@ export function DateRangeSheet({ visible, value, onClose, onDone }: Props) {
     >
       <View style={styles.head}>
         <Text style={[typography.title3, styles.title]}>여행 기간</Text>
-        <Pressable
+        <PressableScale
           accessibilityRole="button"
           accessibilityLabel="나중에 정할게요"
           // 글자 줄 26에 위아래 9씩 넓혀 누르는 자리 44
@@ -106,7 +108,7 @@ export function DateRangeSheet({ visible, value, onClose, onDone }: Props) {
           style={({ pressed }) => pressed && styles.pressed}
         >
           <Text style={[typography.bodyMedium, styles.later]}>나중에 정할게요</Text>
-        </Pressable>
+        </PressableScale>
       </View>
       <Calendar
         markingType="period"

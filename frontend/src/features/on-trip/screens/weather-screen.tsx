@@ -91,7 +91,12 @@ export function WeatherView(props: WeatherViewProps) {
         >
           <Icon name="alert" size={24} color={colors.text.icon} />
         </View>
-        <Button label="다시 시도" variant="secondary" onPress={props.onRetryAlternatives} />
+        <Button
+          label="다시 시도"
+          icon="refresh"
+          variant="secondary"
+          onPress={props.onRetryAlternatives}
+        />
       </View>
     );
   } else if (empty) {
@@ -145,8 +150,8 @@ export function WeatherView(props: WeatherViewProps) {
         <View style={[styles.bottom, { paddingBottom: insets.bottom + spacing[12] }]}>
           <Button
             label="변경안 만들기"
+            icon="route"
             weight="medium"
-            leading={<Icon name="route" size={20} color={colors.text.inverse} />}
             disabled={!props.selectedId}
             loading={props.making}
             onPress={props.onMake}

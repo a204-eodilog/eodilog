@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, radius, spacing, typography } from '@/theme';
 
 /**
@@ -16,7 +17,7 @@ export function SettlementChangedBox({ onPrevious }: { onPrevious: () => void })
         </View>
         <Text style={[typography.bodyBold, styles.title]}>정산한 뒤에 지출이 바뀌었어요</Text>
       </View>
-      <Pressable
+      <PressableScale
         accessibilityRole="link"
         onPress={onPrevious}
         hitSlop={8}
@@ -24,7 +25,7 @@ export function SettlementChangedBox({ onPrevious }: { onPrevious: () => void })
       >
         <Text style={[typography.captionMedium, styles.linkText]}>이전 정산 보기</Text>
         <Icon name="chevron-right" size={14} color={colors.brand.primaryDark} />
-      </Pressable>
+      </PressableScale>
     </View>
   );
 }

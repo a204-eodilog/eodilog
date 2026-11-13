@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { Icon, TextField } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, radius, spacing } from '@/theme';
 
 import { LABEL_MAX, validateLabel } from '../checklist-rules';
@@ -41,7 +42,7 @@ export function AddItemBar({ onAdd, busy, autoFocus = false }: Props) {
           autoFocus={autoFocus}
         />
       </View>
-      <Pressable
+      <PressableScale
         style={[styles.add, !ready && styles.addOff]}
         onPress={() => void submit()}
         disabled={!ready}
@@ -50,7 +51,7 @@ export function AddItemBar({ onAdd, busy, autoFocus = false }: Props) {
         accessibilityState={{ disabled: !ready }}
       >
         <Icon name="plus" size={20} color={colors.text.default} />
-      </Pressable>
+      </PressableScale>
     </View>
   );
 }

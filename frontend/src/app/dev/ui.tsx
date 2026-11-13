@@ -8,13 +8,19 @@ import {
   BottomSheet,
   Button,
   Card,
+  celebrate,
   Chip,
   ConfirmSheet,
+  CountUp,
   EmptyState,
   ErrorState,
   Header,
   Icon,
   MascotTraveler,
+  Pop,
+  PressableScale,
+  ProgressBar,
+  SkeletonList,
   type IconName,
   TabBar,
   Tag,
@@ -419,6 +425,10 @@ export default function UiCatalog() {
           </Row>
         </Section>
 
+        <Section title="움직임과 효과">
+          <MotionDemo />
+        </Section>
+
         <Section title="짧은 알림 (토스트)">
           <Row>
             <Button
@@ -538,6 +548,58 @@ export default function UiCatalog() {
     </SafeAreaView>
   );
 }
+
+/** 2026-11-12에 더한 움직임 부품. 눌림, 뼈대, 막대, 숫자, 튀기, 색종이 */
+function MotionDemo() {
+  const [n, setN] = useState(3);
+  return (
+    <View style={demo.wrap}>
+      <View style={demo.line}>
+        <PressableScale style={demo.small} onPress={() => setN((v) => (v >= 10 ? 0 : v + 1))}>
+          <Text style={typography.captionMedium}>좁은 칸 +1</Text>
+        </PressableScale>
+        <Pop trigger={n} style={demo.badge}>
+          <Text style={demo.badgeText}>{n}</Text>
+        </Pop>
+        <CountUp
+          value={n * 12000}
+          format={(v) => `${v.toLocaleString()}원`}
+          style={typography.bodyBold}
+        />
+      </View>
+      <PressableScale
+        style={({ pressed }) => [demo.wide, pressed && demo.pressed]}
+        onPress={() => celebrate()}
+      >
+        <Text style={typography.body}>넓은 칸 · 누르면 색종이</Text>
+      </PressableScale>
+      <ProgressBar ratio={n / 10} />
+      <SkeletonList count={2} />
+    </View>
+  );
+}
+
+const demo = StyleSheet.create({
+  wrap: { gap: spacing[16] },
+  line: { flexDirection: 'row', alignItems: 'center', gap: spacing[12] },
+  small: {
+    paddingHorizontal: spacing[12],
+    paddingVertical: spacing[8],
+    borderRadius: 8,
+    backgroundColor: colors.brand.primaryBg,
+  },
+  wide: { padding: spacing[16], borderRadius: 12, backgroundColor: colors.surface.default },
+  pressed: { opacity: 0.7 },
+  badge: {
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.brand.primary,
+  },
+  badgeText: { ...typography.captionMedium, color: colors.text.inverse },
+});
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (

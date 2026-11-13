@@ -1,6 +1,9 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Icon, Tag, type IconName } from '@/components/ui';
+import { CountUp } from '@/components/ui/count-up';
+import { PressableScale } from '@/components/ui/pressable-scale';
+import { ProgressBar } from '@/components/ui/progress-bar';
 import { CheckMarkWhen } from '@/components/ui/check-mark';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -95,20 +98,20 @@ export function CandidateRow({
             </View>
           ) : null}
         </View>
-        <Text style={[styles.votes, tone === 'muted' && styles.nameMuted]}>{`${votes}표`}</Text>
-      </View>
-      <View style={styles.track}>
-        <View
-          style={[styles.fill, { width: `${Math.round(ratio * 100)}%`, backgroundColor: fill }]}
+        <CountUp
+          value={votes}
+          format={(n) => `${n}표`}
+          style={[styles.votes, tone === 'muted' && styles.nameMuted]}
         />
       </View>
+      <ProgressBar ratio={ratio} color={fill} trackColor={colors.surface.white} />
     </>
   );
 
   const box = [styles.row, BG[tone]];
   if (!onPress) return <View style={box}>{content}</View>;
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="checkbox"
       accessibilityLabel={`${name} ${votes}표`}
       accessibilityState={{ checked, disabled }}
@@ -118,7 +121,7 @@ export function CandidateRow({
       style={({ pressed }) => [...box, pressed && styles.pressed]}
     >
       {content}
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -172,11 +175,4 @@ const styles = StyleSheet.create({
   subText: { ...typography.caption, color: colors.text.sub, flexShrink: 1 },
   votes: { ...typography.bodyBold, color: colors.text.default, fontVariant: ['tabular-nums'] },
   // 피그마: 흰 줄 높이 6, 끝 둥글게
-  track: {
-    height: 6,
-    borderRadius: radius.full,
-    backgroundColor: colors.surface.white,
-    overflow: 'hidden',
-  },
-  fill: { height: 6, borderRadius: radius.full },
 });

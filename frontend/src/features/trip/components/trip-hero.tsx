@@ -1,8 +1,10 @@
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AvatarGroup, Icon } from '@/components/ui';
+import { FadeIn } from '@/components/ui/fade-in';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { formatRange } from '@/lib/seoul-date';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -41,13 +43,17 @@ export function TripHero({ trip, headline, companions }: Props) {
 
       <View style={styles.body}>
         {/* 피그마 S17: 여행 이름 14, 큰 제목 30, 날짜 칩 13 */}
-        <Text style={[typography.subBold, styles.tripName]} numberOfLines={1}>
-          {trip.title}
-        </Text>
-        <Text style={[typography.hero, styles.headline]}>{headline}</Text>
-        <View style={styles.dateChip}>
+        <FadeIn from="left">
+          <Text style={[typography.subBold, styles.tripName]} numberOfLines={1}>
+            {trip.title}
+          </Text>
+        </FadeIn>
+        <FadeIn from="mask" index={1}>
+          <Text style={[typography.hero, styles.headline]}>{headline}</Text>
+        </FadeIn>
+        <FadeIn from="pop" index={3} style={styles.dateChip}>
           <Text style={[typography.label, styles.dateText]}>{dateLabel}</Text>
-        </View>
+        </FadeIn>
 
         <View style={styles.people}>
           {/* 4명까지 얼굴, 나머지는 "+n"(정원 20명) */}
@@ -62,7 +68,7 @@ export function TripHero({ trip, headline, companions }: Props) {
           <Text style={[typography.subBold, styles.peopleText]} numberOfLines={1}>
             {companions ?? '동행을 초대해 보세요'}
           </Text>
-          <Pressable
+          <PressableScale
             accessibilityRole="button"
             accessibilityLabel="동행 초대"
             // 동그라미는 피그마대로 32지만 누르는 범위는 손가락 크기(44)에 맞춘다
@@ -71,7 +77,7 @@ export function TripHero({ trip, headline, companions }: Props) {
             style={styles.invite}
           >
             <Icon name="person-plus" size={18} color={colors.brand.primary} />
-          </Pressable>
+          </PressableScale>
         </View>
       </View>
     </View>
@@ -88,7 +94,7 @@ function IconButton({
   onPress: () => void;
 }) {
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={label}
       hitSlop={8}
@@ -96,7 +102,7 @@ function IconButton({
       style={styles.iconButton}
     >
       <Icon name={icon} color={colors.text.inverse} />
-    </Pressable>
+    </PressableScale>
   );
 }
 

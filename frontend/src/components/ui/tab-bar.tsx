@@ -56,7 +56,7 @@ export function TabBar({ active, onChange, badges = {} }: TabBarProps) {
                 </View>
               ) : null}
             </TabIcon>
-            <Text style={[typography.captionMedium, { color }]}>{tab.label}</Text>
+            <Text style={[typography.captionMedium, styles.label, { color }]}>{tab.label}</Text>
           </Pressable>
         );
       })}
@@ -85,6 +85,8 @@ function TabIcon({ on, children }: { on: boolean; children: ReactNode }) {
 }
 
 const styles = StyleSheet.create({
+  // 탭 글자는 12로 둔다. 보조 글자 기준이 13으로 커졌지만 탭 다섯 개가 한 줄에 서려면 12가 맞다
+  label: { fontSize: 12 },
   wrap: {
     flexDirection: 'row',
     backgroundColor: colors.surface.white,

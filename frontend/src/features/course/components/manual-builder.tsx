@@ -1,7 +1,8 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 import { dayDate, itemCount, placedIds, type CourseDraft } from '../course-rules';
@@ -61,7 +62,7 @@ export function ManualBuilder(props: Props) {
           return (
             // 줄 안 더보기와 버튼이 겹치지 않게 날짜 머리와 놓는 칸만 눌러 고르게 한다
             <View key={d} style={styles.daySection}>
-              <Pressable
+              <PressableScale
                 style={styles.dayHead}
                 onPress={() => props.onSelectDay(d)}
                 accessibilityRole="button"
@@ -74,7 +75,7 @@ export function ManualBuilder(props: Props) {
                     {[date, regionName].filter(Boolean).join(' · ')}
                   </Text>
                 ) : null}
-              </Pressable>
+              </PressableScale>
               {list.map((it, i) => (
                 <View key={it.key} style={styles.placed}>
                   <View style={styles.number}>
@@ -83,14 +84,14 @@ export function ManualBuilder(props: Props) {
                   <Text style={[typography.bodyMedium, styles.placedName]} numberOfLines={1}>
                     {it.place.name}
                   </Text>
-                  <Pressable
+                  <PressableScale
                     style={styles.handle}
                     onPress={() => props.onMore(d, i)}
                     accessibilityRole="button"
                     accessibilityLabel={`${it.place.name} 고치기`}
                   >
                     <Icon name="more" size={20} color={colors.text.muted} />
-                  </Pressable>
+                  </PressableScale>
                 </View>
               ))}
               {on ? (
@@ -99,7 +100,7 @@ export function ManualBuilder(props: Props) {
                   <Text style={[typography.captionMedium, styles.dropOnText]}>여기에 놓아요</Text>
                 </View>
               ) : list.length === 0 ? (
-                <Pressable
+                <PressableScale
                   style={styles.drop}
                   onPress={() => props.onSelectDay(d)}
                   accessibilityRole="button"
@@ -107,7 +108,7 @@ export function ManualBuilder(props: Props) {
                 >
                   <Icon name="list" size={16} color={colors.text.muted} />
                   <Text style={[typography.caption, styles.dropText]}>눌러서 이 날을 골라요</Text>
-                </Pressable>
+                </PressableScale>
               ) : null}
             </View>
           );
@@ -124,10 +125,14 @@ export function ManualBuilder(props: Props) {
         {props.saved.length === 0 ? (
           <View style={styles.emptyTray}>
             <Text style={[typography.caption, styles.dropText]}>그룹 즐겨찾기가 비어 있어요</Text>
-            <Pressable style={styles.find} onPress={props.onFind} accessibilityRole="button">
+            <PressableScale
+              accessibilityLabel="장소 찾기"
+              style={styles.find}
+              onPress={props.onFind}
+              accessibilityRole="button"
+            >
               <Icon name="search" size={16} color={colors.brand.primary} />
-              <Text style={[typography.captionMedium, styles.findText]}>장소 찾기</Text>
-            </Pressable>
+            </PressableScale>
           </View>
         ) : (
           <ScrollView
@@ -135,8 +140,10 @@ export function ManualBuilder(props: Props) {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.chips}
           >
-            {left.map((s) => (
-              <Pressable
+            {left.map((s, order) => (
+              <PressableScale
+                appear={order}
+                appearFrom="pop"
                 key={s.place.id}
                 style={styles.chip}
                 onPress={() => props.onPlace(s.place)}
@@ -149,12 +156,13 @@ export function ManualBuilder(props: Props) {
                 <Text style={[typography.bodyMedium, styles.chipText]} numberOfLines={1}>
                   {s.place.name}
                 </Text>
-              </Pressable>
+              </PressableScale>
             ))}
           </ScrollView>
         )}
         <View style={styles.buildRow}>
-          <Pressable
+          <PressableScale
+            accessibilityLabel="코스 만들기"
             style={[styles.build, itemCount(draft) === 0 && styles.buildOff]}
             onPress={props.onBuild}
             disabled={itemCount(draft) === 0}
@@ -162,8 +170,7 @@ export function ManualBuilder(props: Props) {
             accessibilityState={{ disabled: itemCount(draft) === 0 }}
           >
             <Icon name="route" size={18} color={colors.text.inverse} />
-            <Text style={[typography.bodyMedium, styles.buildText]}>코스 만들기</Text>
-          </Pressable>
+          </PressableScale>
         </View>
       </View>
       <ItemSheet

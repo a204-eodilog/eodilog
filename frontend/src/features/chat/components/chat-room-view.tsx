@@ -2,16 +2,17 @@ import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   KeyboardAvoidingView,
-  Pressable,
-  StyleSheet,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
+  StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { Spinner } from '@/components/ui/spinner';
 
 import { ErrorState, Header, Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { colors, layout, spacing, typography } from '@/theme';
 
 import type { ChatItem } from '../chat-items';
@@ -136,7 +137,7 @@ export function ChatRoomView({
 
   let body: ReactNode;
   if (status === 'loading') {
-    body = <Spinner style={styles.loading} color={colors.brand.primary} />;
+    body = <SkeletonList style={styles.loading} />;
   } else if (status === 'error') {
     body = <ErrorState onRetry={onRetry} />;
   } else {
@@ -278,14 +279,14 @@ function BlockedNotice({ onLeave }: { onLeave?: () => void }) {
         여행에서 나갔거나 여행이 삭제되면 대화를 볼 수 없어요
       </Text>
       {onLeave ? (
-        <Pressable
+        <PressableScale
           accessibilityRole="button"
           onPress={onLeave}
           accessibilityLabel="대화방 목록으로"
           style={({ pressed }) => [styles.blockedButton, pressed && styles.pressed]}
         >
           <Icon name="back" size={22} color={colors.text.icon} />
-        </Pressable>
+        </PressableScale>
       ) : null}
     </View>
   );
@@ -298,7 +299,7 @@ function OlderHeader({ state, onRetry }: { state: OlderState; onRetry: () => voi
   }
   if (state === 'error') {
     return (
-      <Pressable
+      <PressableScale
         accessibilityRole="button"
         accessibilityLabel="이전 메시지 다시 불러오기"
         onPress={onRetry}
@@ -308,7 +309,7 @@ function OlderHeader({ state, onRetry }: { state: OlderState; onRetry: () => voi
         <Text style={[typography.captionMedium, styles.olderText]}>
           이전 메시지를 불러오지 못했어요. 다시 시도
         </Text>
-      </Pressable>
+      </PressableScale>
     );
   }
   return null;

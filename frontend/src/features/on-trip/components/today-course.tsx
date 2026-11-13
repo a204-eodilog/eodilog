@@ -1,7 +1,8 @@
 import { Fragment } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Button, Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { MODE_ICON } from '@/features/course/components/course-day-list';
 import { legLabel, type DayLeg, type DraftItem } from '@/features/course/course-rules';
 import { colors, radius, spacing, typography } from '@/theme';
@@ -22,10 +23,15 @@ export function TodayCourse({ items, legs, next, computedAt, onCourse }: Props) 
     <View style={styles.section}>
       <View style={styles.head}>
         <Text style={[typography.title3, styles.title]}>오늘 코스</Text>
-        <Pressable style={styles.link} onPress={onCourse} accessibilityRole="button" hitSlop={8}>
-          <Text style={[typography.captionMedium, styles.linkText]}>코스</Text>
+        <PressableScale
+          accessibilityLabel="코스"
+          style={styles.link}
+          onPress={onCourse}
+          accessibilityRole="button"
+          hitSlop={8}
+        >
           <Icon name="chevron-right" size={14} color={colors.brand.primaryDark} />
-        </Pressable>
+        </PressableScale>
       </View>
       {computedAt ? (
         <View style={styles.line}>
@@ -84,12 +90,7 @@ export function NoCourse({ onMake }: { onMake(): void }) {
       </View>
       <Text style={[typography.title2, styles.title]}>저장한 코스가 없어요</Text>
       <Text style={[typography.body, styles.sub]}>코스를 저장하면 오늘 갈 곳이 보여요</Text>
-      <Button
-        label="코스 짜러 가기"
-        leading={<Icon name="route" size={18} color={colors.text.inverse} />}
-        onPress={onMake}
-        style={styles.emptyButton}
-      />
+      <Button label="코스 짜러 가기" icon="route" onPress={onMake} style={styles.emptyButton} />
     </View>
   );
 }

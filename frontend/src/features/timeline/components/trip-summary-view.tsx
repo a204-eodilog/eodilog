@@ -1,6 +1,7 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Stagger } from '@/components/ui/stagger';
 import { Card, Icon } from '@/components/ui';
 import { colors, layout, spacing, typography } from '@/theme';
 
@@ -24,42 +25,46 @@ export function TripSummaryView({ title, cells, note, route, coverAssetId }: Tri
     <ScrollView
       contentContainerStyle={[styles.content, { paddingBottom: spacing[32] + insets.bottom }]}
     >
-      <Text style={[typography.title1, styles.text]}>여행 요약</Text>
-      <View style={styles.info}>
-        <Icon name="info" size={16} color={colors.text.default} />
-        <Text style={[typography.caption, styles.text]}>공개한 항목만 들어가요</Text>
-      </View>
-      <Card rounded="xxl" style={styles.card}>
-        <RouteSketch places={route} coverAssetId={coverAssetId} />
-        <Text style={[typography.title1, styles.text]} numberOfLines={2}>
-          {title}
-        </Text>
-        <View style={styles.cells}>
-          {cells.map((cell) => (
-            <View
-              key={cell.label}
-              style={styles.cell}
-              accessible
-              accessibilityLabel={`${cell.label} ${cell.value ?? '미입력'}`}
-            >
-              <Text style={[typography.caption, styles.icon]}>{cell.label}</Text>
-              {cell.value ? (
-                <Text style={[typography.bodyBold, styles.text]} numberOfLines={1}>
-                  {cell.value}
-                </Text>
-              ) : (
-                <Text style={[typography.bodyMedium, styles.sub]}>미입력</Text>
-              )}
-            </View>
-          ))}
+      <Stagger itemStyle={styles.staggerItem}>
+        <Text style={[typography.title1, styles.text]}>여행 요약</Text>
+        <View style={styles.info}>
+          <Icon name="info" size={16} color={colors.text.default} />
+          <Text style={[typography.caption, styles.text]}>공개한 항목만 들어가요</Text>
         </View>
-        {note ? <Text style={[typography.caption, styles.icon]}>{note}</Text> : null}
-      </Card>
+        <Card rounded="xxl" style={styles.card}>
+          <RouteSketch places={route} coverAssetId={coverAssetId} />
+          <Text style={[typography.title1, styles.text]} numberOfLines={2}>
+            {title}
+          </Text>
+          <View style={styles.cells}>
+            {cells.map((cell) => (
+              <View
+                key={cell.label}
+                style={styles.cell}
+                accessible
+                accessibilityLabel={`${cell.label} ${cell.value ?? '미입력'}`}
+              >
+                <Text style={[typography.caption, styles.icon]}>{cell.label}</Text>
+                {cell.value ? (
+                  <Text style={[typography.bodyBold, styles.text]} numberOfLines={1}>
+                    {cell.value}
+                  </Text>
+                ) : (
+                  <Text style={[typography.bodyMedium, styles.sub]}>미입력</Text>
+                )}
+              </View>
+            ))}
+          </View>
+          {note ? <Text style={[typography.caption, styles.icon]}>{note}</Text> : null}
+        </Card>
+      </Stagger>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
+  // 차례로 나타나는 구역을 감싼 칸. 한 구역이 여러 줄이면 그 사이 간격을 스크롤 내용과 같게 둔다
+  staggerItem: { gap: spacing[14] },
   content: {
     paddingHorizontal: layout.screenPaddingX,
     paddingTop: spacing[16],

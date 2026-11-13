@@ -1,8 +1,9 @@
 import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { Spinner } from '@/components/ui/spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AvatarGroup, Button, ErrorState, Header, Icon } from '@/components/ui';
+import { Stagger } from '@/components/ui/stagger';
+import { AvatarGroup, Button, ErrorState, Header } from '@/components/ui';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { colors, layout, spacing, typography } from '@/theme';
 
 import type { TripPhoto } from '../types';
@@ -64,7 +65,7 @@ export function UnplacedPhotosView(props: UnplacedPhotosViewProps) {
         {props.state === 'error' ? (
           <ErrorState title="사진을 불러오지 못했어요" onRetry={props.onRetry} />
         ) : (
-          <Spinner style={styles.flex} color={colors.brand.primary} />
+          <SkeletonList style={styles.flex} />
         )}
       </View>
     );
@@ -74,59 +75,61 @@ export function UnplacedPhotosView(props: UnplacedPhotosViewProps) {
     <View style={styles.screen}>
       {header}
       <ScrollView contentContainerStyle={styles.body}>
-        <Text style={[typography.caption, styles.hint]}>
-          어디서 찍었는지 모르는 사진을 장소에 연결해요
-          {othersCount > 0 ? `. 동행이 올린 ${othersCount}장은 올린 사람만 연결할 수 있어요` : ''}
-        </Text>
+        <Stagger itemStyle={styles.staggerItem}>
+          <Text style={[typography.caption, styles.hint]}>
+            어디서 찍었는지 모르는 사진을 장소에 연결해요
+            {othersCount > 0 ? `. 동행이 올린 ${othersCount}장은 올린 사람만 연결할 수 있어요` : ''}
+          </Text>
 
-        <View style={styles.block}>
-          <View style={styles.head}>
-            <Text style={[typography.title3, styles.text]}>사진 {props.photos.length}장</Text>
-            <Text style={[typography.caption, styles.sub]}>{props.selected.size}장 선택</Text>
+          <View style={styles.block}>
+            <View style={styles.head}>
+              <Text style={[typography.title3, styles.text]}>사진 {props.photos.length}장</Text>
+              <Text style={[typography.caption, styles.sub]}>{props.selected.size}장 선택</Text>
+            </View>
+            <View style={styles.grid}>
+              {props.photos.map((photo, i) => {
+                const mine = photo.uploaderMemberId === props.myMemberId;
+                return (
+                  <TripPhotoTile
+                    key={photo.id}
+                    assetId={photo.assetId}
+                    width={tile}
+                    height={tile + 6}
+                    uploader={props.memberName(photo.uploaderMemberId)}
+                    mine={mine}
+                    selected={props.selected.has(photo.id)}
+                    disabled={!mine}
+                    label={`사진 ${i + 1}`}
+                    onPress={() => props.onToggle(photo.id)}
+                  />
+                );
+              })}
+            </View>
           </View>
-          <View style={styles.grid}>
-            {props.photos.map((photo, i) => {
-              const mine = photo.uploaderMemberId === props.myMemberId;
-              return (
-                <TripPhotoTile
-                  key={photo.id}
-                  assetId={photo.assetId}
-                  width={tile}
-                  height={tile + 6}
-                  uploader={props.memberName(photo.uploaderMemberId)}
-                  mine={mine}
-                  selected={props.selected.has(photo.id)}
-                  disabled={!mine}
-                  label={`사진 ${i + 1}`}
-                  onPress={() => props.onToggle(photo.id)}
-                />
-              );
-            })}
-          </View>
-        </View>
 
-        <View style={styles.block}>
-          <View style={styles.head}>
-            <Text style={[typography.title3, styles.text]}>어디서 찍었나요?</Text>
-            <Text style={[typography.caption, styles.sub]}>코스 장소</Text>
+          <View style={styles.block}>
+            <View style={styles.head}>
+              <Text style={[typography.title3, styles.text]}>어디서 찍었나요?</Text>
+              <Text style={[typography.caption, styles.sub]}>코스 장소</Text>
+            </View>
+            <CoursePlaceList
+              days={props.days}
+              state={props.courseState}
+              placeId={props.placeId}
+              onPlace={props.onPlace}
+              picked={props.searched}
+              onSearch={props.onSearch}
+            />
           </View>
-          <CoursePlaceList
-            days={props.days}
-            state={props.courseState}
-            placeId={props.placeId}
-            onPlace={props.onPlace}
-            picked={props.searched}
-            onSearch={props.onSearch}
-          />
-        </View>
+        </Stagger>
       </ScrollView>
       <View style={[styles.bottom, { paddingBottom: Math.max(insets.bottom + spacing[12], 34) }]}>
         <Button
           label="연결하기"
+          icon="link"
           size="lg"
           disabled={!canConnect}
           loading={props.saving}
-          leading={<Icon name="link" size={20} color={colors.text.inverse} />}
           onPress={props.onConnect}
         />
       </View>
@@ -135,6 +138,8 @@ export function UnplacedPhotosView(props: UnplacedPhotosViewProps) {
 }
 
 const styles = StyleSheet.create({
+  // 차례로 나타나는 구역을 감싼 칸. 한 구역이 여러 줄이면 그 사이 간격을 스크롤 내용과 같게 둔다
+  staggerItem: { gap: spacing[14] },
   screen: { flex: 1, backgroundColor: colors.surface.white },
   flex: { flex: 1 },
   text: { color: colors.text.default },

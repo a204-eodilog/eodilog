@@ -175,11 +175,11 @@ export function SettlementView({
               </View>
               <Button
                 label="다시 계산"
+                icon="refresh"
                 weight="medium"
                 size="md"
                 onPress={onRecalculate}
                 loading={recalculating}
-                leading={<Icon name="refresh" size={16} color={colors.text.inverse} />}
                 style={styles.recalculate}
               />
             </View>

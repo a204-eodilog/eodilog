@@ -1,16 +1,11 @@
 import { useRef, type ReactNode } from 'react';
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-  type ScrollViewInstance,
-} from 'react-native';
+import { ScrollView, type ScrollViewInstance, StyleSheet, Text, View } from 'react-native';
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Stagger } from '@/components/ui/stagger';
 import { Button, EmptyState, Icon, type IconName } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 import { UNKNOWN_NAME } from '../candidate-options';
@@ -84,60 +79,62 @@ export function PollOpenView({
   return (
     <View style={styles.fill}>
       <ScrollView ref={scrollRef} contentContainerStyle={styles.scroll}>
-        <PollOpenHeaderCard
-          remaining={remainingLabel(poll.closesAt, now)}
-          title={poll.title}
-          votedCount={poll.votedMemberCount}
-          notVotedCount={notVotedCount(poll)}
-        />
-        <View style={styles.section}>
-          {failLines ? (
-            <Text style={styles.heading} lineBreakStrategyIOS="hangul-word">
-              후보를 눌러 투표해요
-            </Text>
-          ) : (
-            <Text style={styles.heading} lineBreakStrategyIOS="hangul-word">
-              {`후보 ${poll.candidates.length}곳`}
-              <Text style={styles.headingSub}>{'  여러 곳 골라도 돼요'}</Text>
-            </Text>
-          )}
-          {poll.candidates.map((c) => {
-            const isNew = isNewCandidate(c, poll.candidates);
-            return (
-              <CandidateRow
-                key={c.id}
-                name={names[c.id] ?? UNKNOWN_NAME}
-                votes={c.voteCount}
-                ratio={voteRatio(c.voteCount, poll.eligibleMemberCount)}
-                tone={mine.has(c.id) ? 'mine' : 'plain'}
-                showCheck
-                checked={mine.has(c.id)}
-                mineTag={mine.has(c.id)}
-                newTag={isNew}
-                sub={isNew ? { icon: 'bulb', text: '투표 중에 추가됐어요' } : null}
-                onPress={() => onToggle(c.id)}
-              />
-            );
-          })}
-          {/* 투표 바꾸기 실패 안내 중에는 후보 추가를 숨긴다(Figma 201-29384) */}
-          {onAddCandidate && !failLines && poll.candidates.length < MAX_CANDIDATES ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="후보 추가"
-              onPress={onAddCandidate}
-              style={({ pressed }) => [styles.add, pressed && styles.pressed]}
-            >
-              <Icon name="plus" size={22} color={colors.brand.primary} />
-            </Pressable>
-          ) : null}
-        </View>
-        <MyVoteBar
-          myName={myName}
-          summary={myVoteSummary(myNames)}
-          highlight={hasNew && !failLines}
-          onCancel={onCancel}
-          onChange={() => scrollRef.current?.scrollTo({ y: 0, animated: true })}
-        />
+        <Stagger itemStyle={styles.staggerItem}>
+          <PollOpenHeaderCard
+            remaining={remainingLabel(poll.closesAt, now)}
+            title={poll.title}
+            votedCount={poll.votedMemberCount}
+            notVotedCount={notVotedCount(poll)}
+          />
+          <View style={styles.section}>
+            {failLines ? (
+              <Text style={styles.heading} lineBreakStrategyIOS="hangul-word">
+                후보를 눌러 투표해요
+              </Text>
+            ) : (
+              <Text style={styles.heading} lineBreakStrategyIOS="hangul-word">
+                {`후보 ${poll.candidates.length}곳`}
+                <Text style={styles.headingSub}>{'  여러 곳 골라도 돼요'}</Text>
+              </Text>
+            )}
+            {poll.candidates.map((c) => {
+              const isNew = isNewCandidate(c, poll.candidates);
+              return (
+                <CandidateRow
+                  key={c.id}
+                  name={names[c.id] ?? UNKNOWN_NAME}
+                  votes={c.voteCount}
+                  ratio={voteRatio(c.voteCount, poll.eligibleMemberCount)}
+                  tone={mine.has(c.id) ? 'mine' : 'plain'}
+                  showCheck
+                  checked={mine.has(c.id)}
+                  mineTag={mine.has(c.id)}
+                  newTag={isNew}
+                  sub={isNew ? { icon: 'bulb', text: '투표 중에 추가됐어요' } : null}
+                  onPress={() => onToggle(c.id)}
+                />
+              );
+            })}
+            {/* 투표 바꾸기 실패 안내 중에는 후보 추가를 숨긴다(Figma 201-29384) */}
+            {onAddCandidate && !failLines && poll.candidates.length < MAX_CANDIDATES ? (
+              <PressableScale
+                accessibilityRole="button"
+                accessibilityLabel="후보 추가"
+                onPress={onAddCandidate}
+                style={({ pressed }) => [styles.add, pressed && styles.pressed]}
+              >
+                <Icon name="plus" size={22} color={colors.brand.primary} />
+              </PressableScale>
+            ) : null}
+          </View>
+          <MyVoteBar
+            myName={myName}
+            summary={myVoteSummary(myNames)}
+            highlight={hasNew && !failLines}
+            onCancel={onCancel}
+            onChange={() => scrollRef.current?.scrollTo({ y: 0, animated: true })}
+          />
+        </Stagger>
       </ScrollView>
       {failLines ? (
         <View style={[styles.failBar, { bottom }]}>
@@ -149,14 +146,14 @@ export function PollOpenView({
           >
             <Icon name="info" size={20} color={colors.brand.primarySoft} />
           </View>
-          <Pressable
+          <PressableScale
             accessibilityRole="button"
             accessibilityLabel="다시 시도"
             onPress={onRetry}
             style={({ pressed }) => [styles.retryButton, pressed && styles.pressed]}
           >
             <Icon name="refresh" size={22} color={colors.brand.primarySoft} />
-          </Pressable>
+          </PressableScale>
         </View>
       ) : null}
     </View>
@@ -164,6 +161,8 @@ export function PollOpenView({
 }
 
 const styles = StyleSheet.create({
+  // 차례로 나타나는 구역을 감싼 칸. 한 구역이 여러 줄이면 그 사이 간격을 스크롤 내용과 같게 둔다
+  staggerItem: { gap: spacing[28] },
   center: { flex: 1, justifyContent: 'center', paddingBottom: spacing[32] },
   fill: { flex: 1 },
   // 피그마: 좌우 20, 위 16, 묶음 사이 28, 아래 여백 56(하단 막대에 가리지 않게)
@@ -265,6 +264,44 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[16],
   },
   decideText: { ...typography.bodyMedium, color: colors.text.icon },
+  // 볼 수 없는 투표: 옅은 회색 카드에 까닭과 돌아가기를 한데 모은다
+  goneCard: {
+    alignSelf: 'stretch',
+    alignItems: 'center',
+    paddingVertical: spacing[32],
+    paddingHorizontal: spacing[24],
+    borderRadius: radius.xxl,
+    backgroundColor: colors.surface.subtle,
+  },
+  goneIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.brand.primaryBg,
+  },
+  goneTitle: {
+    ...typography.title2,
+    color: colors.text.default,
+    textAlign: 'center',
+    marginTop: spacing[16],
+  },
+  goneBody: {
+    ...typography.body,
+    color: colors.text.sub,
+    textAlign: 'center',
+    marginTop: spacing[6],
+  },
+  goneBack: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing[24],
+    backgroundColor: colors.brand.primary,
+  },
   zeroNote: { ...typography.caption, color: colors.text.sub, marginTop: spacing[16] },
 });
 
@@ -310,32 +347,36 @@ export function PollResultView({
   return (
     <View style={styles.fill}>
       <ScrollView contentContainerStyle={styles.scroll}>
-        {header}
-        {between}
-        <View style={styles.section}>
-          <Text style={styles.heading} lineBreakStrategyIOS="hangul-word">
-            {heading}
-          </Text>
-          {poll.candidates.map((c) => {
-            const won = selected.has(c.id);
-            const tone = resultTone({ tie, won, mine: mine.has(c.id) });
-            return (
-              <CandidateRow
-                key={c.id}
-                name={names[c.id] ?? UNKNOWN_NAME}
-                votes={c.voteCount}
-                ratio={voteRatio(c.voteCount, poll.eligibleMemberCount)}
-                tone={tone}
-                showCheck={tie && won}
-                checked={tie && won && mine.has(c.id)}
-                mineTag={showMine && mine.has(c.id)}
-                topTag={!tie && won}
-                sub={sources[c.id] ?? null}
-                barColor={tone === 'winner' ? undefined : tie ? colors.text.sub : colors.text.muted}
-              />
-            );
-          })}
-        </View>
+        <Stagger itemStyle={styles.staggerItem}>
+          {header}
+          {between}
+          <View style={styles.section}>
+            <Text style={styles.heading} lineBreakStrategyIOS="hangul-word">
+              {heading}
+            </Text>
+            {poll.candidates.map((c) => {
+              const won = selected.has(c.id);
+              const tone = resultTone({ tie, won, mine: mine.has(c.id) });
+              return (
+                <CandidateRow
+                  key={c.id}
+                  name={names[c.id] ?? UNKNOWN_NAME}
+                  votes={c.voteCount}
+                  ratio={voteRatio(c.voteCount, poll.eligibleMemberCount)}
+                  tone={tone}
+                  showCheck={tie && won}
+                  checked={tie && won && mine.has(c.id)}
+                  mineTag={showMine && mine.has(c.id)}
+                  topTag={!tie && won}
+                  sub={sources[c.id] ?? null}
+                  barColor={
+                    tone === 'winner' ? undefined : tie ? colors.text.sub : colors.text.muted
+                  }
+                />
+              );
+            })}
+          </View>
+        </Stagger>
       </ScrollView>
       {action ? (
         <View style={[styles.actionWrap, { bottom }]} pointerEvents="box-none">
@@ -403,21 +444,21 @@ export function PollNoVotesView({
       <Text style={styles.zeroBody}>확정 없이 마감됐어요. 다시 열 수 있어요</Text>
       <Button
         label="다시 열기"
+        icon="clock"
         weight="medium"
         loading={reopening}
         disabled={reopening}
-        leading={<Icon name="clock" size={20} color={colors.text.inverse} />}
         onPress={onReopen}
         style={styles.zeroButton}
       />
-      <Pressable
+      <PressableScale
         accessibilityRole="button"
         onPress={onDecide}
         style={({ pressed }) => [styles.decide, pressed && styles.pressed]}
       >
         <Icon name="map-pin" size={20} color={colors.text.icon} />
         <Text style={styles.decideText}>직접 정하기</Text>
-      </Pressable>
+      </PressableScale>
       <Text style={styles.zeroNote}>다시 열면 마감은 24시간 뒤예요</Text>
     </View>
   );
@@ -430,20 +471,29 @@ export function PollNoVotesView({
 export function PollNotFoundView({ onBack }: { onBack: () => void }) {
   return (
     <View style={styles.zero}>
-      <View style={styles.zeroIcon}>
-        <Icon name="lock" size={28} color={colors.text.icon} />
+      <View style={styles.goneCard}>
+        <View style={styles.goneIcon}>
+          <Icon name="lock" size={30} color={colors.brand.primary} />
+        </View>
+        <Text
+          style={styles.goneTitle}
+          accessibilityRole="header"
+          lineBreakStrategyIOS="hangul-word"
+        >
+          볼 수 없는 투표예요
+        </Text>
+        <Text style={styles.goneBody} lineBreakStrategyIOS="hangul-word">
+          지워졌거나, 지금 함께하지 않는 여행의 투표예요
+        </Text>
+        <PressableScale
+          accessibilityRole="button"
+          accessibilityLabel="돌아가기"
+          onPress={onBack}
+          style={({ pressed }) => [styles.goneBack, pressed && styles.pressed]}
+        >
+          <Icon name="back" size={22} color={colors.text.inverse} />
+        </PressableScale>
       </View>
-      <Text style={styles.zeroTitle} accessibilityRole="header" lineBreakStrategyIOS="hangul-word">
-        볼 수 없는 투표예요
-      </Text>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="돌아가기"
-        onPress={onBack}
-        style={({ pressed }) => [styles.decide, pressed && styles.pressed]}
-      >
-        <Icon name="back" size={22} color={colors.text.icon} />
-      </Pressable>
     </View>
   );
 }

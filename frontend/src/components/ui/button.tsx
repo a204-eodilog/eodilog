@@ -8,13 +8,23 @@ import { colors, radius, size, spacing, typography } from '@/theme';
 import { motion } from '@/theme/motion';
 
 import { AnimatedPressable } from './animated-pressable';
+import { Icon, type IconName } from './icon';
 import { usePressScale } from './use-press-scale';
 
 type Variant = 'primary' | 'secondary' | 'neutral' | 'danger' | 'text';
 type Size = 'sm' | 'md' | 'lg' | 'xl';
 
 export type ButtonProps = {
+  /** 버튼 글자. icon을 주면 화면에는 그리지 않고 화면 읽어 주기만 읽는다 */
   label: string;
+  /**
+   * 아이콘만 그린다(2026-11-12 사용자 요청: 아이콘으로 뜻이 통하는 버튼은 글자를 없앤다).
+   * 저장은 check, 다시 시도는 refresh, 추가는 plus, 삭제는 trash, 취소는 close처럼 화면마다 같은 아이콘을 쓴다.
+   * 가로로 채우지 않으면 동그라미가 된다
+   */
+  icon?: IconName;
+  /** 아이콘 옆에 붙는 짧은 숫자("3"). 몇 곳·몇 장인지처럼 아이콘만으로 모자란 것만 */
+  count?: string | number;
   onPress?: () => void;
   /** primary 파랑 / secondary 연파랑 / neutral 회색 / danger 빨강 / text 바탕 없음 */
   variant?: Variant;
@@ -43,6 +53,9 @@ const BG: Record<Variant, string> = {
   text: 'transparent',
 };
 
+/** 아이콘만 그릴 때의 아이콘 크기 */
+const ICON_SIZE: Record<Size, number> = { sm: 18, md: 20, lg: 22, xl: 24 };
+
 const FG: Record<Variant, string> = {
   primary: colors.text.inverse,
   secondary: colors.brand.primary,
@@ -60,6 +73,8 @@ export function Button({
   loading = false,
   block = false,
   leading,
+  icon,
+  count,
   weight = 'bold',
   style,
 }: ButtonProps) {
@@ -98,6 +113,9 @@ export function Button({
   return (
     <AnimatedPressable
       accessibilityRole="button"
+      accessibilityLabel={icon ? (count == null ? label : `${label} ${count}`) : undefined}
+      // 작은 동그라미도 누르는 자리는 44가 되게 넓힌다
+      hitSlop={icon && size.button[sz] < 44 ? (44 - size.button[sz]) / 2 : undefined}
       accessibilityState={{ disabled: inactive, busy: loading }}
       disabled={inactive}
       onPress={() => {
@@ -105,12 +123,13 @@ export function Button({
         if (major) haptic.light();
         onPress?.();
       }}
-      onPressIn={press.onPressIn}
+      onPressIn={() => press.onPressIn()}
       onPressOut={press.onPressOut}
       style={[
         styles.base,
         { height: size.button[sz], backgroundColor: BG[variant] },
         sz === 'sm' && styles.sm,
+        icon && count == null && !block && { width: size.button[sz], paddingHorizontal: 0 },
         block && styles.block,
         inactive && styles.inactive,
         style,
@@ -120,6 +139,11 @@ export function Button({
       <Animated.View style={[styles.content, { opacity: fade }]}>
         {loading ? (
           <Spinner color={fg} />
+        ) : icon ? (
+          <>
+            <Icon name={icon} size={ICON_SIZE[sz]} color={fg} />
+            {count == null ? null : <Text style={[labelStyle, { color: fg }]}>{count}</Text>}
+          </>
         ) : (
           <>
             {leading}

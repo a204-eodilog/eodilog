@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { Icon, toast, type IconName } from '@/components/ui';
+import { Icon, type IconName, toast } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { useReadEvent } from '@/features/notification/hooks/use-read-event';
 import { colors, radius, spacing, typography } from '@/theme';
 
@@ -40,7 +41,7 @@ export function SystemCard({ message, tripId }: Props) {
         <Text style={[typography.bodyBold, styles.title]}>{card.title}</Text>
         {card.body ? <Text style={[typography.caption, styles.body]}>{card.body}</Text> : null}
         {card.action ? (
-          <Pressable
+          <PressableScale
             accessibilityRole="button"
             onPress={go}
             // 보이는 높이는 36, 누르는 자리는 위아래 4씩 넓혀 44
@@ -49,7 +50,7 @@ export function SystemCard({ message, tripId }: Props) {
           >
             <Text style={[typography.bodyMedium, styles.buttonText]}>{card.action.label}</Text>
             <Icon name="chevron-right" size={16} color={colors.text.inverse} />
-          </Pressable>
+          </PressableScale>
         ) : null}
       </View>
     </View>

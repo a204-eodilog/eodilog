@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, radius, spacing, typography } from '@/theme';
 
 import { useRegionNames } from '../hooks/use-region-names';
@@ -26,7 +27,7 @@ export function TripCard({ trip, kind, today, onPress }: Props) {
   const next = kind === 'next';
 
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={`${trip.title}, ${lead ?? '기간 미정'}, ${place ?? '여행지 미정'}`}
       onPress={onPress}
@@ -56,7 +57,7 @@ export function TripCard({ trip, kind, today, onPress }: Props) {
           </Text>
         </View>
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }
 

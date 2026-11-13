@@ -2,10 +2,11 @@ import { useQueryClient } from '@tanstack/react-query';
 import { FlashList } from '@shopify/flash-list';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, Chip, EmptyState, ErrorState, Header, Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { caret, colors, layout, radius, spacing, typography } from '@/theme';
 
 import { useNewTripDraft } from '../hooks/use-new-trip-draft';
@@ -109,7 +110,7 @@ export function RegionSearchScreen({
               renderItem={({ item }) => {
                 const selected = picked.some((p) => p.id === item.id);
                 return (
-                  <Pressable
+                  <PressableScale
                     accessibilityRole="button"
                     accessibilityState={{ selected }}
                     onPress={() => (selected ? removeRegion(item.id) : pick(item))}
@@ -123,7 +124,7 @@ export function RegionSearchScreen({
                       <Text style={[typography.caption, styles.full]}>{item.name}</Text>
                     </View>
                     {selected ? <Icon name="check" size={20} color={colors.brand.primary} /> : null}
-                  </Pressable>
+                  </PressableScale>
                 );
               }}
             />
@@ -134,6 +135,8 @@ export function RegionSearchScreen({
         <View style={[styles.footer, { paddingBottom: insets.bottom + spacing[16] }]}>
           <Button
             label={picked.length > 0 ? `${picked.length}곳 고르기` : '완료'}
+            icon="check"
+            count={picked.length > 0 ? picked.length : undefined}
             size="xl"
             block
             loading={busy}

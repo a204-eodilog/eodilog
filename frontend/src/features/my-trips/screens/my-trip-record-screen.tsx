@@ -1,9 +1,9 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Spinner } from '@/components/ui/spinner';
 
 import { CenterNotice, Header, toast } from '@/components/ui';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { DeleteFeedSheet } from '@/features/feed';
 import { formatTripNights } from '@/lib/format-date';
 import { colors } from '@/theme';
@@ -44,7 +44,7 @@ export function MyTripRecordScreen() {
       <View style={styles.screen}>
         <Header />
         {record.isLoading ? (
-          <Spinner style={styles.loading} color={colors.brand.primary} />
+          <SkeletonList style={styles.loading} />
         ) : (
           <CenterNotice
             icon="alert"

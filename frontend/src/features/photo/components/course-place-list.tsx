@@ -1,7 +1,8 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Spinner } from '@/components/ui/spinner';
 
 import { Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, radius, spacing, typography } from '@/theme';
 
 import type { CoursePlace } from '../types';
@@ -40,7 +41,7 @@ export function CoursePlaceList({
         search={!!onSearch}
       />
       {outside ? (
-        <Pressable
+        <PressableScale
           accessibilityRole="radio"
           accessibilityState={{ checked: outside.id === placeId }}
           accessibilityLabel={`${outside.name}, 코스에 없는 장소`}
@@ -62,10 +63,10 @@ export function CoursePlaceList({
               <Icon name="check" size={14} color={colors.text.inverse} />
             ) : null}
           </View>
-        </Pressable>
+        </PressableScale>
       ) : null}
       {onSearch ? (
-        <Pressable
+        <PressableScale
           accessibilityRole="button"
           accessibilityLabel="장소 검색, 코스에 없는 곳이면 찾아서 연결해요"
           onPress={onSearch}
@@ -77,7 +78,7 @@ export function CoursePlaceList({
             <Text style={[typography.caption, styles.sub]}>코스에 없는 곳이면 찾아서 연결해요</Text>
           </View>
           <Icon name="chevron-right" size={16} color={colors.text.icon} />
-        </Pressable>
+        </PressableScale>
       ) : null}
     </View>
   );
@@ -116,7 +117,7 @@ function CourseRows({
           {day.stops.map((stop, i) => {
             const on = stop.place.id === placeId;
             return (
-              <Pressable
+              <PressableScale
                 key={stop.id}
                 accessibilityRole="radio"
                 accessibilityState={{ checked: on }}
@@ -133,7 +134,7 @@ function CourseRows({
                 <View style={[styles.radio, on && styles.radioOn]}>
                   {on ? <Icon name="check" size={14} color={colors.text.inverse} /> : null}
                 </View>
-              </Pressable>
+              </PressableScale>
             );
           })}
         </View>

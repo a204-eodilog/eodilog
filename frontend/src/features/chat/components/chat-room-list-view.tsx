@@ -1,14 +1,15 @@
 import type { ReactNode } from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
-import { Spinner } from '@/components/ui/spinner';
 
 import { EmptyState, ErrorState } from '@/components/ui';
-import { colors, layout, spacing, typography } from '@/theme';
+import { FadeIn } from '@/components/ui/fade-in';
+import { SkeletonList } from '@/components/ui/skeleton';
+import { colors, layout, radius, spacing, typography } from '@/theme';
 
 import type { ChatRoomRow, ChatRoomsStatus, FeaturedChatRoom } from '../hooks/use-chat-rooms';
 
 import { FeaturedRoomCard } from './featured-room-card';
-import { ROOM_FACES_WIDTH, RoomRow } from './room-row';
+import { RoomRow } from './room-row';
 
 type Props = {
   /** 맨 위 파랑 카드로 보일 지금 여행의 방. 없으면 목록만 */
@@ -51,7 +52,7 @@ export function ChatRoomListView({
 }: Props) {
   let body: ReactNode;
   if (status === 'loading') {
-    body = <Spinner style={styles.loading} color={colors.brand.primary} />;
+    body = <SkeletonList style={styles.loading} />;
   } else if (status === 'error') {
     body = <ErrorState onRetry={onRetry} />;
   } else if (status === 'empty') {
@@ -99,15 +100,17 @@ export function ChatRoomListView({
           contentContainerStyle={styles.content}
           ListHeaderComponent={header}
           ItemSeparatorComponent={Separator}
-          renderItem={({ item }) => (
-            <RoomRow
-              title={item.title}
-              preview={item.preview}
-              time={item.time}
-              participants={item.room.participants}
-              meId={meId}
-              onPress={() => onOpen(item)}
-            />
+          renderItem={({ item, index }) => (
+            <FadeIn index={index} style={styles.rowCard}>
+              <RoomRow
+                title={item.title}
+                preview={item.preview}
+                time={item.time}
+                participants={item.room.participants}
+                meId={meId}
+                onPress={() => onOpen(item)}
+              />
+            </FadeIn>
           )}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         />
@@ -127,7 +130,14 @@ function Separator() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.surface.white },
+  // 바탕은 옅은 회색, 대화방 하나가 흰 카드 하나다
+  screen: { flex: 1, backgroundColor: colors.surface.subtle },
+  rowCard: {
+    marginHorizontal: spacing[12],
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+    backgroundColor: colors.surface.white,
+  },
   flex: { flex: 1 },
   // 상단 바: 높이 56, 왼쪽 20(피그마 Header)
   header: {
@@ -143,13 +153,9 @@ const styles = StyleSheet.create({
     color: colors.text.sub,
     paddingHorizontal: layout.screenPaddingX,
     marginTop: spacing[24],
-    marginBottom: spacing[4],
+    marginBottom: spacing[8],
   },
   // 줄 사이 선은 이름 글자 시작에 맞춘다(화면 여백 20 + 얼굴 자리 + 간격 14)
-  separator: {
-    height: StyleSheet.hairlineWidth,
-    marginLeft: layout.screenPaddingX + ROOM_FACES_WIDTH + spacing[14],
-    marginRight: layout.screenPaddingX,
-    backgroundColor: colors.line.default,
-  },
+  // 카드 사이 간격
+  separator: { height: spacing[8] },
 });

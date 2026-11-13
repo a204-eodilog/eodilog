@@ -1,12 +1,15 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FadeIn } from '@/components/ui/fade-in';
 import { Spinner } from '@/components/ui/spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { errorLook } from '@/api/error-look';
 import { toApiError } from '@/api/errors';
 import { AvatarGroup, ErrorState, Header, Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { useTrip } from '@/features/trip/hooks/use-trip';
 import { useMe } from '@/hooks/use-me';
 import { colors, layout, radius, spacing, typography } from '@/theme';
@@ -67,7 +70,7 @@ export function ChecklistView(props: ChecklistViewProps) {
 
   let body;
   if (status === 'loading') {
-    body = <Spinner style={styles.loading} color={colors.brand.primary} />;
+    body = <SkeletonList style={styles.loading} />;
   } else if (status === 'notFound') {
     body = (
       <ErrorState
@@ -106,14 +109,15 @@ export function ChecklistView(props: ChecklistViewProps) {
           {failCard}
           <ChecklistProgress items={items} />
           <View style={styles.list}>
-            {items.map((item) => (
-              <ChecklistRow
-                key={item.id}
-                item={item}
-                members={members}
-                onToggle={props.onToggle}
-                onMore={props.onMore}
-              />
+            {items.map((item, order) => (
+              <FadeIn key={item.id} index={order}>
+                <ChecklistRow
+                  item={item}
+                  members={members}
+                  onToggle={props.onToggle}
+                  onMore={props.onMore}
+                />
+              </FadeIn>
             ))}
           </View>
           <AddItemBar onAdd={props.onAdd} busy={props.adding} />
@@ -131,7 +135,8 @@ export function ChecklistView(props: ChecklistViewProps) {
               <Text style={[typography.caption, styles.noteText]}>{CHECKLIST_TEXT.keepEdited}</Text>
             </View>
           ) : null}
-          <Pressable
+          <PressableScale
+            accessibilityLabel={props.suggesting ? '제안 받는 중…' : '다시 제안 받기'}
             style={[styles.suggest, !props.failure && styles.suggestBlock]}
             onPress={props.onSuggest}
             disabled={props.suggesting}
@@ -143,10 +148,7 @@ export function ChecklistView(props: ChecklistViewProps) {
             ) : (
               <Icon name="refresh" size={20} color={colors.text.default} />
             )}
-            <Text style={[typography.bodyMedium, styles.suggestText]}>
-              {props.suggesting ? '제안 받는 중…' : '다시 제안 받기'}
-            </Text>
-          </Pressable>
+          </PressableScale>
         </View>
       </>
     );

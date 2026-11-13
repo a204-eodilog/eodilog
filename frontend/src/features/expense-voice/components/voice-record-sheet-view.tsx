@@ -214,12 +214,7 @@ function renderFooter(p: VoiceRecordSheetViewProps): ReactNode {
     return (
       <Row>
         <Button label="다시 녹음" variant="neutral" onPress={p.onRerecord} style={styles.flex} />
-        <Button
-          label="보내기"
-          onPress={p.onSend}
-          style={styles.flex}
-          leading={<Icon name="send" size={20} color={colors.text.inverse} />}
-        />
+        <Button label="보내기" icon="send" block onPress={p.onSend} style={styles.flex} />
       </Row>
     );
   }

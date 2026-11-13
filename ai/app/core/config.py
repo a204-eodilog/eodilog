@@ -32,6 +32,12 @@ class Settings(BaseSettings):
     kakao_timeout_seconds: float = 5
     link_timeout_seconds: float = 5
 
+    # 음성 경비 받아쓰기. GMS에는 whisper-1만 열려 있다(2026-11-12 확인). 45초 안에서 받아쓰기 25초,
+    # 경비 추출 15초를 쓴다
+    stt_model: str = "whisper-1"
+    stt_timeout_seconds: float = 25
+    voice_llm_timeout_seconds: float = 15
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { BottomSheet, Icon, type IconName } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 export type ItemSheetTarget = { name: string; day: number; index: number; count: number };
@@ -66,7 +67,7 @@ function Option(props: {
 }) {
   const color = props.danger ? colors.status.danger : colors.text.icon;
   return (
-    <Pressable
+    <PressableScale
       style={[styles.option, props.danger ? styles.danger : styles.neutral]}
       onPress={props.onPress}
       accessibilityRole="button"
@@ -80,13 +81,13 @@ function Option(props: {
         </Text>
         <Text style={[typography.caption, styles.body]}>{props.body}</Text>
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }
 
 function Arrow(props: { icon: IconName; label: string; disabled: boolean; onPress(): void }) {
   return (
-    <Pressable
+    <PressableScale
       style={[styles.arrow, props.disabled && styles.arrowOff]}
       onPress={props.onPress}
       disabled={props.disabled}
@@ -95,7 +96,7 @@ function Arrow(props: { icon: IconName; label: string; disabled: boolean; onPres
       accessibilityState={{ disabled: props.disabled }}
     >
       <Icon name={props.icon} size={18} color={colors.text.default} />
-    </Pressable>
+    </PressableScale>
   );
 }
 

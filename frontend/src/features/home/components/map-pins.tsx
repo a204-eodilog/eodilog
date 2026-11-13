@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -12,6 +12,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, radius, spacing, typography } from '@/theme';
 
 import { markFill } from '../home-rules';
@@ -33,7 +34,7 @@ export function RegionPill({
   pulseDelayMs?: number;
 }) {
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`${mark.name}, 친구 ${mark.memberCount}명`}
@@ -50,7 +51,7 @@ export function RegionPill({
         {pulse ? <Ripple delayMs={pulseDelayMs} /> : null}
         <View style={styles.dot} />
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -67,7 +68,7 @@ export function GroupPill({
   pulseDelayMs?: number;
 }) {
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`${group.label}, 친구 ${group.memberCount}명. 눌러서 확대`}
@@ -83,7 +84,7 @@ export function GroupPill({
         {pulse ? <Ripple delayMs={pulseDelayMs} /> : null}
         <View style={styles.dot} />
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }
 

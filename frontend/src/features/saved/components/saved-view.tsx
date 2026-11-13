@@ -1,7 +1,9 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon, type IconName } from '@/components/ui';
+import { FadeIn } from '@/components/ui/fade-in';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 import { type AddStart, MAX_CAPTURES } from '../extract-rules';
@@ -114,13 +116,14 @@ export function SavedView({
           <View style={styles.columns}>
             {[left, right].map((column, c) => (
               <View key={c} style={styles.column}>
-                {column.map(({ item, photoHeight }) => (
-                  <BookmarkCard
-                    key={item.key}
-                    item={item}
-                    photoHeight={photoHeight}
-                    onPress={() => onOpen(item)}
-                  />
+                {column.map(({ item, photoHeight }, i) => (
+                  <FadeIn key={item.key} index={i * 2 + c}>
+                    <BookmarkCard
+                      item={item}
+                      photoHeight={photoHeight}
+                      onPress={() => onOpen(item)}
+                    />
+                  </FadeIn>
                 ))}
               </View>
             ))}
@@ -131,14 +134,14 @@ export function SavedView({
       )}
 
       {empty ? null : (
-        <Pressable
+        <PressableScale
           accessibilityRole="button"
           accessibilityLabel="링크·캡처 등록"
           onPress={() => onAdd()}
           style={({ pressed }) => [styles.fab, pressed && styles.pressed]}
         >
           <Icon name="plus" size={28} color={colors.text.inverse} />
-        </Pressable>
+        </PressableScale>
       )}
     </View>
   );
@@ -156,7 +159,7 @@ function ToggleButton({
   onPress: () => void;
 }) {
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="tab"
       accessibilityLabel={label}
       accessibilityState={{ selected }}
@@ -164,7 +167,7 @@ function ToggleButton({
       style={[styles.toggleButton, selected && styles.toggleSelected]}
     >
       <Icon name={icon} size={20} color={selected ? colors.text.default : colors.text.icon} />
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -181,7 +184,7 @@ function KindButton({
 }) {
   const color = selected ? colors.brand.primaryDark : colors.text.icon;
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={`${label} 즐겨찾기`}
       accessibilityState={{ selected }}
@@ -194,7 +197,7 @@ function KindButton({
     >
       <Icon name={icon} size={18} color={color} />
       <Text style={[typography.captionMedium, { color }]}>{label}</Text>
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -211,7 +214,7 @@ function StartCard({
   onPress: () => void;
 }) {
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={title}
       accessibilityHint={hint}
@@ -226,7 +229,7 @@ function StartCard({
         <Text style={[typography.caption, styles.sub2]}>{hint}</Text>
       </View>
       <Icon name="chevron-right" size={20} color={colors.text.muted} />
-    </Pressable>
+    </PressableScale>
   );
 }
 

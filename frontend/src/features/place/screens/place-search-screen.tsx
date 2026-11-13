@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import {
   FlatList,
   Platform,
-  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -15,6 +14,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, ErrorState, Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { caret, colors, layout, radius, spacing, typography } from '@/theme';
 
 import { searchPlaces } from '../api';
@@ -86,14 +86,14 @@ export function PlaceSearchScreen() {
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'left', 'right', 'bottom']}>
       <View style={styles.header}>
-        <Pressable
+        <PressableScale
           accessibilityRole="button"
           accessibilityLabel="뒤로"
           onPress={() => router.back()}
           style={styles.back}
         >
           <Icon name="back" size={24} color={colors.text.default} />
-        </Pressable>
+        </PressableScale>
         <View style={[styles.search, focused && styles.searchFocused]}>
           <View style={styles.searchIcon} pointerEvents="none">
             <Icon name="search" size={20} color={colors.text.sub} />
@@ -114,14 +114,14 @@ export function PlaceSearchScreen() {
             style={styles.searchInput}
           />
           {text ? (
-            <Pressable
+            <PressableScale
               accessibilityRole="button"
               accessibilityLabel="지우기"
               onPress={() => setText('')}
               style={styles.clear}
             >
               <Icon name="close" size={14} color={colors.text.inverse} />
-            </Pressable>
+            </PressableScale>
           ) : null}
         </View>
       </View>
@@ -131,13 +131,7 @@ export function PlaceSearchScreen() {
           icon="clock"
           title="검색이 오래 걸려 멈췄어요"
           description="검색이 오래 걸려요"
-          primary={
-            <Button
-              label="다시 검색"
-              leading={<Icon name="refresh" size={20} color={colors.text.inverse} />}
-              onPress={() => search.refetch()}
-            />
-          }
+          primary={<Button label="다시 검색" icon="refresh" onPress={() => search.refetch()} />}
           onMap={openMap}
           mapAsText
         />
@@ -152,13 +146,7 @@ export function PlaceSearchScreen() {
           icon="search"
           title="검색 결과가 없어요"
           description="지도에서 직접 골라 주세요"
-          primary={
-            <Button
-              label="지도에서 고르기"
-              leading={<Icon name="map" size={20} color={colors.text.inverse} />}
-              onPress={openMap}
-            />
-          }
+          primary={<Button label="지도에서 고르기" icon="map" onPress={openMap} />}
         />
       ) : (
         <FlatList
@@ -168,7 +156,8 @@ export function PlaceSearchScreen() {
           contentContainerStyle={styles.list}
           ListHeaderComponent={
             <View style={styles.listHeader}>
-              <Pressable
+              <PressableScale
+                accessibilityLabel="지도에서 직접 고르기"
                 accessibilityRole="button"
                 onPress={openMap}
                 style={({ pressed }) => [styles.mapCard, pressed && styles.pressed]}
@@ -176,9 +165,8 @@ export function PlaceSearchScreen() {
                 <View style={styles.mapCardIcon}>
                   <Icon name="map" size={20} color={colors.brand.primaryDark} />
                 </View>
-                <Text style={[typography.bodyBold, styles.mapCardText]}>지도에서 직접 고르기</Text>
                 <Icon name="chevron-right" size={20} color={colors.brand.primaryDark} />
-              </Pressable>
+              </PressableScale>
               {query && search.isFetching && !search.data ? (
                 <Spinner style={styles.loading} color={colors.brand.primary} />
               ) : query && results.length ? (
@@ -197,7 +185,7 @@ export function PlaceSearchScreen() {
 
 function PlaceRow({ place, onPress }: { place: Place; onPress: () => void }) {
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={`${place.name}${place.address ? `, ${place.address}` : ''}`}
       onPress={onPress}
@@ -216,7 +204,7 @@ function PlaceRow({ place, onPress }: { place: Place; onPress: () => void }) {
           </Text>
         ) : null}
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -246,14 +234,14 @@ function Notice({
       <View style={styles.noticeActions}>
         {primary}
         {mapAsText && onMap ? (
-          <Pressable
+          <PressableScale
+            accessibilityLabel="지도에서 고르기"
             accessibilityRole="button"
             onPress={onMap}
             style={({ pressed }) => [styles.textLink, pressed && styles.pressed]}
           >
             <Icon name="map" size={18} color={colors.text.icon} />
-            <Text style={[typography.bodyMedium, styles.address]}>지도에서 고르기</Text>
-          </Pressable>
+          </PressableScale>
         ) : null}
       </View>
     </View>

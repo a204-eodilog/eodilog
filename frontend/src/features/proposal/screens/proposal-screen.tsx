@@ -93,6 +93,7 @@ export function ConflictNotice(props: {
         size="sm"
         variant="secondary"
         label={props.canRecreate ? '다시 만들기' : '코스 보기'}
+        icon={props.canRecreate ? 'refresh' : 'route'}
         onPress={props.canRecreate ? props.onRecreate : props.onCourse}
       />
     </View>

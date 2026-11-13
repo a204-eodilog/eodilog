@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Spinner } from '@/components/ui/spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { fitRegion, type MapBox, MapMarker, MapView, spreadMarkers } from '@/components/map';
 import { AvatarGroup, Header, Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { withIga } from '@/lib/korean';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -57,7 +58,7 @@ export function FacilitiesView(props: FacilitiesViewProps) {
       />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.baseRow}>
-          <Pressable
+          <PressableScale
             onPress={props.onChangeBase}
             style={({ pressed }) => [styles.base, pressed && styles.pressed]}
             accessibilityRole="button"
@@ -69,7 +70,7 @@ export function FacilitiesView(props: FacilitiesViewProps) {
               {props.base?.name ?? '장소를 골라 주세요'}
             </Text>
             <Text style={styles.baseArrow}>↓</Text>
-          </Pressable>
+          </PressableScale>
           <Text style={styles.radius}>{FACILITY_RADIUS_M / 1000}km 안</Text>
         </View>
 
@@ -82,7 +83,7 @@ export function FacilitiesView(props: FacilitiesViewProps) {
           {FACILITY_TYPES.map((t) => {
             const on = t.key === props.type;
             return (
-              <Pressable
+              <PressableScale
                 key={t.key}
                 onPress={() => props.onType(t.key)}
                 style={[styles.chip, on && styles.chipOn]}
@@ -90,7 +91,7 @@ export function FacilitiesView(props: FacilitiesViewProps) {
                 accessibilityState={{ selected: on }}
               >
                 <Text style={[styles.chipText, on && styles.chipTextOn]}>{t.label}</Text>
-              </Pressable>
+              </PressableScale>
             );
           })}
         </ScrollView>
@@ -141,7 +142,7 @@ export function FacilitiesView(props: FacilitiesViewProps) {
             <Icon name="alert" size={22} color={colors.text.icon} />
             <Text style={styles.noteTitle}>편의시설을 불러오지 못했어요</Text>
             <Text style={styles.noteDesc}>다시 시도해 주세요</Text>
-            <Pressable
+            <PressableScale
               onPress={props.onRetry}
               style={styles.retry}
               hitSlop={4}
@@ -149,7 +150,7 @@ export function FacilitiesView(props: FacilitiesViewProps) {
               accessibilityLabel="다시 시도"
             >
               <Icon name="refresh" size={18} color={colors.text.default} />
-            </Pressable>
+            </PressableScale>
           </View>
         ) : props.rows.length === 0 ? (
           <View style={styles.note}>
@@ -158,9 +159,13 @@ export function FacilitiesView(props: FacilitiesViewProps) {
               {FACILITY_RADIUS_M / 1000}km 안에 {withIga(label)} 없어요
             </Text>
             <Text style={styles.noteDesc}>기준 장소를 바꾸거나 다른 시설을 골라 보세요</Text>
-            <Pressable onPress={props.onChangeBase} style={styles.retry} accessibilityRole="button">
+            <PressableScale
+              onPress={props.onChangeBase}
+              style={styles.retry}
+              accessibilityRole="button"
+            >
               <Text style={styles.retryText}>기준 장소 바꾸기</Text>
-            </Pressable>
+            </PressableScale>
           </View>
         ) : (
           <View style={styles.list}>
@@ -197,14 +202,14 @@ export function FacilitiesView(props: FacilitiesViewProps) {
                     )}
                   </View>
                 </View>
-                <Pressable
+                <PressableScale
                   onPress={() => props.onDirections(r)}
                   style={({ pressed }) => [styles.go, pressed && styles.pressed]}
                   accessibilityRole="button"
                   accessibilityLabel={`${r.name} 길찾기`}
                 >
                   <Icon name="send" size={18} color={colors.text.default} />
-                </Pressable>
+                </PressableScale>
               </View>
             ))}
           </View>

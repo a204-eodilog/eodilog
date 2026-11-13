@@ -1,5 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { Popup } from '@/components/ui/popup';
 
 import { colors, radius, spacing, typography } from '@/theme';
@@ -30,12 +31,12 @@ export function InCourseConfirm({ visible, onRemoveAnyway, onRefresh }: Props) {
         이 장소가 코스에 있어요.{'\n'}빼도 코스에는 그대로 남아요
       </Text>
       <View style={styles.actions}>
-        <Pressable style={styles.ghost} onPress={onRemoveAnyway} accessibilityRole="button">
+        <PressableScale style={styles.ghost} onPress={onRemoveAnyway} accessibilityRole="button">
           <Text style={[typography.bodyMedium, styles.ghostText]}>그래도 빼기</Text>
-        </Pressable>
-        <Pressable style={styles.primary} onPress={onRefresh} accessibilityRole="button">
+        </PressableScale>
+        <PressableScale style={styles.primary} onPress={onRefresh} accessibilityRole="button">
           <Text style={[typography.bodyBold, styles.primaryText]}>최신 목록 보기</Text>
-        </Pressable>
+        </PressableScale>
       </View>
     </Popup>
   );

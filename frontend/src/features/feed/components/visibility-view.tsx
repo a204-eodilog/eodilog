@@ -1,8 +1,11 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Spinner } from '@/components/ui/spinner';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Stagger } from '@/components/ui/stagger';
+import { FadeIn } from '@/components/ui/fade-in';
 import { Avatar, Button, ErrorState, Header, Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 import type { ViewerRow } from '../visibility';
@@ -36,43 +39,47 @@ export function VisibilityView(props: VisibilityViewProps) {
       {props.state === 'error' ? (
         <ErrorState title="노출 설정을 불러오지 못했어요" onRetry={props.onRetry} />
       ) : props.state === 'loading' ? (
-        <Spinner style={styles.flex} color={colors.brand.primary} />
+        <SkeletonList style={styles.flex} />
       ) : (
         <>
           <ScrollView contentContainerStyle={styles.content}>
-            <View style={styles.titleRow}>
-              <Text style={styles.title}>내 프로필·피드에서 숨길 친구</Text>
-              <Text style={styles.count}>{hidden.length}명 숨김</Text>
-            </View>
+            <Stagger itemStyle={styles.staggerItem}>
+              <View style={styles.titleRow}>
+                <Text style={styles.title}>내 프로필·피드에서 숨길 친구</Text>
+                <Text style={styles.count}>{hidden.length}명 숨김</Text>
+              </View>
 
-            {hidden.length > 0 ? (
-              <Section label="숨긴 친구" count={hidden.length} tone="danger">
-                {hidden.map((r) => (
-                  <Row key={r.user.id} row={r} onToggle={props.onToggle} />
-                ))}
+              {hidden.length > 0 ? (
+                <Section label="숨긴 친구" count={hidden.length} tone="danger">
+                  {hidden.map((r, order) => (
+                    <FadeIn key={r.user.id} index={order}>
+                      <Row row={r} onToggle={props.onToggle} />
+                    </FadeIn>
+                  ))}
+                </Section>
+              ) : null}
+
+              <Section label="보여 주는 친구" count={shown.length} tone="brand">
+                {shown.length === 0 ? (
+                  <Text style={styles.empty}>나를 팔로우하는 친구가 아직 없어요</Text>
+                ) : (
+                  shown.map((r) => <Row key={r.user.id} row={r} onToggle={props.onToggle} />)
+                )}
               </Section>
-            ) : null}
 
-            <Section label="보여 주는 친구" count={shown.length} tone="brand">
-              {shown.length === 0 ? (
-                <Text style={styles.empty}>나를 팔로우하는 친구가 아직 없어요</Text>
-              ) : (
-                shown.map((r) => <Row key={r.user.id} row={r} onToggle={props.onToggle} />)
-              )}
-            </Section>
-
-            <View style={styles.note}>
-              <Icon name="lock" size={14} color={colors.text.icon} />
-              <Text style={styles.noteText}>숨겨도 다른 동행 피드에서는 보일 수 있어요</Text>
-            </View>
+              <View style={styles.note}>
+                <Icon name="lock" size={14} color={colors.text.icon} />
+                <Text style={styles.noteText}>숨겨도 다른 동행 피드에서는 보일 수 있어요</Text>
+              </View>
+            </Stagger>
           </ScrollView>
           <View style={styles.saveWrap} pointerEvents="box-none">
             <Button
               label="저장"
+              icon="check"
               onPress={props.onSave}
               disabled={!props.changed || props.saving}
               loading={props.saving}
-              leading={<Icon name="send" size={20} color={colors.text.inverse} />}
             />
           </View>
         </>
@@ -117,7 +124,7 @@ function Row({ row, onToggle }: { row: ViewerRow; onToggle: (id: string) => void
       {row.companion ? (
         <Text style={styles.companion}>동행</Text>
       ) : (
-        <Pressable
+        <PressableScale
           onPress={() => onToggle(row.user.id)}
           style={({ pressed }) => [
             styles.toggle,
@@ -134,13 +141,15 @@ function Row({ row, onToggle }: { row: ViewerRow; onToggle: (id: string) => void
             size={18}
             color={row.hidden ? colors.brand.primaryDark : colors.text.strong}
           />
-        </Pressable>
+        </PressableScale>
       )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  // 차례로 나타나는 구역을 감싼 칸. 한 구역이 여러 줄이면 그 사이 간격을 스크롤 내용과 같게 둔다
+  staggerItem: { gap: spacing[20] },
   screen: { flex: 1, backgroundColor: colors.surface.white },
   flex: { flex: 1 },
   pressed: { opacity: 0.7 },

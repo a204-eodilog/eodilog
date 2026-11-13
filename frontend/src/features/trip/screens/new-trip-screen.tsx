@@ -1,10 +1,11 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, Header, Icon, Stagger, TextField } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { formatRange } from '@/lib/seoul-date';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -131,6 +132,7 @@ export function NewTripScreen() {
         <View style={[styles.footer, { paddingBottom: insets.bottom + spacing[16] }]}>
           <Button
             label={problem?.kind === 'failed' ? '다시 시도' : '여행 만들기'}
+            icon={problem?.kind === 'failed' ? 'refresh' : 'plus'}
             size="xl"
             block
             loading={isPending}
@@ -166,7 +168,7 @@ function ChoiceRow({
   onPress: () => void;
 }) {
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={`${label}, ${value ?? LATER}`}
       onPress={onPress}
@@ -181,7 +183,7 @@ function ChoiceRow({
         {value ?? LATER}
       </Text>
       <Icon name="chevron-right" size={16} color={colors.text.muted} />
-    </Pressable>
+    </PressableScale>
   );
 }
 

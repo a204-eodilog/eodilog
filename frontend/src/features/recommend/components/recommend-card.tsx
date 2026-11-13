@@ -1,7 +1,8 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Spinner } from '@/components/ui/spinner';
 
 import { Icon, type IconName } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 type Action =
@@ -51,7 +52,7 @@ export function RecommendCard({ title, location, reason, reasonIcon, action }: P
       </View>
       <View style={styles.bottom}>
         {action.kind === 'vote' ? (
-          <Pressable
+          <PressableScale
             style={[styles.pill, styles.vote]}
             onPress={action.onPress}
             // 버튼은 높이 36이라 위아래로 누르는 영역을 넓힌다
@@ -60,8 +61,7 @@ export function RecommendCard({ title, location, reason, reasonIcon, action }: P
             accessibilityLabel={`${title} 투표 후보로`}
           >
             <Icon name="check" size={16} color={colors.text.default} />
-            <Text style={[typography.subMedium, styles.voteText]}>투표 후보로</Text>
-          </Pressable>
+          </PressableScale>
         ) : action.saved ? (
           <View
             style={[styles.pill, styles.saved]}
@@ -73,7 +73,7 @@ export function RecommendCard({ title, location, reason, reasonIcon, action }: P
             <Text style={[typography.subMedium, styles.savedText]}>담김</Text>
           </View>
         ) : (
-          <Pressable
+          <PressableScale
             style={[styles.pill, styles.save]}
             onPress={action.onPress}
             // 버튼은 높이 36이라 위아래로 누르는 영역을 넓힌다
@@ -88,8 +88,7 @@ export function RecommendCard({ title, location, reason, reasonIcon, action }: P
             ) : (
               <Icon name="people" size={16} color={colors.text.inverse} />
             )}
-            <Text style={[typography.subMedium, styles.saveText]}>담기</Text>
-          </Pressable>
+          </PressableScale>
         )}
       </View>
     </View>

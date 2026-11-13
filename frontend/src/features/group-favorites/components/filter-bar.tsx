@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { AvatarGroup, Chip, Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, layout, spacing } from '@/theme';
 
 import type { SavedFilter } from '../types';
@@ -39,7 +40,7 @@ export function FilterBar(props: Props) {
       </View>
       <View style={styles.people}>
         {props.people.length > 0 ? <AvatarGroup people={props.people} max={3} /> : null}
-        <Pressable
+        <PressableScale
           style={styles.member}
           onPress={props.onMember}
           accessibilityRole="button"
@@ -51,7 +52,7 @@ export function FilterBar(props: Props) {
             size={20}
             color={props.memberActive ? colors.brand.primary : colors.text.icon}
           />
-        </Pressable>
+        </PressableScale>
       </View>
     </View>
   );

@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
+import { FadeIn } from '@/components/ui/fade-in';
 import { Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { Popup } from '@/components/ui/popup';
 import { colors, radius, spacing, typography } from '@/theme';
 
@@ -15,20 +17,20 @@ type Choice = { label: string; onPress: () => void };
 function Choices({ left, right }: { left: Choice; right: Choice }) {
   return (
     <View style={styles.choices}>
-      <Pressable
+      <PressableScale
         onPress={left.onPress}
         accessibilityRole="button"
-        style={({ pressed }) => [styles.choice, pressed && styles.pressed]}
+        style={({ pressed }) => [styles.choice, styles.secondary, pressed && styles.pressed]}
       >
         <Text style={[typography.bodyMedium, styles.leftText]}>{left.label}</Text>
-      </Pressable>
-      <Pressable
+      </PressableScale>
+      <PressableScale
         onPress={right.onPress}
         accessibilityRole="button"
         style={({ pressed }) => [styles.choice, styles.primary, pressed && styles.pressed]}
       >
         <Text style={[typography.bodyMedium, styles.primaryText]}>{right.label}</Text>
-      </Pressable>
+      </PressableScale>
     </View>
   );
 }
@@ -76,12 +78,20 @@ const MAX_LINES = 3;
 export function ManyPopup({ visible, count, lines, onLine, onClose, onAll }: ManyPopupProps) {
   return (
     <Dialog visible={visible} onDismiss={onClose} wide>
-      <Text style={[typography.title1, styles.manyTitle]} accessibilityRole="header">
-        새 알림 {count}개
-      </Text>
+      {/* 머리: 종 아이콘과 제목. 무엇이 왔는지 한눈에 보인다 */}
+      <View style={styles.manyHead}>
+        <View style={styles.bell}>
+          <Icon name="bell" size={22} color={colors.brand.primary} />
+        </View>
+        <Text style={[typography.title2, styles.manyTitle]} accessibilityRole="header">
+          새 알림 {count}개
+        </Text>
+      </View>
       <View style={styles.lines}>
-        {lines.slice(0, MAX_LINES).map((line) => (
-          <NotificationRow key={line.id} line={line} compact onPress={() => onLine(line)} />
+        {lines.slice(0, MAX_LINES).map((line, order) => (
+          <FadeIn key={line.id} index={order} style={styles.lineCard}>
+            <NotificationRow line={line} compact onPress={() => onLine(line)} />
+          </FadeIn>
         ))}
       </View>
       <Choices
@@ -136,7 +146,7 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: colors.surface.white,
-    borderRadius: radius.xl,
+    borderRadius: radius.xxl,
     paddingTop: spacing[24],
     paddingBottom: 22,
     gap: spacing[12],
@@ -149,8 +159,24 @@ const styles = StyleSheet.create({
   // Figma 투표 시작 카드 310(좌우 40), 모아 보기 카드 330(좌우 30)
   narrow: { width: '79.5%', maxWidth: 310, paddingHorizontal: spacing[24], alignItems: 'center' },
   wide: { width: '84.6%', maxWidth: 330, paddingHorizontal: 22 },
+  manyHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[12] },
+  bell: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.brand.primaryBg,
+  },
   manyTitle: { color: colors.text.default },
-  lines: { gap: spacing[16], marginTop: spacing[8] },
+  lines: { gap: spacing[8], marginTop: spacing[4] },
+  // 알림 한 줄이 옅은 회색 카드 하나다. 줄마다 누를 수 있다는 것이 보인다
+  lineCard: {
+    paddingHorizontal: spacing[12],
+    paddingVertical: spacing[6],
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface.subtle,
+  },
   pollIcon: {
     width: 48,
     height: 48,
@@ -179,6 +205,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[12],
   },
   primary: { backgroundColor: colors.brand.primary },
+  // 왼쪽 버튼도 회색 알약으로 그려 두 버튼의 크기와 무게를 맞춘다
+  secondary: { backgroundColor: colors.surface.default },
   leftText: { color: colors.text.icon },
   primaryText: { color: colors.text.inverse },
   pressed: { opacity: 0.7 },

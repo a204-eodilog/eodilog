@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { AvatarGroup, Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 import type { FeaturedChatRoom } from '../hooks/use-chat-rooms';
@@ -22,7 +23,7 @@ export function FeaturedRoomCard({ room, meId, onPress }: Props) {
     me: p.id === meId,
   }));
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={`${room.kicker} ${room.title} 대화방, ${room.preview}`}
       onPress={onPress}
@@ -45,7 +46,7 @@ export function FeaturedRoomCard({ room, meId, onPress }: Props) {
           <Icon name="chevron-right" size={16} color={colors.text.inverse} />
         </View>
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }
 

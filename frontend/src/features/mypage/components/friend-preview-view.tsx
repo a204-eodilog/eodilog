@@ -1,6 +1,5 @@
 import { Image } from 'expo-image';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Spinner } from '@/components/ui/spinner';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { UserCard } from '@/api/types';
@@ -13,6 +12,8 @@ import {
   type IconName,
   KoreaMap,
 } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { assetSource } from '@/lib/asset-image';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -41,7 +42,7 @@ export function FriendPreviewView(props: FriendPreviewViewProps) {
       {props.state === 'error' ? (
         <ErrorState title="미리 보기를 불러오지 못했어요" onRetry={props.onRetry} />
       ) : props.state === 'loading' ? (
-        <Spinner style={styles.flex} color={colors.brand.primary} />
+        <SkeletonList style={styles.flex} />
       ) : props.state === 'no-friends' ? (
         <EmptyState
           title="나를 팔로우하는 친구가 없어요"
@@ -58,7 +59,7 @@ export function FriendPreviewView(props: FriendPreviewViewProps) {
             {props.friends.map((f) => {
               const on = f.id === props.selectedId;
               return (
-                <Pressable
+                <PressableScale
                   key={f.id}
                   onPress={() => props.onSelect(f.id)}
                   style={[styles.chip, on ? styles.chipOn : styles.chipOff]}
@@ -67,7 +68,7 @@ export function FriendPreviewView(props: FriendPreviewViewProps) {
                 >
                   <Avatar name={f.nickname} imageUrl={f.profileImageUrl} size="md" />
                   <Text style={[styles.chipText, on && styles.chipTextOn]}>{f.nickname}</Text>
-                </Pressable>
+                </PressableScale>
               );
             })}
           </ScrollView>
@@ -128,7 +129,7 @@ function MiniMap({ view }: { view: FriendView }) {
 function FeedCard({ card, onPress }: { card: VisibleFeedCard; onPress: () => void }) {
   const src = assetSource(card.coverUrl);
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
       accessibilityRole="button"
@@ -158,7 +159,7 @@ function FeedCard({ card, onPress }: { card: VisibleFeedCard; onPress: () => voi
           </View>
         ) : null}
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }
 

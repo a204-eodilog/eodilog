@@ -1,7 +1,8 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Spinner } from '@/components/ui/spinner';
 
 import { Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, radius, spacing, typography } from '@/theme';
 
 import {
@@ -38,7 +39,8 @@ function WeatherBadge({
 /** 흰 알약 [다시 시도] */
 function RetryPill({ onPress, busy }: { onPress(): void; busy: boolean }) {
   return (
-    <Pressable
+    <PressableScale
+      accessibilityLabel="다시 시도"
       style={styles.retry}
       onPress={onPress}
       disabled={busy}
@@ -50,8 +52,7 @@ function RetryPill({ onPress, busy }: { onPress(): void; busy: boolean }) {
       ) : (
         <Icon name="refresh" size={16} color={colors.text.default} />
       )}
-      <Text style={[typography.subMedium, styles.retryText]}>다시 시도</Text>
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -110,7 +111,7 @@ export function WeatherCard(props: CardProps) {
             <Text style={[typography.caption, styles.queried]}>{`${clock(w.queriedAt)} 조회`}</Text>
           </View>
         </View>
-        <Pressable
+        <PressableScale
           style={styles.refresh}
           onPress={props.onRefresh}
           disabled={props.refreshing}
@@ -122,7 +123,7 @@ export function WeatherCard(props: CardProps) {
           ) : (
             <Icon name="refresh" size={18} color={colors.text.icon} />
           )}
-        </Pressable>
+        </PressableScale>
       </View>
       {props.affected ? (
         <View style={styles.affected}>
@@ -130,7 +131,7 @@ export function WeatherCard(props: CardProps) {
           <Text style={[typography.caption, styles.affectedText]} numberOfLines={2}>
             {`${props.affected.time} ${props.affected.name}에 비가 와요`}
           </Text>
-          <Pressable
+          <PressableScale
             style={styles.link}
             onPress={props.onAlternatives}
             accessibilityRole="button"
@@ -138,7 +139,7 @@ export function WeatherCard(props: CardProps) {
           >
             <Text style={[typography.captionMedium, styles.linkText]}>날씨 대안 보기</Text>
             <Icon name="chevron-right" size={14} color={colors.brand.primaryDark} />
-          </Pressable>
+          </PressableScale>
         </View>
       ) : null}
     </View>

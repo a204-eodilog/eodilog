@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Button, Icon, type IconName } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, radius, spacing, typography } from '@/theme';
 
 import type { AutoFailure } from '../hooks/use-auto-course';
@@ -90,20 +91,20 @@ export function AutoFailView({
       {FINAL.has(reason) ? null : (
         <Button
           label="다시 시도"
+          icon="refresh"
           size="lg"
           weight="medium"
-          leading={<Icon name="refresh" size={20} color={colors.text.inverse} />}
           onPress={onRetry}
           loading={retrying}
           style={styles.button}
         />
       )}
-      <Pressable style={styles.manual} onPress={onManual} accessibilityRole="button">
+      <PressableScale style={styles.manual} onPress={onManual} accessibilityRole="button">
         <Icon name={backToDraft ? 'back' : 'pencil'} size={18} color={colors.text.icon} />
         <Text style={[typography.bodyMedium, styles.manualText]}>
           {backToDraft ? '고치던 코스로 돌아가기' : '직접 만들기'}
         </Text>
-      </Pressable>
+      </PressableScale>
     </View>
   );
 }

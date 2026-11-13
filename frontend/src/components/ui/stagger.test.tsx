@@ -31,7 +31,7 @@ describe('Stagger', () => {
     const delays = timing.mock.calls.map((call) => call[1].delay);
     expect(delays).toEqual([0, 60, 120]);
     expect(timing.mock.calls[0][1]).toEqual(
-      expect.objectContaining({ toValue: 1, duration: motion.duration.normal }),
+      expect.objectContaining({ toValue: 1, duration: motion.appear.duration }),
     );
     expect(screen.getByText('제목')).toBeTruthy();
     expect(screen.getByText('내용')).toBeTruthy();
@@ -75,6 +75,37 @@ describe('Stagger', () => {
       </Stagger>,
     );
     expect(timing).not.toHaveBeenCalled();
+    expect(screen.getByText('제목')).toBeTruthy();
+  });
+
+  it('8번째 뒤로는 더 늦추지 않는다', async () => {
+    const timing = jest.spyOn(Animated, 'timing');
+    await render(
+      <Stagger>
+        {Array.from({ length: 11 }, (_, i) => (
+          <Text key={i}>{`구역 ${i}`}</Text>
+        ))}
+      </Stagger>,
+    );
+    const delays = timing.mock.calls.map((call) => call[1].delay);
+    expect(delays.slice(0, 3)).toEqual([0, 60, 120]);
+    expect(delays.slice(8)).toEqual([480, 480, 480]);
+  });
+
+  it('위에 줄이 나중에 생겨도 아래 줄은 다시 나타나지 않는다', async () => {
+    const timing = jest.spyOn(Animated, 'timing');
+    const page = (notice: boolean) => (
+      <Stagger>
+        {notice ? <Text>안내</Text> : null}
+        <Text>제목</Text>
+        <Text>내용</Text>
+      </Stagger>
+    );
+    const view = await render(page(false));
+    expect(timing).toHaveBeenCalledTimes(2);
+    await view.rerender(page(true));
+    // 새로 생긴 안내 줄만 나타나기 시작한다. 제목과 내용은 그대로다
+    expect(timing).toHaveBeenCalledTimes(3);
     expect(screen.getByText('제목')).toBeTruthy();
   });
 });

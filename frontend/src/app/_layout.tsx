@@ -1,9 +1,6 @@
-import {
-  NotoSansKR_400Regular,
-  NotoSansKR_500Medium,
-  NotoSansKR_700Bold,
-  useFonts,
-} from '@expo-google-fonts/noto-sans-kr';
+import { GowunDodum_400Regular } from '@expo-google-fonts/gowun-dodum';
+import { Jua_400Regular } from '@expo-google-fonts/jua';
+import { useFonts } from 'expo-font';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
@@ -14,6 +11,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { queryClient } from '@/api/query-client';
 import { setupQueryFocus } from '@/api/query-focus';
+import { CelebrateHost } from '@/components/ui/celebrate';
 import { ToastHost } from '@/components/ui/toast';
 import { SessionExpiredDialog } from '@/features/auth/components/session-expired-dialog';
 import { startChatRealtime } from '@/features/chat/realtime-chat';
@@ -27,10 +25,10 @@ SplashScreen.preventAutoHideAsync();
 setupQueryFocus();
 
 export default function RootLayout() {
+  // 본문은 고운돋움, 제목과 굵은 글자는 주아(theme/typography). 이름은 theme의 fontFamily와 같아야 한다
   const [fontsLoaded, fontError] = useFonts({
-    NotoSansKR_400Regular,
-    NotoSansKR_500Medium,
-    NotoSansKR_700Bold,
+    GowunDodum_400Regular,
+    Jua_400Regular,
   });
   const sessionLoaded = useSessionStore((s) => s.status !== 'loading');
   const ready = (fontsLoaded || fontError !== null) && sessionLoaded;
@@ -60,6 +58,7 @@ export default function RootLayout() {
           <Stack screenOptions={{ headerShown: false }} />
           <SessionExpiredDialog />
           <ToastHost />
+          <CelebrateHost />
         </BottomSheetModalProvider>
       </QueryClientProvider>
     </GestureHandlerRootView>

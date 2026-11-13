@@ -1,10 +1,11 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Spinner } from '@/components/ui/spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Icon, toast } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { useSessionStore } from '@/stores/session-store';
 import { colors, layout, spacing, typography } from '@/theme';
 
@@ -74,7 +75,7 @@ export function LoginScreen() {
       <View style={styles.bottom}>
         <Text style={[typography.captionMedium, styles.sub]}>간편하게 시작하기</Text>
         <View style={styles.buttons}>
-          <Pressable
+          <PressableScale
             accessibilityRole="button"
             accessibilityLabel="카카오로 계속하기"
             accessibilityState={{ busy, disabled: busy }}
@@ -90,8 +91,8 @@ export function LoginScreen() {
                 <Text style={[typography.bodyMedium, styles.kakaoLabel]}>카카오로 계속하기</Text>
               </>
             )}
-          </Pressable>
-          <Pressable
+          </PressableScale>
+          <PressableScale
             accessibilityRole="button"
             accessibilityLabel="네이버로 계속하기"
             disabled={busy}
@@ -100,7 +101,7 @@ export function LoginScreen() {
           >
             <Text style={[typography.bodyBold, styles.naverLabel]}>N</Text>
             <Text style={[typography.bodyMedium, styles.naverLabel]}>네이버로 계속하기</Text>
-          </Pressable>
+          </PressableScale>
         </View>
 
         {error ? (
@@ -111,15 +112,16 @@ export function LoginScreen() {
         ) : null}
 
         <View style={styles.terms}>
-          {['이용약관', '개인정보 처리방침'].map((label) => (
-            <Pressable
+          {['이용약관', '개인정보 처리방침'].map((label, order) => (
+            <PressableScale
+              appear={order}
               key={label}
               accessibilityRole="link"
               onPress={() => toast.show(`${label} 화면은 준비 중이에요`)}
               style={styles.termLink}
             >
               <Text style={[typography.captionMedium, styles.sub]}>{label}</Text>
-            </Pressable>
+            </PressableScale>
           ))}
         </View>
       </View>

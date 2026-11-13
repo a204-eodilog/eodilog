@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, radius, spacing, typography } from '@/theme';
 
 import type { SavedItem } from '../saved-rules';
@@ -20,7 +21,7 @@ type MapPlaceCardProps = {
  */
 export function MapPlaceCard({ item, highlighted = false, onPress }: MapPlaceCardProps) {
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={[item.name, item.area, item.source].filter(Boolean).join(', ')}
       onPress={onPress}
@@ -54,7 +55,7 @@ export function MapPlaceCard({ item, highlighted = false, onPress }: MapPlaceCar
           ) : null}
         </View>
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }
 

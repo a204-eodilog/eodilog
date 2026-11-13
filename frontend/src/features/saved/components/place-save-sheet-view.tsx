@@ -1,7 +1,8 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Spinner } from '@/components/ui/spinner';
 
 import { BottomSheet, Button, Icon, type IconName } from '@/components/ui';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 import type { TripsStatus } from '../hooks/use-trip-options';
@@ -67,7 +68,7 @@ export function PlaceSaveSheetView({
             </Text>
           </View>
         </View>
-        <Pressable
+        <PressableScale
           accessibilityRole="button"
           accessibilityLabel="닫기"
           hitSlop={8}
@@ -76,7 +77,7 @@ export function PlaceSaveSheetView({
           style={styles.close}
         >
           <Icon name="close" color={colors.text.default} />
-        </Pressable>
+        </PressableScale>
       </View>
 
       <View style={styles.choices} accessibilityRole="radiogroup">
@@ -122,10 +123,10 @@ export function PlaceSaveSheetView({
               </Text>
               <Button
                 label="다시 시도"
+                icon="refresh"
                 size="sm"
                 variant="secondary"
                 onPress={onRetryTrips}
-                leading={<Icon name="refresh" size={16} color={colors.brand.primary} />}
               />
             </View>
           ) : (
@@ -158,7 +159,7 @@ export function PlaceSaveSheetView({
       </View>
 
       <View style={styles.footer}>
-        <Pressable
+        <PressableScale
           accessibilityRole="button"
           accessibilityLabel={failed ? '다시 저장' : '저장'}
           accessibilityState={{ disabled: !canSave || saving, busy: saving }}
@@ -171,7 +172,7 @@ export function PlaceSaveSheetView({
           ) : (
             <Icon name="check" size={24} color={colors.text.inverse} />
           )}
-        </Pressable>
+        </PressableScale>
       </View>
     </BottomSheet>
   );
@@ -194,7 +195,7 @@ function ChoiceCell({
 }) {
   const color = selected ? colors.text.default : colors.text.icon;
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="radio"
       accessibilityLabel={label}
       accessibilityState={{ checked: selected, disabled }}
@@ -204,7 +205,7 @@ function ChoiceCell({
     >
       <Icon name={icon} size={24} color={color} />
       <Text style={[typography.captionMedium, { color }]}>{label}</Text>
-    </Pressable>
+    </PressableScale>
   );
 }
 
