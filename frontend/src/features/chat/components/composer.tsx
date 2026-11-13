@@ -4,7 +4,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon } from '@/components/ui';
 import { PressableScale } from '@/components/ui/pressable-scale';
-// 자판이 떠 있으면 하단 안전 영역(내비게이션 바) 여백을 빼서 입력 칸이 자판에 바로 붙게 한다
 import { useKeyboardVisible } from '@/hooks/use-keyboard-visible';
 import { caret, colors, fontFamily, radius, spacing, typography } from '@/theme';
 
@@ -37,6 +36,7 @@ export function Composer({ onSend, disabled = false, initialText = '' }: Props) 
     setText('');
   };
 
+  // 자판이 떠 있으면 하단 안전 영역(내비게이션 바) 여백을 빼서 입력 칸이 자판에 바로 붙게 한다
   const bottom = keyboardVisible ? spacing[8] : insets.bottom + spacing[8];
 
   return (
