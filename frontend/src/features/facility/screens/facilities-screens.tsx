@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { toast } from '@/components/ui';
 
 import { FacilitiesView } from '../components/facilities-view';
+import { openDirections } from '../directions';
 import {
   type Facility,
   type FacilityType,
@@ -16,7 +17,7 @@ import {
 
 /**
  * S28 주변 편의시설 /trips/[tripId]/facilities?placeId=. S25 여행 중(C 담당)이 기준 장소를 넘겨 연다.
- * 기준 장소 바꾸기·길찾기는 아직 연결 전(준비 중)
+ * 길찾기는 기기의 지도 앱을 연다. 기준 장소 바꾸기는 아직 연결 전(준비 중)
  */
 export function FacilitiesScreen() {
   const { tripId = '', placeId = '' } = useLocalSearchParams<{
@@ -51,7 +52,11 @@ export function FacilitiesScreen() {
       rows={list.data ? toFacilityRows(list.data) : []}
       onType={setType}
       onChangeBase={() => toast.show('준비 중이에요')}
-      onDirections={() => toast.show('준비 중이에요')}
+      onDirections={(row) =>
+        void openDirections(row).then((opened) => {
+          if (!opened) toast.error('지도 앱을 열지 못했어요');
+        })
+      }
       onRetry={() => void list.refetch()}
     />
   );

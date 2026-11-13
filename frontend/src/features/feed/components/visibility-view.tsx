@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -42,7 +43,7 @@ export function VisibilityView(props: VisibilityViewProps) {
         <SkeletonList style={styles.flex} />
       ) : (
         <>
-          <ScrollView contentContainerStyle={styles.content}>
+          <ScrollView decelerationRate={SCROLL_DECELERATION} contentContainerStyle={styles.content}>
             <Stagger itemStyle={styles.staggerItem}>
               <View style={styles.titleRow}>
                 <Text style={styles.title}>내 프로필·피드에서 숨길 친구</Text>
