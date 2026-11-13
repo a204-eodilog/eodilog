@@ -126,6 +126,15 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
 	// ResponseEntityExceptionHandler가 처리하는 나머지 MVC 예외(404 경로 없음, 405, 415 등)도 같은 형식으로 바꾼다
 	@Override
+	protected ResponseEntity<Object> handleMaxUploadSizeExceededException(
+			org.springframework.web.multipart.MaxUploadSizeExceededException ex,
+			HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+		var code = com.eodilog.expense.voice.VoiceExpenseError.INPUT_LIMIT_EXCEEDED;
+		return handleExceptionInternal(ex, ErrorResponse.of(code, TraceIdFilter.currentTraceId()),
+				headers, code.status(), request);
+	}
+
+	@Override
 	protected ResponseEntity<Object> handleExceptionInternal(Exception ex, Object body, HttpHeaders headers,
 			HttpStatusCode statusCode, WebRequest request) {
 		Object errorBody = body instanceof ErrorResponse
