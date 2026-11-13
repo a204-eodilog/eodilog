@@ -8,7 +8,8 @@ type Props = {
   onSuggest(): void;
   /** 제안을 받는 중이면 [제안 받기]가 돌아가는 표시와 '제안 받는 중…'으로 바뀌고 눌리지 않는다 */
   suggesting: boolean;
-  onAddDirect(): void;
+  /** 없으면 [직접 추가]를 그리지 않는다. 아래 입력 줄이 이미 열려 "+"가 두 개 보이지 않게(2026-11-13 사용자 지적) */
+  onAddDirect?: () => void;
 };
 
 /** S27 항목 없음(Figma 201-15518). 가방 그림, 안내, [제안 받기], [직접 추가] */
@@ -34,14 +35,16 @@ export function ChecklistEmpty({ onSuggest, suggesting, onAddDirect }: Props) {
           style={styles.suggest}
         />
         {/* 공통 Button의 글자 버튼은 파랑이라 디자인의 회색 글자 버튼을 따로 그린다 */}
-        <PressableScale
-          accessibilityLabel="직접 추가"
-          style={styles.direct}
-          onPress={onAddDirect}
-          accessibilityRole="button"
-        >
-          <Icon name="plus" size={20} color={colors.text.icon} />
-        </PressableScale>
+        {onAddDirect ? (
+          <PressableScale
+            accessibilityLabel="직접 추가"
+            style={styles.direct}
+            onPress={onAddDirect}
+            accessibilityRole="button"
+          >
+            <Icon name="plus" size={20} color={colors.text.icon} />
+          </PressableScale>
+        ) : null}
       </View>
     </View>
   );

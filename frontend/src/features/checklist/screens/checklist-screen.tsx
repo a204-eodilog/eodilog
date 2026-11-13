@@ -97,7 +97,7 @@ export function ChecklistView(props: ChecklistViewProps) {
           <ChecklistEmpty
             onSuggest={props.onSuggest}
             suggesting={props.suggesting}
-            onAddDirect={() => setAddOpen(true)}
+            onAddDirect={addOpen ? undefined : () => setAddOpen(true)}
           />
           {addOpen ? (
             <View style={styles.emptyAdd}>
