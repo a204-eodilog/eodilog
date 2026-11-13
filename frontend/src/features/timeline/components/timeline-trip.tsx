@@ -1,10 +1,11 @@
+import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Dot, Icon, Tag } from '@/components/ui';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, radius, spacing, typography } from '@/theme';
 
-import type { PlaceRow, TripTag } from '../timeline-rules';
+import { type PlaceRow, ROWS_SHOWN, type TripTag } from '../timeline-rules';
 
 type TimelineTripProps = {
   title: string;
@@ -17,6 +18,10 @@ type TimelineTripProps = {
 
 /** S41 여행 묶음: 머리(누르면 S42) + 장소 줄 */
 export function TimelineTrip({ title, period, tag, rows, onOpen }: TimelineTripProps) {
+  // 장소가 많은 여행이 화면을 다 차지하지 않게 세 줄만 보이고, 화살표로 편다
+  const [expanded, setExpanded] = useState(false);
+  const foldable = rows.length > ROWS_SHOWN;
+  const shown = expanded || !foldable ? rows : rows.slice(0, ROWS_SHOWN);
   return (
     <View style={styles.group}>
       <PressableScale
@@ -48,7 +53,7 @@ export function TimelineTrip({ title, period, tag, rows, onOpen }: TimelineTripP
         </View>
       ) : (
         <View style={styles.rows}>
-          {rows.map((row, i) => (
+          {shown.map((row, i) => (
             <View
               key={row.key}
               style={styles.row}
@@ -70,7 +75,7 @@ export function TimelineTrip({ title, period, tag, rows, onOpen }: TimelineTripP
                 <View style={styles.dot}>
                   <Dot size={10} color={row.visited ? colors.status.success : colors.gray[300]} />
                 </View>
-                {i < rows.length - 1 ? <View style={styles.line} /> : null}
+                {i < shown.length - 1 ? <View style={styles.line} /> : null}
               </View>
               <View style={styles.rowTexts}>
                 <View style={styles.nameLine}>
@@ -83,6 +88,27 @@ export function TimelineTrip({ title, period, tag, rows, onOpen }: TimelineTripP
               </View>
             </View>
           ))}
+          {foldable ? (
+            <PressableScale
+              accessibilityRole="button"
+              accessibilityLabel={
+                expanded ? '장소 접기' : `장소 ${rows.length - ROWS_SHOWN}곳 더 보기`
+              }
+              onPress={() => setExpanded((v) => !v)}
+              style={({ pressed }) => [styles.more, pressed && styles.pressed]}
+            >
+              {expanded ? null : (
+                <Text style={[typography.captionBold, styles.icon]}>
+                  +{rows.length - ROWS_SHOWN}
+                </Text>
+              )}
+              <Icon
+                name={expanded ? 'chevron-up' : 'chevron-down'}
+                size={18}
+                color={colors.text.icon}
+              />
+            </PressableScale>
+          ) : null}
         </View>
       )}
     </View>
@@ -122,6 +148,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface.subtle,
   },
   rows: {},
+  // 접고 펴는 화살표. 접혀 있으면 남은 곳 수를 앞에 붙인다
+  more: {
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[4],
+    minHeight: 36,
+    paddingHorizontal: spacing[14],
+    borderRadius: radius.full,
+    backgroundColor: colors.surface.default,
+  },
   row: { flexDirection: 'row', alignItems: 'stretch', gap: spacing[12] },
   day: { width: 44, paddingTop: 2 },
   rail: { alignItems: 'center' },

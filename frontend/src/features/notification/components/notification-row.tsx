@@ -40,8 +40,17 @@ export function NotificationRow({ line, onPress, compact = false }: Props) {
       </View>
       <View style={styles.body}>
         <Text
-          style={[line.unread ? typography.bodyBold : typography.body, styles.title]}
-          // 팝업에서도 두 줄까지 보인다. 한 줄이면 제목 끝이 잘렸다
+          // 팝업 줄은 한 단계 작은 글자로 그려 보통 길이의 제목이 한 줄에 들어간다. 그래도 넘치면 두 줄까지 보인다
+          style={[
+            compact
+              ? line.unread
+                ? typography.subBold
+                : typography.sub
+              : line.unread
+                ? typography.bodyBold
+                : typography.body,
+            styles.title,
+          ]}
           numberOfLines={2}
         >
           {line.title}

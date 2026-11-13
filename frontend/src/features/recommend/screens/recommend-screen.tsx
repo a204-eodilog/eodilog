@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useRef, useState, type ReactNode } from 'react';
 import { ScrollView, type ScrollViewInstance, StyleSheet, Text, View } from 'react-native';
@@ -110,6 +111,7 @@ export function RecommendView(props: RecommendViewProps) {
           ) : null}
         </View>
         <ScrollView
+          decelerationRate={SCROLL_DECELERATION}
           ref={scroll}
           style={styles.scroll}
           contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 96 }]}

@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -26,9 +27,6 @@ export type SavedViewProps = {
   /** [+] → S11. 저장 없음의 두 카드는 S11을 링크 칸 / 사진 고르기로 바로 시작한다 */
   onAdd: (start?: AddStart) => void;
 };
-
-const FAB = 56;
-const FAB_GAP = spacing[20];
 
 /**
  * S10 개인 즐겨찾기(저장 탭 첫 화면). 상태: 목록 보기 / 지도 보기 / 저장 없음 / 연결 끊김.
@@ -70,6 +68,18 @@ export function SavedView({
       <View style={styles.kinds}>
         <KindButton icon="person" label="개인" selected onPress={() => undefined} />
         <KindButton icon="people" label="그룹" selected={false} onPress={onGroup} />
+        {/* 더하기는 개인·그룹 줄의 오른쪽 끝에 둔다. 아래 구석에 떠 있을 때는 마지막 카드와 지도 핀을 가렸다 */}
+        {empty ? null : (
+          <PressableScale
+            accessibilityRole="button"
+            accessibilityLabel="링크·캡처 등록"
+            onPress={() => onAdd()}
+            hitSlop={4}
+            style={({ pressed }) => [styles.add, pressed && styles.pressed]}
+          >
+            <Icon name="plus" size={20} color={colors.text.inverse} />
+          </PressableScale>
+        )}
       </View>
 
       {offlineSince ? (
@@ -108,7 +118,7 @@ export function SavedView({
           </View>
         </View>
       ) : view === 'list' ? (
-        <ScrollView contentContainerStyle={styles.list}>
+        <ScrollView decelerationRate={SCROLL_DECELERATION} contentContainerStyle={styles.list}>
           <View style={styles.listHead}>
             <Text style={[typography.captionMedium, styles.sub]}>{items.length}곳</Text>
             <Text style={[typography.caption, styles.sub2]}>최근 저장한 순</Text>
@@ -130,18 +140,7 @@ export function SavedView({
           </View>
         </ScrollView>
       ) : (
-        <SavedMap items={items} onOpen={onOpen} bottomInset={FAB + FAB_GAP * 2} />
-      )}
-
-      {empty ? null : (
-        <PressableScale
-          accessibilityRole="button"
-          accessibilityLabel="링크·캡처 등록"
-          onPress={() => onAdd()}
-          style={({ pressed }) => [styles.fab, pressed && styles.pressed]}
-        >
-          <Icon name="plus" size={28} color={colors.text.inverse} />
-        </PressableScale>
+        <SavedMap items={items} onOpen={onOpen} bottomInset={spacing[20]} />
       )}
     </View>
   );
@@ -306,7 +305,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: layout.screenPaddingX,
     paddingTop: spacing[16],
     // [+] 버튼에 마지막 카드가 가리지 않게
-    paddingBottom: FAB + FAB_GAP * 2,
+    paddingBottom: spacing[32],
     gap: spacing[24],
   },
   listHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
@@ -337,12 +336,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.surface.white,
   },
-  fab: {
-    position: 'absolute',
-    right: FAB_GAP,
-    bottom: FAB_GAP,
-    width: FAB,
-    height: FAB,
+  // 더하기. 개인·그룹 알약과 같은 높이의 파랑 동그라미를 줄 오른쪽 끝에
+  add: {
+    marginLeft: 'auto',
+    width: 36,
+    height: 36,
     borderRadius: radius.full,
     backgroundColor: colors.brand.primary,
     alignItems: 'center',

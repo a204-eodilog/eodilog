@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -117,7 +118,11 @@ export default function MapCatalog() {
         ) : null}
       </View>
 
-      <ScrollView style={styles.legend} contentContainerStyle={styles.legendContent}>
+      <ScrollView
+        decelerationRate={SCROLL_DECELERATION}
+        style={styles.legend}
+        contentContainerStyle={styles.legendContent}
+      >
         <Text style={[typography.label, styles.sectionTitle]}>
           말풍선 모양 (지도 밖에서도 같음)
         </Text>

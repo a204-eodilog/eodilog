@@ -104,6 +104,8 @@ export type HomeRecommendation = {
   imageUrl: string | null;
   /** 누르면 갈 곳의 서버 ID. 여행이면 피드 ID(S07), 장소면 장소 ID(N7) */
   targetId: string;
+  /** 지도에서 깜빡일 지역 코드. 여행은 첫 지역, 장소는 주소에서 찾은 시군. 모르면 null */
+  regionCode: string | null;
 };
 
 /** S06 같은 지역 여행 카드 한 장 */

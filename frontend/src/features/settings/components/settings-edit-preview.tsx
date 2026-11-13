@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -82,7 +83,11 @@ export function SettingsEditPreview({ kind, data, simulateFailure, onClose, onSa
   return (
     <View style={styles.screen}>
       <Header title={isProfile ? '프로필 수정' : '여행 취향'} onBack={onClose} />
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        decelerationRate={SCROLL_DECELERATION}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
         <Stagger itemStyle={styles.staggerItem}>
           {failed ? (
             <Text accessibilityRole="alert" style={styles.error}>

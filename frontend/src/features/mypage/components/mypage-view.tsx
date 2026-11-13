@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { useState } from 'react';
 import { type LayoutChangeEvent, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -56,15 +57,49 @@ export function MyPageView(props: MyPageViewProps) {
       ) : state === 'loading' || !summary ? (
         <SkeletonList style={styles.flex} />
       ) : (
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          decelerationRate={SCROLL_DECELERATION}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+        >
           <Stagger itemStyle={styles.staggerItem}>
+            {/* 프로필. 얼굴 옆에 숫자 셋, 아래에 이름과 버튼 둘. 숫자를 누르면 그 목록으로 간다 */}
             <View style={styles.profile}>
-              <Avatar name={summary.nickname} imageUrl={summary.profileImageUrl} size={56} me />
-              <View style={styles.profileText}>
+              <View style={styles.profileTop}>
+                <View style={styles.ring}>
+                  <Avatar name={summary.nickname} imageUrl={summary.profileImageUrl} size={76} me />
+                </View>
+                <View style={styles.stats}>
+                  <Stat label="여행" value={summary.tripCount} onPress={props.onTrips} />
+                  <Stat label="게시" value={summary.postedCount} onPress={props.onTimeline} />
+                  <Stat label="친구" value={summary.friendCount} onPress={props.onFriends} />
+                </View>
+              </View>
+              <View>
                 <Text style={styles.name} numberOfLines={1}>
                   {summary.nickname}
                 </Text>
-                <Text style={styles.onBrand}>{profileLine(summary)}</Text>
+                <Text style={styles.sub}>{profileLine(summary)}</Text>
+              </View>
+              <View style={styles.profileButtons}>
+                <PressableScale
+                  onPress={props.onSettings}
+                  style={({ pressed }) => [styles.profileButton, pressed && styles.pressed]}
+                  accessibilityRole="button"
+                  accessibilityLabel="프로필 편집"
+                >
+                  <Icon name="pencil" size={16} color={colors.text.default} />
+                  <Text style={styles.profileButtonText}>프로필 편집</Text>
+                </PressableScale>
+                <PressableScale
+                  onPress={props.onFriends}
+                  style={({ pressed }) => [styles.profileButton, pressed && styles.pressed]}
+                  accessibilityRole="button"
+                  accessibilityLabel="친구 보기"
+                >
+                  <Icon name="people" size={16} color={colors.text.default} />
+                  <Text style={styles.profileButtonText}>친구</Text>
+                </PressableScale>
               </View>
             </View>
 
@@ -98,13 +133,6 @@ export function MyPageView(props: MyPageViewProps) {
                 </>
               ) : null}
               <Tile icon="clock" label="타임라인" onPress={props.onTimeline} />
-              <View style={styles.rule} />
-              <Tile
-                icon="people"
-                label="친구"
-                count={summary.friendCount === null ? null : `${summary.friendCount}명`}
-                onPress={props.onFriends}
-              />
               <View style={styles.rule} />
               <Tile icon="gear" label="설정" onPress={props.onSettings} />
             </View>
@@ -277,6 +305,29 @@ export function TripPin({
   );
 }
 
+/** 프로필 숫자 한 칸. 큰 숫자 아래 작은 이름. 다 세지 못했으면 줄표 */
+function Stat({
+  label,
+  value,
+  onPress,
+}: {
+  label: string;
+  value: number | null;
+  onPress: () => void;
+}) {
+  return (
+    <PressableScale
+      onPress={onPress}
+      style={({ pressed }) => [styles.stat, pressed && styles.pressed]}
+      accessibilityRole="button"
+      accessibilityLabel={value === null ? label : `${label} ${value}`}
+    >
+      <Text style={styles.statValue}>{value === null ? '–' : value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
+    </PressableScale>
+  );
+}
+
 function Tile({
   icon,
   label,
@@ -329,18 +380,44 @@ const styles = StyleSheet.create({
   },
   bar: { height: 56, justifyContent: 'center', paddingHorizontal: layout.screenPaddingX },
   pageTitle: { ...typography.title1, color: colors.text.default },
-  // 프로필은 파랑 카드. 여행 탭·기록 화면의 파랑 머리와 같은 얼굴이다
+  // 프로필은 흰 카드. 얼굴 옆에 숫자 셋, 아래에 이름과 버튼 둘(인스타그램 프로필 배치)
   profile: {
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: spacing[14],
     padding: spacing[20],
     borderRadius: radius.xxl,
-    backgroundColor: colors.brand.primary,
+    backgroundColor: colors.surface.white,
   },
-  profileText: { flex: 1, minWidth: 0, gap: 2 },
-  name: { ...typography.title1, color: colors.text.inverse },
-  onBrand: { ...typography.caption, color: colors.onBrand.textSoft },
+  profileTop: { flexDirection: 'row', alignItems: 'center', gap: spacing[12] },
+  // 얼굴 둘레의 파랑 고리. 흰 틈을 두고 두른다
+  ring: {
+    padding: 3,
+    borderRadius: radius.full,
+    borderWidth: 2,
+    borderColor: colors.brand.primary,
+  },
+  stats: { flex: 1, flexDirection: 'row' },
+  stat: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 56,
+    borderRadius: radius.lg,
+  },
+  statValue: { ...typography.title2, color: colors.text.default, fontVariant: ['tabular-nums'] },
+  statLabel: { ...typography.caption, color: colors.text.sub },
+  name: { ...typography.title3, color: colors.text.default },
+  profileButtons: { flexDirection: 'row', gap: spacing[8] },
+  profileButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing[6],
+    height: 44,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface.default,
+  },
+  profileButtonText: { ...typography.captionBold, color: colors.text.default },
   sub: { ...typography.caption, color: colors.text.sub },
   mapCard: {
     height: MAP_HEIGHT,

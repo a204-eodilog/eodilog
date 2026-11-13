@@ -6,9 +6,6 @@ import { colors, radius, spacing, typography } from '@/theme';
 
 import type { SavedItem } from '../saved-rules';
 
-/** 지도 아래 가로 카드 폭. 넘길 때 몇 번째 카드인지 계산하는 데도 쓴다 */
-export const MAP_CARD_WIDTH = 248;
-
 type MapPlaceCardProps = {
   item: SavedItem;
   highlighted?: boolean;
@@ -61,7 +58,7 @@ export function MapPlaceCard({ item, highlighted = false, onPress }: MapPlaceCar
 
 const styles = StyleSheet.create({
   card: {
-    width: MAP_CARD_WIDTH,
+    // 지도 아래 카드는 한 쪽에 한 장이라 가로를 채운다
     height: 84,
     flexDirection: 'row',
     alignItems: 'center',

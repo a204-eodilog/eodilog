@@ -127,6 +127,24 @@ public class ExpenseService {
 		return toResponse(expense, shares, members);
 	}
 
+	/** 한 항목 실패 시 전체 트랜잭션을 취소하며 단건과 같은 검증·분담 규칙을 쓴다. */
+	@Transactional
+	public com.eodilog.expense.dto.ExpenseBatchResponse createBatch(UUID userId, UUID tripId,
+			String key, com.eodilog.expense.dto.CreateExpensesRequest request) {
+		if (request == null || request.items() == null || request.items().isEmpty()
+				|| request.items().stream().anyMatch(Objects::isNull)) {
+			throw validationError(List.of(new ErrorField("items", "경비를 1~10건 보내 주세요.")));
+		}
+		if (request.items().size() > 10) throw new BusinessException(ExpenseErrorCode.INPUT_LIMIT_EXCEEDED);
+		List<NewExpense> drafts = request.items().stream().map(this::validateCreate).toList();
+		idempotencyService.validateKey(key);
+		TripAccess access = tripAccessChecker.requireActiveMemberForUpdate(tripId, userId);
+		return idempotencyService.execute(userId, "POST /api/v1/trips/" + tripId + "/expenses/batch", key,
+				request, com.eodilog.expense.dto.ExpenseBatchResponse.class, HttpStatus.CREATED,
+				() -> new com.eodilog.expense.dto.ExpenseBatchResponse(
+						drafts.stream().map(draft -> create(access, draft)).toList()));
+	}
+
 	// 생략한 필드는 유지한다. 원금이나 분담자가 바뀌면 분담액을 다시 계산한다
 	// 판정 순서: 여행 404 → 경비 404 → 등록자가 아니면 403 → 버전 409(멤버 관리와 같은 순서)
 	@Transactional

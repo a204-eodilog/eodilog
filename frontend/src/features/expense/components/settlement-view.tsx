@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Avatar, AvatarGroup, Button, Header, Icon, Tag } from '@/components/ui';
@@ -158,7 +159,7 @@ export function SettlementView({
   return (
     <View style={styles.screen}>
       <SettlementHeader tripTitle={tripTitle} members={members} myMemberId={myMemberId} />
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView decelerationRate={SCROLL_DECELERATION} contentContainerStyle={styles.content}>
         {stale ? (
           <>
             <View style={styles.staleBox}>

@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -97,7 +98,11 @@ export default function DevNotifications() {
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.menu}>
+    <ScrollView
+      decelerationRate={SCROLL_DECELERATION}
+      style={styles.screen}
+      contentContainerStyle={styles.menu}
+    >
       <Text style={[typography.subBold, styles.heading]}>S48·S49 알림</Text>
       <View style={styles.row}>
         {EXAMPLES.map((e) => (

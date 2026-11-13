@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { Image } from 'expo-image';
 import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -101,7 +102,7 @@ export function TripPhotosView(props: TripPhotosViewProps) {
   return (
     <View style={styles.screen}>
       {header}
-      <ScrollView contentContainerStyle={styles.body}>
+      <ScrollView decelerationRate={SCROLL_DECELERATION} contentContainerStyle={styles.body}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}

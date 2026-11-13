@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -23,6 +24,7 @@ export function TripSummaryView({ title, cells, note, route, coverAssetId }: Tri
   const insets = useSafeAreaInsets();
   return (
     <ScrollView
+      decelerationRate={SCROLL_DECELERATION}
       contentContainerStyle={[styles.content, { paddingBottom: spacing[32] + insets.bottom }]}
     >
       <Stagger itemStyle={styles.staggerItem}>

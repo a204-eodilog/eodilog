@@ -36,6 +36,13 @@ export function dDay(trip: Trip, today: string): number | null {
   return daysBetween(today, trip.startDate);
 }
 
+/** 여행 중일 때의 진행. 며칠짜리 여행의 몇째 날인지. 여행 중이 아니면 null */
+export function tripProgress(trip: Trip, today: string): { day: number; total: number } | null {
+  const day = dayIndex(trip, today);
+  if (day === null || !trip.startDate || !trip.endDate) return null;
+  return { day, total: daysBetween(trip.startDate, trip.endDate) + 1 };
+}
+
 /** 여행 중이면 오늘이 몇째 날인지. 첫날이 1 */
 export function dayIndex(trip: Trip, today: string): number | null {
   if (tripStatus(trip, today) !== 'ONGOING' || !trip.startDate) return null;

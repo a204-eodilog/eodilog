@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -6,6 +7,7 @@ import type { UserCard } from '@/api/types';
 import { Avatar, EmptyState, ErrorState, Header, Icon } from '@/components/ui';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { SkeletonList } from '@/components/ui/skeleton';
+import { Vanish, VanishList } from '@/components/ui/vanish';
 import { caret, colors, layout, radius, spacing, typography } from '@/theme';
 
 import { followButtonState, suggestionReason } from '../people-rules';
@@ -89,48 +91,53 @@ function Suggestions(props: FindFriendsViewProps) {
     );
   }
   return (
-    <ScrollView contentContainerStyle={styles.list}>
+    <ScrollView decelerationRate={SCROLL_DECELERATION} contentContainerStyle={styles.list}>
       <Text style={styles.sectionTitle}>추천 친구</Text>
-      {items.map((s) => (
-        <View key={s.user.id} style={styles.card}>
-          <PressableScale
-            onPress={() => props.onPerson(s.user)}
-            style={styles.cardHead}
-            accessibilityRole="button"
-            accessibilityLabel={`${s.user.nickname}, ${suggestionReason(s.reason)}`}
-          >
-            <Avatar name={s.user.nickname} imageUrl={s.user.profileImageUrl} size={44} />
-            <View style={styles.cardText}>
-              <Text style={styles.name}>{s.user.nickname}</Text>
-              <View style={styles.reason}>
-                <Icon
-                  name={s.reason.kind === 'CO_TRAVELER' ? 'image' : 'heart'}
-                  size={14}
-                  color={colors.text.icon}
-                />
-                <Text style={styles.reasonText}>{suggestionReason(s.reason)}</Text>
-              </View>
-            </View>
-          </PressableScale>
-          <View style={styles.actions}>
+      <VanishList>
+        {items.map((s) => (
+          <Vanish key={s.user.id} style={styles.card}>
             <PressableScale
-              onPress={() => props.onHide(s.user)}
-              style={({ pressed }) => [styles.hide, pressed && styles.pressed]}
+              onPress={() => props.onPerson(s.user)}
+              style={styles.cardHead}
               accessibilityRole="button"
-              accessibilityLabel={`${s.user.nickname} 추천 숨기기`}
+              accessibilityLabel={`${s.user.nickname}, ${suggestionReason(s.reason)}`}
             >
-              <Icon name="eye-off" size={16} color={colors.text.sub} />
+              <Avatar name={s.user.nickname} imageUrl={s.user.profileImageUrl} size={44} />
+              <View style={styles.cardText}>
+                <Text style={styles.name}>{s.user.nickname}</Text>
+                <View style={styles.reason}>
+                  <Icon
+                    name={s.reason.kind === 'CO_TRAVELER' ? 'image' : 'heart'}
+                    size={14}
+                    color={colors.text.icon}
+                  />
+                  <Text style={styles.reasonText}>{suggestionReason(s.reason)}</Text>
+                </View>
+              </View>
             </PressableScale>
-            <FollowButton
-              compact
-              onCard
-              state={followButtonState(s.user)}
-              loading={props.pendingUserId === s.user.id}
-              onPress={() => props.onFollow(s.user)}
-            />
-          </View>
-        </View>
-      ))}
+            <View style={styles.actions}>
+              {/* 팔로우했거나 요청한 사람은 숨길 까닭이 없어 엑스를 뺀다 */}
+              {followButtonState(s.user) === 'follow' ? (
+                <PressableScale
+                  onPress={() => props.onHide(s.user)}
+                  style={({ pressed }) => [styles.hide, pressed && styles.pressed]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${s.user.nickname} 추천 숨기기`}
+                >
+                  <Icon name="close" size={16} color={colors.text.sub} />
+                </PressableScale>
+              ) : null}
+              <FollowButton
+                compact
+                onCard
+                state={followButtonState(s.user)}
+                loading={props.pendingUserId === s.user.id}
+                onPress={() => props.onFollow(s.user)}
+              />
+            </View>
+          </Vanish>
+        ))}
+      </VanishList>
     </ScrollView>
   );
 }
@@ -151,7 +158,7 @@ function SearchResults(
     );
   }
   return (
-    <ScrollView contentContainerStyle={styles.list}>
+    <ScrollView decelerationRate={SCROLL_DECELERATION} contentContainerStyle={styles.list}>
       <Text style={styles.sectionTitle}>검색 결과</Text>
       {items.map((u) => (
         <View key={u.id} style={styles.row}>

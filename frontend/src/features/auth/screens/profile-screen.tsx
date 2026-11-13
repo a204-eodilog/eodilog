@@ -1,3 +1,4 @@
+import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
@@ -149,7 +150,11 @@ export function ProfileScreen() {
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          decelerationRate={SCROLL_DECELERATION}
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+        >
           <Stagger itemStyle={styles.staggerItem}>
             {save.isError ? (
               <Card variant="filled" rounded="xl" style={styles.failCard}>
@@ -240,6 +245,27 @@ export function ProfileScreen() {
                 </Text>
               </View>
             </View>
+
+            {/* 설정에서 열었을 때만. 여행 취향은 따로 저장되는 화면이라 줄을 눌러 들어간다 */}
+            {editing ? (
+              <PressableScale
+                accessibilityRole="button"
+                accessibilityLabel="여행 취향 수정"
+                onPress={() =>
+                  router.push({ pathname: '/preferences', params: { from: 'settings' } })
+                }
+                style={({ pressed }) => [styles.prefRow, pressed && styles.pressed]}
+              >
+                <View style={styles.prefIcon}>
+                  <Icon name="star" size={20} color={colors.brand.primary} />
+                </View>
+                <View style={styles.flex}>
+                  <Text style={[typography.bodyBold, styles.text]}>여행 취향</Text>
+                  <Text style={[typography.caption, styles.sub]}>추천에 쓰는 취향을 골라요</Text>
+                </View>
+                <Icon name="chevron-right" size={20} color={colors.text.muted} />
+              </PressableScale>
+            ) : null}
           </Stagger>
         </ScrollView>
 
@@ -267,6 +293,23 @@ export function ProfileScreen() {
 const PHOTO_SIZE = 96;
 
 const styles = StyleSheet.create({
+  // 여행 취향으로 가는 줄. 옅은 회색 카드
+  prefRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[14],
+    padding: spacing[16],
+    borderRadius: radius.xl,
+    backgroundColor: colors.surface.subtle,
+  },
+  prefIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.brand.primaryBg,
+  },
   // 차례로 나타나는 구역을 감싼 칸. 한 구역이 여러 줄이면 그 사이 간격을 스크롤 내용과 같게 둔다
   staggerItem: { gap: spacing[28] },
   screen: { flex: 1, backgroundColor: colors.surface.white },
@@ -275,6 +318,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: layout.screenPaddingX,
     paddingVertical: spacing[24],
     gap: spacing[28],
+    // 떠 있는 버튼 칸(버튼 56 + 위아래 여백)에 마지막 내용이 가리지 않게 비운다
+    paddingBottom: 56 + spacing[24] + spacing[32],
   },
   // 안내 상자(회색). 피그마 S02 저장 실패: 바탕 grey 98, 둥글기 20, 안쪽 20
   failCard: { gap: 0, padding: spacing[20], backgroundColor: colors.surface.subtle },
@@ -319,11 +364,17 @@ const styles = StyleSheet.create({
   section: { gap: spacing[12] },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[10] },
   noteRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[6] },
+  // 버튼 칸은 바탕 없이 내용 위에 뜬다. 내용이 길면 버튼 뒤로 비쳐 지나간다
   bottom: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
     paddingHorizontal: layout.screenPaddingX,
     paddingTop: spacing[12],
     paddingBottom: spacing[24],
     gap: spacing[12],
+    backgroundColor: 'transparent',
   },
   nextButton: { borderRadius: radius.lg },
   text: { color: colors.text.default },

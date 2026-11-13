@@ -78,7 +78,7 @@ export function PollScreen() {
   if ((!pollId && list.isPending) || (targetId && detail.isPending && !poll)) {
     body = <SkeletonList style={styles.loading} />;
   } else if (detail.notFound) {
-    body = <PollNotFoundView onBack={() => router.back()} />;
+    body = <PollNotFoundView />;
   } else if (!poll && (list.isError || detail.isError)) {
     body = (
       <ErrorState
