@@ -1,12 +1,19 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { AvatarGroup, Icon, type IconName } from '@/components/ui';
+import { AvatarGroup, Icon } from '@/components/ui';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { formatRange } from '@/lib/seoul-date';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 import { useRegionNames } from '../hooks/use-region-names';
-import { dayIndex, dDay, destinationLabel, nextTodoLabel, tripStatus } from '../trip-rules';
+import {
+  dayIndex,
+  dDay,
+  destinationLabel,
+  nextTodoLabel,
+  periodPlaceLabel,
+  tripStatus,
+} from '../trip-rules';
 import type { Trip, TripStatus } from '../types';
 
 // 단계 막대. 글 대신 막대로 지금 어디쯤인지 보인다(2026-11-05 사용자 요청: 글보다 아이콘·그림)
@@ -19,8 +26,8 @@ const STAGES: { key: TripStatus; label: string }[] = [
 type Props = { trip: Trip; today: string; onPress: () => void };
 
 /**
- * S15 맨 위 파랑 블록의 내용(B안 "지금 여행 집중", 2026-11-05 사용자 선택).
- * 파랑 바탕과 상단 바는 목록 화면이 그리고, 여기서는 화면 끝까지 닿는 내용만 그린다.
+ * S15 맨 위 대표 여행 카드(B안 "지금 여행 집중", 2026-11-05 사용자 선택).
+ * 밝은 상단 바 아래 따로 떨어진 파랑 카드다. 여백·둥글기는 채팅 탭 맨 위 카드(FeaturedRoomCard)와 맞춘다.
  * 여행 중이면 "여행 중 · N일차", 아니면 "다가오는 여행 · D-N"
  */
 export function UpcomingTripCard({ trip, today, onPress }: Props) {
@@ -34,18 +41,20 @@ export function UpcomingTripCard({ trip, today, onPress }: Props) {
   const kicker = ongoing
     ? `여행 중${n !== null ? ` · ${n}일차` : ''}`
     : `다가오는 여행${d !== null ? ` · D-${d}` : ''}`;
+  const range = trip.startDate && trip.endDate ? formatRange(trip.startDate, trip.endDate) : null;
+  const periodPlace = periodPlaceLabel(range, place);
 
   return (
     <PressableScale
       accessibilityRole="button"
       accessibilityLabel={`${kicker} ${trip.title}`}
       onPress={onPress}
-      style={({ pressed }) => [styles.block, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
       <View style={styles.head}>
-        <Text style={[typography.subBold, styles.kicker]}>{kicker}</Text>
+        <Text style={[typography.captionMedium, styles.kicker]}>{kicker}</Text>
         <View style={styles.titleRow}>
-          <Text style={[typography.hero, styles.white, styles.titleText]} numberOfLines={2}>
+          <Text style={[typography.title2, styles.white, styles.titleText]} numberOfLines={2}>
             {trip.title}
           </Text>
           <AvatarGroup
@@ -56,12 +65,11 @@ export function UpcomingTripCard({ trip, today, onPress }: Props) {
             size="md"
           />
         </View>
-        <View style={styles.chips}>
-          {trip.startDate && trip.endDate ? (
-            <Chip icon="calendar" label={formatRange(trip.startDate, trip.endDate)} />
-          ) : null}
-          {place ? <Chip icon="map-pin" label={place} /> : null}
-        </View>
+        {periodPlace ? (
+          <Text style={[typography.subMedium, styles.kicker]} numberOfLines={1}>
+            {periodPlace}
+          </Text>
+        ) : null}
       </View>
 
       <View style={styles.todo}>
@@ -86,42 +94,21 @@ export function UpcomingTripCard({ trip, today, onPress }: Props) {
   );
 }
 
-function Chip({ icon, label }: { icon: IconName; label: string }) {
-  return (
-    <View style={styles.chip}>
-      <Icon name={icon} size={14} color={colors.text.inverse} />
-      <Text style={[typography.label, styles.white]} numberOfLines={1}>
-        {label}
-      </Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  // 화면 좌우 20, 위는 상단 바 아래 8, 아래 28. 묶음 사이 22
-  block: {
-    paddingHorizontal: layout.screenPaddingX,
-    paddingTop: spacing[8],
-    paddingBottom: spacing[28],
-    gap: 22,
+  // 채팅 탭 맨 위 카드와 같은 좌우 20·둥글기 xl·안쪽 16. 묶음 사이 16
+  card: {
+    marginHorizontal: layout.screenPaddingX,
+    padding: spacing[16],
+    gap: spacing[16],
+    borderRadius: radius.xl,
+    backgroundColor: colors.brand.primary,
   },
   pressed: { opacity: 0.9 },
-  head: { gap: spacing[10] },
+  head: { gap: spacing[4] },
   kicker: { color: colors.onBrand.textSoft },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[12] },
   titleText: { flex: 1 },
   white: { color: colors.text.inverse },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[8] },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[4],
-    maxWidth: '100%',
-    height: 28,
-    paddingHorizontal: spacing[10],
-    borderRadius: radius.full,
-    backgroundColor: colors.onBrand.chip,
-  },
   // 지금 할 일: 흰 상자 둥글기 16, 안쪽 왼 18·오른 14·위아래 14, 간격 18
   todo: {
     flexDirection: 'row',

@@ -24,7 +24,8 @@ const openNew = () => router.push('/trips/new');
 
 /**
  * S15 여행 목록(B안 "지금 여행 집중", 2026-11-05 사용자 선택).
- * - 맨 위: 여행 중 → 다가오는 여행을 상단 바까지 덮는 파랑 블록으로 크게 보인다
+ * - 맨 위: 채팅 탭과 같은 밝은 상단 바("여행" + "+ 새 여행") 아래에,
+ *   여행 중 → 다가오는 여행을 따로 떨어진 파랑 카드로 크게 보인다
  * - 다음 계획: 파랑 달력 칸의 세로 목록. 가까운 순으로 3개까지 보이고 더 있으면 "더 보기"로 펼친다
  * - 다녀온 여행: 회색 달력 칸의 옆으로 넘기는 카드
  *   (2026-11-11 사용자 결정으로 두 묶음의 모양을 맞바꿨다. 앞으로 할 일이 한눈에 보이게)
@@ -41,7 +42,11 @@ export function TripListScreen() {
 
   const sections = listState.kind === 'ready' ? listState.sections : null;
   const featured = sections?.featured ?? null;
-  const onBrand = !!featured;
+  const noTrips =
+    !!sections && !featured && sections.next.length === 0 && sections.past.length === 0;
+  // "+ 새 여행"은 여행이 없으면 가운데 만들기 버튼과 겹쳐 숨긴다. 로딩 중에도 숨겨, 보였다가 사라지며
+  // 덜컹이지 않게 한다. 오류·오프라인은 가운데에 다시 시도만 있어 만들기로 가는 길로 남겨 둔다
+  const showNew = listState.kind !== 'loading' && !noTrips;
 
   // 탭에 돌아오면 다시 받는다(만든 여행·다른 기기에서 나간 여행 반영). 진행 중인 요청은 끊지 않고 그 결과를 쓴다
   useFocusEffect(
@@ -50,33 +55,37 @@ export function TripListScreen() {
     }, [refetch]),
   );
 
-  // 파랑 블록이 상단 바 밑까지 올라가므로, 이 탭을 보는 동안만 상단 바 글자를 흰색으로 바꾼다
+  // 상단 바는 채팅 탭처럼 밝은 바탕이라 상태바 글자는 늘 짙게 둔다.
+  // 다른 화면(파랑 머리 상세 등)에서 돌아와도 짙은 글자로 되돌린다
   useFocusEffect(
     useCallback(() => {
-      setStatusBarStyle(onBrand ? 'light' : 'dark');
-      return () => setStatusBarStyle('dark');
-    }, [onBrand]),
+      setStatusBarStyle('dark');
+    }, []),
   );
 
+  // 채팅 탭과 같은 밝은 상단 바. 로딩·빈 목록·대표 여행 있음 모두 같은 바를 쓴다(높이 56 고정이라 버튼이 없어도 제목 자리는 같다)
   const header = (
     <View style={styles.header}>
-      <Text style={[typography.title1, onBrand ? styles.headingOnBrand : styles.heading]}>
+      <Text style={[typography.title1, styles.heading]} accessibilityRole="header">
         여행
       </Text>
-      {/* 글 버튼 대신 더하기 아이콘(2026-11-05 사용자 요청: 글보다 아이콘) */}
-      <PressableScale
-        accessibilityRole="button"
-        accessibilityLabel="새 여행"
-        onPress={openNew}
-        hitSlop={spacing[4]}
-        style={({ pressed }) => [styles.newButton, pressed && styles.pressed]}
-      >
-        <Icon name="plus" size={26} color={onBrand ? colors.text.inverse : colors.text.default} />
-      </PressableScale>
+      {showNew ? (
+        <PressableScale
+          accessibilityRole="button"
+          accessibilityLabel="새 여행 만들기"
+          onPress={openNew}
+          style={({ pressed }) => [styles.newButton, pressed && styles.pressed]}
+        >
+          <View style={styles.newPill}>
+            <Icon name="plus" size={16} color={colors.brand.primary} />
+            <Text style={[typography.captionMedium, styles.newLabel]}>새 여행</Text>
+          </View>
+        </PressableScale>
+      ) : null}
     </View>
   );
 
-  if (!sections || (!featured && sections.next.length === 0 && sections.past.length === 0)) {
+  if (!sections || noTrips) {
     let body;
     if (listState.kind === 'loading') {
       body = <SkeletonList style={styles.loading} />;
@@ -107,27 +116,16 @@ export function TripListScreen() {
   const next = visibleNextTrips(sections.next, nextExpanded);
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { paddingTop: insets.top }]}>
+      {header}
       <ScrollView
         style={styles.flex}
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing[32] }]}
-        refreshControl={
-          <RefreshControl
-            refreshing={pulling}
-            onRefresh={onPullRefresh}
-            tintColor={onBrand ? colors.text.inverse : undefined}
-            progressViewOffset={insets.top}
-          />
-        }
+        refreshControl={<RefreshControl refreshing={pulling} onRefresh={onPullRefresh} />}
       >
         {featured ? (
-          <View style={[styles.brand, { paddingTop: insets.top }]}>
-            {header}
-            <UpcomingTripCard trip={featured} today={today} onPress={() => openTrip(featured)} />
-          </View>
-        ) : (
-          <View style={{ paddingTop: insets.top }}>{header}</View>
-        )}
+          <UpcomingTripCard trip={featured} today={today} onPress={() => openTrip(featured)} />
+        ) : null}
 
         {stale ? (
           <View style={styles.offline}>
@@ -213,13 +211,8 @@ const styles = StyleSheet.create({
   // 바탕은 옅은 회색, 내용은 흰 카드에 담는다. 파랑 머리와 카드가 또렷이 나뉜다
   screen: { flex: 1, backgroundColor: colors.surface.subtle },
   flex: { flex: 1 },
-  content: { flexGrow: 1 },
-  // 파랑 머리는 아래 모서리를 둥글려 카드처럼 내려앉게 한다
-  brand: {
-    backgroundColor: colors.brand.primary,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
-  },
+  // 상단 바와 첫 내용 사이 8(채팅 탭 목록과 같다)
+  content: { flexGrow: 1, paddingTop: spacing[8] },
   listCard: {
     marginHorizontal: spacing[16],
     paddingVertical: spacing[6],
@@ -244,15 +237,18 @@ const styles = StyleSheet.create({
     height: 56,
   },
   heading: { color: colors.text.default },
-  headingOnBrand: { color: colors.text.inverse },
-  // 누르는 칸 44. 아이콘 오른쪽 끝이 아래 내용 오른쪽 끝과 맞도록 칸 여백만큼 밖으로 뺀다
-  newButton: {
-    width: layout.minTouchTarget,
-    height: layout.minTouchTarget,
-    marginRight: -(layout.minTouchTarget - 26) / 2,
+  // "+ 새 여행" 알약. 보이는 높이 30, 누르는 칸 높이 48(알약 위아래 빈 곳도 누른다)
+  newButton: { minHeight: 48, justifyContent: 'center' },
+  newPill: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: spacing[4],
+    height: 30,
+    paddingHorizontal: spacing[12],
+    borderRadius: radius.full,
+    backgroundColor: colors.brand.primaryBg,
   },
+  newLabel: { color: colors.brand.primary },
   pressed: { opacity: 0.6 },
   // 로딩 동그라미를 남은 화면의 정중앙에 둔다
   loading: { flex: 1 },
