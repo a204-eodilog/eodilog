@@ -72,7 +72,9 @@ describe('toMyPageSummary', () => {
 
 describe('글자', () => {
   it('프로필 한 줄과 내 여행 목록 한 줄', () => {
-    expect(profileLine({ visitedCount: 4, postedCount: 1 })).toBe('다녀온 여행 4개 · 게시 1개');
+    expect(profileLine({ visitedCount: 4, postedCount: 1 })).toBe(
+      '다녀온 여행 4개 · 게시한 여행 1개',
+    );
     expect(profileLine({ visitedCount: 0, postedCount: 0 })).toBe('아직 기록한 여행이 없어요');
     expect(tripListLine({ tripCount: 7, pinlessCount: 1 })).toBe('7개 · 핀 없는 여행 1개 포함');
     expect(tripListLine({ tripCount: 3, pinlessCount: 0 })).toBe('3개');
