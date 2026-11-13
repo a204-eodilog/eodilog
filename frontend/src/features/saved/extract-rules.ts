@@ -62,20 +62,6 @@ export function parseAddStart(value: string | string[] | undefined): AddStart | 
 }
 
 /**
- * S11에 링크 칸·캡처 칸 중 무엇을 보일지. 시작한 쪽은 늘 보이고, 다른 쪽은 [+ 캡처도 추가]·[+ 링크도 추가]를
- * 눌렀거나 이미 값이 있을 때만 보인다. 시작 값이 없으면(S10 [+]·S20) 링크로 시작한다
- */
-export function addSections(
-  begin: AddStart | null,
-  state: { linkOpened: boolean; captureOpened: boolean; link: string; captureCount: number },
-): { showLink: boolean; showCaptures: boolean } {
-  return {
-    showLink: begin !== 'capture' || state.linkOpened || state.link.length > 0,
-    showCaptures: begin === 'capture' || state.captureOpened || state.captureCount > 0,
-  };
-}
-
-/**
  * 고른 캡처를 더한다. 10장을 넘는 것과 JPG·PNG가 아닌 것은 빼고, 몇 장을 뺐는지 알려 준다
  */
 export function addCaptures<T extends { contentType: string }>(
