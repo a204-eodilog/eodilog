@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { BottomSheet, Button, Icon, type IconName, Spinner } from '@/components/ui';
+import { BottomSheet, Button, Icon, type IconName, MascotTraveler, Spinner } from '@/components/ui';
 import { VOICE_MAX_DURATION_MS, formatClock } from '@/lib/voice-recording';
 import { colors, radius, spacing, typography } from '@/theme';
 
@@ -302,6 +302,12 @@ function Steps({ step }: { step: AnalysisStep }) {
   const now = ORDER.indexOf(step);
   return (
     <>
+      {/* 기다리는 동안 보이는 마스코트 자리. 지금은 첫 방문 화면의 걷는 여행자를 임시로 쓰고,
+          수첩에 적는 새 동작이 나오면 그림만 바꾼다(2026-11-13 사용자 결정) */}
+      <View style={styles.mascot}>
+        <MascotTraveler size={140} />
+        <Text style={[typography.bodyMedium, styles.text]}>말한 지출을 정리하고 있어요</Text>
+      </View>
       <View style={styles.steps}>
         {STEPS.map((s, i) => {
           const done = i < now;
@@ -412,6 +418,7 @@ const styles = StyleSheet.create({
   },
   noticeWarn: { backgroundColor: colors.status.warningBg2 },
   noticeDanger: { backgroundColor: colors.status.dangerBg },
+  mascot: { alignItems: 'center', gap: spacing[4] },
   steps: { gap: spacing[14], paddingVertical: spacing[4] },
   stepRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[12] },
   stepDone: { width: 24, height: 24, backgroundColor: colors.brand.primary },
