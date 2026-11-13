@@ -428,3 +428,107 @@ describe('placeNamesOfDay', () => {
     expect(placeNamesOfDay([item(1, 1, '해운대')], 3)).toEqual([]);
   });
 });
+
+describe('tripDetailView 실제 진행에 맞춘 단계', () => {
+  const states = (view: ReturnType<typeof tripDetailView>) =>
+    view.steps.map((s) => [s.label, s.state]);
+  const decided = trip({
+    startDate: '2026-11-14',
+    endDate: '2026-11-15',
+    destinationRegionIds: ['r'],
+  });
+
+  it('여행지 미정에 모은 장소가 있으면 지역 투표가 지금 단계다', () => {
+    const view = tripDetailView(trip({}), [], TODAY, null, {
+      savedPlaceCount: 3,
+      coursePlaceCount: 0,
+    });
+    expect(states(view)).toEqual([
+      ['장소 모으기', 'done'],
+      ['지역 투표', 'current'],
+      ['코스 짜기', 'upcoming'],
+    ]);
+    expect(view.action).toEqual({ label: '지역 투표', target: 'polls' });
+  });
+
+  it('여행지 미정에 모은 장소가 없으면 장소 모으기가 지금 단계다', () => {
+    const view = tripDetailView(trip({}), [], TODAY, null, {
+      savedPlaceCount: 0,
+      coursePlaceCount: 0,
+    });
+    expect(states(view)[0]).toEqual(['장소 모으기', 'current']);
+    expect(view.action?.target).toBe('favorites');
+  });
+
+  it('여행지가 정해졌어도 모은 장소가 없으면 장소 모으기부터 권한다', () => {
+    const view = tripDetailView(decided, ['부산'], TODAY, null, {
+      savedPlaceCount: 0,
+      coursePlaceCount: 0,
+    });
+    expect(states(view)).toEqual([
+      ['장소 모으기', 'current'],
+      ['코스 짜기', 'upcoming'],
+      ['여행 떠나기', 'upcoming'],
+    ]);
+    expect(view.action).toEqual({ label: '장소 모으기', target: 'favorites' });
+  });
+
+  it('장소를 모았고 코스가 없으면 코스 짜기가 지금 단계다', () => {
+    const view = tripDetailView(decided, ['부산'], TODAY, null, {
+      savedPlaceCount: 4,
+      coursePlaceCount: 0,
+    });
+    expect(states(view)).toEqual([
+      ['장소 모으기', 'done'],
+      ['코스 짜기', 'current'],
+      ['여행 떠나기', 'upcoming'],
+    ]);
+    expect(view.action).toEqual({ label: '코스 짜기', target: 'course' });
+    expect(view.greeting).toBeUndefined();
+  });
+
+  it('코스를 짰으면 둘 다 끝난 것으로 보이고 떠날 준비가 됐다고 한다', () => {
+    const view = tripDetailView(decided, ['부산'], TODAY, null, {
+      savedPlaceCount: 4,
+      coursePlaceCount: 2,
+    });
+    expect(states(view)).toEqual([
+      ['장소 모으기', 'done'],
+      ['코스 짜기', 'done'],
+      ['여행 떠나기', 'current'],
+    ]);
+    expect(view.greeting).toBe('떠날 준비가 됐어요');
+    expect(view.action).toEqual({ label: '코스 보기', target: 'course' });
+  });
+
+  it('그룹 즐겨찾기 없이 코스에 바로 넣었어도 모으기는 끝난 것으로 본다', () => {
+    const view = tripDetailView(decided, ['부산'], TODAY, null, {
+      savedPlaceCount: 0,
+      coursePlaceCount: 1,
+    });
+    expect(states(view)[0]).toEqual(['장소 모으기', 'done']);
+    expect(view.greeting).toBe('떠날 준비가 됐어요');
+  });
+
+  it('아직 받지 못했으면 진행을 보지 않은 기본 단계를 보인다', () => {
+    const unknown = { savedPlaceCount: null, coursePlaceCount: null };
+    expect(states(tripDetailView(decided, ['부산'], TODAY, null, unknown))).toEqual(
+      states(tripDetailView(decided, ['부산'], TODAY)),
+    );
+    expect(states(tripDetailView(trip({}), [], TODAY, null, unknown))).toEqual(
+      states(tripDetailView(trip({}), [], TODAY)),
+    );
+    // 하나만 받았을 때도 '없다'고 단정하지 않는다
+    const half = tripDetailView(decided, ['부산'], TODAY, null, {
+      savedPlaceCount: 0,
+      coursePlaceCount: null,
+    });
+    expect(states(half)[1]).toEqual(['코스 짜기', 'current']);
+  });
+
+  it('여행 중이거나 다녀온 여행은 진행 값을 보지 않는다', () => {
+    const going = trip({ startDate: '2026-10-27', endDate: '2026-10-29' });
+    const progress = { savedPlaceCount: 0, coursePlaceCount: 0 };
+    expect(tripDetailView(going, ['부산'], TODAY, null, progress).steps).toEqual([]);
+  });
+});
