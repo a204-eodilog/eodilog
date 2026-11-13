@@ -139,6 +139,33 @@ class EvChargerSyncTest {
 		assertThat(store.state().statusSyncedAt()).isEqualTo(synced);
 	}
 
+	// 전국 수신 중 한 쪽이 잠깐 실패하면 그 쪽만 다시 불러 끝까지 받는다. 처음부터 다시 받지 않고 하루 횟수도 한 번만 쓴다
+	@Test
+	void pageThatFailsBrieflyIsRetriedAndTheReloadFinishes() {
+		client.info = List.of(info("A", "01", "2", "2026-11-11T02:00:00Z"), info("B", "01", "2", "2026-11-11T02:00:00Z"),
+				info("C", "01", "2", "2026-11-11T02:00:00Z"));
+		client.failInfoPage = 2;
+		client.failInfoPageTimes = 2;
+		sync.tick();
+		assertThat(client.infoCalls).isEqualTo(4); // 1쪽, 2쪽 실패 두 번, 2쪽 성공
+		assertThat(stations()).containsExactly("A", "B", "C");
+		assertThat(store.state().fullCompletedAt()).isEqualTo(clock.instant());
+		assertThat(jdbc.queryForObject("SELECT full_attempts FROM ev_sync_state WHERE id = 1", Integer.class)).isEqualTo(1);
+	}
+
+	// 한 쪽이 pageAttempts번(여기서는 3번) 모두 실패하면 이번 전국 수신을 그만둔다. 받은 쪽은 남고 완료로 적지 않는다
+	@Test
+	void pageThatKeepsFailingStopsTheReloadAfterItsAttempts() {
+		client.info = List.of(info("A", "01", "2", "2026-11-11T02:00:00Z"), info("B", "01", "2", "2026-11-11T02:00:00Z"),
+				info("C", "01", "2", "2026-11-11T02:00:00Z"));
+		client.failInfoPage = 2;
+		sync.tick();
+		assertThat(client.infoCalls).isEqualTo(4); // 1쪽, 2쪽 세 번
+		assertThat(stations()).containsExactly("A", "B");
+		assertThat(store.state().fullCompletedAt()).isNull();
+		assertThat(client.statusCalls).isZero();
+	}
+
 	// 포털이 잠깐 503을 주면 다시 시도하고, 마지막 갱신 뒤 지난 시간만큼 받는 범위를 늘린다(최대 10분)
 	@Test
 	void briefOutageIsRetriedAndWindowCoversTheGap() {
@@ -166,7 +193,8 @@ class EvChargerSyncTest {
 	static EvChargerProperties properties(String key, int pageSize, int maxFull) {
 		return new EvChargerProperties(key, "https://example.invalid", true, pageSize, 6, Duration.ofMinutes(5), 3, Duration.ZERO,
 				Duration.ofMinutes(10),
-				Duration.ofMinutes(20), maxFull, "0 0 4 * * *", Duration.ofMinutes(30), Duration.ofSeconds(5), Duration.ofSeconds(60));
+				Duration.ofMinutes(20), maxFull, "0 0 4 * * *", Duration.ofMinutes(30), Duration.ofSeconds(5), Duration.ofSeconds(60),
+				3, Duration.ZERO);
 	}
 
 	private static ChargerInfo info(String station, String charger, String stat, String updated) {
@@ -189,13 +217,18 @@ class EvChargerSyncTest {
 	static class FakeClient implements EvChargerClient {
 		List<ChargerInfo> info = List.of();
 		List<ChargerStatus> status = List.of();
-		int infoCalls, statusCalls, failInfoPage, failStatusTimes;
+		int infoCalls, statusCalls, failInfoPage, failInfoPageTimes, failStatusTimes;
 		boolean failStatus;
 		List<Integer> periods = new ArrayList<>();
 
+		// failInfoPageTimes가 0이면 failInfoPage 쪽은 계속 실패하고, 양수면 그 횟수만큼만 실패한다
 		@Override
 		public Page<ChargerInfo> infoPage(int pageNo, int rows) {
 			infoCalls++;
+			if (pageNo == failInfoPage && failInfoPageTimes > 0) {
+				if (--failInfoPageTimes == 0) failInfoPage = 0;
+				throw new EvChargerUnavailableException("fake 504");
+			}
 			if (pageNo == failInfoPage) throw new EvChargerUnavailableException("fake failure");
 			return slice(info, pageNo, rows);
 		}
