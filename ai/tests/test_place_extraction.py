@@ -763,3 +763,27 @@ def test_branch_suffix_is_dropped_when_full_name_is_not_found(client):
 )
 def test_without_branch(name, base):
     assert without_branch(name) == base
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "부산 중국음식점",
+        "제주 기념품점",
+        "서울 독립서점",
+        "동네 문구점",
+        "우리 제과점",
+        "행복 백화점",
+    ],
+)
+def test_without_branch_keeps_business_names(name):
+    assert without_branch(name) == name
+
+
+@respx.mock
+def test_business_name_does_not_fall_back_to_region_only(client):
+    mock_llm(mention("부산 중국음식점", "MEMO"))
+    places = mock_places({"부산": [document("부산", "1")]})
+    data = post(client, [png()], memo="부산 중국음식점 방문").json()["data"]
+    assert [c.request.url.params["query"] for c in places.calls] == ["부산 중국음식점"]
+    assert data["candidates"][0]["place"] is None

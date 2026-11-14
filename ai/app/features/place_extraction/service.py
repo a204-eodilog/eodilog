@@ -80,11 +80,17 @@ class Mention:
 
 
 # 이름 끝의 지점 표시. 띄어 쓴 마지막 낱말이 '본점', 'N호점', '○○점'이면 뗀다. 붙여 쓴 이름('정점')은 건드리지 않는다
+# 업종명은 지점이 아니다. 재검색어가 지역명만 남는 것을 막는다.
+_BUSINESS_NAME = re.compile(
+    r"(?:음식점|서점|상점|편의점|백화점|면세점|판매점|전문점|대리점|할인점|제과점|정육점|문구점|안경점|기념품점|주점|반점)$"
+)
 _BRANCH = re.compile(r"\s+(?:본점|\d+호점|\S+점)$")
 
 
 def without_branch(name: str) -> str:
     """'강릉길감자 본점' → '강릉길감자'. 떼고 남는 게 없으면 그대로 둔다."""
+    if _BUSINESS_NAME.search(name.strip()):
+        return name.strip()
     base = _BRANCH.sub("", name.strip()).strip()
     return base or name.strip()
 
