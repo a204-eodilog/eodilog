@@ -316,8 +316,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: layout.screenPaddingX,
     paddingVertical: spacing[24],
     gap: spacing[28],
-    // 떠 있는 버튼 칸(버튼 56 + 위아래 여백)에 마지막 내용이 가리지 않게 비운다
-    paddingBottom: 56 + spacing[24] + spacing[32],
   },
   // 안내 상자(회색). 피그마 S02 저장 실패: 바탕 grey 98, 둥글기 20, 안쪽 20
   failCard: { gap: 0, padding: spacing[20], backgroundColor: colors.surface.subtle },
@@ -362,17 +360,13 @@ const styles = StyleSheet.create({
   section: { gap: spacing[12] },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[10] },
   noteRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[6] },
-  // 버튼 칸은 바탕 없이 내용 위에 뜬다. 내용이 길면 버튼 뒤로 비쳐 지나간다
+  // 버튼 칸은 스크롤 아래에 따로 둔다. 내용 위에 띄우면 작은 화면에서 안내 글이 위 글과 겹친다(2026-11-14)
   bottom: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
     paddingHorizontal: layout.screenPaddingX,
     paddingTop: spacing[12],
     paddingBottom: spacing[24],
     gap: spacing[12],
-    backgroundColor: 'transparent',
+    backgroundColor: colors.surface.white,
   },
   nextButton: { borderRadius: radius.lg },
   text: { color: colors.text.default },
