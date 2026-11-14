@@ -1125,6 +1125,33 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
     return ok(config, undefined, 204);
   }
 
+  // 초대 링크(S04). 아무 토큰이나 받는다. 'expired'로 시작하면 만료된 링크로 본다
+  const inviteMatch = /^\/invitations\/([^/]+)(\/accept)?$/.exec(url);
+  if (inviteMatch) {
+    const token = decodeURIComponent(inviteMatch[1]);
+    if (token.startsWith('expired')) {
+      throw fail(config, 410, 'INVITATION_EXPIRED', '만료된 초대 링크입니다.');
+    }
+    const target = trips[0] ?? SAMPLE_TRIPS[0];
+    if (method === 'get' && !inviteMatch[2]) {
+      return ok(config, {
+        data: {
+          tripTitle: target.title,
+          startDate: target.startDate,
+          endDate: target.endDate,
+          inviter: { nickname: '여행친구' },
+          inviterUser: null,
+          expiresAt: new Date(Date.now() + INVITE_DAYS_MS).toISOString(),
+          alreadyMember: false,
+        },
+      });
+    }
+    if (method === 'post' && inviteMatch[2]) {
+      if (!trips.some((t) => t.id === target.id)) trips = [target, ...trips];
+      return ok(config, { data: target });
+    }
+  }
+
   if (method === 'get' && url === '/me') return ok(config, { data: ME });
   // 탈퇴(DELETE /me, 202). 가짜 서버는 받기만 하고 자료는 남겨 둔다(다음 테스트 모드 로그인에서 다시 쓴다)
   if (method === 'delete' && url === '/me') return ok(config, { data: { accepted: true } }, 202);

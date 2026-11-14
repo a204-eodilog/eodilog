@@ -20,14 +20,15 @@ export function TripInviteCard({ title, startDate, endDate }: Props) {
 
   return (
     <View style={styles.card}>
-      <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
+      {/* 안드로이드에서 100% 크기 그림이 카드보다 작게 그려져 잘렸다. 0~100 좌표를 카드 크기로 늘린다 */}
+      <Svg style={StyleSheet.absoluteFill} viewBox="0 0 100 100" preserveAspectRatio="none">
         <Defs>
           <LinearGradient id="trip-card" x1="0" y1="0" x2="0.3" y2="1">
             <Stop offset="0.14" stopColor="#3B82F0" />
             <Stop offset="0.86" stopColor="#2A66D6" />
           </LinearGradient>
         </Defs>
-        <Rect width="100%" height="100%" fill="url(#trip-card)" />
+        <Rect width="100" height="100" fill="url(#trip-card)" />
       </Svg>
       <View style={styles.statusPill}>
         <Text style={[typography.captionMedium, styles.statusLabel]}>
@@ -62,6 +63,8 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: radius.lg,
     overflow: 'hidden',
+    // 그라데이션이 늦게 그려져도 흰 글자가 보이게 끝 색을 바탕으로 깐다
+    backgroundColor: '#2A66D6',
     padding: spacing[20],
     gap: spacing[20],
   },
