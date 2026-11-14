@@ -274,6 +274,26 @@ def test_prompt_tells_llm_not_to_list_every_label_on_a_map_capture(client):
 
 
 @respx.mock
+def test_map_capture_area_hint_narrows_the_search(client):
+    """2026-11-14 공기계: 역삼 지도 캡처에 종로·중구 지점이 후보로 나왔다(이름만으로 전국 검색).
+    지시문이 지도에 보이는 동 이름을 address_hint로 채우게 하고, 그 단서로 먼저 찾는다."""
+    llm = mock_llm(mention("스타벅스", "CAPTURE_TEXT", hint="역삼동"))
+    places = mock_places(
+        {
+            "역삼동 스타벅스": [document("스타벅스 역삼점", "1")],
+            "스타벅스": [document("스타벅스 종로점", "2"), document("스타벅스 시청점", "3")],
+        }
+    )
+
+    data = post(client, [png()]).json()["data"]
+
+    system = json.loads(llm.calls.last.request.content)["messages"][0]["content"]
+    assert "address_hint를 비우지 않는다" in system
+    assert places.calls[0].request.url.params["query"] == "역삼동 스타벅스"
+    assert spots(data) == ["1"]
+
+
+@respx.mock
 def test_T01_3_no_mentions_is_not_found(client):
     mock_llm()
 
