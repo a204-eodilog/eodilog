@@ -26,7 +26,7 @@ function Preview({ state, onState }: { state: State; onState: (state: State) => 
   const [service] = useState<FriendsService>(() => {
     let board: FriendsBoard =
       state === 'empty'
-        ? { following: [], followers: [], requests: [] }
+        ? { following: [], followers: [], requests: [], sent: [] }
         : (JSON.parse(JSON.stringify(PREVIEW_BOARD)) as FriendsBoard);
     let failOnce = state === 'failure';
     let failLoad = state === 'load-error';

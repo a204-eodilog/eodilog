@@ -1,12 +1,14 @@
 import type { Follow, FriendsBoard } from '@/features/friends/types';
 
 export type FriendsAction = {
-  kind: 'accept' | 'reject' | 'unfollow' | 'remove';
+  kind: 'accept' | 'reject' | 'unfollow' | 'remove' | 'cancel';
   follow: Follow;
   at: string;
 };
 export function actionUserId(action: FriendsAction): string {
-  return action.kind === 'unfollow' ? action.follow.followee.id : action.follow.follower.id;
+  return action.kind === 'unfollow' || action.kind === 'cancel'
+    ? action.follow.followee.id
+    : action.follow.follower.id;
 }
 /** 받은 요청 수락은 팔로워만 늘린다. 반대 방향 팔로잉은 유지한다. */
 export function applyFriendsAction(
@@ -23,6 +25,7 @@ export function applyFriendsAction(
       followers: [accepted, ...board.followers.filter((f) => f.follower.id !== follow.follower.id)],
     };
   }
+  if (kind === 'cancel') return { ...board, sent: board.sent.filter((f) => f.id !== follow.id) };
   if (kind === 'reject')
     return { ...board, requests: board.requests.filter((f) => f.id !== follow.id) };
   if (kind === 'unfollow')

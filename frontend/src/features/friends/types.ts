@@ -7,4 +7,6 @@ export type FriendsBoard = {
   following: Follow[];
   followers: Follow[];
   requests: Follow[];
+  /** 내가 보냈고 아직 수락되지 않은 팔로우 요청(GET /me/follow-requests?direction=SENT) */
+  sent: Follow[];
 };

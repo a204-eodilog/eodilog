@@ -64,7 +64,10 @@ export function FriendsView({
   const insets = useSafeAreaInsets();
   const rows = board[tab];
   const allEmpty =
-    board.followers.length === 0 && board.following.length === 0 && board.requests.length === 0;
+    board.followers.length === 0 &&
+    board.following.length === 0 &&
+    board.requests.length === 0 &&
+    board.sent.length === 0;
   const act = async (kind: FriendsAction['kind'], follow: Follow) => {
     const success = await onAction({ kind, follow, at: new Date().toISOString() });
     if (success && kind === 'accept') setTab('followers');
@@ -172,6 +175,53 @@ export function FriendsView({
                     수락해도 여행 그룹·채팅은 공개되지 않아요
                   </Text>
                 </View>
+              </View>
+            ) : null}
+            {/* 내가 보냈고 아직 수락되지 않은 요청. 있을 때만 보인다(2026-11-14 사용자 결정: 보낸 요청을 확인·취소할 곳이 없었다) */}
+            {board.sent.length > 0 ? (
+              <View style={styles.section}>
+                <View style={styles.headingRow}>
+                  <Text style={styles.heading}>보낸 팔로우 요청</Text>
+                  <View style={styles.countPill}>
+                    <Text style={styles.countText}>{board.sent.length}</Text>
+                  </View>
+                </View>
+                <VanishList>
+                  {board.sent.map((follow) => (
+                    <Vanish key={follow.id} style={styles.request}>
+                      <PressableScale
+                        accessibilityRole="button"
+                        accessibilityLabel={follow.followee.nickname + ' 프로필'}
+                        onPress={() => onPerson(follow.followee)}
+                        disabled={pendingIds.includes(follow.followee.id)}
+                        style={[styles.person, styles.flex]}
+                      >
+                        <Avatar
+                          name={follow.followee.nickname}
+                          imageUrl={follow.followee.profileImageUrl}
+                          size="lg"
+                        />
+                        <View style={styles.flex}>
+                          <Text numberOfLines={1} style={styles.name}>
+                            {follow.followee.nickname}
+                          </Text>
+                          <Text style={styles.caption}>
+                            수락 기다리는 중 · {requestDate(follow.requestedAt)}
+                          </Text>
+                        </View>
+                      </PressableScale>
+                      <Button
+                        label="요청 취소"
+                        icon="close"
+                        size="sm"
+                        variant="neutral"
+                        style={styles.reject}
+                        disabled={pendingIds.includes(follow.followee.id)}
+                        onPress={() => void act('cancel', follow)}
+                      />
+                    </Vanish>
+                  ))}
+                </VanishList>
               </View>
             ) : null}
             {accepted ? (

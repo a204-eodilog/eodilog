@@ -25,7 +25,7 @@ const SERVER: FriendsService = {
   execute: (a) =>
     a.kind === 'accept'
       ? acceptFollowRequest(a.follow.id)
-      : a.kind === 'reject'
+      : a.kind === 'reject' || a.kind === 'cancel'
         ? rejectFollowRequest(a.follow.id)
         : a.kind === 'unfollow'
           ? unfollow(a.follow.followee.id)
@@ -34,12 +34,13 @@ const SERVER: FriendsService = {
 /** 친구 목록(팔로잉·팔로워·받은 요청) 캐시 키. 마이페이지의 팔로워·팔로잉 수도 이 캐시에서 센다 */
 export const FRIENDS_BOARD_KEY = ['friends', 'board'] as const;
 const QUERY_KEY = FRIENDS_BOARD_KEY;
-const EMPTY: FriendsBoard = { following: [], followers: [], requests: [] };
+const EMPTY: FriendsBoard = { following: [], followers: [], requests: [], sent: [] };
 const FAILURE = {
   accept: '팔로우 요청을 수락하지 못했어요',
   reject: '팔로우 요청을 거절하지 못했어요',
   unfollow: '팔로우를 해제하지 못했어요',
   remove: '팔로워를 삭제하지 못했어요',
+  cancel: '팔로우 요청을 취소하지 못했어요',
 };
 
 export function useFriends(service: FriendsService = SERVER, queryKey: QueryKey = QUERY_KEY) {
@@ -69,9 +70,11 @@ export function useFriends(service: FriendsService = SERVER, queryKey: QueryKey 
     const source =
       action.kind === 'accept' || action.kind === 'reject'
         ? current?.requests
-        : action.kind === 'unfollow'
-          ? current?.following
-          : current?.followers;
+        : action.kind === 'cancel'
+          ? current?.sent
+          : action.kind === 'unfollow'
+            ? current?.following
+            : current?.followers;
     if (!source?.some((f) => f.id === action.follow.id)) return false;
     locks.current.set(userId, action);
     setPending([...locks.current.values()]);
@@ -90,9 +93,11 @@ export function useFriends(service: FriendsService = SERVER, queryKey: QueryKey 
             ? action.follow.follower.nickname + '님의 팔로우 요청을 수락했어요'
             : action.kind === 'reject'
               ? '팔로우 요청을 거절했어요'
-              : action.kind === 'unfollow'
-                ? '팔로우를 해제했어요'
-                : '팔로워를 삭제했어요';
+              : action.kind === 'cancel'
+                ? '팔로우 요청을 취소했어요'
+                : action.kind === 'unfollow'
+                  ? '팔로우를 해제했어요'
+                  : '팔로워를 삭제했어요';
         toast.success(message);
       }
       return true;
