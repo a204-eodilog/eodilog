@@ -6,6 +6,7 @@ import { createIdempotencyKeyStore } from '@/api/idempotency';
 import { type CaptureFile, getExtraction, startExtraction, uploadCapture } from '../api';
 import { EXTRACTION_TIMEOUT_MS, linkLabel } from '../extract-rules';
 import { rememberExtraction } from '../extract-session';
+import { linkToSend } from '../map-link';
 
 /** 진행 중 다시 읽는 간격. 값 문서 "보통 10초 안에 끝나요" */
 const POLL_MS = 1500;
@@ -49,7 +50,8 @@ export function useStartExtraction() {
   return useMutation({
     mutationFn: async (input: { link: string; captures: CaptureFile[]; memo: string }) => {
       const captureAssetIds = await Promise.all(input.captures.map(uploadCapture));
-      const url = input.link.trim();
+      // 네이버 지도 링크는 서버가 읽을 수 있는 주소로 바꿔 보낸다(map-link). 다른 링크는 그대로다
+      const url = await linkToSend(input.link.trim());
       const memo = input.memo.trim();
       const body = {
         ...(url ? { url } : {}),
@@ -61,7 +63,8 @@ export function useStartExtraction() {
       keys.clear();
       rememberExtraction(jobId, {
         input: body,
-        link: url ? linkLabel(url) : null,
+        // 화면에는 사용자가 넣은 링크를 보인다(네이버 지도 링크는 보낼 때 다른 주소로 바뀐다)
+        link: url ? linkLabel(input.link.trim()) : null,
         captureCount: captureAssetIds.length,
       });
       return jobId;

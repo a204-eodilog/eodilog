@@ -20,18 +20,22 @@ const SPIN_GAP = 4;
 
 /**
  * S12 진행 중 세로 단계 표시(FE 제안). 번호 동그라미를 세로선으로 잇고, 끝난 구간은 선을 채운다.
- * 끝난 단계 = 파란 동그라미 + 체크, 지금 단계 = 연파랑 동그라미 + 도는 테두리 + 설명 한 줄, 남은 단계 = 회색 테두리 + 번호
+ * 끝난 단계 = 파란 동그라미 + 체크, 지금 단계 = 연파랑 동그라미 + 도는 테두리, 남은 단계 = 회색 테두리 + 번호.
+ * 모든 단계 아래에 무엇을 하는지 한 줄이 있다. 지금 단계는 "…하고 있어요"로 또렷하게, 나머지는 옅게
  */
 export function ExtractSteps({
   steps,
   current,
   detail,
+  guides,
 }: {
   steps: readonly string[];
   /** 지금 하고 있는 단계(0부터) */
   current: number;
   /** 지금 단계 아래 "지금 하는 일" 한 줄 */
   detail: string;
+  /** 단계마다 무엇을 하는지 한 줄. 끝났거나 남은 단계 아래에 옅게 보인다 */
+  guides: readonly string[];
 }) {
   return (
     <View accessibilityLiveRegion="polite">
@@ -44,7 +48,7 @@ export function ExtractSteps({
             key={label}
             style={[styles.row, !last && styles.rowGap]}
             accessible
-            accessibilityLabel={`${i + 1}단계 ${label}, ${done ? '끝남' : now ? `하는 중, ${detail}` : '남음'}`}
+            accessibilityLabel={`${i + 1}단계 ${label}, ${done ? '끝남' : now ? `하는 중, ${detail}` : `남음, ${guides[i]}`}`}
           >
             {!last ? (
               <View
@@ -75,7 +79,9 @@ export function ExtractSteps({
               >
                 {label}
               </Text>
-              {now ? <Text style={[typography.caption, styles.detail]}>{detail}</Text> : null}
+              <Text style={[typography.caption, now ? styles.detail : styles.guide]}>
+                {now ? detail : guides[i]}
+              </Text>
             </View>
           </View>
         );
@@ -143,4 +149,5 @@ const styles = StyleSheet.create({
   labelDone: { color: colors.text.icon },
   labelNow: { color: colors.text.default },
   detail: { color: colors.text.sub, marginTop: spacing[2] },
+  guide: { color: colors.text.muted, marginTop: spacing[2] },
 });

@@ -1,6 +1,6 @@
 import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -28,7 +28,8 @@ import {
   type GroupPick,
   groupCandidates,
   nextToChoose,
-  progressStep,
+  shownStep,
+  EXTRACTION_STEP_GUIDES,
   stepDetail,
 } from '../extract-rules';
 import { forgetExtraction, sentExtraction } from '../extract-session';
@@ -43,6 +44,9 @@ const PICKED_KEY = 'picked';
 const PICKED = '직접 고른 장소예요';
 
 const areaOf = (place: Place) => addressParts(place.address).join(' ') || null;
+
+/** 찾은 장소를 목록에서 빼는 버튼이 없어서, 뺀 것은 늘 없다 */
+const NOTHING_REMOVED: string[] = [];
 
 /**
  * S12 추출 결과 확인(/saved/extract/{jobId}). S11 [장소 찾기]에서 온다.
@@ -62,7 +66,16 @@ export function ExtractResultScreen() {
   const sent = sentExtraction(jobId);
 
   // 뺀 언급 묶음과 사용자가 정한 장소(지점 고르기·S13 바꾸기·직접 찾기). key는 묶음 key
-  const [removed, setRemoved] = useState<string[]>([]);
+  // 찾은 장소를 목록에서 빼는 버튼을 없애서 뺀 것은 늘 없다. 규칙 함수는 그대로 쓴다
+  const removed = NOTHING_REMOVED;
+  // 이 작업을 기다린 시간(초). 단계 표시를 넘기는 데 쓴다(shownStep). 다시 시도로 작업이 바뀌면 처음부터 센다
+  const [clock, setClock] = useState({ jobId, seconds: 0 });
+  if (clock.jobId !== jobId) setClock({ jobId, seconds: 0 });
+  const elapsed = clock.seconds * 1000;
+  useEffect(() => {
+    const timer = setInterval(() => setClock((c) => ({ ...c, seconds: c.seconds + 1 })), 1000);
+    return () => clearInterval(timer);
+  }, [jobId]);
   const [picks, setPicks] = useState<Record<string, GroupPick>>({});
   // 식별 불가에서 직접 고른 장소. 고르면 그 한 곳으로 성공 상태가 된다
   const [picked, setPicked] = useState<GroupPick | null>(null);
@@ -93,10 +106,6 @@ export function ExtractResultScreen() {
   const pickFor = (key: string, pick: GroupPick) => {
     if (key === PICKED_KEY) setPicked(pick);
     else setPicks((p) => ({ ...p, [key]: pick }));
-  };
-  const removeItem = (key: string) => {
-    if (key === PICKED_KEY) setPicked(null);
-    else setRemoved((r) => [...r, key]);
   };
 
   const choose = async (onPicked: (place: Place) => void, around?: Place) => {
@@ -165,7 +174,7 @@ export function ExtractResultScreen() {
   }
 
   if (view === 'progress') {
-    const step = progressStep(data.job.progress);
+    const step = shownStep(data.job.progress, elapsed);
     return (
       <View style={styles.screen}>
         <Header title="장소 찾기" largeTitle />
@@ -173,9 +182,14 @@ export function ExtractResultScreen() {
           <SourceChip link={sent?.link ?? null} captures={sent?.captureCount ?? 0} flat />
           <View style={styles.progressTexts}>
             <Text style={[typography.title1, styles.text]}>장소를 찾고 있어요</Text>
-            <Text style={[typography.caption, styles.sub]}>보통 10초 안에 끝나요</Text>
+            <Text style={[typography.caption, styles.sub]}>잠시만 기다려 주세요</Text>
           </View>
-          <ExtractSteps steps={EXTRACTION_STEPS} current={step} detail={stepDetail(step, sent)} />
+          <ExtractSteps
+            steps={EXTRACTION_STEPS}
+            current={step}
+            detail={stepDetail(step, sent)}
+            guides={EXTRACTION_STEP_GUIDES}
+          />
         </View>
         <View style={[styles.progressBottom, { paddingBottom: Math.max(insets.bottom + 12, 34) }]}>
           <PressableScale
@@ -422,36 +436,28 @@ export function ExtractResultScreen() {
                         </View>
                       ) : null}
                     </View>
-                    <View style={styles.rowButtons}>
+                    {/* 찾은 장소에는 버튼을 두지 않는다. 확인하고 저장만 하면 된다(2026-11-14 사용자 결정).
+                        지도에서 못 찾은 장소만 직접 찾는 버튼을 둔다. 이게 없으면 그 장소는 저장할 길이 없다 */}
+                    {itemPlace ? null : (
                       <RoundButton
-                        icon={itemPlace ? 'pencil' : 'search'}
-                        label={`${item.name} ${itemPlace ? '바꾸기' : '직접 찾기'}`}
+                        icon="search"
+                        label={`${item.name} 직접 찾기`}
                         onPress={() =>
-                          void choose(
-                            (place) => pickFor(item.key, { place, evidence: PICKED }),
-                            itemPlace ?? undefined,
-                          )
+                          void choose((place) => pickFor(item.key, { place, evidence: PICKED }))
                         }
                       />
-                      <RoundButton
-                        icon="close"
-                        label={`${item.name} 빼기`}
-                        onPress={() => removeItem(item.key)}
-                      />
-                    </View>
+                    )}
                   </PressableScale>
                 );
               })}
             </ScrollView>
             <View style={styles.buttons}>
               <Button
-                label={`${placed.length}곳`}
-                count={placed.length}
-                icon="bookmark"
+                // 책갈피 아이콘만으로는 저장인지 알기 어려워 글자로 쓴다. 여러 곳이면 몇 곳인지도 붙인다
+                label={placed.length > 1 ? `${placed.length}곳 저장` : '저장'}
                 weight="medium"
                 disabled={placed.length === 0}
                 onPress={() => setSaveOpen(true)}
-                style={styles.primaryCount}
               />
             </View>
           </>
@@ -628,7 +634,7 @@ const styles = StyleSheet.create({
   // 지도에서 못 찾아 아직 장소가 없는 줄
   numberMissing: { backgroundColor: colors.text.sub2 },
   rowTexts: { flex: 1, gap: spacing[8] },
-  rowButtons: { flexDirection: 'row', gap: spacing[10] },
+
   round: {
     width: 36,
     height: 36,
@@ -686,5 +692,4 @@ const styles = StyleSheet.create({
   },
   notHere: { paddingHorizontal: spacing[12] },
   // 아이콘 옆에 곳 수가 붙는 알약이라 좌우 여백을 둔다
-  primaryCount: { paddingLeft: spacing[20], paddingRight: spacing[24] },
 });
