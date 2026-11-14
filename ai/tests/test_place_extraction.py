@@ -232,6 +232,68 @@ def test_no_search_result_gives_null_place_and_multiple_candidates(client):
 
 
 @respx.mock
+def test_unrelated_search_results_are_dropped_as_not_found(client):
+    """2026-11-14 공기계: '대우디오빌플러스 오피스텔'에 이름이 딴판인 오피스텔 셋이 후보로 왔다."""
+    mock_llm(mention("대우디오빌플러스 오피스텔", "CAPTURE_TEXT"))
+    mock_places(
+        {
+            "대우디오빌플러스 오피스텔": [
+                document("역삼푸르지오시티오피스텔", "1"),
+                document("두산베어스텔", "2"),
+                document("더갤러리832", "3"),
+            ]
+        }
+    )
+
+    data = post(client, [png()]).json()["data"]
+
+    assert data["resultStatus"] == "MULTIPLE_CANDIDATES"
+    assert [c["place"] for c in data["candidates"]] == [None]
+
+
+@respx.mock
+def test_short_mention_contained_in_place_name_is_kept(client):
+    """'광안리' 같은 짧은 이름은 점수가 낮아도 장소 이름에 들어 있으면 후보로 둔다."""
+    mock_llm(mention("광안리", "CAPTURE_TEXT"))
+    mock_places(
+        {"광안리": [document("부산 수영구 광안리 먼 곳", "1"), document("엉뚱한 식당", "2")]}
+    )
+
+    data = post(client, [png()]).json()["data"]
+
+    assert spots(data) == ["1"]
+
+
+@respx.mock
+def test_prompt_tells_llm_not_to_list_every_label_on_a_map_capture(client):
+    """2026-11-14 공기계: 지도 캡처 한 장에서 건물 이름 20개가 나왔다."""
+    llm = mock_llm()
+    post(client, [png()])
+    system = json.loads(llm.calls.last.request.content)["messages"][0]["content"]
+    assert "지도" in system and "핀" in system
+
+
+@respx.mock
+def test_map_capture_area_hint_narrows_the_search(client):
+    """2026-11-14 공기계: 역삼 지도 캡처에 종로·중구 지점이 후보로 나왔다(이름만으로 전국 검색).
+    지시문이 지도에 보이는 동 이름을 address_hint로 채우게 하고, 그 단서로 먼저 찾는다."""
+    llm = mock_llm(mention("스타벅스", "CAPTURE_TEXT", hint="역삼동"))
+    places = mock_places(
+        {
+            "역삼동 스타벅스": [document("스타벅스 역삼점", "1")],
+            "스타벅스": [document("스타벅스 종로점", "2"), document("스타벅스 시청점", "3")],
+        }
+    )
+
+    data = post(client, [png()]).json()["data"]
+
+    system = json.loads(llm.calls.last.request.content)["messages"][0]["content"]
+    assert "address_hint를 비우지 않는다" in system
+    assert places.calls[0].request.url.params["query"] == "역삼동 스타벅스"
+    assert spots(data) == ["1"]
+
+
+@respx.mock
 def test_T01_3_no_mentions_is_not_found(client):
     mock_llm()
 

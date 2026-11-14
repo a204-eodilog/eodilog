@@ -26,6 +26,9 @@ MAX_MENTIONS = 20
 MAX_MENTION_CHARS = 100
 MAX_RESULTS_PER_MENTION = 3
 SEARCH_SIZE = 5
+# 이름이 이만큼도 안 닮은 검색 결과는 후보로 내지 않는다. 한쪽 이름이 다른 쪽에 통째로 들어 있으면('광안리' ⊂ '광안리 해변') 점수와 무관하게 둔다.
+# 2026-11-14 공기계: '대우디오빌플러스 오피스텔' 후보로 역삼푸르지오시티·두산베어스텔·더갤러리832(0.42·0.22·0.11)가 나왔다
+MIN_SIMILARITY = 0.5
 
 SYSTEM_PROMPT = """너는 여행 앱 '어디로그'의 장소 추출기다.
 사용자가 준 게시물 링크의 글, 캡처 이미지, 메모에서 실제 방문할 수 있는 장소(가게, 카페, 식당, 관광지, 해변, 공원 등)의 언급을 찾는다.
@@ -36,9 +39,11 @@ SYSTEM_PROMPT = """너는 여행 앱 '어디로그'의 장소 추출기다.
 - 지역명만 있는 경우(예: '부산', '해운대구')는 장소가 아니다. 단, '해운대 해변'처럼 방문 지점이면 장소다.
 - '광고', 'AD', '스폰서' 표시가 붙은 항목에만 나온 이름은 내지 않는다. 같은 이름이 광고 밖에도 나오면 낸다.
 - 같은 장소가 여러 번 나오면 한 번만 낸다.
+- 지도 앱 화면 캡처(지도 타일 위에 건물·가게 이름이 여럿 깔린 그림)에서는 지도에 깔린 이름을 전부 내지 않는다. 핀(마커)이 찍힌 곳, 검색·선택되어 아래 카드에 뜬 곳, 글이나 메모가 가리키는 곳만 낸다. 그런 곳이 없으면 그 캡처에서는 아무것도 내지 않는다.
 - mention은 간판·글에 적힌 이름 그대로 쓴다. '카페', '맛집' 같은 업종이나 지역명을 덧붙이지 않는다. 예: '신기산업' (O), '신기산업 카페' (X)
 - 전화번호, 계정 아이디, 사람 이름 같은 개인정보는 어디에도 쓰지 않는다.
 - 좌표나 주소를 지어내지 않는다. 자료에 보이는 주소·지역 단서만 address_hint에 쓴다.
+- 지도 앱 화면 캡처에서 낸 장소는 address_hint를 비우지 않는다. 캡처에 보이는 것 중 이 순서로 고른다: 카드·핀에 붙은 주소(예: '서울 중구 세종대로 110') → 동·구 이름(예: '역삼동', '강남구') → 역 이름(예: '역삼역'). 다른 가게·건물·광장 이름은 쓰지 않고, 캡처에 보이지 않는 지역은 지어내지 않는다.
 - found_in: LINK_TEXT(게시물 글), CAPTURE_SIGN(캡처 속 간판·로고), CAPTURE_TEXT(캡처 속 글), MEMO(메모)
 
 JSON으로만 답한다:
@@ -71,6 +76,12 @@ class Mention:
     name: str
     address_hint: str | None
     found_in: str
+
+
+def _contains(mention: str, place_name: str) -> bool:
+    """정규화한 두 이름 중 한쪽이 다른 쪽을 통째로 담고 있다('스타벅스' ⊂ '스타벅스 시청점')."""
+    a, b = normalize(mention), normalize(place_name)
+    return bool(a and b) and (a in b or b in a)
 
 
 def similarity(mention: str, place_name: str) -> float:
@@ -157,7 +168,18 @@ class PlaceExtractor:
                 Candidate(name=mention.name, place=None, evidence=evidence, confidence=None)
             ]
 
-        scored = [(similarity(mention.name, place.name), place) for place in found]
+        scored = [
+            (score, place)
+            for place in found
+            for score in [similarity(mention.name, place.name)]
+            if score >= MIN_SIMILARITY or _contains(mention.name, place.name)
+        ]
+        if not scored:
+            # 검색은 됐지만 이름이 다 딴판이면 못 찾은 것으로 본다. 엉뚱한 곳을 고르게 하는 것보다 직접 찾기가 낫다
+            log.info("candidates_dropped mention_len=%d found=%d", len(mention.name), len(found))
+            return False, [
+                Candidate(name=mention.name, place=None, evidence=evidence, confidence=None)
+            ]
         exact = [place for score, place in scored if score == 1.0]
         if len(exact) == 1:
             scored = [(1.0, exact[0])]
