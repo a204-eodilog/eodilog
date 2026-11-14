@@ -14,7 +14,12 @@ from app.clients.gms import GmsClient
 from app.clients.naver_local import NaverLocalClient, provider_place_id
 from app.clients.page_meta import PageMetaFetcher
 from app.core.config import Settings
-from app.features.place_extraction.service import PlaceExtractor, normalize, similarity
+from app.features.place_extraction.service import (
+    PlaceExtractor,
+    normalize,
+    similarity,
+    without_branch,
+)
 from app.main import create_app
 
 PATH = "/ai/v1/place-extractions"
@@ -726,3 +731,59 @@ def test_candidates_stay_at_three_after_searching_five(client):
     data = post(client, [png()], memo="카페 갔어요").json()["data"]
 
     assert len(data["candidates"]) == 3
+
+
+@respx.mock
+def test_branch_suffix_is_dropped_when_full_name_is_not_found(client):
+    """2026-11-14 공기계: 블로그의 강릉길감자 본점이 공급자에는 강릉길감자로만 있었다."""
+    # 글에 실제로 있는 이름만 받으므로 메모로 넣는다. 공급자에는 지점 없는 이름만 있다
+    mock_llm(mention("강릉길감자 본점", "MEMO"))
+    places = mock_places({"강릉길감자": [document("강릉길감자", "1")]})
+
+    data = post(client, [png()], memo="강릉길감자 본점 감자빵").json()["data"]
+
+    assert [c.request.url.params["query"] for c in places.calls] == [
+        "강릉길감자 본점",
+        "강릉길감자",
+    ]
+
+    assert spots(data) == ["1"]
+    assert data["candidates"][0]["place"]["name"] == "강릉길감자"
+
+
+@pytest.mark.parametrize(
+    ("name", "base"),
+    [
+        ("강릉길감자 본점", "강릉길감자"),
+        ("스타벅스 강남역점", "스타벅스"),
+        ("교촌치킨 2호점", "교촌치킨"),
+        ("본점", "본점"),
+        ("카페정점", "카페정점"),
+    ],
+)
+def test_without_branch(name, base):
+    assert without_branch(name) == base
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "부산 중국음식점",
+        "제주 기념품점",
+        "서울 독립서점",
+        "동네 문구점",
+        "우리 제과점",
+        "행복 백화점",
+    ],
+)
+def test_without_branch_keeps_business_names(name):
+    assert without_branch(name) == name
+
+
+@respx.mock
+def test_business_name_does_not_fall_back_to_region_only(client):
+    mock_llm(mention("부산 중국음식점", "MEMO"))
+    places = mock_places({"부산": [document("부산", "1")]})
+    data = post(client, [png()], memo="부산 중국음식점 방문").json()["data"]
+    assert [c.request.url.params["query"] for c in places.calls] == ["부산 중국음식점"]
+    assert data["candidates"][0]["place"] is None
