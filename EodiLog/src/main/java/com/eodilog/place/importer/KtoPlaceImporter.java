@@ -76,7 +76,7 @@ public class KtoPlaceImporter {
         try {
             var row = new PublicPlaceRow("KTO", value(item, "contentid"), value(item, "title"),
                     value(item, "addr1"), new BigDecimal(value(item, "mapy")), new BigDecimal(value(item, "mapx")),
-                    regionCode(item), contentType(item));
+                    regionCode(item), contentType(item), image(item));
             if (row.valid()) rows.add(row);
         } catch (NumberFormatException | NullPointerException ignored) { /* Some attractions have no mappable location. */ }
     }
@@ -86,6 +86,11 @@ public class KtoPlaceImporter {
     private static String contentType(JsonNode item) {
         String type = value(item, "contenttypeid");
         return type == null ? null : CONTENT_TYPES.get(type);
+    }
+    // 대표 사진. firstimage(원본)가 없으면 firstimage2(썸네일). 둘 다 없으면 null
+    private static String image(JsonNode item) {
+        String first = value(item, "firstimage");
+        return first != null && !first.isBlank() ? first : value(item, "firstimage2");
     }
     private static String value(JsonNode item, String key) {
         var node = item.path(key);

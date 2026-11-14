@@ -166,12 +166,16 @@ class TripRecommendationApiTest {
 		assertThat(items.get(1).get("type").asString()).isEqualTo("PLACE");
 		assertThat(items.get(1).get("place").get("id").asString()).isEqualTo(cafe.toString());
 		assertThat(items.get(1).get("place").get("name").asString()).isEqualTo("바닷가 커피집");
-		assertThat(items.get(1).get("place").has("category")).isFalse();
+		// 공개 Place로 다시 읽어 장소 행의 분류를 싣는다. AI가 준 값이 아니다
+		assertThat(items.get(1).get("place").get("category").asString()).isEqualTo("음식>커피점/카페>카페");
 		assertThat(items.get(1).get("reason").asString()).isEqualTo("카페 취향에 맞아요");
 		// GET /jobs도 같은 모양이고 입력(취향·좌표)은 내보내지 않는다
 		JsonNode job = data(mockMvc.perform(get("/api/v1/jobs/{jobId}", jobId).with(authUser(third))).andExpect(status().isOk()));
 		assertThat(job.get("result").get("items").get(1).get("place").get("id").asString()).isEqualTo(cafe.toString());
-		assertThat(job.get("result").toString()).doesNotContain("explicit", "category");
+		assertThat(job.get("result").toString()).doesNotContain("explicit");
+		// 분류는 공개 Place의 것만 있다(장소 행의 값). 보낸 후보 묶음의 분류를 따로 싣지 않는다
+		assertThat(job.get("result").get("items").get(1).get("place").get("category").asString()).isEqualTo("음식>커피점/카페>카페");
+		assertThat(job.get("result").get("items").get(1).size()).isEqualTo(items.get(1).size());
 	}
 
 	@Test

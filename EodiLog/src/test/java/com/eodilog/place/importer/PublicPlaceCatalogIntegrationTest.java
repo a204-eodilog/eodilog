@@ -33,6 +33,11 @@ class PublicPlaceCatalogIntegrationTest {
         writer.upsert(List.of(new PublicPlaceRow("SBDC", externalId, "전국카페 수정", "부산", new BigDecimal("35.1"), new BigDecimal("129.1"), "2611000000", "음식>커피점/카페>카페")));
         writer.upsert(List.of(new PublicPlaceRow("SBDC", externalId, "전국카페 수정", "부산", new BigDecimal("35.1"), new BigDecimal("129.1"), "2611000000")));
         assertThat(jdbc.queryForObject("SELECT category FROM places WHERE id=?", String.class, id)).isEqualTo("음식>커피점/카페>카페");
+        // 대표 사진도 같다. http 원본 주소는 https로 저장하고(앱이 평문 http 그림을 막는다), 사진 없는 재수집이 지우지 않는다
+        writer.upsert(List.of(new PublicPlaceRow("SBDC", externalId, "전국카페 수정", "부산", new BigDecimal("35.1"), new BigDecimal("129.1"), "2611000000", null, "http://tong.visitkorea.or.kr/cms/resource/1.jpg")));
+        writer.upsert(List.of(new PublicPlaceRow("SBDC", externalId, "전국카페 수정", "부산", new BigDecimal("35.1"), new BigDecimal("129.1"), "2611000000")));
+        assertThat(jdbc.queryForObject("SELECT image_url FROM places WHERE id=?", String.class, id)).isEqualTo("https://tong.visitkorea.or.kr/cms/resource/1.jpg");
+        assertThat(catalog.detail(id).imageUrl()).isEqualTo("https://tong.visitkorea.or.kr/cms/resource/1.jpg");
 
         var manual = catalog.createManual("지도에 없는 장소", null, new BigDecimal("37.5"), new BigDecimal("127.0"), null);
         assertThat(catalog.search("지도에 없는", null, null, null, 20).data()).extracting(p -> p.id()).contains(manual.id());
