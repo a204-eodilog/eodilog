@@ -23,7 +23,7 @@ import { colors, layout, radius, spacing, typography } from '@/theme';
 import { clusterMarks, fillStepsFor, groupBySido, isGroup } from '../home-rules';
 import type { HomeRecommendation, HomeState, RegionGroup, RegionMark } from '../types';
 
-import { GroupPill, InviteSpot, LockedFace, RegionPill } from './map-pins';
+import { GroupPill, LockedFace, RegionPill } from './map-pins';
 import { RecommendSheet, SHEET_COLLAPSED } from './recommend-sheet';
 
 export type HomeViewProps = {
@@ -78,9 +78,6 @@ function roomInMap(index: number, pxPerUnit: number) {
   }
   return { width, height };
 }
-
-// 친구 없음 화면의 빈 자리 (Figma: 수도권·경북 동해안·여수 근처)
-const INVITE_SPOTS = ['4100000000', '4711000000', '1213000000'];
 
 /** S05 홈 친구 여행 지도. 값과 동작은 모두 props로 받는다(실제 화면·미리보기 공용) */
 export function HomeView(props: HomeViewProps) {
@@ -184,12 +181,8 @@ function MapBody(props: HomeViewProps) {
   const inSpot = (code: string) => !!spotSido && sidoCodeOf(code) === spotSido;
 
   const pins = useMemo<KoreaMapPin[]>(() => {
-    if (state === 'no-friends') {
-      return INVITE_SPOTS.flatMap((code) => {
-        const r = findMapRegion(code);
-        return r ? [{ key: code, point: r.point, anchor: 'center', children: <InviteSpot /> }] : [];
-      });
-    }
+    // 친구가 없으면 지도에는 아무것도 올리지 않는다. 할 일은 아래 안내 카드가 알린다
+    if (state === 'no-friends') return [];
     if (state === 'no-public') {
       return (lockedFriends ?? []).flatMap((f) => {
         const r = findMapRegion(f.regionCode);
@@ -292,8 +285,8 @@ function MapBody(props: HomeViewProps) {
         style={styles.trend}
         accessibilityRole="button"
       >
-        <Icon name="trending" size={20} color={colors.brand.primary} />
-        <Icon name="chevron-right" size={16} color={colors.text.icon} />
+        <Icon name="trending" size={18} color={colors.text.inverse} />
+        <Text style={styles.trendText}>요즘 뜨는 여행지</Text>
       </PressableScale>
       {caption ? (
         <Text style={[styles.caption, { bottom: bottomSpace + spacing[32] }]} pointerEvents="none">
@@ -342,23 +335,9 @@ function EmptyCard(props: HomeViewProps) {
           </Text>
         </View>
       </View>
+      {/* 요즘 뜨는 여행지로 가는 길은 지도 왼쪽 위 단추 하나만 둔다 */}
       <View style={styles.cardActions}>
-        {noFriends ? (
-          <>
-            <Button label="트렌드" icon="trending" variant="text" onPress={props.onTrend} />
-            <Button label="친구 찾기" icon="person-plus" onPress={props.onFindFriends} />
-          </>
-        ) : (
-          <>
-            <Button
-              label="친구 찾기"
-              icon="person-plus"
-              variant="text"
-              onPress={props.onFindFriends}
-            />
-            <Button label="요즘 뜨는 여행지" icon="trending" onPress={props.onTrend} />
-          </>
-        )}
+        <Button label="친구 찾기" icon="person-plus" onPress={props.onFindFriends} />
       </View>
     </View>
   );
@@ -416,21 +395,23 @@ const styles = StyleSheet.create({
   errorTitle: { ...typography.title3, color: colors.text.default },
   errorDesc: { ...typography.body, color: colors.text.icon },
   errorButton: { alignSelf: 'center', marginTop: spacing[16] },
+  // 지도 위에 떠 있는 단추. 흰 동그라미에 아이콘만 있으면 지도 바탕에 묻혀 떠 보여서(2026-11-14 사용자 지적)
+  // 파란 알약에 이름을 함께 써서 누르는 곳임을 또렷하게 한다
   trend: {
     position: 'absolute',
     top: spacing[12],
     left: layout.screenPaddingX,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing[8],
+    gap: spacing[6],
     height: 44,
     paddingLeft: spacing[14],
-    paddingRight: spacing[12],
+    paddingRight: spacing[16],
     borderRadius: radius.full,
-    backgroundColor: colors.surface.white,
-    boxShadow: `0 2px 10px ${colors.shadow}`,
+    backgroundColor: colors.brand.primary,
+    boxShadow: `0 4px 12px ${colors.shadow}`,
   },
-  trendText: { ...typography.bodyBold, color: colors.text.default },
+  trendText: { ...typography.subBold, color: colors.text.inverse },
   caption: {
     ...typography.caption,
     position: 'absolute',

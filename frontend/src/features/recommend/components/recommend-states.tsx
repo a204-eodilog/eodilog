@@ -4,6 +4,8 @@ import { Icon, type IconName } from '@/components/ui';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, radius, spacing, typography } from '@/theme';
 
+import { INSUFFICIENT_HINT, type InsufficientRow } from '../recommend-rules';
+
 /** 가운데 회색 원 아이콘 */
 function Badge({ icon }: { icon: IconName }) {
   return (
@@ -28,7 +30,7 @@ function PrimaryPill(props: { icon: IconName; label: string; onPress(): void }) 
  * 판정은 서버의 insufficientData를 따른다.
  */
 export function InsufficientView(props: {
-  lines: readonly [string, string];
+  rows: readonly [InsufficientRow, InsufficientRow];
   onMorePlaces(): void;
   onPreferences(): void;
 }) {
@@ -36,15 +38,25 @@ export function InsufficientView(props: {
     <View style={styles.center}>
       <Badge icon="bulb" />
       <Text style={[typography.title2, styles.title]}>추천하기엔 아직 부족해요</Text>
+      <Text style={[typography.body, styles.body]}>{INSUFFICIENT_HINT}</Text>
+      {/* 줄마다 왼쪽에 무엇인지, 오른쪽에 "지금 / 필요". 채운 줄은 초록 체크로 알린다 */}
       <View style={styles.box}>
-        <View style={styles.boxLine}>
-          <Icon name="bookmark" size={16} color={colors.text.icon} />
-          <Text style={[typography.sub, styles.boxText]}>{props.lines[0]}</Text>
-        </View>
-        <View style={styles.boxLine}>
-          <Icon name="people" size={16} color={colors.text.icon} />
-          <Text style={[typography.sub, styles.boxText]}>{props.lines[1]}</Text>
-        </View>
+        {props.rows.map((row, i) => (
+          <View
+            key={row.label}
+            style={styles.boxLine}
+            accessible
+            accessibilityLabel={`${row.label} ${row.now}, ${row.need} 필요${row.met ? ', 채웠어요' : ''}`}
+          >
+            <Icon name={i === 0 ? 'bookmark' : 'people'} size={18} color={colors.text.icon} />
+            <Text style={[typography.sub, styles.boxText]}>{row.label}</Text>
+            {row.met ? <Icon name="check" size={16} color={colors.status.success} /> : null}
+            <Text style={[typography.subBold, row.met ? styles.nowMet : styles.now]}>
+              {row.now}
+            </Text>
+            <Text style={[typography.sub, styles.need]}>/ {row.need}</Text>
+          </View>
+        ))}
       </View>
       <PrimaryPill icon="bookmark" label="장소 더 모으기" onPress={props.onMorePlaces} />
       <PressableScale
@@ -54,6 +66,7 @@ export function InsufficientView(props: {
         accessibilityRole="button"
       >
         <Icon name="heart" size={16} color={colors.text.icon} />
+        <Text style={[typography.subBold, styles.textButtonText]}>내 여행 취향 고르기</Text>
       </PressableScale>
     </View>
   );
@@ -112,12 +125,16 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     gap: spacing[8],
     marginTop: spacing[16],
-    padding: spacing[14],
+    paddingVertical: spacing[12],
+    paddingHorizontal: spacing[16],
     borderRadius: radius.lg,
     backgroundColor: colors.surface.default,
   },
-  boxLine: { flexDirection: 'row', alignItems: 'center', gap: spacing[8] },
-  boxText: { flex: 1, color: colors.text.icon },
+  boxLine: { flexDirection: 'row', alignItems: 'center', gap: spacing[8], minHeight: 28 },
+  boxText: { flex: 1, color: colors.text.default },
+  now: { color: colors.text.default },
+  nowMet: { color: colors.status.success },
+  need: { color: colors.text.sub },
   primary: {
     flexDirection: 'row',
     alignItems: 'center',

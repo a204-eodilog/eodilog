@@ -165,9 +165,15 @@ export function PlaceSearchScreen() {
                 style={({ pressed }) => [styles.mapCard, pressed && styles.pressed]}
               >
                 <View style={styles.mapCardIcon}>
-                  <Icon name="map" size={20} color={colors.brand.primaryDark} />
+                  <Icon name="map" size={20} color={colors.brand.primary} />
                 </View>
-                <Icon name="chevron-right" size={20} color={colors.brand.primaryDark} />
+                <View style={styles.rowText}>
+                  <Text style={[typography.bodyBold, styles.name]}>지도에서 직접 고르기</Text>
+                  <Text style={[typography.caption, styles.address]}>
+                    검색에 없으면 지도에서 짚어요
+                  </Text>
+                </View>
+                <Icon name="chevron-right" size={18} color={colors.text.muted} />
               </PressableScale>
               {query && search.isFetching && !search.data ? (
                 <Spinner style={styles.loading} color={colors.brand.primary} />
@@ -243,6 +249,7 @@ function Notice({
             style={({ pressed }) => [styles.textLink, pressed && styles.pressed]}
           >
             <Icon name="map" size={18} color={colors.text.icon} />
+            <Text style={[typography.subBold, styles.address]}>지도에서 고르기</Text>
           </PressableScale>
         ) : null}
       </View>
@@ -312,25 +319,27 @@ const styles = StyleSheet.create({
     paddingBottom: spacing[24],
   },
   listHeader: { gap: spacing[20] },
+  // 검색 결과 줄과 같은 모양(동그라미 아이콘 + 두 줄 글). 얇은 테두리로 감싸 결과와 다른 "다른 방법"임을 알린다
   mapCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing[18],
-    paddingVertical: spacing[14],
+    gap: spacing[14],
+    paddingVertical: spacing[12],
     paddingLeft: spacing[14],
-    paddingRight: spacing[18],
+    paddingRight: spacing[12],
     borderRadius: radius.lg,
-    backgroundColor: colors.brand.primaryBg,
+    borderWidth: 1,
+    borderColor: colors.line.default,
+    backgroundColor: colors.surface.white,
   },
   mapCardIcon: {
     width: 40,
     height: 40,
     borderRadius: radius.full,
-    backgroundColor: colors.surface.white,
+    backgroundColor: colors.brand.primaryBg,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  mapCardText: { flex: 1, color: colors.brand.primaryDark },
   count: { color: colors.text.icon, paddingBottom: spacing[4] },
   loading: { marginTop: spacing[24] },
   row: {

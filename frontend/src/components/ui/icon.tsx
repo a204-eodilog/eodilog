@@ -70,6 +70,11 @@ export type IconName =
   | 'cloud-off'
   | 'umbrella'
   | 'bag'
+  | 'utensils'
+  | 'coffee'
+  | 'bed'
+  | 'mountain'
+  | 'landmark'
   | 'zap'
   | 'mic'
   | 'mic-off';
@@ -186,6 +191,15 @@ const PATHS: Record<IconName, string> = {
   umbrella: 'M12 2V3M3 12A9 9 0 0 1 21 12ZM12 12V19A2 2 0 0 1 8 19',
   /** S25 준비물 칸 */
   bag: 'M6 7H18L19 21H5L6 7ZM9 10V6A3 3 0 0 1 15 6V10',
+  // 장소 종류(저장 카드에 사진이 없을 때): 포크와 칼, 찻잔, 침대, 산, 기둥 건물
+  utensils:
+    'M3 2V9A2 2 0 0 0 5 11H9A2 2 0 0 0 11 9V2M7 2V22M21 15V2A5 5 0 0 0 16 7V13A2 2 0 0 0 18 15H21ZM21 15V22',
+  coffee:
+    'M10 2V4M14 2V4M6 2V4M16 8A1 1 0 0 1 17 9V17A4 4 0 0 1 13 21H7A4 4 0 0 1 3 17V9A1 1 0 0 1 4 8H18A4 4 0 1 1 18 16H17',
+  bed: 'M2 20V12A2 2 0 0 1 4 10H20A2 2 0 0 1 22 12V20M4 10V6A2 2 0 0 1 6 4H18A2 2 0 0 1 20 6V10M12 4V10M2 18H22',
+  mountain:
+    'M8 3L12 11L17 6L22 21H2L8 3ZM4.14 15.08C6.76 13.51 9.38 13.65 12 15.5C14.74 17.44 17.49 17.5 20.23 15.69',
+  landmark: 'M3 22H21M6 18V11M10 18V11M14 18V11M18 18V11M12 2L20 7H4L12 2Z',
   /** S25 주변 편의시설 칸 */
   zap: 'M13 2L4 14H12L11 22L20 10H12L13 2Z',
   /** S35 [말로 한 번에], N10 녹음 */

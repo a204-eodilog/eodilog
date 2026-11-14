@@ -5,20 +5,22 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Image,
-  KeyboardAvoidingView,
-  Platform,
   ScrollView,
+  type ScrollViewInstance,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Stagger } from '@/components/ui/stagger';
 import { apiErrorCode } from '@/api/errors';
 import { Button, Header, Icon, toast } from '@/components/ui';
 import { PressableScale } from '@/components/ui/pressable-scale';
+import { KeyboardLift, useKeyboardShift } from '@/components/ui/keyboard-lift';
+import { useKeyboardVisible } from '@/hooks/use-keyboard-visible';
 import { caret, colors, layout, radius, spacing, typography } from '@/theme';
 
 import type { CaptureFile } from '../api';
@@ -26,7 +28,8 @@ import {
   addCaptures,
   canFind,
   FEATURE_OFF_MESSAGE,
-  isLink,
+  cleanLinkInput,
+  linkIn,
   linkStatus,
   MAX_CAPTURES,
   parseAddStart,
@@ -64,6 +67,16 @@ export function LinkCaptureScreen() {
   const [memo, setMemo] = useState('');
   // 메모는 접어서 시작한다. 다시 접어도 쓴 메모는 남는다
   const [memoOpen, setMemoOpen] = useState(false);
+  const [memoFocused, setMemoFocused] = useState(false);
+  const keyboardVisible = useKeyboardVisible();
+  const scroll = useRef<ScrollViewInstance>(null);
+  // 자판을 따라 움직이는 값(없으면 0, 올라오면 음수)
+  const shift = useKeyboardShift();
+  // 자판이 없을 때는 기기 아래 막대만큼 비우고, 자판이 올라오는 만큼 그 여백을 줄여 버튼이 자판 바로 위에 붙는다
+  const restPad = Math.max(insets.bottom + spacing[12], 34);
+  const footerPad = useAnimatedStyle(() => ({
+    paddingBottom: Math.max(restPad + shift.get(), spacing[12]),
+  }));
   // 클립보드에 있는 링크(값 문서 "복사한 링크 안내"). 붙여 넣었거나 이미 칸에 같은 링크가 있으면 숨긴다
   const [copied, setCopied] = useState<string | null>(null);
   const start = useStartExtraction();
@@ -85,7 +98,8 @@ export function LinkCaptureScreen() {
       let alive = true;
       Clipboard.getStringAsync()
         .then((text) => {
-          if (alive) setCopied(isLink(text) ? text.trim() : null);
+          // 지도 앱 공유 글처럼 이름·주소가 섞여 있어도 링크만 골라 안내한다
+          if (alive) setCopied(linkIn(text));
         })
         .catch(() => undefined);
       return () => {
@@ -101,7 +115,7 @@ export function LinkCaptureScreen() {
       toast.show('복사한 링크가 없어요');
       return;
     }
-    setLink(value);
+    setLink(cleanLinkInput(value));
     setCopied(null);
   };
 
@@ -172,6 +186,13 @@ export function LinkCaptureScreen() {
     );
   };
 
+  // 메모는 화면 맨 아래 칸이라, 자판이 올라오면 목록을 끝까지 내려 메모 칸이 자판 위에 보이게 한다
+  useEffect(() => {
+    if (!memoFocused || !keyboardVisible) return;
+    const t = setTimeout(() => scroll.current?.scrollToEnd({ animated: true }), 50);
+    return () => clearTimeout(t);
+  }, [memoFocused, keyboardVisible]);
+
   const showCopied = copied !== null && copied !== link.trim() && !unsupported;
   const full = captures.length >= MAX_CAPTURES;
   // 누를 수 있거나 보내는 중이면 파랑, 아니면 회색 바탕에 읽을 수 있는 회색 글자
@@ -180,11 +201,10 @@ export function LinkCaptureScreen() {
   return (
     <View style={styles.screen}>
       <Header title="장소 가져오기" largeTitle />
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      {/* 자판이 오르내리는 높이를 그대로 따라 아래를 비운다(KeyboardLift) */}
+      <KeyboardLift style={styles.flex}>
         <ScrollView
+          ref={scroll}
           decelerationRate={SCROLL_DECELERATION}
           contentContainerStyle={styles.body}
           keyboardShouldPersistTaps="handled"
@@ -221,7 +241,8 @@ export function LinkCaptureScreen() {
                   {...caret}
                   accessibilityLabel="게시물 링크"
                   value={link}
-                  onChangeText={setLink}
+                  // 자판의 붙여넣기로 공유 글이 통째로 들어와도 링크만 남긴다
+                  onChangeText={(t) => setLink(cleanLinkInput(t))}
                   placeholder="SNS·블로그 링크"
                   // 빈 화면의 [링크 붙여넣기]로 왔을 때만 바로 커서를 둔다. 머리 북마크 +로 오면 키보드를 올리지 않는다
                   autoFocus={begin === 'link'}
@@ -369,6 +390,8 @@ export function LinkCaptureScreen() {
                   maxLength={MEMO_MAX}
                   multiline
                   autoFocus
+                  onFocus={() => setMemoFocused(true)}
+                  onBlur={() => setMemoFocused(false)}
                   textAlignVertical="top"
                   style={[styles.inputText, styles.input, styles.memo]}
                 />
@@ -377,7 +400,7 @@ export function LinkCaptureScreen() {
           </Stagger>
         </ScrollView>
 
-        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom + spacing[12], 34) }]}>
+        <Animated.View style={[styles.footer, footerPad]}>
           <Button
             label="장소 찾기"
             size="xl"
@@ -389,8 +412,8 @@ export function LinkCaptureScreen() {
             // 누를 수 없을 때도 흐리게 하지 않는다. 회색 바탕과 글자로만 구분해 문구가 또렷하다
             style={findOn ? undefined : styles.findOff}
           />
-        </View>
-      </KeyboardAvoidingView>
+        </Animated.View>
+      </KeyboardLift>
     </View>
   );
 }

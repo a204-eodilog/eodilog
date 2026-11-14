@@ -6,6 +6,7 @@ import { realtime } from '@/realtime';
 
 import { catchUpOptions } from './catch-up-options';
 import { configureInbound, receive, resyncChat } from './chat-inbound';
+import { useChatReads } from './chat-reads';
 import { CHAT_ROOMS_KEY, chatRoomKey } from './hooks/chat-keys';
 import { attachSendEngine, resendWaitingNow, stopAutoResend } from './hooks/use-send-message';
 import { rememberRooms, tripIdOf } from './room-index';
@@ -41,6 +42,8 @@ export function applyChatEvent(queryClient: QueryClient, body: unknown) {
 
   receive(queryClient, tripId, roomId, [message], 'realtime');
   const meId = queryClient.getQueryData<MyProfile>(ME_QUERY_KEY)?.id ?? null;
+  // 안 읽은 수를 센다. 그 방을 보고 있으면 대화방 화면이 곧바로 읽음으로 돌린다
+  useChatReads.getState().noteMessage(roomId, message.sequence, message.senderId === meId);
 
   // 모르는 보낸 사람이면 새 동행이다. 닉네임·얼굴을 다시 받는다(research R11)
   if (message.type === 'TEXT' && message.senderId && message.senderId !== meId) {

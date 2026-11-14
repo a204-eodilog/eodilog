@@ -87,32 +87,41 @@ export function useSavePlaces() {
   return useMutation({
     mutationFn: async ({
       placeIds,
-      target,
+      targets,
       memo: newMemo,
     }: {
       placeIds: string[];
-      target: SaveTarget;
+      /** 저장할 곳. 둘 다 고르면 개인 즐겨찾기와 여행 두 곳이 온다 */
+      targets: SaveTarget[];
       memo?: string;
     }) => {
-      if (target.kind === 'trip') {
-        await Promise.all(placeIds.map((placeId) => addToTrip(target.tripId, placeId, newMemo)));
-        return;
-      }
-      const saved = await queryClient.ensureQueryData({
-        queryKey: bookmarkKeys.all,
-        queryFn: getAllBookmarks,
-      });
-      await Promise.all(
-        placeIds.map((placeId) => {
-          const memo = newMemo || saved.find((b) => samePlace(b, placeId))?.memo;
-          return putBookmark(placeId, memo ? { memo } : {});
-        }),
-      );
+      const saveTo = async (target: SaveTarget) => {
+        if (target.kind === 'trip') {
+          await Promise.all(placeIds.map((placeId) => addToTrip(target.tripId, placeId, newMemo)));
+          return;
+        }
+        const saved = await queryClient.ensureQueryData({
+          queryKey: bookmarkKeys.all,
+          queryFn: getAllBookmarks,
+        });
+        await Promise.all(
+          placeIds.map((placeId) => {
+            const memo = newMemo || saved.find((b) => samePlace(b, placeId))?.memo;
+            return putBookmark(placeId, memo ? { memo } : {});
+          }),
+        );
+      };
+      // 두 곳 모두 같은 장소를 덮어쓰는 저장이라, 한쪽이 실패해 다시 눌러도 겹쳐 담기지 않는다
+      await Promise.all(targets.map(saveTo));
     },
-    onSettled: (_data, _error, { target }) =>
-      queryClient.invalidateQueries({
-        queryKey:
-          target.kind === 'trip' ? ['trips', target.tripId, 'saved-places'] : bookmarkKeys.all,
-      }),
+    onSettled: (_data, _error, { targets }) =>
+      Promise.all(
+        targets.map((target) =>
+          queryClient.invalidateQueries({
+            queryKey:
+              target.kind === 'trip' ? ['trips', target.tripId, 'saved-places'] : bookmarkKeys.all,
+          }),
+        ),
+      ),
   });
 }

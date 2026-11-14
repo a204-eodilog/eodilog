@@ -24,6 +24,24 @@ export function isLink(text: string | null | undefined): boolean {
   }
 }
 
+/**
+ * 글 안에서 처음 나오는 http(s) 링크. 없으면 null.
+ * 지도 앱의 공유하기는 "[네이버지도] 가게 이름 주소 https://naver.me/..."처럼 이름과 주소를 링크 앞에 붙여 준다.
+ * 그 글을 통째로 넣으면 링크가 아니라서 찾지 못하므로, 링크만 골라 쓴다
+ */
+export function linkIn(text: string | null | undefined): string | null {
+  const found = (text ?? '').match(/https?:\/\/\S+/i)?.[0];
+  return found && isLink(found) ? found : null;
+}
+
+/**
+ * 링크 칸에 들어온 글을 정리한다. 여러 낱말이 섞인 글(붙여 넣은 공유 글)에 링크가 있으면 링크만 남긴다.
+ * 한 낱말이면 손으로 치는 중일 수 있어 그대로 둔다
+ */
+export function cleanLinkInput(text: string): string {
+  return /\s/.test(text.trim()) ? (linkIn(text) ?? text) : text;
+}
+
 /** 서버가 받는 링크 최대 길이(백엔드 안내 2026-11-09) */
 export const MAX_LINK_LENGTH = 2048;
 
@@ -249,6 +267,35 @@ export function failedNotice(
 export const EXTRACTION_STEPS = ['링크와 캡처 읽기', '장소 이름 찾기', '지도에 표시하기'] as const;
 
 /**
+ * 단계마다 무엇을 하는지 한 줄. 지금 하는 단계는 stepDetail("…하고 있어요")을 쓰고, 끝났거나 남은 단계는 이 글을 쓴다.
+ * 지금 단계에만 설명이 있으면 나머지 두 단계가 무엇인지 알 수 없었다(2026-11-14 사용자 지적)
+ */
+export const EXTRACTION_STEP_GUIDES = [
+  '링크 속 글과 캡처의 글자를 읽어요',
+  '읽은 글에서 가게 이름과 주소를 골라요',
+  '찾은 곳이 지도 어디인지 확인해요',
+] as const;
+
+/** 단계가 넘어가는 시각(ms). 4초 뒤 둘째, 9초 뒤 셋째 단계 */
+const STEP_AT_MS = [4000, 9000] as const;
+
+/**
+ * 기다린 시간으로 본 단계. 서버는 끝났을 때만 진행률을 100으로 알려 주고 중간 값은 주지 않아서
+ * (2026-11-14 서버 코드 확인), 진행률만 보면 끝날 때까지 첫 단계에 머문다.
+ * 그래서 보통 걸리는 시간에 맞춰 단계를 넘긴다. 실제 서버 단계가 아니라 어림이다
+ */
+export function stepByTime(elapsedMs: number): 0 | 1 | 2 {
+  if (elapsedMs >= STEP_AT_MS[1]) return 2;
+  if (elapsedMs >= STEP_AT_MS[0]) return 1;
+  return 0;
+}
+
+/** 화면에 보일 단계. 서버 진행률과 기다린 시간 중 더 나아간 쪽 */
+export function shownStep(progress: number, elapsedMs: number): 0 | 1 | 2 {
+  return Math.max(progressStep(progress), stepByTime(elapsedMs)) as 0 | 1 | 2;
+}
+
+/**
  * 지금 단계 아래 "지금 하는 일" 한 줄(FE 제안). 첫 단계는 보낸 입력(링크·캡처 수)에 맞춘다.
  * sent가 없으면(앱을 다시 켜 보낸 입력을 잊음) 일반 문구
  */
@@ -278,8 +325,11 @@ export function candidateLetter(index: number): string {
   return String.fromCharCode(65 + (index % 26));
 }
 
-/** 장소가 한 곳뿐이어도 너무 확대되지 않게 잡는 최소 범위 */
-const MIN_SPAN = 0.02;
+/**
+ * 장소가 한 곳뿐이어도 너무 확대되지 않게 잡는 최소 범위(위도 0.006도는 약 650m).
+ * 0.02(약 2km)는 동네 전체가 보여 어느 가게인지 알기 어려웠다(2026-11-14 사용자 지적). 둘레 길과 건물이 보이는 정도로 좁힌다
+ */
+const MIN_SPAN = 0.006;
 
 /** 장소 둘레 여유. 장소들이 차지하는 범위의 1.6배를 보여 준다 */
 const PADDING = 1.6;

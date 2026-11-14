@@ -26,7 +26,6 @@ export function TrendsScreen() {
       refreshing={trends.isRefetching}
       onRefresh={() => void trends.refetch()}
       onRow={(r) => router.push(`/regions/${r.regionId}`)}
-      onBack={() => router.back()}
       onRetry={() => void trends.refetch()}
     />
   );
@@ -118,7 +117,7 @@ export function TrendsPreviewScreen() {
         setTimeout(() => setRefreshing(false), 800);
       }}
       onRow={(r) => toast.show(`${r.name}: N3 여행지 정보로 가요`)}
-      onBack={() => toast.show('홈으로 돌아가요')}
+
       onRetry={() => toast.show('다시 불러와요')}
     />
   );

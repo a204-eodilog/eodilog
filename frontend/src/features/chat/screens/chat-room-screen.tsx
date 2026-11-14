@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useMemo } from 'react';
+import { router, useLocalSearchParams, useIsFocused } from 'expo-router';
+import { useEffect, useMemo } from 'react';
 
 import { useMe } from '@/hooks/use-me';
 
@@ -12,6 +12,7 @@ import { SystemCard } from '../components/system-card';
 import { blockRoom } from '../hooks/block-room';
 import { useRoomOutbox } from '../hooks/use-chat-outbox';
 import { useChatRoom } from '../hooks/use-chat-room';
+import { useChatReads } from '../chat-reads';
 import { useMessages } from '../hooks/use-messages';
 import { useSendMessage } from '../hooks/use-send-message';
 
@@ -24,6 +25,14 @@ export function ChatRoomScreen() {
   const room = chatRoom.room;
   const messages = useMessages(tripId, room?.id);
   const outbox = useRoomOutbox(room?.id);
+
+  // 이 방이 화면 앞에 있는 동안, 받은 데까지 읽은 것으로 적는다. 목록과 채팅 탭의 안 읽은 수가 0으로 돌아간다
+  const focused = useIsFocused();
+  const roomId = room?.id;
+  const newest = messages.window?.newestSequence ?? null;
+  useEffect(() => {
+    if (focused && roomId && newest !== null) useChatReads.getState().markRead(roomId, newest);
+  }, [focused, roomId, newest]);
   const { send, retry, discard } = useSendMessage(tripId, room?.id, {
     onBlocked: () => void blockRoom(queryClient, tripId),
   });

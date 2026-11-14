@@ -75,13 +75,34 @@ export function loadingSteps(placeCount: number, peopleCount: number): [string, 
   ];
 }
 
-/** 자료 부족 두 줄 */
-export function insufficientLines(basis: RecommendationResult['basis']): [string, string] {
+/** 자료 부족 한 줄: 무엇이, 지금 얼마이고, 얼마가 있어야 하는지. met이면 이 조건은 채웠다 */
+export type InsufficientRow = { label: string; now: string; need: string; met: boolean };
+
+/**
+ * 자료 부족 두 줄(모은 장소, 취향 고른 사람). 한 문장에 가운뎃점으로 이어 쓰면 무엇이 모자란지 읽기 어려워
+ * (2026-11-14 사용자 지적) "지금 / 필요"로 나눠 준다
+ */
+export function insufficientRows(
+  basis: RecommendationResult['basis'],
+): [InsufficientRow, InsufficientRow] {
   return [
-    `모은 장소 ${basis.sharedPlaceCount}곳 · ${MIN_PLACES}곳부터 추천해요`,
-    `취향 고른 사람 ${basis.usedMemberCount}명 · ${MIN_PEOPLE}명부터 추천해요`,
+    {
+      label: '모은 장소',
+      now: `${basis.sharedPlaceCount}곳`,
+      need: `${MIN_PLACES}곳`,
+      met: basis.sharedPlaceCount >= MIN_PLACES,
+    },
+    {
+      label: '취향 고른 사람',
+      now: `${basis.usedMemberCount}명`,
+      need: `${MIN_PEOPLE}명`,
+      met: basis.usedMemberCount >= MIN_PEOPLE,
+    },
   ];
 }
+
+/** 자료 부족 안내 한 문장. 얼마나 모이면 추천하는지 */
+export const INSUFFICIENT_HINT = `장소 ${MIN_PLACES}곳, 취향 고른 사람 ${MIN_PEOPLE}명부터 추천해요`;
 
 export type BasisCell = { value: string; extra?: string; label: string };
 

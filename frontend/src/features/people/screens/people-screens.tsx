@@ -48,7 +48,6 @@ function useFollowToggle() {
         toast.success(`${next.nickname}님을 팔로우했어요`);
       else toast.show(`${next.nickname}님 팔로우를 끊었어요`);
       void queryClient.invalidateQueries({ queryKey: ['me', 'following'] });
-      void queryClient.invalidateQueries({ queryKey: ['me', 'following-count'] });
       void queryClient.invalidateQueries({ queryKey: SUGGESTIONS_KEY });
       void queryClient.invalidateQueries({ queryKey: ['users'] });
       // S43 친구 목록(['friends', 'board']). 안 하면 N9에서 팔로우를 끊고 돌아와도 팔로잉에 그대로 남는다

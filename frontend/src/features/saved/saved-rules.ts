@@ -16,6 +16,10 @@ export type SavedItem = {
   source: string | null;
   /** 카드 사진 주소. 서버가 아직 주지 않아 진짜 서버에서는 null이다 */
   imageUrl: string | null;
+  /** 내 메모. 목록 카드에 한 줄로 보인다. 없으면 null */
+  memo: string | null;
+  /** 지도 공급자의 분류 글. 서버가 주지 않으면 null이고, 종류는 이름으로 짐작한다 */
+  category: string | null;
 };
 
 const METRO = /(특별시|광역시|특별자치시)$/;
@@ -72,27 +76,9 @@ export function toSavedItem(bookmark: Bookmark): SavedItem {
     area: parts.length > 0 ? parts.join(' ') : null,
     source: bookmark.sourceFeedId ? '공동 피드' : null,
     imageUrl: place?.imageUrl ?? null,
+    memo: bookmark.memo?.trim() || null,
+    category: place?.category ?? null,
   };
-}
-
-/**
- * 엇갈린 2열 목록. 사진 높이는 피그마처럼 160~220에서 돌아가며 정하고(사진 API가 없어 자리만 그린다),
- * 지금까지 더 짧은 열에 다음 카드를 넣는다. 서버 순서(최근 저장한 순)는 위에서 아래로 유지된다
- */
-const PHOTO_HEIGHTS = [200, 160, 220, 180, 190] as const;
-
-export type MasonryCard = { item: SavedItem; photoHeight: number };
-
-export function masonryColumns(items: SavedItem[]): [MasonryCard[], MasonryCard[]] {
-  const columns: [MasonryCard[], MasonryCard[]] = [[], []];
-  const heights = [0, 0];
-  items.forEach((item, i) => {
-    const photoHeight = PHOTO_HEIGHTS[i % PHOTO_HEIGHTS.length];
-    const col = heights[0] <= heights[1] ? 0 : 1;
-    columns[col].push({ item, photoHeight });
-    heights[col] += photoHeight;
-  });
-  return columns;
 }
 
 /** 지도 지역 묶음 마커. 위치는 그 지역 장소들의 가운데 */
@@ -118,13 +104,6 @@ export function cityGroups(items: SavedItem[]): CityGroup[] {
       items: list,
     }))
     .sort((a, b) => b.items.length - a.items.length);
-}
-
-/** 연결 끊김 안내 둘째 줄. 마지막으로 받아 온 시각(기기 시간) "10:20 기준이에요" */
-export function syncedAtLabel(updatedAt: number): string {
-  const d = new Date(updatedAt);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${pad(d.getHours())}:${pad(d.getMinutes())} 기준이에요`;
 }
 
 /** 지도 범위(라이브러리 Region 규칙: 위도·경도는 남서쪽 꼭짓점, delta만큼 북동쪽으로 넓어진다) */
@@ -171,8 +150,27 @@ export function regionForPlace(item: SavedItem): MapRegion {
   };
 }
 
-/** S08 저장 위치 선택. 나만 보기 / 동행과 같이 */
-export type SaveChoice = 'personal' | 'trip';
+/** S08 저장 위치 선택. 나만 보기 / 동행과 같이 / 둘 다(2026-11-14 사용자 결정: 두 곳에 한 번에 저장) */
+export type SaveChoice = 'personal' | 'trip' | 'both';
+
+/** 이 저장 위치에 나만 보기(개인 즐겨찾기)가 들어 있는지 */
+export function savesPersonal(choice: SaveChoice): boolean {
+  return choice !== 'trip';
+}
+
+/** 이 저장 위치에 동행과 같이(여행의 그룹 즐겨찾기)가 들어 있는지 */
+export function savesTrip(choice: SaveChoice): boolean {
+  return choice !== 'personal';
+}
+
+/**
+ * 칸을 눌렀을 때의 다음 저장 위치. 꺼진 칸을 누르면 켜져 둘 다가 되고, 켜진 칸을 누르면 꺼진다.
+ * 하나는 늘 켜져 있어야 해서, 하나만 켜진 칸을 누르면 그대로 둔다
+ */
+export function toggleSaveChoice(choice: SaveChoice, cell: 'personal' | 'trip'): SaveChoice {
+  if (choice === 'both') return cell === 'personal' ? 'trip' : 'personal';
+  return choice === cell ? choice : 'both';
+}
 
 /**
  * S08 장소 저장 시트에서 실제 저장 위치와 [저장]을 누를 수 있는지.
@@ -187,14 +185,16 @@ export function placeSaveState(input: {
 }): { target: SaveChoice; tripDisabled: boolean; canSave: boolean } {
   const tripDisabled = input.tripsStatus === 'ready' && input.tripCount === 0;
   const target = tripDisabled ? 'personal' : input.choice;
+  // 여행에도 담는다면(동행과 같이·둘 다) 내 여행을 불러왔고 하나를 골랐어야 한다
   const canSave =
     target === 'personal' || (input.tripsStatus === 'ready' && input.selectedTripId !== null);
   return { target, tripDisabled, canSave };
 }
 
 /** S08 저장 완료 토스트 문구. 여행이면 "강릉 바다에 담았어요"(S14 그룹에 추가와 같은 문구) */
-export function placeSavedMessage(tripTitle: string | null): string {
-  return tripTitle ? `${tripTitle}에 담았어요` : '개인 즐겨찾기에 저장했어요';
+export function placeSavedMessage(tripTitle: string | null, alsoPersonal = false): string {
+  if (!tripTitle) return '개인 즐겨찾기에 저장했어요';
+  return alsoPersonal ? `개인 즐겨찾기와 ${tripTitle}에 담았어요` : `${tripTitle}에 담았어요`;
 }
 
 /** 개인 저장 탭(S10 목록·지도)의 주소 */

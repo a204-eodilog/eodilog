@@ -11,7 +11,7 @@ import { SavedView } from '../components/saved-view';
 import { GroupTripSheet } from '../components/group-trip-sheet';
 import { useBookmarks, useOnline, useSavedView } from '../hooks/use-bookmarks';
 import { useTripOptions } from '../hooks/use-trip-options';
-import { syncedAtLabel, toSavedItem } from '../saved-rules';
+import { toSavedItem } from '../saved-rules';
 
 /**
  * S10 개인 즐겨찾기. 저장 탭 첫 화면.
@@ -64,7 +64,7 @@ export function SavedScreen() {
         view={view}
         onView={setView}
         // 연결이 끊겼으면 마지막으로 받아 온 목록을 그대로 두고 기준 시각을 알린다
-        offlineSince={online ? null : syncedAtLabel(bookmarks.dataUpdatedAt)}
+        offline={!online}
         onGroup={() => setGroupOpen(true)}
         onOpen={(item) => router.push({ pathname: '/saved/[key]', params: { key: item.key } })}
         onAdd={(start) =>

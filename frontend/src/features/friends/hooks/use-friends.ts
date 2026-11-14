@@ -31,7 +31,9 @@ const SERVER: FriendsService = {
           ? unfollow(a.follow.followee.id)
           : removeFollower(a.follow.follower.id),
 };
-const QUERY_KEY = ['friends', 'board'] as const;
+/** 친구 목록(팔로잉·팔로워·받은 요청) 캐시 키. 마이페이지의 팔로워·팔로잉 수도 이 캐시에서 센다 */
+export const FRIENDS_BOARD_KEY = ['friends', 'board'] as const;
+const QUERY_KEY = FRIENDS_BOARD_KEY;
 const EMPTY: FriendsBoard = { following: [], followers: [], requests: [] };
 const FAILURE = {
   accept: '팔로우 요청을 수락하지 못했어요',

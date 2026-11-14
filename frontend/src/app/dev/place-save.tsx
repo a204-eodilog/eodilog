@@ -5,7 +5,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button, toast } from '@/components/ui';
 import { PlaceSaveSheet } from '@/features/saved';
 import { PlaceSaveSheetView } from '@/features/saved/components/place-save-sheet-view';
-import type { SaveChoice } from '@/features/saved/saved-rules';
+import { type SaveChoice, toggleSaveChoice } from '@/features/saved/saved-rules';
 import { colors, layout, spacing, typography } from '@/theme';
 
 /**
@@ -70,7 +70,7 @@ export default function PlaceSaveStates() {
         visible={example !== null}
         placeNames={example === 'imported' ? ['강문 해변', '안목 커피거리'] : ['강문 해변']}
         choice={choice}
-        onChoose={setChoice}
+        onToggle={(cell) => setChoice((c) => toggleSaveChoice(c, cell))}
         trips={trips}
         tripsStatus={example === 'tripsError' ? 'error' : 'ready'}
         onRetryTrips={() => setExample('basic')}

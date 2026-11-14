@@ -11,7 +11,7 @@ import {
 } from '@/features/recommend/components/recommend-states';
 import {
   basisCells,
-  insufficientLines,
+  insufficientRows,
   splitItems,
   type ViewState,
 } from '@/features/recommend/recommend-rules';
@@ -85,7 +85,7 @@ function DevScreen({ state }: { state: string }) {
       other={
         state === 'insufficient' ? (
           <InsufficientView
-            lines={insufficientLines({ sharedPlaceCount: 1, usedMemberCount: 1 })}
+            rows={insufficientRows({ sharedPlaceCount: 1, usedMemberCount: 1 })}
             onMorePlaces={() => toast.show('그룹 즐겨찾기로 가요')}
             onPreferences={() => toast.show('취향 입력으로 가요')}
           />

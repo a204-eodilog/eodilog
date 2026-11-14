@@ -5,7 +5,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { Button, toast } from '@/components/ui';
 import { SavedView } from '@/features/saved/components/saved-view';
 import type { SavedView as ViewMode } from '@/features/saved/hooks/use-bookmarks';
-import { syncedAtLabel, toSavedItem } from '@/features/saved/saved-rules';
+import { toSavedItem } from '@/features/saved/saved-rules';
 import type { Bookmark } from '@/features/saved/types';
 import { colors, layout, spacing } from '@/theme';
 
@@ -76,9 +76,7 @@ export default function SavedStates() {
       items={example === 'empty' ? [] : ITEMS}
       view={view}
       onView={setView}
-      offlineSince={
-        example === 'offline' ? syncedAtLabel(new Date(2026, 10, 5, 10, 20).getTime()) : null
-      }
+      offline={example === 'offline'}
       // 개발용 화면에는 뒤로 버튼이 없어 [그룹]을 누르면 상태 고르기로 돌아간다
       onGroup={() => setExample(null)}
       onOpen={ready}

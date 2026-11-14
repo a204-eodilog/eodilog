@@ -160,14 +160,15 @@ function room(id: string, last: Message | null): ChatRoom {
 }
 
 const ROWS: ChatRoomRow[] = [
-  { r: room('a', BASIC[6]), title: '겨울 여행' },
-  { r: room('b', BASIC[1]), title: '부산 1박 2일' },
-  { r: room('c', null), title: '연말 강릉' },
-].map(({ r, title }) => ({
+  { r: room('a', BASIC[6]), title: '겨울 여행', unread: 3 },
+  { r: room('b', BASIC[1]), title: '부산 1박 2일', unread: 120 },
+  { r: room('c', null), title: '연말 강릉', unread: 0 },
+].map(({ r, title, unread }) => ({
   room: r,
   title,
   preview: roomPreview(r, ME.id),
   time: r.lastMessage ? roomTimeLabel(r.lastMessage.createdAt) : null,
+  unread,
 }));
 
 /** C안 맨 위 카드 예시: 지금 여행 중인 방 */

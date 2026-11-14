@@ -8,7 +8,8 @@ export const PREVIEW_SUMMARY: MyPageSummary = {
   postedCount: 1,
   tripCount: 7,
   pinlessCount: 1,
-  friendCount: 5,
+  followerCount: 4,
+  followingCount: 5,
   pins: [
     { regionCode: '5211000000', label: '추석 전주', posted: false, tripIds: ['t1'] },
     { regionCode: '4713000000', label: '봄 경주', posted: true, tripIds: ['t2'] },

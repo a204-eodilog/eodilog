@@ -2,7 +2,7 @@ import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Stagger } from '@/components/ui/stagger';
@@ -29,6 +29,7 @@ import {
   toExplicitItems,
 } from '../preference-rules';
 import type { PreferenceItem, Preferences } from '../types';
+import { KeyboardLift } from '@/components/ui/keyboard-lift';
 
 const ADD_PROBLEM: Record<'empty' | 'duplicate' | 'full', string> = {
   empty: `1~${KEYWORD_MAX_LENGTH}자로 적어 주세요`,
@@ -184,10 +185,7 @@ function PreferencesForm({
           </PressableScale>
         }
       />
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      <KeyboardLift style={styles.flex}>
         <ScrollView
           decelerationRate={SCROLL_DECELERATION}
           contentContainerStyle={[styles.content, forRecommendation && styles.contentTight]}
@@ -338,7 +336,7 @@ function PreferencesForm({
             style={styles.done}
           />
         </View>
-      </KeyboardAvoidingView>
+      </KeyboardLift>
     </SafeAreaView>
   );
 }

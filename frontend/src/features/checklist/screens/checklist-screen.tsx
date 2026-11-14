@@ -1,7 +1,7 @@
 import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { FadeIn } from '@/components/ui/fade-in';
 import { Spinner } from '@/components/ui/spinner';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -27,6 +27,7 @@ import { useItemMutations } from '../hooks/use-item-mutations';
 import { useSuggestChecklist, type SuggestFailure } from '../hooks/use-suggest-checklist';
 import { useToggleCheck } from '../hooks/use-toggle-check';
 import type { ChecklistItem } from '../types';
+import { KeyboardLift } from '@/components/ui/keyboard-lift';
 
 type Person = { id: string; name: string; imageUrl: string | null; me: boolean };
 
@@ -178,13 +179,7 @@ export function ChecklistView(props: ChecklistViewProps) {
           ) : undefined
         }
       />
-      <KeyboardAvoidingView
-        style={styles.flex}
-        // 안드로이드도 화면 끝까지 그리는 모드라 채팅처럼 키보드만큼 직접 띄운다
-        behavior="padding"
-      >
-        {body}
-      </KeyboardAvoidingView>
+      <KeyboardLift style={styles.flex}>{body}</KeyboardLift>
       <EditItemSheet
         item={props.editing}
         onClose={props.onCloseEdit}

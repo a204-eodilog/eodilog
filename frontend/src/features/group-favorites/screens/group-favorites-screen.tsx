@@ -7,13 +7,14 @@ import { Spinner } from '@/components/ui/spinner';
 
 import { errorLook } from '@/api/error-look';
 import { toApiError } from '@/api/errors';
-import { ErrorState, Header, Icon } from '@/components/ui';
+import { ErrorState, Header, Icon, toast } from '@/components/ui';
 import { FadeIn } from '@/components/ui/fade-in';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { SkeletonList } from '@/components/ui/skeleton';
 import { pickPlace } from '@/features/place/place-picker';
 import { OpenPollSheet } from '@/features/poll/components/open-poll-sheet';
 import { getAllBookmarks } from '@/features/saved/api';
+import { useSavePlaces } from '@/features/saved/hooks/use-bookmark-mutations';
 import { bookmarkKeys } from '@/features/saved/hooks/use-bookmarks';
 import { useTrip } from '@/features/trip/hooks/use-trip';
 import { useMe } from '@/hooks/use-me';
@@ -246,8 +247,10 @@ export function GroupFavoritesScreen() {
     queryKey: bookmarkKeys.all,
     queryFn: getAllBookmarks,
     // 장소 추가 시트가 뜨면 미리 받는다. 내 즐겨찾기 시트가 열린 뒤에야 받으면 시트가 다 올라온 다음에 목록이 나타난다
-    enabled: adding || picking,
+    // 장소 시트가 열려도 받는다. 그 장소가 이미 내 즐겨찾기에 있는지 알려 주려면 필요하다
+    enabled: adding || picking || openId !== null,
   });
+  const savePersonal = useSavePlaces();
 
   const people: Person[] = (trip.data?.members ?? [])
     .filter((m) => m.status === 'ACTIVE')
@@ -390,6 +393,21 @@ export function GroupFavoritesScreen() {
           if (openItem) void mutations.add([openItem.place.id]).then(() => setOpenId(null));
         }}
         onRemove={() => openItem && removeMine(openItem.place.id)}
+        personalSaved={
+          openItem ? (bookmarks.data ?? []).some((b) => b.place?.id === openItem.place.id) : false
+        }
+        savingPersonal={savePersonal.isPending}
+        onSavePersonal={() => {
+          if (!openItem || savePersonal.isPending) return;
+          // 동행이 쓴 메모는 가져오지 않는다. 내 개인 메모는 저장 탭에서 따로 쓴다
+          savePersonal.mutate(
+            { placeIds: [openItem.place.id], targets: [{ kind: 'personal' }] },
+            {
+              onSuccess: () => toast.success('개인 즐겨찾기에 저장했어요'),
+              onError: () => toast.error('저장하지 못했어요. 다시 시도해 주세요'),
+            },
+          );
+        }}
       />
       <InCourseConfirm
         visible={confirm !== null}

@@ -19,12 +19,12 @@ function memoryStorage(): StateStorage {
  * 팀 기술 스택(docs/plan/frontend-tech-stack) "토큰 외 저장은 react-native-mmkv"를 따른다. 서버·로컬 DB는 쓰지 않는다.
  * MMKV는 네이티브 모듈이라 jest에서는 불러올 수 없어 메모리로 대신한다
  */
-export function createOutboxStorage(): StateStorage {
+export function createChatStorage(id: string): StateStorage {
   try {
     // 네이티브 모듈이 없으면 불러오는 순간 오류가 나므로 여기서 불러온다
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { createMMKV } = require('react-native-mmkv') as typeof import('react-native-mmkv');
-    const mmkv = createMMKV({ id: 'chat-outbox' });
+    const mmkv = createMMKV({ id });
     return {
       getItem: (key) => mmkv.getString(key) ?? null,
       setItem: (key, value) => mmkv.set(key, value),
@@ -35,4 +35,9 @@ export function createOutboxStorage(): StateStorage {
   } catch {
     return memoryStorage();
   }
+}
+
+/** 보내는 중 메시지 저장소 */
+export function createOutboxStorage(): StateStorage {
+  return createChatStorage('chat-outbox');
 }

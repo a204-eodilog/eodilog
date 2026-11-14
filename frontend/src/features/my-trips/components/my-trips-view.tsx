@@ -22,6 +22,14 @@ export type MyTripsViewProps = {
 export function MyTripsView({ trips, myUserId, onOpen, onBack }: MyTripsViewProps) {
   // 하단 탭이 없는 화면이라 기기 아래 막대(제스처·버튼) 높이만큼 목록 끝을 더 띄운다
   const insets = useSafeAreaInsets();
+  // 요약 숫자: 전체와 묶음별 수. 여행 중은 있을 때만 보인다
+  const countOf = (status: MyTrip['status']) => trips.filter((t) => t.status === status).length;
+  const stats = [
+    { label: '전체', count: trips.length },
+    ...(countOf('ONGOING') > 0 ? [{ label: '여행 중', count: countOf('ONGOING') }] : []),
+    { label: '다녀온 여행', count: countOf('COMPLETED') },
+    { label: '계획 중', count: countOf('PLANNING') },
+  ];
   return (
     <View style={styles.screen}>
       <Header onBack={onBack} title="내 여행" />
@@ -33,14 +41,22 @@ export function MyTripsView({ trips, myUserId, onOpen, onBack }: MyTripsViewProp
           decelerationRate={SCROLL_DECELERATION}
           contentContainerStyle={[styles.content, { paddingBottom: spacing[32] + insets.bottom }]}
         >
-          {/* 맨 위 요약. 여행이 모두 몇 개인지 큰 숫자로 먼저 보인다 */}
+          {/* 맨 위 요약. 아래 여행 카드와 헷갈리지 않게 바탕 없이 숫자만 나란히 둔다(2026-11-14 사용자 지적) */}
           <FadeIn from="mask">
             <View style={styles.summary}>
-              <Text style={[typography.display, styles.count]}>{trips.length}</Text>
-              <View style={styles.summaryText}>
-                <Text style={[typography.bodyBold, styles.text]}>개의 여행</Text>
-                <Text style={[typography.caption, styles.note]}>핀 없는 여행까지 보여요</Text>
-              </View>
+              {stats.map((stat, i) => (
+                <View
+                  key={stat.label}
+                  style={[styles.stat, i > 0 && styles.statDivider]}
+                  accessible
+                  accessibilityLabel={`${stat.label} ${stat.count}개`}
+                >
+                  <Text style={[typography.title1, i === 0 ? styles.count : styles.text]}>
+                    {stat.count}
+                  </Text>
+                  <Text style={[typography.caption, styles.note]}>{stat.label}</Text>
+                </View>
+              ))}
             </View>
           </FadeIn>
           {groupMyTrips(trips).map((group) => (
@@ -79,9 +95,11 @@ const styles = StyleSheet.create({
     paddingBottom: spacing[32],
     gap: spacing[24],
   },
-  summary: { flexDirection: 'row', alignItems: 'center', gap: spacing[12] },
+  // 숫자 칸을 같은 폭으로 나란히. 칸 사이는 얇은 세로선으로만 나눈다
+  summary: { flexDirection: 'row', paddingVertical: spacing[4] },
+  stat: { flex: 1, alignItems: 'center', gap: spacing[2] },
+  statDivider: { borderLeftWidth: 1, borderLeftColor: colors.line.default },
   count: { color: colors.brand.primary },
-  summaryText: { gap: spacing[2] },
   group: { gap: spacing[10] },
   groupHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[8] },
   badge: {
@@ -95,6 +113,6 @@ const styles = StyleSheet.create({
   },
   badgeText: { color: colors.brand.primary },
   text: { color: colors.text.default },
-  note: { color: colors.text.sub2 },
+  note: { color: colors.text.icon },
   sub: { color: colors.text.icon },
 });

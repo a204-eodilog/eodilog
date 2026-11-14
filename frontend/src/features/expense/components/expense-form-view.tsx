@@ -1,6 +1,6 @@
 import { SCROLL_DECELERATION } from '@/theme/scroll';
 import type { ReactNode } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Stagger } from '@/components/ui/stagger';
@@ -14,6 +14,7 @@ import { type ExpenseForm, TITLE_INPUT_MAX_LENGTH } from '../expense-rules';
 import type { TripMember } from '../types';
 
 import { MemberChip } from './member-chip';
+import { KeyboardLift } from '@/components/ui/keyboard-lift';
 
 export type ExpenseFormMode = 'create' | 'edit' | 'view';
 
@@ -104,10 +105,7 @@ export function ExpenseFormView({
         subtitleIcon="trip"
         onBack={onClose}
       />
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      <KeyboardLift style={styles.flex}>
         <ScrollView
           decelerationRate={SCROLL_DECELERATION}
           contentContainerStyle={styles.content}
@@ -215,7 +213,7 @@ export function ExpenseFormView({
             />
           </View>
         )}
-      </KeyboardAvoidingView>
+      </KeyboardLift>
     </View>
   );
 }

@@ -2,7 +2,7 @@ import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, Header, Icon, Stagger, TextField } from '@/components/ui';
@@ -17,6 +17,7 @@ import { useCreateTrip } from '../hooks/use-create-trip';
 import { toCreateBody, useNewTripDraft } from '../hooks/use-new-trip-draft';
 import { primeRegion } from '../hooks/use-region-names';
 import { shortRegionName } from '../trip-rules';
+import { KeyboardLift } from '@/components/ui/keyboard-lift';
 
 const TITLE_MAX = 200;
 const LATER = '나중에 정할게요';
@@ -69,11 +70,7 @@ export function NewTripScreen() {
   return (
     <View style={styles.screen}>
       <Header close onBack={close} />
-      <KeyboardAvoidingView
-        style={styles.flex}
-        // 안드로이드도 화면 끝까지 그리는 모드라 키보드만큼 직접 띄운다(채팅 화면과 같다). 그래야 [여행 만들기]가 키보드에 가리지 않는다
-        behavior="padding"
-      >
+      <KeyboardLift style={styles.flex}>
         <ScrollView
           decelerationRate={SCROLL_DECELERATION}
           contentContainerStyle={styles.body}
@@ -144,7 +141,7 @@ export function NewTripScreen() {
             onPress={submit}
           />
         </View>
-      </KeyboardAvoidingView>
+      </KeyboardLift>
 
       <DateRangeSheet
         visible={rangeOpen}

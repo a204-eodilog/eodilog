@@ -271,8 +271,9 @@ describe('추천할 수 없을 때', () => {
     mockGet.mockResolvedValue(result({ insufficientData: true }));
     await renderScreen();
     expect(await screen.findByText('추천하기엔 아직 부족해요')).toBeTruthy();
-    expect(screen.getByText('모은 장소 1곳 · 3곳부터 추천해요')).toBeTruthy();
-    expect(screen.getByText('취향 고른 사람 1명 · 2명부터 추천해요')).toBeTruthy();
+    expect(screen.getByText('장소 3곳, 취향 고른 사람 2명부터 추천해요')).toBeTruthy();
+    expect(screen.getByLabelText('모은 장소 1곳, 3곳 필요')).toBeTruthy();
+    expect(screen.getByLabelText('취향 고른 사람 1명, 2명 필요')).toBeTruthy();
     await fireEvent.press(screen.getByText('장소 더 모으기'));
     expect(mockRouter.dismissTo).toHaveBeenCalledWith('/trips/trip-1/favorites');
     await fireEvent.press(screen.getByLabelText('취향 입력'));

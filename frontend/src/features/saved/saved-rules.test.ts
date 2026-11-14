@@ -5,13 +5,14 @@ import {
   bookmarkSource,
   findBookmark,
   cityGroups,
-  masonryColumns,
   placeSavedMessage,
   showSavedLink,
   placeSaveState,
+  savesPersonal,
+  savesTrip,
+  toggleSaveChoice,
   regionFor,
   regionForPlace,
-  syncedAtLabel,
   toSavedItem,
 } from './saved-rules';
 import type { Bookmark } from './types';
@@ -97,15 +98,6 @@ describe('toSavedItem', () => {
   });
 });
 
-it('masonryColumns는 짧은 열에 다음 카드를 넣는다', () => {
-  const items = ['a', 'b', 'c', 'd'].map((n) => toSavedItem(bookmark(n, null)));
-  const [left, right] = masonryColumns(items);
-  // 높이 200(a)·160(b)·220(c)·180(d): a 왼쪽, b 오른쪽, c 오른쪽(160<200), d 왼쪽(200<380)
-  expect(left.map((c) => c.item.name)).toEqual(['a', 'd']);
-  expect(right.map((c) => c.item.name)).toEqual(['b', 'c']);
-  expect(left[0].photoHeight).toBe(200);
-});
-
 it('cityGroups는 지역별로 묶어 가운데 위치와 개수를 낸다', () => {
   const items = [
     toSavedItem(bookmark('a', '강원특별자치도 강릉시 강문동', 37.8, 128.9)),
@@ -120,11 +112,6 @@ it('cityGroups는 지역별로 묶어 가운데 위치와 개수를 낸다', () 
     ['기타', 1],
   ]);
   expect(groups[0].latitude).toBeCloseTo(35.2);
-});
-
-it('syncedAtLabel은 기기 시각 "HH:mm 기준이에요"', () => {
-  const at = new Date(2026, 10, 5, 9, 5).getTime();
-  expect(syncedAtLabel(at)).toBe('09:05 기준이에요');
 });
 
 describe('S14 즐겨찾기 찾기', () => {
@@ -241,6 +228,36 @@ describe('showSavedLink (S08 저장 완료 [보기])', () => {
   it('개인 저장 탭을 보고 있거나 저장 뒤 그리로 가면 붙이지 않는다', () => {
     expect(showSavedLink('/saved', false)).toBe(false);
     expect(showSavedLink('/saved/extract/j1', true)).toBe(false);
+  });
+});
+
+describe('둘 다 저장 (S08)', () => {
+  it('꺼진 칸을 누르면 둘 다, 켜진 칸을 누르면 꺼지고, 하나만 켜져 있으면 그대로', () => {
+    expect(toggleSaveChoice('personal', 'trip')).toBe('both');
+    expect(toggleSaveChoice('trip', 'personal')).toBe('both');
+    expect(toggleSaveChoice('both', 'personal')).toBe('trip');
+    expect(toggleSaveChoice('both', 'trip')).toBe('personal');
+    expect(toggleSaveChoice('personal', 'personal')).toBe('personal');
+    expect(toggleSaveChoice('trip', 'trip')).toBe('trip');
+  });
+
+  it('둘 다는 개인과 여행 양쪽에 담는다. 여행을 골라야 저장할 수 있다', () => {
+    expect(savesPersonal('both')).toBe(true);
+    expect(savesTrip('both')).toBe(true);
+    expect(savesTrip('personal')).toBe(false);
+    expect(savesPersonal('trip')).toBe(false);
+    const state = { choice: 'both' as const, tripsStatus: 'ready' as const, tripCount: 2 };
+    expect(placeSaveState({ ...state, selectedTripId: null }).canSave).toBe(false);
+    expect(placeSaveState({ ...state, selectedTripId: 't1' })).toEqual({
+      target: 'both',
+      tripDisabled: false,
+      canSave: true,
+    });
+    // 내 여행이 없으면 둘 다를 골라도 개인에만 저장한다
+    expect(placeSaveState({ ...state, tripCount: 0, selectedTripId: null }).target).toBe(
+      'personal',
+    );
+    expect(placeSavedMessage('연말 강릉', true)).toBe('개인 즐겨찾기와 연말 강릉에 담았어요');
   });
 });
 

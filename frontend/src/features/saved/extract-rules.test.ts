@@ -10,13 +10,19 @@ import {
   failCause,
   failedNotice,
   groupCandidates,
+  cleanLinkInput,
   isLink,
+  linkIn,
   nextToChoose,
   parseAddStart,
   linkLabel,
   linkStatus,
   progressStep,
+  shownStep,
+  stepByTime,
   stepDetail,
+  EXTRACTION_STEP_GUIDES,
+  EXTRACTION_STEPS,
 } from './extract-rules';
 import type { ExtractionCandidate, ExtractionResult, Job, Place } from './types';
 
@@ -67,6 +73,26 @@ function result(
 ): ExtractionResult {
   return { job: job(status), resultStatus, candidates };
 }
+
+describe('linkIn / cleanLinkInput (지도 앱 공유 글)', () => {
+  const shared =
+    '[네이버지도]\n만족오향족발 시청점\n서울 중구 서소문로 134-7\nhttps://naver.me/5abCdEfG';
+
+  it('공유 글에서 링크만 고른다', () => {
+    expect(linkIn(shared)).toBe('https://naver.me/5abCdEfG');
+    expect(linkIn('https://sns.example.com/p/1')).toBe('https://sns.example.com/p/1');
+    expect(linkIn('노을 질 때 가 보기')).toBeNull();
+    expect(linkIn(null)).toBeNull();
+  });
+
+  it('여러 낱말이 섞인 글이면 링크만 남기고, 치는 중인 한 낱말은 그대로 둔다', () => {
+    expect(cleanLinkInput(shared)).toBe('https://naver.me/5abCdEfG');
+    expect(cleanLinkInput('https://naver.me/5ab')).toBe('https://naver.me/5ab');
+    expect(cleanLinkInput('naver')).toBe('naver');
+    expect(cleanLinkInput('링크가 없는 글')).toBe('링크가 없는 글');
+    expect(linkStatus(cleanLinkInput(shared))).toBe('ok');
+  });
+});
 
 describe('isLink / linkStatus (S11)', () => {
   it('http(s) 웹 주소만 링크로 본다', () => {
@@ -304,6 +330,26 @@ describe('stepDetail (S12 지금 하는 일)', () => {
   it('다음 단계는 입력과 상관없이 같은 글', () => {
     expect(stepDetail(1, null)).toBe('가게 이름과 주소를 찾고 있어요');
     expect(stepDetail(2, { link: null, captureCount: 1 })).toBe('찾은 곳을 지도에 올리고 있어요');
+  });
+});
+
+describe('stepByTime / shownStep (S12 단계 넘기기)', () => {
+  it('기다린 시간에 맞춰 단계를 넘긴다', () => {
+    expect(stepByTime(0)).toBe(0);
+    expect(stepByTime(3999)).toBe(0);
+    expect(stepByTime(4000)).toBe(1);
+    expect(stepByTime(9000)).toBe(2);
+    expect(stepByTime(60_000)).toBe(2);
+  });
+
+  it('서버 진행률과 시간 중 더 나아간 쪽을 보인다', () => {
+    expect(shownStep(0, 5000)).toBe(1);
+    expect(shownStep(70, 0)).toBe(2);
+    expect(shownStep(40, 10_000)).toBe(2);
+  });
+
+  it('단계마다 설명이 하나씩 있다', () => {
+    expect(EXTRACTION_STEP_GUIDES).toHaveLength(EXTRACTION_STEPS.length);
   });
 });
 
