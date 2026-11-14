@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import re
 from dataclasses import dataclass
 from difflib import SequenceMatcher
 from typing import Literal
@@ -76,6 +77,16 @@ class Mention:
     name: str
     address_hint: str | None
     found_in: str
+
+
+# 이름 끝의 지점 표시. 띄어 쓴 마지막 낱말이 '본점', 'N호점', '○○점'이면 뗀다. 붙여 쓴 이름('정점')은 건드리지 않는다
+_BRANCH = re.compile(r"\s+(?:본점|\d+호점|\S+점)$")
+
+
+def without_branch(name: str) -> str:
+    """'강릉길감자 본점' → '강릉길감자'. 떼고 남는 게 없으면 그대로 둔다."""
+    base = _BRANCH.sub("", name.strip()).strip()
+    return base or name.strip()
 
 
 def _contains(mention: str, place_name: str) -> bool:
@@ -194,6 +205,13 @@ class PlaceExtractor:
         found = await self._places.search(f"{hint} {mention.name}", SEARCH_SIZE) if hint else []
         if not found:
             found = await self._places.search(mention.name, SEARCH_SIZE)
+        # 글에는 '강릉길감자 본점'처럼 지점을 붙여 쓰지만 공급자에는 '강릉길감자'로만 있는 곳이 많다.
+        # 못 찾으면 지점 표시를 떼고 한 번 더 찾는다(2026-11-14 공기계)
+        base = without_branch(mention.name)
+        if not found and base != mention.name:
+            found = (
+                await self._places.search(f"{hint} {base}", SEARCH_SIZE) if hint else []
+            ) or await self._places.search(base, SEARCH_SIZE)
         # 네이버는 이름이 정확히 같은 곳을 뒤쪽에 줄 때가 있어, 자르기 전에 앞으로 옮긴다
         found.sort(key=lambda place: -similarity(mention.name, place.name))
         return found[:MAX_RESULTS_PER_MENTION]
