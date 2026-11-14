@@ -304,6 +304,13 @@ export function shownStep(progress: number, elapsedMs: number): 0 | 1 | 2 {
  * 띄어 쓴 마지막 낱말만 본다(붙여 쓴 '카페정점'은 그대로). AI 서버의 without_branch와 같은 규칙
  */
 export function withoutBranch(name: string): string {
+  // 업종명도 '점'으로 끝난다. 지점으로 오인해 검색어가 지역명만 남지 않게 보존한다.
+  if (
+    /(?:음식점|서점|상점|편의점|백화점|면세점|판매점|전문점|대리점|할인점|제과점|정육점|문구점|안경점|기념품점|주점|반점)$/.test(
+      name.trim(),
+    )
+  )
+    return name.trim();
   const base = name
     .trim()
     .replace(/\s+(?:본점|\d+호점|\S+점)$/, '')

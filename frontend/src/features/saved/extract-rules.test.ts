@@ -431,3 +431,16 @@ describe('withoutBranch', () => {
     expect(withoutBranch('카페정점')).toBe('카페정점');
   });
 });
+
+describe('상호의 업종명 보존', () => {
+  it.each([
+    '부산 중국음식점',
+    '제주 기념품점',
+    '서울 독립서점',
+    '동네 문구점',
+    '우리 제과점',
+    '행복 백화점',
+  ])('%s를 지점으로 잘라내지 않는다', (name) => {
+    expect(withoutBranch(name)).toBe(name);
+  });
+});
