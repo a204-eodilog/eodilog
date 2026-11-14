@@ -20,6 +20,8 @@ type SavedPlaceViewProps = {
   memo: string | null;
   /** 장소 사진 주소. 목록 카드와 같은 값이다. 서버가 아직 주지 않아 진짜 서버에서는 없다 */
   imageUrl?: string | null;
+  /** 공급자. 'KTO'면 사진 아래 출처(한국관광공사)를 적는다 */
+  provider?: string | null;
   /** feed: 공동 피드에서 담음 / lost: 원본을 볼 수 없음(사진 대신 작은 지도) / none: 그 밖 */
   source: 'feed' | 'lost' | 'none';
   /** 장소가 사라져 장소 id가 없으면 메모 고치기·저장 해제를 할 수 없다 */
@@ -49,6 +51,7 @@ export function SavedPlaceView({
   longitude,
   memo,
   imageUrl,
+  provider,
   source,
   editable,
   busy = false,
@@ -92,6 +95,10 @@ export function SavedPlaceView({
           {photo && !lost ? (
             <View style={styles.photo}>
               <Image source={photo} style={StyleSheet.absoluteFill} contentFit="cover" />
+              {/* 공공누리 제1유형: 출처를 적는다. 사진 안 오른쪽 아래에 작게 */}
+              {provider === 'KTO' ? (
+                <Text style={[typography.micro, styles.credit]}>사진 한국관광공사</Text>
+              ) : null}
             </View>
           ) : null}
           {/* 어디인지 바로 알 수 있게 가게 둘레가 보이는 정도로 확대한 지도(약 650m). 손으로 옮기고 확대할 수 있다 */}
@@ -228,6 +235,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
+  },
+  credit: {
+    position: 'absolute',
+    right: spacing[8],
+    bottom: spacing[6],
+    color: colors.text.inverse,
+    opacity: 0.8,
   },
   map: { height: 240, borderRadius: radius.lg, overflow: 'hidden' },
   info: { gap: spacing[12] },

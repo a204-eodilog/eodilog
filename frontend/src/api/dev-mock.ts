@@ -325,7 +325,8 @@ let bookmarks: MockBookmark[] = BOOKMARKS.map(
       latitude,
       longitude,
       regionId: null,
-      provider: 'NAVER',
+      // 강문 해변·흰여울문화마을은 관광공사 장소처럼 둔다(사진 아래 출처가 보인다)
+      provider: i === 1 || i === 3 ? 'KTO' : 'NAVER',
       providerPlaceId: null,
       source: 'PROVIDER' as const,
     },

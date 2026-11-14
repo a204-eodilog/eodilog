@@ -20,6 +20,8 @@ export type SavedItem = {
   memo: string | null;
   /** 지도 공급자의 분류 글. 서버가 주지 않으면 null이고, 종류는 이름으로 짐작한다 */
   category: string | null;
+  /** 공급자. 사진 출처 표시에 쓴다('KTO'면 한국관광공사) */
+  provider: string | null;
 };
 
 const METRO = /(특별시|광역시|특별자치시)$/;
@@ -78,6 +80,7 @@ export function toSavedItem(bookmark: Bookmark): SavedItem {
     imageUrl: place?.imageUrl ?? null,
     memo: bookmark.memo?.trim() || null,
     category: place?.category ?? null,
+    provider: place?.provider ?? null,
   };
 }
 

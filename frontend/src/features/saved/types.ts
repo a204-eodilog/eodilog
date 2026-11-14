@@ -9,7 +9,7 @@ export type Place = {
   provider: string | null;
   providerPlaceId: string | null;
   source: 'PROVIDER' | 'MANUAL';
-  /** 장소 사진 주소. 서버 응답에는 아직 없다(백엔드 요청). 테스트 모드의 시험 데이터만 채운다 */
+  /** 대표 사진 주소(한국관광공사 firstimage, 백엔드 !283). 네이버·소상공인 장소는 null. 사진 아래 출처를 적는다 */
   imageUrl?: string | null;
   /**
    * 지도 공급자의 분류 글(예: "음식점>중식"). 서버는 저장해 두지만 응답에는 아직 싣지 않는다(백엔드 요청).
