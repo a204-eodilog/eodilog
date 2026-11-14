@@ -16,7 +16,10 @@ type Props =
     }
   | { mode: 'selecting'; count: number; onCancel(): void; onConfirm(): void };
 
-/** 아래 버튼 줄(Figma 201-9344): [+]·[투표 열기]·[추천 받기]. 후보 고르기 모드면 [취소]·[N곳으로 투표 열기] */
+/**
+ * 아래 버튼 줄(Figma 201-9344): [+]·[투표 열기]·[추천 받기]. 후보 고르기 모드면 [취소]·[N곳으로 투표 열기].
+ * 투표와 추천은 아이콘만으로는 무엇을 하는 버튼인지 알 수 없어 이름을 함께 쓴다(2026-11-14 사용자 지적)
+ */
 export function BottomActions(props: Props) {
   const insets = useSafeAreaInsets();
   return (
@@ -40,6 +43,7 @@ export function BottomActions(props: Props) {
             accessibilityState={{ disabled: props.pollDisabled }}
           >
             <Icon name="check-all" size={20} color={colors.brand.primary} />
+            <Text style={[typography.bodyBold, styles.secondaryText]}>투표 열기</Text>
           </PressableScale>
           <PressableScale
             accessibilityLabel="추천 받기"
@@ -48,6 +52,7 @@ export function BottomActions(props: Props) {
             accessibilityRole="button"
           >
             <Icon name="bulb" size={18} color={colors.text.inverse} />
+            <Text style={[typography.bodyBold, styles.primaryText]}>추천 받기</Text>
           </PressableScale>
         </>
       ) : (

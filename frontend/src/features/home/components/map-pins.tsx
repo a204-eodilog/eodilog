@@ -132,15 +132,6 @@ function Ripple({ delayMs }: { delayMs: number }) {
   return <Animated.View style={[styles.ripple, style]} pointerEvents="none" />;
 }
 
-/** 친구 없음: 친구가 생기면 들어올 자리 (점선 동그라미 + 더하기) */
-export function InviteSpot() {
-  return (
-    <View style={styles.invite}>
-      <Icon name="plus" size={18} color={colors.brand.primary} />
-    </View>
-  );
-}
-
 /** 공개된 기록 없음: 친구 얼굴 + 자물쇠 (미리보기 예시에서만 위치를 안다) */
 export function LockedFace({ name }: { name: string }) {
   return (
@@ -186,17 +177,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.text.default,
     borderWidth: 2,
     borderColor: colors.surface.white,
-  },
-  invite: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.full,
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    borderColor: colors.text.muted,
-    backgroundColor: colors.surface.white,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   locked: {
     width: 40,

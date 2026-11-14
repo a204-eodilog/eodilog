@@ -26,11 +26,3 @@ export async function getRegionCode(regionId: string): Promise<string | null> {
   );
   return data.data.region?.code ?? null;
 }
-
-/** GET /me/following 첫 쪽. 다음 쪽이 있으면 수를 모른다(null) */
-export async function getFollowingCount(): Promise<number | null> {
-  const { data } = await apiClient.get<PageResponse<unknown>>('/me/following', {
-    params: { limit: 100 },
-  });
-  return data.page.hasNext ? null : data.data.length;
-}

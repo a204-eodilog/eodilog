@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Button, ErrorState, Header, Icon } from '@/components/ui';
+import { ErrorState, Header, Icon } from '@/components/ui';
 import { FadeIn } from '@/components/ui/fade-in';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { SkeletonList } from '@/components/ui/skeleton';
@@ -18,7 +18,7 @@ export type TrendsViewProps = {
   refreshing: boolean;
   onRefresh: () => void;
   onRow: (row: TrendRow) => void;
-  onBack: () => void;
+
   onRetry: () => void;
 };
 
@@ -58,13 +58,6 @@ export function TrendsView(props: TrendsViewProps) {
               </View>
               <Text style={styles.emptyTitle}>아직 순위가 없어요</Text>
               <Text style={styles.emptyDesc}>여행이 모이면 보여요</Text>
-              <Button
-                label="돌아가기"
-                icon="back"
-                variant="neutral"
-                onPress={props.onBack}
-                style={styles.emptyButton}
-              />
             </View>
           }
           renderItem={({ item, index }) => (
@@ -214,5 +207,4 @@ const styles = StyleSheet.create({
   },
   emptyTitle: { ...typography.title2, color: colors.text.default },
   emptyDesc: { ...typography.body, color: colors.text.sub },
-  emptyButton: { marginTop: spacing[16] },
 });

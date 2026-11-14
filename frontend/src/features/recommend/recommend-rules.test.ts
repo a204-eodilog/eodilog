@@ -2,7 +2,8 @@ import { describe, expect, it } from '@jest/globals';
 
 import {
   basisCells,
-  insufficientLines,
+  INSUFFICIENT_HINT,
+  insufficientRows,
   loadingStep,
   loadingSteps,
   peopleWord,
@@ -63,11 +64,13 @@ describe('생성 중', () => {
 });
 
 describe('문구', () => {
-  it('자료 부족 두 줄', () => {
-    expect(insufficientLines({ sharedPlaceCount: 1, usedMemberCount: 1 })).toEqual([
-      '모은 장소 1곳 · 3곳부터 추천해요',
-      '취향 고른 사람 1명 · 2명부터 추천해요',
+  it('자료 부족 두 줄. 지금 수와 필요한 수, 채웠는지를 나눠 준다', () => {
+    expect(insufficientRows({ sharedPlaceCount: 1, usedMemberCount: 1 })).toEqual([
+      { label: '모은 장소', now: '1곳', need: '3곳', met: false },
+      { label: '취향 고른 사람', now: '1명', need: '2명', met: false },
     ]);
+    expect(insufficientRows({ sharedPlaceCount: 4, usedMemberCount: 1 })[0].met).toBe(true);
+    expect(INSUFFICIENT_HINT).toBe('장소 3곳, 취향 고른 사람 2명부터 추천해요');
   });
 
   it('근거 세 칸. 겹침은 있을 때만, 여행지와 기간이 없으면 미정', () => {

@@ -42,7 +42,8 @@ describe('toMyPageSummary', () => {
     trips,
     feeds,
     regionCodes,
-    friendCount: 5,
+    followerCount: 4,
+    followingCount: 5,
   });
 
   it('다녀온 여행만 세고 핀을 꽂는다. 여행지가 없으면 핀 없는 여행', () => {
@@ -64,7 +65,8 @@ describe('toMyPageSummary', () => {
       trips,
       feeds,
       regionCodes: new Map(),
-      friendCount: null,
+      followerCount: null,
+      followingCount: null,
     });
     expect(t.pinlessCount).toBe(3);
   });

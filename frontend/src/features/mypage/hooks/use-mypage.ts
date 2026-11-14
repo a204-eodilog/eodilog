@@ -2,7 +2,10 @@ import { useQueries, useQuery } from '@tanstack/react-query';
 
 import { useMe } from '@/hooks/use-me';
 
-import { getFollowingCount, getMyFeeds, getMyTrips, getRegionCode } from '../api';
+import { getFriendsBoard } from '@/features/friends/api';
+import { FRIENDS_BOARD_KEY } from '@/features/friends/hooks/use-friends';
+
+import { getMyFeeds, getMyTrips, getRegionCode } from '../api';
 import { regionIdsToLookUp, toMyPageSummary } from '../mypage-rules';
 import type { MyPageSummary } from '../types';
 
@@ -16,9 +19,11 @@ export function useMyPage(): { state: MyPageState; summary?: MyPageSummary; retr
   const me = useMe();
   const trips = useQuery({ queryKey: ['me', 'trips', 'mypage'], queryFn: getMyTrips });
   const feeds = useQuery({ queryKey: ['me', 'feeds'], queryFn: getMyFeeds, retry: false });
+  // 친구 탭(S43)과 같은 캐시를 읽는다. 전에는 팔로잉 수만 따로 받아 "친구"로 보였는데,
+  // 친구 탭의 팔로워·팔로잉 수와 달라 보였고 팔로우가 바뀌어도 따로 갱신됐다(2026-11-14 사용자 지적)
   const friends = useQuery({
-    queryKey: ['me', 'following-count'],
-    queryFn: getFollowingCount,
+    queryKey: FRIENDS_BOARD_KEY,
+    queryFn: ({ signal }) => getFriendsBoard(signal),
     retry: false,
   });
 
@@ -53,7 +58,8 @@ export function useMyPage(): { state: MyPageState; summary?: MyPageSummary; retr
     // 게시 목록을 못 받아도 화면은 보인다(모두 나만 봐요로)
     feeds: feeds.data ?? [],
     regionCodes,
-    friendCount: friends.data ?? null,
+    followerCount: friends.data?.followers.length ?? null,
+    followingCount: friends.data?.following.length ?? null,
   });
   return { state: summary.visitedCount === 0 ? 'empty' : 'ready', summary, retry };
 }

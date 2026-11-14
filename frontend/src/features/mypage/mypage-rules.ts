@@ -14,7 +14,8 @@ export function toMyPageSummary(input: {
   trips: readonly MyTrip[];
   feeds: readonly MyFeed[];
   regionCodes: ReadonlyMap<string, string>;
-  friendCount: number | null;
+  followerCount: number | null;
+  followingCount: number | null;
 }): MyPageSummary {
   const feedByTrip = new Map(input.feeds.map((f) => [f.tripId, f]));
   const visited = input.trips.filter((t) => t.status === 'COMPLETED');
@@ -51,7 +52,8 @@ export function toMyPageSummary(input: {
     postedCount: input.feeds.length,
     tripCount: input.trips.length,
     pinlessCount: pinless,
-    friendCount: input.friendCount,
+    followerCount: input.followerCount,
+    followingCount: input.followingCount,
     pins,
   };
 }

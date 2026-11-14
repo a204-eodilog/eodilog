@@ -87,6 +87,10 @@ export function TripDetailScreen() {
               if (href) router.push(href as Href);
               else comingSoon();
             }}
+            onStep={(target) => {
+              const href = todoHref(target, trip.id);
+              if (href) router.push(href as Href);
+            }}
             onPublish={() => router.push(publishHref(trip.id) as Href)}
           />
           <TripMenuGrid tripId={trip.id} />

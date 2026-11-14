@@ -135,6 +135,11 @@ export function nextTodoLabel(trip: Trip, today: string): string {
 export type TodoStep = {
   label: string;
   state: 'done' | 'current' | 'upcoming';
+  /**
+   * 이 단계를 하는 화면. 끝낸 단계도 눌러서 다시 들어가 고칠 수 있다
+   * (장소는 여행 내내 더 모으고 뺄 수 있어야 한다, 2026-11-14 사용자 지적). 없으면 누를 수 없다
+   */
+  target?: TodoTarget;
 };
 
 /** 지금 할 일 버튼이 가는 곳. 아직 없는 화면은 준비 중 안내를 띄운다 */
@@ -238,8 +243,8 @@ export function tripDetailView(
     return {
       headline: '두근두근,\n어디로 떠날까요?',
       steps: [
-        { label: '장소 모으기', state: hasSaved ? 'done' : 'current' },
-        { label: '지역 투표', state: hasSaved ? 'current' : 'upcoming' },
+        { label: '장소 모으기', state: hasSaved ? 'done' : 'current', target: 'favorites' },
+        { label: '지역 투표', state: hasSaved ? 'current' : 'upcoming', target: 'polls' },
         { label: '코스 짜기', state: 'upcoming' },
       ],
       action: hasSaved
@@ -259,8 +264,8 @@ export function tripDetailView(
       headline,
       greeting: '떠날 준비가 됐어요',
       steps: [
-        { label: '장소 모으기', state: 'done' },
-        { label: '코스 짜기', state: 'done' },
+        { label: '장소 모으기', state: 'done', target: 'favorites' },
+        { label: '코스 짜기', state: 'done', target: 'course' },
         { label: '여행 떠나기', state: 'current' },
       ],
       action: { label: '코스 보기', target: 'course' },
@@ -274,8 +279,8 @@ export function tripDetailView(
   return {
     headline,
     steps: [
-      { label: '장소 모으기', state: nothingSaved ? 'current' : 'done' },
-      { label: '코스 짜기', state: nothingSaved ? 'upcoming' : 'current' },
+      { label: '장소 모으기', state: nothingSaved ? 'current' : 'done', target: 'favorites' },
+      { label: '코스 짜기', state: nothingSaved ? 'upcoming' : 'current', target: 'course' },
       { label: '여행 떠나기', state: 'upcoming' },
     ],
     action: nothingSaved

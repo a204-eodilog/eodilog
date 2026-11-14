@@ -37,7 +37,11 @@ export type MyPageSummary = {
   tripCount: number;
   /** 다녀온 여행 중 여행지가 없어 지도에 핀이 없는 수 */
   pinlessCount: number;
-  /** 팔로잉 수. 다 세지 못했으면(다음 쪽이 있으면) null */
-  friendCount: number | null;
+  /**
+   * 팔로워·팔로잉 수. 친구 탭(S43)과 같은 목록에서 세어 두 화면의 숫자가 늘 같다.
+   * 아직 못 받았거나 받지 못했으면 null("–"로 보인다)
+   */
+  followerCount: number | null;
+  followingCount: number | null;
   pins: MyTripPin[];
 };

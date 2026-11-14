@@ -138,7 +138,6 @@ export function RegionSearchScreen({
           <Button
             label={picked.length > 0 ? `${picked.length}곳 고르기` : '완료'}
             icon="check"
-            count={picked.length > 0 ? picked.length : undefined}
             size="xl"
             block
             loading={busy}

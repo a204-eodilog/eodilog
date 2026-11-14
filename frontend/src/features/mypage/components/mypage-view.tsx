@@ -63,7 +63,7 @@ export function MyPageView(props: MyPageViewProps) {
           showsVerticalScrollIndicator={false}
         >
           <Stagger itemStyle={styles.staggerItem}>
-            {/* 프로필. 얼굴 옆에 숫자 셋, 아래에 이름과 버튼 둘. 숫자를 누르면 그 목록으로 간다 */}
+            {/* 프로필. 얼굴 옆에 숫자 넷(여행·게시·팔로워·팔로잉), 아래에 이름과 버튼 둘. 숫자를 누르면 그 목록으로 간다 */}
             <View style={styles.profile}>
               <View style={styles.profileTop}>
                 <View style={styles.ring}>
@@ -72,7 +72,8 @@ export function MyPageView(props: MyPageViewProps) {
                 <View style={styles.stats}>
                   <Stat label="여행" value={summary.tripCount} onPress={props.onTrips} />
                   <Stat label="게시" value={summary.postedCount} onPress={props.onTimeline} />
-                  <Stat label="친구" value={summary.friendCount} onPress={props.onFriends} />
+                  <Stat label="팔로워" value={summary.followerCount} onPress={props.onFriends} />
+                  <Stat label="팔로잉" value={summary.followingCount} onPress={props.onFriends} />
                 </View>
               </View>
               <View>

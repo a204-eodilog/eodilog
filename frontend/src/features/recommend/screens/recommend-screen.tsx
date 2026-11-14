@@ -30,7 +30,7 @@ import {
 import { useRecommendation } from '../hooks/use-recommendation';
 import {
   basisCells,
-  insufficientLines,
+  insufficientRows,
   regionCardText,
   splitItems,
   viewState,
@@ -298,7 +298,7 @@ export function RecommendScreen() {
         other={
           state === 'insufficient' && result ? (
             <InsufficientView
-              lines={insufficientLines(result.basis)}
+              rows={insufficientRows(result.basis)}
               // 그룹 즐겨찾기에서 왔으면 그리로 돌아가고, 아니면 연다
               onMorePlaces={() => router.dismissTo(`/trips/${tripId}/favorites`)}
               // 취향을 넣고 돌아오면 다시 추천한다
