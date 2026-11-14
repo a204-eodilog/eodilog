@@ -162,6 +162,7 @@ function DevScreen({ state }: { state: string }) {
           setEditor('세은');
         }}
         busy={false}
+        onSavePersonal={noop}
       />
       <InCourseConfirm
         visible={editor !== null}

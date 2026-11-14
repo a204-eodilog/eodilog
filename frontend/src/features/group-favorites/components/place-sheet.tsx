@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { Avatar, BottomSheet, Button, Icon, TextField } from '@/components/ui';
 import { PressableScale } from '@/components/ui/pressable-scale';
+import { Spinner } from '@/components/ui/spinner';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 import { isMine, MEMO_MAX, myMemo, saverNames } from '../group-rules';
@@ -17,11 +18,20 @@ type Props = {
   onAdd(): void;
   onRemove(): void;
   busy: boolean;
+  /**
+   * 이 장소를 내 개인 즐겨찾기(나만 보는 저장 탭)에도 담는다. 동행이 올린 장소도 담을 수 있다.
+   * 없으면 줄을 그리지 않는다(미리보기)
+   */
+  onSavePersonal?: () => void;
+  /** 이미 내 개인 즐겨찾기에 있다. 줄이 "있어요"로 바뀌고 눌리지 않는다 */
+  personalSaved?: boolean;
+  savingPersonal?: boolean;
 };
 
 /**
  * 그룹 즐겨찾기 장소 시트(가정 Q-7-5). 담은 사람과 메모를 보이고,
  * 내가 담았으면 내 메모 고치기와 [내 저장 빼기], 안 담았으면 [나도 담기].
+ * 누가 담았든 [내 즐겨찾기에도 저장]으로 내 개인 저장 탭에 담을 수 있다(2026-11-14 사용자 요청).
  */
 export function PlaceSheet({ item, members, myMemberId, onClose, ...props }: Props) {
   const mine = item ? isMine(item, myMemberId) : false;
@@ -62,6 +72,47 @@ export function PlaceSheet({ item, members, myMemberId, onClose, ...props }: Pro
               </View>
             );
           })}
+          {props.onSavePersonal ? (
+            <PressableScale
+              accessibilityRole="button"
+              accessibilityLabel={
+                props.personalSaved ? '내 즐겨찾기에 있어요' : '내 즐겨찾기에도 저장'
+              }
+              accessibilityState={{
+                disabled: props.personalSaved || props.savingPersonal,
+                busy: props.savingPersonal,
+              }}
+              disabled={props.personalSaved || props.savingPersonal}
+              onPress={props.onSavePersonal}
+              style={({ pressed }) => [styles.personal, pressed && styles.pressed]}
+            >
+              <View style={styles.personalIcon}>
+                <Icon
+                  name="bookmark"
+                  size={20}
+                  color={colors.brand.primary}
+                  filled={props.personalSaved}
+                />
+              </View>
+              <View style={styles.saverTexts}>
+                <Text style={[typography.bodyBold, styles.saverName]}>
+                  {props.personalSaved ? '내 즐겨찾기에 있어요' : '내 즐겨찾기에도 저장'}
+                </Text>
+                <Text style={[typography.caption, styles.personalHint]}>
+                  {props.personalSaved
+                    ? '저장 탭에서 볼 수 있어요'
+                    : '저장 탭에 담겨 나만 볼 수 있어요'}
+                </Text>
+              </View>
+              {props.savingPersonal ? (
+                <Spinner color={colors.brand.primary} />
+              ) : props.personalSaved ? (
+                <Icon name="check" size={20} color={colors.brand.primary} />
+              ) : (
+                <Icon name="plus" size={20} color={colors.text.icon} />
+              )}
+            </PressableScale>
+          ) : null}
           {mine ? (
             <>
               <TextField
@@ -123,6 +174,25 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     backgroundColor: colors.surface.default,
   },
+  // 내 개인 즐겨찾기에 담는 줄. 여행에 담는 버튼과 헷갈리지 않게 연파랑 칸으로 따로 둔다
+  personal: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[12],
+    padding: spacing[12],
+    borderRadius: radius.lg,
+    backgroundColor: colors.brand.primaryBg,
+  },
+  personalIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface.white,
+  },
+  personalHint: { color: colors.text.icon },
+  pressed: { opacity: 0.8 },
   remove: {
     minHeight: layout.minTouchTarget + spacing[4],
     flexDirection: 'row',

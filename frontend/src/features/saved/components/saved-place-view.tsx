@@ -34,6 +34,9 @@ type SavedPlaceViewProps = {
   onAddToTrip: () => void;
 };
 
+/** 상세 지도에 보이는 범위(도). 0.006도는 약 650m */
+const MAP_SPAN = 0.006;
+
 /**
  * S14 저장 장소 상세. 상태: 기본 / 원본 공동 피드 삭제·볼 수 없음. 그룹에 추가는 AddToTripSheet.
  * 사진이 있으면 목록 카드와 같은 사진을 보이고, 없으면 연파랑 상자에 북마크 아이콘을 보인다.
@@ -85,29 +88,25 @@ export function SavedPlaceView({
       />
       <ScrollView decelerationRate={SCROLL_DECELERATION} contentContainerStyle={styles.content}>
         <Stagger itemStyle={styles.staggerItem}>
-          {lost ? (
-            <View style={styles.map}>
-              <MapView
-                initialRegion={{
-                  latitude: latitude - 0.01,
-                  longitude: longitude - 0.01,
-                  latitudeDelta: 0.02,
-                  longitudeDelta: 0.02,
-                }}
-                isScrollGesturesEnabled={false}
-                isZoomGesturesEnabled={false}
-              >
-                <MapMarker latitude={latitude} longitude={longitude} label={name} dot="brand" />
-              </MapView>
-            </View>
-          ) : (
+          {/* 사진이 있으면 사진을 먼저 보인다. 서버가 아직 사진을 주지 않아 진짜 서버에서는 지도만 나온다 */}
+          {photo && !lost ? (
             <View style={styles.photo}>
-              <Icon name="bookmark" size={32} color={colors.brand.primary} />
-              {photo ? (
-                <Image source={photo} style={StyleSheet.absoluteFill} contentFit="cover" />
-              ) : null}
+              <Image source={photo} style={StyleSheet.absoluteFill} contentFit="cover" />
             </View>
-          )}
+          ) : null}
+          {/* 어디인지 바로 알 수 있게 가게 둘레가 보이는 정도로 확대한 지도(약 650m). 손으로 옮기고 확대할 수 있다 */}
+          <View style={styles.map}>
+            <MapView
+              initialRegion={{
+                latitude: latitude - MAP_SPAN / 2,
+                longitude: longitude - MAP_SPAN / 2,
+                latitudeDelta: MAP_SPAN,
+                longitudeDelta: MAP_SPAN,
+              }}
+            >
+              <MapMarker latitude={latitude} longitude={longitude} label={name} dot="brand" />
+            </MapView>
+          </View>
 
           <View style={styles.info}>
             <Text style={[typography.title1, styles.text]}>{name}</Text>
@@ -230,7 +229,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  map: { height: 140, borderRadius: radius.lg, overflow: 'hidden' },
+  map: { height: 240, borderRadius: radius.lg, overflow: 'hidden' },
   info: { gap: spacing[12] },
   metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[14] },
   meta: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },

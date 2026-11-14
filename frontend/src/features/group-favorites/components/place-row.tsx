@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { AvatarGroup, Icon, Tag } from '@/components/ui';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { CheckMarkWhen } from '@/components/ui/check-mark';
+import { placeKindLook } from '@/features/place/place-kind';
 import { colors, radius, spacing, typography } from '@/theme';
 
 import { overlapLabel, saverNames, shortAddress } from '../group-rules';
@@ -19,12 +20,14 @@ type Props = {
 
 /**
  * 그룹 즐겨찾기 장소 한 줄(Figma 201-9344). 사진 자리, 이름, 짧은 주소, 담은 사람 얼굴과 이름, 겹침 표시.
- * 서버가 장소 사진을 주지 않아 사진 자리에 핀 그림을 둔다.
+ * 서버가 장소 사진을 주지 않아 사진 자리에 장소 종류 아이콘(place-kind)을 둔다.
  */
 export function PlaceRow({ item, members, onPress, selecting = false, selected = false }: Props) {
   const names = saverNames(item, members);
   const overlap = overlapLabel(item);
   const address = shortAddress(item.place.address);
+  // 어떤 곳인지 알리는 아이콘(음식점·카페·숙소…). 저장 탭 카드와 같은 규칙이다
+  const kind = placeKindLook(item.place.name, item.place.category);
   return (
     <PressableScale
       style={styles.row}
@@ -32,15 +35,15 @@ export function PlaceRow({ item, members, onPress, selecting = false, selected =
       accessibilityRole={selecting ? 'checkbox' : 'button'}
       accessibilityState={selecting ? { checked: selected } : undefined}
       accessibilityLabel={item.place.name}
-      accessibilityHint={[names.join(', '), overlap].filter(Boolean).join(', ')}
+      accessibilityHint={[kind.label, names.join(', '), overlap].filter(Boolean).join(', ')}
     >
       {selecting ? (
         <View style={[styles.box, selected ? styles.boxOn : styles.boxOff]}>
           <CheckMarkWhen checked={selected} size={16} />
         </View>
       ) : null}
-      <View style={styles.thumb}>
-        <Icon name="map-pin" size={22} color={colors.text.muted} />
+      <View style={[styles.thumb, { backgroundColor: kind.bg }]}>
+        <Icon name={kind.icon} size={26} color={kind.color} />
       </View>
       <View style={styles.texts}>
         <Text style={[typography.bodyBold, styles.name]} numberOfLines={1}>
@@ -88,10 +91,9 @@ const styles = StyleSheet.create({
   boxOn: { backgroundColor: colors.brand.primary },
   boxOff: { backgroundColor: colors.line.default },
   thumb: {
-    width: 64,
-    height: 64,
+    width: 56,
+    height: 56,
     borderRadius: radius.md,
-    backgroundColor: colors.surface.default,
     alignItems: 'center',
     justifyContent: 'center',
   },

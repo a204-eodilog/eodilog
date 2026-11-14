@@ -6,6 +6,7 @@ import { PressableScale } from '@/components/ui/pressable-scale';
 import { assetSource } from '@/lib/asset-image';
 import { colors, radius, spacing, typography } from '@/theme';
 
+import { placeKindLook } from '@/features/place/place-kind';
 import type { SavedItem } from '../saved-rules';
 
 type MapPlaceCardProps = {
@@ -20,14 +21,18 @@ type MapPlaceCardProps = {
  */
 export function MapPlaceCard({ item, onPress }: MapPlaceCardProps) {
   const photo = assetSource(item.imageUrl);
+  const kind = placeKindLook(item.name, item.category);
   return (
     <PressableScale
       accessibilityRole="button"
-      accessibilityLabel={[item.name, item.area, item.source].filter(Boolean).join(', ')}
+      accessibilityLabel={[item.name, kind.label, item.area, item.source]
+        .filter(Boolean)
+        .join(', ')}
       onPress={onPress}
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
-      <View style={styles.photo}>
+      <View style={[styles.photo, { backgroundColor: kind.bg }]}>
+        <Icon name={kind.icon} size={26} color={kind.color} />
         {photo ? <Image source={photo} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
       </View>
       <View style={styles.texts}>
@@ -63,7 +68,7 @@ const styles = StyleSheet.create({
     height: 84,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing[18],
+    gap: spacing[14],
     padding: spacing[14],
     borderRadius: radius.lg,
     backgroundColor: colors.surface.white,
@@ -73,7 +78,8 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: radius.md,
-    backgroundColor: colors.line.default,
+    alignItems: 'center',
+    justifyContent: 'center',
     // 사진이 둥근 모서리 밖으로 나가지 않게
     overflow: 'hidden',
   },

@@ -6,7 +6,7 @@ import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 import type { TripsStatus } from '../hooks/use-trip-options';
-import { placeSaveState, type SaveChoice } from '../saved-rules';
+import { placeSaveState, type SaveChoice, savesPersonal, savesTrip } from '../saved-rules';
 
 import { TripPickList, type TripOption } from './trip-pick-list';
 
@@ -15,7 +15,8 @@ type PlaceSaveSheetViewProps = {
   /** 저장할 장소 이름. 한 곳이면 핀 + 이름, 여러 곳(S12에서 찾은 장소)이면 "장소 2곳" */
   placeNames: string[];
   choice: SaveChoice;
-  onChoose: (choice: SaveChoice) => void;
+  /** 칸을 눌렀다. 켜고 끄는 것은 부르는 쪽이 정한다(toggleSaveChoice) */
+  onToggle: (cell: 'personal' | 'trip') => void;
   trips: TripOption[];
   tripsStatus: TripsStatus;
   onRetryTrips: () => void;
@@ -29,7 +30,7 @@ type PlaceSaveSheetViewProps = {
 };
 
 /**
- * S08 장소 저장 시트(그리기만). 나만 보기 / 동행과 같이를 고르고, 동행과 같이면 담을 여행 하나를 고른다.
+ * S08 장소 저장 시트(그리기만). 나만 보기 / 동행과 같이를 고르고(둘 다 켤 수 있다), 동행과 같이가 켜져 있으면 담을 여행 하나를 고른다.
  * 내 여행이 없으면 동행과 같이를 막고 개인 즐겨찾기에만 저장한다(결정 F-10).
  * 서버 연결은 place-save-sheet.tsx가 하고, 이 파일은 개발용 상태 보기(/dev/place-save)에서도 쓴다
  */
@@ -37,7 +38,8 @@ export function PlaceSaveSheetView({
   visible,
   placeNames,
   choice,
-  onChoose,
+  onToggle,
+
   trips,
   tripsStatus,
   onRetryTrips,
@@ -80,21 +82,22 @@ export function PlaceSaveSheetView({
         </PressableScale>
       </View>
 
-      <View style={styles.choices} accessibilityRole="radiogroup">
+      {/* 두 칸을 모두 켤 수 있다. 켜진 칸에는 체크가 붙는다 */}
+      <View style={styles.choices}>
         <ChoiceCell
           icon="person"
           label="나만 보기"
-          selected={target === 'personal'}
+          selected={savesPersonal(target)}
           disabled={saving}
-          onPress={() => onChoose('personal')}
+          onPress={() => onToggle('personal')}
         />
         <ChoiceCell
           icon="people"
           label="동행과 같이"
-          selected={target === 'trip'}
+          selected={savesTrip(target)}
           disabled={saving || tripDisabled}
           dim={tripDisabled}
-          onPress={() => onChoose('trip')}
+          onPress={() => onToggle('trip')}
         />
       </View>
 
@@ -108,7 +111,7 @@ export function PlaceSaveSheetView({
               {'아직 내 여행이 없어요\n개인 즐겨찾기에만 저장돼요'}
             </Text>
           </View>
-        ) : target === 'trip' ? (
+        ) : savesTrip(target) ? (
           tripsStatus === 'loading' ? (
             <Spinner
               accessibilityLabel="내 여행 불러오는 중"
@@ -138,9 +141,11 @@ export function PlaceSaveSheetView({
           <View style={styles.inline}>
             <Icon name="lock" size={16} color={colors.text.icon} />
             <Text style={[typography.caption, styles.sub]}>
-              {target === 'trip'
-                ? '고른 여행의 동행만 볼 수 있어요'
-                : '개인 즐겨찾기는 나만 볼 수 있어요'}
+              {target === 'both'
+                ? '개인 즐겨찾기는 나만, 여행은 동행만 볼 수 있어요'
+                : target === 'trip'
+                  ? '고른 여행의 동행만 볼 수 있어요'
+                  : '개인 즐겨찾기는 나만 볼 수 있어요'}
             </Text>
           </View>
         )}
@@ -196,7 +201,7 @@ function ChoiceCell({
   const color = selected ? colors.text.default : colors.text.icon;
   return (
     <PressableScale
-      accessibilityRole="radio"
+      accessibilityRole="checkbox"
       accessibilityLabel={label}
       accessibilityState={{ checked: selected, disabled }}
       disabled={disabled}
@@ -205,6 +210,11 @@ function ChoiceCell({
     >
       <Icon name={icon} size={24} color={color} />
       <Text style={[typography.captionMedium, { color }]}>{label}</Text>
+      {selected ? (
+        <View style={styles.choiceCheck}>
+          <Icon name="check" size={12} color={colors.text.inverse} />
+        </View>
+      ) : null}
     </PressableScale>
   );
 }
@@ -234,6 +244,18 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface.default,
   },
   choiceOn: { backgroundColor: colors.brand.primaryBg },
+  // 켜진 칸 오른쪽 위의 작은 체크. 두 칸을 같이 켤 수 있다는 것을 알린다
+  choiceCheck: {
+    position: 'absolute',
+    top: spacing[8],
+    right: spacing[8],
+    width: 18,
+    height: 18,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.brand.primary,
+  },
   // 값 문서: 내 여행이 없으면 "동행과 같이" 칸 흐림 0.45
   choiceDim: { opacity: 0.45 },
   body: { paddingTop: spacing[16], gap: spacing[12] },

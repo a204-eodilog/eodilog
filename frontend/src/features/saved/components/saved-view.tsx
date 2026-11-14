@@ -9,7 +9,7 @@ import { colors, layout, radius, spacing, typography } from '@/theme';
 
 import { type AddStart, MAX_CAPTURES } from '../extract-rules';
 import type { SavedView as ViewMode } from '../hooks/use-bookmarks';
-import { masonryColumns, type SavedItem } from '../saved-rules';
+import type { SavedItem } from '../saved-rules';
 
 import { BookmarkCard } from './bookmark-card';
 import { SavedMap } from './saved-map';
@@ -18,8 +18,8 @@ export type SavedViewProps = {
   items: SavedItem[];
   view: ViewMode;
   onView: (view: ViewMode) => void;
-  /** 연결이 끊긴 채 저장된 목록을 보여 줄 때 "10:20 기준이에요". 연결돼 있으면 null */
-  offlineSince: string | null;
+  /** 연결이 끊긴 채 받아 둔 목록을 보여 주는 중인지. 몇 시 기준인지는 알리지 않는다(2026-11-14 사용자 결정) */
+  offline: boolean;
   /** [그룹] → 여행 골라 S20(C) */
   onGroup: () => void;
   /** 장소 카드·핀 → S14 */
@@ -42,14 +42,14 @@ export function SavedView({
   items,
   view,
   onView,
-  offlineSince,
+  offline,
+
   onGroup,
   onOpen,
   onAdd,
 }: SavedViewProps) {
   const insets = useSafeAreaInsets();
   const empty = items.length === 0;
-  const [left, right] = masonryColumns(items);
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
@@ -90,14 +90,14 @@ export function SavedView({
         </View>
       </View>
 
-      {offlineSince ? (
+      {offline ? (
         <View style={styles.offline} accessibilityLiveRegion="polite">
           <View style={styles.boxIcon}>
             <Icon name="wifi-off" size={22} color={colors.text.icon} />
           </View>
           <View style={styles.flex}>
             <Text style={[typography.bodyBold, styles.text]}>인터넷에 연결되지 않았어요</Text>
-            <Text style={[typography.caption, styles.sub]}>{offlineSince}</Text>
+            <Text style={[typography.caption, styles.sub]}>연결되면 자동으로 불러와요</Text>
           </View>
         </View>
       ) : null}
@@ -131,19 +131,12 @@ export function SavedView({
             <Text style={[typography.captionMedium, styles.sub]}>{items.length}곳</Text>
             <Text style={[typography.caption, styles.sub2]}>최근 저장한 순</Text>
           </View>
-          <View style={styles.columns}>
-            {[left, right].map((column, c) => (
-              <View key={c} style={styles.column}>
-                {column.map(({ item, photoHeight }, i) => (
-                  <FadeIn key={item.key} index={i * 2 + c}>
-                    <BookmarkCard
-                      item={item}
-                      photoHeight={photoHeight}
-                      onPress={() => onOpen(item)}
-                    />
-                  </FadeIn>
-                ))}
-              </View>
+          {/* 한 줄에 한 곳. 최근 저장한 순서 그대로 위에서 아래로 */}
+          <View style={styles.rows}>
+            {items.map((item, i) => (
+              <FadeIn key={item.key} index={i}>
+                <BookmarkCard item={item} onPress={() => onOpen(item)} />
+              </FadeIn>
             ))}
           </View>
         </ScrollView>
@@ -322,12 +315,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: layout.screenPaddingX,
     paddingTop: spacing[16],
     paddingBottom: spacing[24],
-    gap: spacing[24],
+    gap: spacing[14],
   },
   listHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  columns: { flexDirection: 'row', gap: spacing[16] },
-  // 값 문서 열 안 카드 간격 22는 토큰에 없어 24
-  column: { flex: 1, gap: spacing[24] },
+  rows: { gap: spacing[10] },
   empty: {
     flex: 1,
     alignItems: 'center',
