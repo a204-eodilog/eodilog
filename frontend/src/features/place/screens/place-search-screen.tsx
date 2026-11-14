@@ -32,8 +32,14 @@ const DEBOUNCE_MS = 300;
  * 고르면 부른 화면에 장소를 돌려주고 닫힌다. 뒤로 나가면 null.
  */
 export function PlaceSearchScreen() {
-  const params = useLocalSearchParams<{ regionId?: string; lat?: string; lng?: string }>();
-  const [text, setText] = useState('');
+  const params = useLocalSearchParams<{
+    regionId?: string;
+    lat?: string;
+    lng?: string;
+    q?: string;
+  }>();
+  // 부른 화면이 이름을 줬으면 검색칸에 넣고 바로 찾는다(장소 찾기의 [직접 찾기])
+  const [text, setText] = useState(params.q ?? '');
   const [query, setQuery] = useState<string | null>(null);
   const [focused, setFocused] = useState(false);
 

@@ -22,6 +22,8 @@ export type PickPlaceOptions = {
   regionId?: string;
   /** 지도에서 고르기를 처음 열 때 가운데. 없으면 한국 전체 */
   near?: { latitude: number; longitude: number };
+  /** 검색칸에 미리 넣을 말. 장소 찾기에서 못 찾은 이름을 그대로 다시 치지 않게 한다 */
+  query?: string;
 };
 
 let pending: ((place: Place | null) => void) | null = null;
@@ -38,6 +40,7 @@ export function pickPlace(options: PickPlaceOptions = {}): Promise<Place | null>
         ...(options.near
           ? { lat: String(options.near.latitude), lng: String(options.near.longitude) }
           : {}),
+        ...(options.query ? { q: options.query } : {}),
       },
     });
   });

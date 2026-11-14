@@ -31,6 +31,7 @@ import {
   shownStep,
   EXTRACTION_STEP_GUIDES,
   stepDetail,
+  withoutBranch,
 } from '../extract-rules';
 import { forgetExtraction, sentExtraction } from '../extract-session';
 import { useExtraction, useRetryExtraction } from '../hooks/use-extraction';
@@ -108,10 +109,12 @@ export function ExtractResultScreen() {
     else setPicks((p) => ({ ...p, [key]: pick }));
   };
 
-  const choose = async (onPicked: (place: Place) => void, around?: Place) => {
-    const place = await pickPlace(
-      around ? { near: { latitude: around.latitude, longitude: around.longitude } } : {},
-    );
+  const choose = async (onPicked: (place: Place) => void, around?: Place, name?: string) => {
+    const place = await pickPlace({
+      ...(around ? { near: { latitude: around.latitude, longitude: around.longitude } } : {}),
+      // 못 찾은 이름에서 '본점' 같은 지점 표시를 떼고 검색칸에 넣는다
+      ...(name ? { query: withoutBranch(name) } : {}),
+    });
     if (place) onPicked(place);
   };
 
@@ -349,6 +352,7 @@ export function ExtractResultScreen() {
                   void choose(
                     (place) => pickFor(asking.key, { place, evidence: PICKED }),
                     options[choiceIndex]?.place,
+                    asking.name,
                   )
                 }
                 style={styles.notHere}
@@ -438,7 +442,11 @@ export function ExtractResultScreen() {
                         icon="search"
                         label={`${item.name} 직접 찾기`}
                         onPress={() =>
-                          void choose((place) => pickFor(item.key, { place, evidence: PICKED }))
+                          void choose(
+                            (place) => pickFor(item.key, { place, evidence: PICKED }),
+                            undefined,
+                            item.name,
+                          )
                         }
                       />
                     )}
