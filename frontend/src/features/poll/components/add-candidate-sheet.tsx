@@ -79,7 +79,7 @@ export function AddCandidateSheet({
   const loading = !previewOptions && saved.isPending;
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} locked={busy}>
+    <BottomSheet visible={visible} onClose={onClose} locked={busy} scrollable>
       <SheetHeader
         title="후보 추가"
         subtitle={`${typeLabel} · 여러 곳을 골라 넣을 수 있어요`}
@@ -178,6 +178,12 @@ const styles = StyleSheet.create({
   name: { ...typography.bodySmall, fontFamily: fontFamily.medium, color: colors.text.default },
   nameOn: { fontFamily: fontFamily.bold },
   sub: { ...typography.caption, color: colors.text.icon },
-  empty: { ...typography.sub, color: colors.text.sub, textAlign: 'center' },
-  note: { ...typography.caption, color: colors.text.icon },
+  empty: {
+    ...typography.sub,
+    color: colors.text.sub,
+    textAlign: 'center',
+    paddingVertical: spacing[12],
+  },
+  // 빈 안내와 함께 가운데 둔다(2026-11-14 사용자 요청)
+  note: { ...typography.caption, color: colors.text.icon, textAlign: 'center' },
 });

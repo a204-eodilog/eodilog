@@ -134,7 +134,7 @@ export function OpenPollSheet({
   const title = type === 'REGION' ? '지역 투표 열기' : '장소 투표 열기';
 
   return (
-    <BottomSheet visible={visible} onClose={close} locked={open.isPending}>
+    <BottomSheet visible={visible} onClose={close} locked={open.isPending} scrollable>
       <SheetHeader
         title={title}
         subtitle={`후보 ${selected.length}곳 · 여러 곳을 고를 수 있어요`}

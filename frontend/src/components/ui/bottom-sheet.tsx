@@ -33,6 +33,11 @@ export type BottomSheetProps = {
   titleVariant?: 'title1' | 'title2' | 'title3';
   /** 설명 글자. 기본 body(16, S50 짧은 확인 시트). 피그마가 캡션으로 그린 시트는 caption(12) */
   descriptionVariant?: 'body' | 'caption';
+  /**
+   * 안에 스크롤 목록이 있다. 내용을 끌어도 시트가 움직이지 않게 해서 목록이 밀리게 한다.
+   * 닫기는 손잡이를 끌거나 어두운 막을 누른다(2026-11-14: 투표 열기 후보 목록이 안 밀렸다)
+   */
+  scrollable?: boolean;
 };
 
 /**
@@ -50,6 +55,7 @@ export function BottomSheet({
   locked = false,
   titleVariant = 'title1',
   descriptionVariant = 'body',
+  scrollable = false,
 }: BottomSheetProps) {
   const insets = useSafeAreaInsets();
   const ref = useRef<BottomSheetModal>(null);
@@ -112,6 +118,7 @@ export function BottomSheet({
       onDismiss={handleDismiss}
       enableDynamicSizing
       enablePanDownToClose={!locked}
+      enableContentPanningGesture={!scrollable}
       // 창이 올라오고 내려가는 빠르기. 기본값은 너무 빨라 툭 튀어나와 보였다
       animationConfigs={animationConfigs}
       // 입력 칸을 누르면 창이 글자판 위로 올라가고, 글자판이 내려가면 제자리로 돌아온다
