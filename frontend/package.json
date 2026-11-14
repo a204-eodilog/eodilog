@@ -85,6 +85,7 @@
   "jest": {
     "preset": "jest-expo",
     "moduleNameMapper": {
+      "^react-native-keyboard-controller$": "<rootDir>/node_modules/react-native-keyboard-controller/jest",
       "^@/assets/(.*)$": "<rootDir>/assets/$1",
       "^@/(.*)$": "<rootDir>/src/$1"
     }

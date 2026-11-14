@@ -4,7 +4,6 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
   Keyboard,
-  KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
@@ -35,6 +34,7 @@ import {
   shortAddress,
 } from '../place-rules';
 import type { Place } from '../types';
+import { KeyboardLift } from '@/components/ui/keyboard-lift';
 
 /** 처음 가운데가 정해진 경우 보여 줄 범위(동네 한두 개) */
 const NEAR_DELTA = 0.03;
@@ -293,7 +293,7 @@ export function PlacePickScreen() {
         </View>
       </View>
 
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardLift>
         <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, spacing[24]) }]}>
           <View style={styles.handle} />
           <View style={styles.titleBlock}>
@@ -333,7 +333,7 @@ export function PlacePickScreen() {
             />
           </View>
         </View>
-      </KeyboardAvoidingView>
+      </KeyboardLift>
     </View>
   );
 }

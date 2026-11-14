@@ -1,7 +1,6 @@
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
-  KeyboardAvoidingView,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   StyleSheet,
@@ -22,6 +21,7 @@ import { DayDivider } from './day-divider';
 import { MessageBubble } from './message-bubble';
 import { NewMessageButton } from './new-message-button';
 import { OutboxBubble } from './outbox-bubble';
+import { KeyboardLift } from '@/components/ui/keyboard-lift';
 
 export type ChatRoomStatus = 'loading' | 'error' | 'ready' | 'blocked';
 
@@ -185,11 +185,7 @@ export function ChatRoomView({
         subtitle={memberCount !== null ? `${memberCount}명` : undefined}
         subtitleIcon="people"
       />
-      <KeyboardAvoidingView
-        style={styles.flex}
-        // 안드로이드도 화면 끝까지 그리는 모드라 키보드만큼 직접 띄운다(기기 확인 항목)
-        behavior="padding"
-      >
+      <KeyboardLift style={styles.flex}>
         {banner}
         <View style={styles.flex}>
           {body}
@@ -209,7 +205,7 @@ export function ChatRoomView({
             </View>
           ) : null}
         </View>
-      </KeyboardAvoidingView>
+      </KeyboardLift>
     </View>
   );
 }

@@ -4,7 +4,7 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Stagger } from '@/components/ui/stagger';
@@ -27,6 +27,7 @@ import {
   type PickedPhoto,
   toAgeBand,
 } from '../profile-rules';
+import { KeyboardLift } from '@/components/ui/keyboard-lift';
 
 /**
  * S02 프로필·연령 입력. 닉네임을 넣어 가입을 마친다.
@@ -146,10 +147,7 @@ export function ProfileScreen() {
           )
         }
       />
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      <KeyboardLift style={styles.flex}>
         <ScrollView
           decelerationRate={SCROLL_DECELERATION}
           contentContainerStyle={styles.content}
@@ -285,7 +283,7 @@ export function ProfileScreen() {
             style={styles.nextButton}
           />
         </View>
-      </KeyboardAvoidingView>
+      </KeyboardLift>
     </SafeAreaView>
   );
 }

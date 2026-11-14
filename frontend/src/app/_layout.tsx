@@ -8,10 +8,12 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 
 import { queryClient } from '@/api/query-client';
 import { setupQueryFocus } from '@/api/query-focus';
 import { CelebrateHost } from '@/components/ui/celebrate';
+import { TapShield } from '@/components/ui/tap-shield';
 import { ToastHost } from '@/components/ui/toast';
 import { SessionExpiredDialog } from '@/features/auth/components/session-expired-dialog';
 import { startChatRealtime } from '@/features/chat/realtime-chat';
@@ -54,12 +56,17 @@ export default function RootLayout() {
     // 바텀시트(끌어서 닫기)와 토스트(밀어서 지우기)는 제스처 루트 안에 있어야 동작한다
     <GestureHandlerRootView style={styles.root}>
       <QueryClientProvider client={queryClient}>
-        <BottomSheetModalProvider>
-          <Stack screenOptions={{ headerShown: false }} />
-          <SessionExpiredDialog />
-          <ToastHost />
-          <CelebrateHost />
-        </BottomSheetModalProvider>
+        {/* 자판이 움직이는 높이를 화면들에 알려 준다(KeyboardLift). 안드로이드도 화면 끝까지 그리는 모드를 그대로 둔다 */}
+        <KeyboardProvider statusBarTranslucent navigationBarTranslucent preserveEdgeToEdge>
+          <BottomSheetModalProvider>
+            <Stack screenOptions={{ headerShown: false }} />
+            {/* 화면이 넘어가는 동안 한 번 더 눌러 같은 화면이 두 겹으로 열리는 것을 막는다 */}
+            <TapShield />
+            <SessionExpiredDialog />
+            <ToastHost />
+            <CelebrateHost />
+          </BottomSheetModalProvider>
+        </KeyboardProvider>
       </QueryClientProvider>
     </GestureHandlerRootView>
   );
