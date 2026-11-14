@@ -5,9 +5,11 @@ import { PressableScale } from '@/components/ui/pressable-scale';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 import type { FeaturedChatRoom } from '../hooks/use-chat-rooms';
+import { unreadLabel } from '../chat-reads';
 import { roomA11yLabel } from '../room-faces-rules';
 
 import { MemberCount, RoomFaces } from './room-faces';
+import { UnreadBadge } from './unread-badge';
 
 type Props = {
   room: FeaturedChatRoom;
@@ -22,6 +24,7 @@ type Props = {
  */
 export function FeaturedRoomCard({ room, meId, onPress }: Props) {
   const count = room.room.participants.length;
+  const badge = unreadLabel(room.unread);
   return (
     <View style={styles.wrap}>
       <View style={styles.kickerRow}>
@@ -30,13 +33,13 @@ export function FeaturedRoomCard({ room, meId, onPress }: Props) {
       </View>
       <PressableScale
         accessibilityRole="button"
-        accessibilityLabel={roomA11yLabel({
+        accessibilityLabel={`${roomA11yLabel({
           title: `${room.title} 대화방`,
           count,
           kicker: room.kicker,
           preview: room.preview,
           time: room.time,
-        })}
+        })}${badge ? `, 안 읽은 메시지 ${badge}개` : ''}`}
         onPress={onPress}
         style={({ pressed }) => [styles.card, pressed && styles.pressed]}
       >
@@ -62,6 +65,7 @@ export function FeaturedRoomCard({ room, meId, onPress }: Props) {
           </View>
           <View style={styles.meta}>
             {room.time ? <Text style={[typography.caption, styles.time]}>{room.time}</Text> : null}
+            {badge ? <UnreadBadge label={badge} /> : null}
             <Icon name="chevron-right" size={16} color={colors.text.muted} />
           </View>
         </View>

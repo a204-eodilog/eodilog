@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 
 import { TabBar, type TabKey } from '@/components/ui';
+import { unreadLabel, useTotalUnread } from '@/features/chat/chat-reads';
 
 /** 탭 키 ↔ 이 폴더의 화면 파일 이름 */
 const ROUTE_BY_TAB: Record<TabKey, string> = {
@@ -20,6 +21,8 @@ const TAB_FADE_MS = 120;
 
 /** 하단 탭 5개. 탭 첫 화면만 여기 두고, 상세·입력 화면은 (main) Stack에 둬서 탭이 보이지 않게 한다 */
 export default function TabsLayout() {
+  // 채팅 탭의 안 읽은 메시지 수(이 기기 기준). 0이면 표시가 없다
+  const chatUnread = unreadLabel(useTotalUnread());
   return (
     <Tabs
       // 탭 화면은 처음 누를 때 만든다(lazy 기본값). 다섯 개를 처음부터 띄우면 앱 시작 때 요청 13개가
@@ -34,6 +37,7 @@ export default function TabsLayout() {
       tabBar={({ state, navigateToTab }) => (
         <TabBar
           active={TAB_BY_ROUTE[state.routes[state.index].name] ?? 'home'}
+          badges={{ chat: chatUnread ?? false }}
           onChange={(key) => {
             const route = state.routes.find((r) => r.name === ROUTE_BY_TAB[key]);
             if (route) navigateToTab(route.key);

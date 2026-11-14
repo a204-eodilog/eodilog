@@ -110,6 +110,7 @@ export function ChatRoomListView({
                 time={item.time}
                 participants={item.room.participants}
                 meId={meId}
+                unread={item.unread}
                 onPress={() => onOpen(item)}
               />
             </FadeIn>

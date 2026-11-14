@@ -7,6 +7,7 @@ import { dayIndex, dDay, tripStatus } from '@/features/trip/trip-rules';
 import type { Trip } from '@/features/trip/types';
 
 import { getChatRooms } from '../api';
+import { unreadOf, useChatReads } from '../chat-reads';
 import { roomPreview, roomTimeLabel, sortRooms } from '../chat-rules';
 import { rememberRooms } from '../room-index';
 import type { ChatRoom } from '../types';
@@ -21,6 +22,8 @@ export type ChatRoomRow = {
   preview: string;
   /** 최근 메시지 시각. 메시지가 없으면 null */
   time: string | null;
+  /** 안 읽은 메시지 수(이 기기 기준). 0이면 배지를 그리지 않는다 */
+  unread: number;
 };
 
 /** 맨 위 옅은 파랑 카드로 크게 보이는 지금 여행의 대화방(C안 "지금 여행 먼저", 2026-11-05 사용자 선택) */
@@ -81,6 +84,14 @@ export function useChatRooms() {
     return map;
   }, [myTrips.data]);
 
+  // 목록을 받을 때마다 방의 최근 순번을 적어 둔다. 처음 보는 방은 거기까지 읽은 것으로 시작한다(chat-reads)
+  useEffect(() => {
+    const { noteRoom } = useChatReads.getState();
+    for (const room of rooms) if (room.lastMessage) noteRoom(room.id, room.lastMessage.sequence);
+  }, [rooms]);
+  const latest = useChatReads((r) => r.latest);
+  const read = useChatReads((r) => r.read);
+
   const rows = useMemo<ChatRoomRow[]>(
     () =>
       sortRooms(rooms).map((room) => ({
@@ -88,8 +99,9 @@ export function useChatRooms() {
         title: titles.get(room.tripId) ?? FALLBACK_ROOM_TITLE,
         preview: roomPreview(room, meId),
         time: room.lastMessage ? roomTimeLabel(room.lastMessage.createdAt) : null,
+        unread: unreadOf(latest[room.id], read[room.id]),
       })),
-    [rooms, titles, meId],
+    [rooms, titles, meId, latest, read],
   );
 
   // 지금 여행은 여행 탭과 같은 기준(여행 중 → 다가오는 여행)으로 고른다. 그 방은 목록에서 빼고 위 카드로 보인다

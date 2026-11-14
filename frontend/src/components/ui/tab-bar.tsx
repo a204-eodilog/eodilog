@@ -22,8 +22,11 @@ export const TABS: { key: TabKey; label: string; icon: IconName }[] = [
 export type TabBarProps = {
   active: TabKey;
   onChange: (key: TabKey) => void;
-  /** 새 소식 점을 보여 줄 탭. 채팅 안 읽은 메시지 등 */
-  badges?: Partial<Record<TabKey, boolean>>;
+  /**
+   * 탭 아이콘 오른쪽 위 표시. true면 새 소식 점, 글자("3", "99+")면 빨간 숫자 알약(채팅 안 읽은 메시지 수).
+   * false·없음이면 그리지 않는다
+   */
+  badges?: Partial<Record<TabKey, boolean | string>>;
 };
 
 /** 하단 탭. 각 탭의 첫 화면에만 보인다. 고른 탭은 파랑, 나머지는 회색. */
@@ -40,7 +43,11 @@ export function TabBar({ active, onChange, badges = {} }: TabBarProps) {
             key={tab.key}
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
-            accessibilityLabel={tab.label}
+            accessibilityLabel={
+              typeof badges[tab.key] === 'string'
+                ? `${tab.label}, 안 읽은 메시지 ${badges[tab.key]}개`
+                : tab.label
+            }
             onPress={() => {
               // 다른 탭으로 바꿀 때만 가볍게 울린다
               if (!on) haptic.light();
@@ -50,7 +57,11 @@ export function TabBar({ active, onChange, badges = {} }: TabBarProps) {
           >
             <TabIcon on={on}>
               <Icon name={tab.icon} color={color} filled={on} />
-              {badges[tab.key] ? (
+              {typeof badges[tab.key] === 'string' ? (
+                <View style={styles.count}>
+                  <Text style={[typography.micro, styles.countText]}>{badges[tab.key]}</Text>
+                </View>
+              ) : badges[tab.key] ? (
                 <View style={styles.dot}>
                   <Dot />
                 </View>
@@ -96,4 +107,20 @@ const styles = StyleSheet.create({
   },
   item: { flex: 1, alignItems: 'center', gap: spacing[2], paddingVertical: spacing[4] },
   dot: { position: 'absolute', top: -2, right: -4 },
+  // 숫자 알약. 아이콘 오른쪽 위에 걸치고, 흰 테두리로 아이콘과 떼어 보인다
+  count: {
+    position: 'absolute',
+    top: -6,
+    left: 14,
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 5,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.status.danger,
+    borderWidth: 1.5,
+    borderColor: colors.surface.white,
+  },
+  countText: { color: colors.text.inverse },
 });

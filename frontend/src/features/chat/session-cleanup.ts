@@ -1,3 +1,4 @@
+import { useChatReads } from './chat-reads';
 import { useChatBlocked } from './hooks/use-chat-blocked';
 import { useChatOutbox } from './hooks/use-chat-outbox';
 import { clearRoomIndex } from './room-index';
@@ -10,4 +11,5 @@ export function clearChatSession() {
   clearRoomIndex();
   useChatOutbox.getState().clearAll();
   useChatBlocked.getState().clearAll();
+  useChatReads.getState().clearAll();
 }
