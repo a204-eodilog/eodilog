@@ -32,6 +32,11 @@ type Props = {
   extraRegions?: { id: string; name: string }[];
   /** 시트를 여는 버튼이 화면에 보이는가. 보이면 후보 목록을 미리 받아 시트가 올라올 때 목록이 같이 보인다 */
   prefetch?: boolean;
+  /**
+   * 앞 화면에서 후보를 이미 골라 왔다(그룹 즐겨찾기 [N곳으로 투표 열기]). 유형 칩을 숨기고 고른 곳만 보인다.
+   * 체크를 풀어 뺄 수는 있다. 2026-11-14 사용자 지적: 고른 뒤에 전체 목록이 또 나와 다시 고르라는 것처럼 보였다
+   */
+  fixed?: boolean;
   /** 미리보기에서 후보 목록을 그대로 넣는다. 없으면 그룹 즐겨찾기를 받는다 */
   previewOptions?: CandidateOption[];
   now?: Date;
@@ -51,6 +56,7 @@ export function OpenPollSheet({
   initialSelected = [],
   extraRegions,
   prefetch = false,
+  fixed = false,
   previewOptions,
   now,
 }: Props) {
@@ -132,20 +138,28 @@ export function OpenPollSheet({
 
   const loading = !previewOptions && saved.isPending;
   const title = type === 'REGION' ? '지역 투표 열기' : '장소 투표 열기';
+  // 골라 온 후보로 열 때는 그 후보만 보인다. 체크를 풀어도 줄은 남아 다시 고를 수 있다
+  const shown = fixed ? options.filter((o) => initialSelected.includes(o.key)) : options;
 
   return (
     <BottomSheet visible={visible} onClose={close} locked={open.isPending} scrollable>
       <SheetHeader
         title={title}
-        subtitle={`후보 ${selected.length}곳 · 여러 곳을 고를 수 있어요`}
+        subtitle={
+          fixed
+            ? `고른 ${selected.length}곳으로 투표를 열어요`
+            : `후보 ${selected.length}곳 · 여러 곳을 고를 수 있어요`
+        }
         onClose={close}
         closeDisabled={open.isPending}
       />
 
-      <View style={styles.chips}>
-        <Chip label="지역" selected={type === 'REGION'} onPress={() => changeType('REGION')} />
-        <Chip label="장소" selected={type === 'PLACE'} onPress={() => changeType('PLACE')} />
-      </View>
+      {fixed ? null : (
+        <View style={styles.chips}>
+          <Chip label="지역" selected={type === 'REGION'} onPress={() => changeType('REGION')} />
+          <Chip label="장소" selected={type === 'PLACE'} onPress={() => changeType('PLACE')} />
+        </View>
+      )}
 
       {loading ? (
         <Spinner style={styles.loading} color={colors.brand.primary} />
@@ -166,7 +180,7 @@ export function OpenPollSheet({
             onPress={() => void saved.refetch()}
           />
         </View>
-      ) : options.length === 0 ? (
+      ) : shown.length === 0 ? (
         <Text style={styles.notice}>그룹 즐겨찾기에 장소가 없어요</Text>
       ) : (
         <ScrollView
@@ -175,7 +189,7 @@ export function OpenPollSheet({
           contentContainerStyle={styles.listContent}
           nestedScrollEnabled
         >
-          {options.map((o, order) => (
+          {shown.map((o, order) => (
             <FadeIn key={o.key} index={order}>
               <OptionRow
                 option={o}
