@@ -30,11 +30,15 @@ const goBack = () => (router.canGoBack() ? router.back() : router.replace('/save
 export function SavedPlaceScreen() {
   const { key } = useLocalSearchParams<{ key: string }>();
   const bookmarks = useBookmarks();
-  const bookmark = bookmarks.data ? findBookmark(bookmarks.data, key) : null;
-  const placeId = bookmark?.place?.id ?? '';
+  const found = bookmarks.data ? findBookmark(bookmarks.data, key) : null;
+  // 해제하면 목록에서 먼저 빠진다. 화면이 닫힐 때까지 "찾지 못했어요" 대신 보던 장소를 그대로 둔다
+  const [lastSeen, setLastSeen] = useState(found);
+  if (found && found !== lastSeen) setLastSeen(found);
+  const placeId = (found ?? lastSeen)?.place?.id ?? '';
 
   const update = useUpdateMemo(placeId);
   const remove = useDeleteBookmark(placeId);
+  const bookmark = found ?? (remove.isPending || remove.isSuccess ? lastSeen : null);
   const queryClient = useQueryClient();
   const add = useAddToTrip(placeId);
 

@@ -286,11 +286,15 @@ describe('담기와 빼기', () => {
     await waitFor(() => expect(mockList.mock.calls.length).toBeGreaterThan(1));
   });
 
-  it('링크나 캡처로는 링크·캡처 등록 화면을 연다', async () => {
+  it('링크나 캡처로는 이 여행을 넘겨 링크·캡처 등록 화면을 연다', async () => {
     await renderScreen();
     await fireEvent.press(await screen.findByLabelText('장소 추가'));
     await fireEvent.press(screen.getByText('링크나 캡처로'));
-    expect(mockRouter.push).toHaveBeenCalledWith('/saved/add');
+    // S12가 저장 위치를 묻지 않고 이 그룹에 저장한 뒤 S20으로 돌아오게 여행을 넘긴다
+    expect(mockRouter.push).toHaveBeenCalledWith({
+      pathname: '/saved/add',
+      params: { tripId: 'trip-1', tripTitle: '겨울 여행' },
+    });
     expect(toast.show).not.toHaveBeenCalledWith('준비 중이에요');
   });
 

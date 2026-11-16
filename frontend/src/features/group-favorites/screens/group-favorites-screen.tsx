@@ -347,10 +347,13 @@ export function GroupFavoritesScreen() {
           setAdding(false);
           setPicking(true);
         }}
-        // S11 링크·캡처 등록. 등록한 장소는 내 즐겨찾기에 들어가고, 돌아와 내 즐겨찾기에서 담는다
+        // S11 링크·캡처 등록. 이 여행을 넘겨 S12가 이 그룹에 바로 저장하고 여기로 돌아오게 한다(S12 "그룹 즐겨찾기에서 시작")
         onLink={() => {
           setAdding(false);
-          router.push('/saved/add');
+          router.push({
+            pathname: '/saved/add',
+            params: { tripId, tripTitle: trip.data?.title ?? '' },
+          });
         }}
         onSearch={() => void search()}
       />

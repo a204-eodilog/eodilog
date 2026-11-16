@@ -36,8 +36,11 @@ import {
 } from '../extract-rules';
 import { useStartExtraction } from '../hooks/use-extraction';
 
-/** 메모 최대 길이. 즐겨찾기 메모와 같은 서버 제한(2,000자) */
-const MEMO_MAX = 2000;
+/**
+ * 메모 최대 길이. 장소 찾기 요청(POST /extractions)의 서버 제한 500자(명세 2026-11-09).
+ * 즐겨찾기 메모(2,000자)와 다르다. 넘기면 서버가 400을 주고 장소 찾기가 시작되지 않는다
+ */
+const MEMO_MAX = 500;
 
 type Capture = CaptureFile & { key: string };
 
@@ -59,7 +62,10 @@ function guessType(uri: string): string {
  */
 export function LinkCaptureScreen() {
   const insets = useSafeAreaInsets();
-  const begin = parseAddStart(useLocalSearchParams<{ start?: string }>().start);
+  const params = useLocalSearchParams<{ start?: string; tripId?: string; tripTitle?: string }>();
+  const begin = parseAddStart(params.start);
+  // S20 그룹 즐겨찾기에서 왔으면 그 여행. S12가 그 그룹에 바로 저장하고 S20으로 돌아간다
+  const fromTripId = params.tripId || null;
   const [link, setLink] = useState('');
   const [captures, setCapturesState] = useState<Capture[]>([]);
   // 앨범이 닫힌 뒤에 읽을 지금 목록(비동기 pick 안에서 처음 그린 때의 captures를 쓰지 않게)
@@ -170,7 +176,12 @@ export function LinkCaptureScreen() {
       {
         onSuccess: (jobId) => {
           sending.current = false;
-          router.push({ pathname: '/saved/extract/[jobId]', params: { jobId } });
+          router.push({
+            pathname: '/saved/extract/[jobId]',
+            params: fromTripId
+              ? { jobId, tripId: fromTripId, tripTitle: params.tripTitle ?? '' }
+              : { jobId },
+          });
         },
         onError: (error) => {
           sending.current = false;

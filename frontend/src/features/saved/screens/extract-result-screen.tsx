@@ -34,8 +34,9 @@ import {
   withoutBranch,
 } from '../extract-rules';
 import { forgetExtraction, sentExtraction } from '../extract-session';
+import { useSavePlaces } from '../hooks/use-bookmark-mutations';
 import { useExtraction, useRetryExtraction } from '../hooks/use-extraction';
-import { addressParts } from '../saved-rules';
+import { addressParts, placeSavedMessage } from '../saved-rules';
 import type { Place } from '../types';
 
 /** 식별 불가에서 직접 고른 장소의 줄 key */
@@ -60,7 +61,13 @@ const NOTHING_REMOVED: string[] = [];
  * 그룹 즐겨찾기에서 시작(S20)은 S20 화면이 생기면 붙인다
  */
 export function ExtractResultScreen() {
-  const { jobId } = useLocalSearchParams<{ jobId: string }>();
+  const params = useLocalSearchParams<{ jobId: string; tripId?: string; tripTitle?: string }>();
+  const jobId = params.jobId;
+  // S20 그룹 즐겨찾기에서 시작했으면 그 여행. 저장 위치를 묻지 않고 그 그룹에 저장한 뒤 S20으로 돌아간다
+  const fromTripId = params.tripId || null;
+  const fromTripTitle = params.tripTitle || '이 여행';
+  const saveToTrip = useSavePlaces();
+  const groupSaving = useRef(false);
   const insets = useSafeAreaInsets();
   const { query, timedOut } = useExtraction(jobId);
   const retry = useRetryExtraction();
@@ -118,6 +125,35 @@ export function ExtractResultScreen() {
     if (place) onPicked(place);
   };
 
+  /** 그룹 즐겨찾기에서 시작했을 때 [OO 그룹에 저장]. 찾은 장소를 그 여행에 담고 S20으로 돌아간다 */
+  const saveToGroup = () => {
+    // 빠르게 두 번 누르면 다시 그리기 전이라 isPending이 아직 false라서 ref로 바로 막는다
+    if (!fromTripId || groupSaving.current || placed.length === 0) return;
+    groupSaving.current = true;
+    saveToTrip.mutate(
+      {
+        placeIds: placed.map((i) => i.place.id),
+        targets: [{ kind: 'trip', tripId: fromTripId }],
+        memo: sent?.input.memo,
+      },
+      {
+        onSuccess: () => {
+          forgetExtraction(jobId);
+          toast.success(placeSavedMessage(fromTripTitle));
+          // S11·S12를 닫고 S11을 연 S20으로 돌아간다. S20이 스택에 없으면(앱을 다시 켬) 새로 연다
+          router.dismissTo({
+            pathname: '/trips/[tripId]/favorites',
+            params: { tripId: fromTripId },
+          });
+        },
+        onError: () => {
+          groupSaving.current = false;
+          toast.error('그룹에 저장하지 못했어요. 다시 시도해 주세요');
+        },
+      },
+    );
+  };
+
   const cancel = async () => {
     if (cancelling) return;
     setCancelling(true);
@@ -142,7 +178,12 @@ export function ExtractResultScreen() {
         // 새 작업이 400(captureAssetIds)을 받는다. 취소가 실패해도 다시 시도는 막지 않는다
         if (stuck) void cancelExtraction(jobId).catch(() => {});
         forgetExtraction(jobId);
-        router.replace({ pathname: '/saved/extract/[jobId]', params: { jobId: next } });
+        router.replace({
+          pathname: '/saved/extract/[jobId]',
+          params: fromTripId
+            ? { jobId: next, tripId: fromTripId, tripTitle: params.tripTitle ?? '' }
+            : { jobId: next },
+        });
       },
       onError: (error) => {
         if (apiErrorCode(error) === 'AI_FEATURE_DISABLED') {
@@ -380,7 +421,9 @@ export function ExtractResultScreen() {
               </Text>
               <Text style={[typography.caption, styles.sub]}>
                 {placed.length > 0
-                  ? '확인하고 저장해 주세요'
+                  ? fromTripId
+                    ? `${fromTripTitle} 그룹 즐겨찾기에서 시작했어요`
+                    : '확인하고 저장해 주세요'
                   : items.length > 0
                     ? '직접 골라 주세요'
                     : '다시 찾으려면 뒤로 가 주세요'}
@@ -454,15 +497,30 @@ export function ExtractResultScreen() {
                 );
               })}
             </ScrollView>
-            <View style={styles.buttons}>
-              <Button
-                // 책갈피 아이콘만으로는 저장인지 알기 어려워 글자로 쓴다. 여러 곳이면 몇 곳인지도 붙인다
-                label={placed.length > 1 ? `${placed.length}곳 저장` : '저장'}
-                weight="medium"
-                disabled={placed.length === 0}
-                onPress={() => setSaveOpen(true)}
-              />
-            </View>
+            {fromTripId ? (
+              // 그룹 즐겨찾기에서 시작: 저장 위치를 묻지 않고 그 그룹에 바로 저장한다(S12 값 문서)
+              <View style={styles.groupSaveBox}>
+                <Button
+                  // 공통 버튼은 아이콘을 주면 글자를 숨긴다. 어느 그룹에 담는지 보여야 해서 글자로 쓴다
+                  label={`${fromTripTitle} 그룹에 저장`}
+                  size="lg"
+                  block
+                  disabled={placed.length === 0}
+                  loading={saveToTrip.isPending}
+                  onPress={saveToGroup}
+                />
+              </View>
+            ) : (
+              <View style={styles.buttons}>
+                <Button
+                  // 책갈피 아이콘만으로는 저장인지 알기 어려워 글자로 쓴다. 여러 곳이면 몇 곳인지도 붙인다
+                  label={placed.length > 1 ? `${placed.length}곳 저장` : '저장'}
+                  weight="medium"
+                  disabled={placed.length === 0}
+                  onPress={() => setSaveOpen(true)}
+                />
+              </View>
+            )}
           </>
         )}
       </View>
@@ -477,10 +535,14 @@ export function ExtractResultScreen() {
         onClose={() => setSaveOpen(false)}
         onSaved={(target) => {
           forgetExtraction(jobId);
-          // S11·S12를 닫고 개인이면 S10, 그룹이면 그 여행으로(S20 그룹 즐겨찾기 화면이 생기면 그쪽으로)
+          // S11·S12를 닫고 개인이면 S10, 그룹이면 그 여행의 S20 그룹 즐겨찾기로(S08 값 문서). 뒤로 가면 여행 상세
           if (router.canDismiss()) router.dismissAll();
           if (target.kind === 'trip') {
             router.push({ pathname: '/trips/[tripId]', params: { tripId: target.tripId } });
+            router.push({
+              pathname: '/trips/[tripId]/favorites',
+              params: { tripId: target.tripId },
+            });
           } else {
             router.navigate('/saved');
           }
@@ -725,5 +787,12 @@ const styles = StyleSheet.create({
     paddingTop: spacing[20],
   },
   notHere: { paddingHorizontal: spacing[12] },
+  // 그룹 즐겨찾기에서 시작: 연회색 상자 안 가로 꽉 찬 주 버튼(S12 값 문서)
+  groupSaveBox: {
+    marginTop: spacing[20],
+    padding: spacing[16],
+    borderRadius: radius.xxl,
+    backgroundColor: colors.surface.subtle,
+  },
   // 아이콘 옆에 곳 수가 붙는 알약이라 좌우 여백을 둔다
 });
