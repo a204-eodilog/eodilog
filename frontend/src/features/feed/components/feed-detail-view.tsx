@@ -1,6 +1,6 @@
 import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { Image } from 'expo-image';
-import { useRef, useState } from 'react';
+import { Fragment, useRef, useState, type Key } from 'react';
 import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
@@ -45,6 +45,14 @@ const SECTIONS = [
 ] as const;
 type SectionKey = (typeof SECTIONS)[number]['key'];
 
+/** 섹션이 들어 있는 Stagger 칸의 key. 경로와 장소는 한 칸(days)에 같이 있다 */
+const ITEM_OF: Record<SectionKey, string> = {
+  photos: 'photos',
+  route: 'days',
+  places: 'days',
+  expense: 'expense',
+};
+
 const MODE_ICON: Record<TransportKind, IconName> = {
   walk: 'walk',
   car: 'car',
@@ -72,8 +80,17 @@ export function FeedDetailView(props: FeedDetailViewProps) {
 
 function Body({ detail, ...props }: FeedDetailViewProps & { detail: FeedDetail }) {
   const scroll = useRef<ScrollViewInstance>(null);
-  // 섹션 머리 위치. 탭을 누를 때와 스크롤할 때 읽는다
-  const [tops, setTops] = useState<Partial<Record<SectionKey, number>>>({});
+  // 섹션 머리 위치(스크롤 기준). 탭을 누를 때와 스크롤할 때 읽는다.
+  // 구역마다 Stagger가 따로 감싸서 섹션의 onLayout y는 감싼 칸 기준이다. 감싼 칸의 위치(itemTops)를 더해야
+  // 스크롤 위치가 된다. 전에는 감싼 칸 기준 값(거의 0)만 써서 탭을 눌러도 엉뚱한 곳으로 가고 강조가 늘 [경비]였다(2026-11-16 QA)
+  const [itemTops, setItemTops] = useState<Record<string, number>>({});
+  const [inner, setInner] = useState<Partial<Record<SectionKey, number>>>({});
+  const tops: Partial<Record<SectionKey, number>> = {};
+  for (const s of SECTIONS) {
+    const item = itemTops[ITEM_OF[s.key]];
+    const y = inner[s.key];
+    if (item !== undefined && y !== undefined) tops[s.key] = item + y;
+  }
   const [current, setCurrent] = useState<SectionKey>('photos');
   const shown = SECTIONS.filter((s) => {
     if (s.key === 'photos') return detail.photos.length > 0;
@@ -83,10 +100,18 @@ function Body({ detail, ...props }: FeedDetailViewProps & { detail: FeedDetail }
 
   const mark = (key: SectionKey) => (e: { nativeEvent: { layout: { y: number } } }) => {
     const y = e.nativeEvent.layout.y;
-    setTops((prev) => (prev[key] === y ? prev : { ...prev, [key]: y }));
+    setInner((prev) => (prev[key] === y ? prev : { ...prev, [key]: y }));
   };
+  const markItem = (key: Key, y: number) => {
+    const k = String(key);
+    setItemTops((prev) => (prev[k] === y ? prev : { ...prev, [k]: y }));
+  };
+  // 탭을 눌러 옮기는 중. 손으로 끌기 전까지는 스크롤 위치로 탭을 바꾸지 않는다.
+  // 내용이 짧아 끝까지 못 내려가면 스크롤 위치로는 앞 섹션이 골라져, 누른 탭 대신 [사진]이 강조됐다(2026-11-16 실서버 QA)
+  const jumping = useRef(false);
   // 탭을 누르면 그 섹션 머리로 스크롤한다. 손으로 내릴 때는 보이는 섹션에 맞춰 탭이 바뀐다
   const jump = (key: SectionKey) => {
+    jumping.current = true;
     setCurrent(key);
     scroll.current?.scrollTo({
       y: Math.max(0, (tops[key] ?? 0) - spacing[16]),
@@ -94,6 +119,7 @@ function Body({ detail, ...props }: FeedDetailViewProps & { detail: FeedDetail }
     });
   };
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (jumping.current) return;
     const y = e.nativeEvent.contentOffset.y + 48;
     const at = [...shown].reverse().find((s) => (tops[s.key] ?? Infinity) <= y);
     const next = at?.key ?? shown[0]?.key;
@@ -109,10 +135,13 @@ function Body({ detail, ...props }: FeedDetailViewProps & { detail: FeedDetail }
       ref={scroll}
       contentContainerStyle={styles.content}
       onScroll={onScroll}
+      onScrollBeginDrag={() => {
+        jumping.current = false;
+      }}
       scrollEventThrottle={64}
       showsVerticalScrollIndicator={false}
     >
-      <Stagger itemStyle={styles.staggerItem}>
+      <Stagger itemStyle={styles.staggerItem} onItemLayout={markItem}>
         <View style={styles.cover}>
           <Icon name="image" size={32} color={colors.brand.primary} />
           {cover ? (
@@ -177,7 +206,7 @@ function Body({ detail, ...props }: FeedDetailViewProps & { detail: FeedDetail }
         ) : null}
 
         {detail.photos.length > 0 ? (
-          <View style={styles.section} onLayout={mark('photos')}>
+          <View key="photos" style={styles.section} onLayout={mark('photos')}>
             <Text style={styles.sectionTitle}>사진</Text>
             <View style={styles.photos}>
               {detail.photos.map((p, i) => {
@@ -208,7 +237,7 @@ function Body({ detail, ...props }: FeedDetailViewProps & { detail: FeedDetail }
         ) : null}
 
         {detail.days.length > 0 ? (
-          <>
+          <Fragment key="days">
             <View style={styles.section} onLayout={mark('route')}>
               <Text style={styles.sectionTitle}>경로</Text>
               <RouteMap days={detail.days} />
@@ -253,11 +282,11 @@ function Body({ detail, ...props }: FeedDetailViewProps & { detail: FeedDetail }
                 ))}
               </View>
             </View>
-          </>
+          </Fragment>
         ) : null}
 
         {detail.expenseTotal !== null ? (
-          <View style={styles.section} onLayout={mark('expense')}>
+          <View key="expense" style={styles.section} onLayout={mark('expense')}>
             <Text style={styles.sectionTitle}>경비</Text>
             <View style={styles.expense}>
               <View style={styles.metaItem}>
