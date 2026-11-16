@@ -1,9 +1,9 @@
 import { describe, expect, it, jest } from '@jest/globals';
 
+import { type Facility, toFacilityRows, withoutDuplicates } from './facility';
+
 // 서버 주소 설정 없이 순수 함수만 시험한다
 jest.mock('@/api/client', () => ({ apiClient: {} }));
-
-import { type Facility, toFacilityRows, withoutDuplicates } from './facility';
 
 const f = (id: string, name: string, lat: number, lng: number, walk: number): Facility => ({
   providerId: id,

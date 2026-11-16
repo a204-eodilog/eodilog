@@ -95,9 +95,9 @@ function metersBetween(a: Facility, b: Facility): number {
 export function withoutDuplicates(items: readonly Facility[]): Facility[] {
   const kept: Facility[] = [];
   for (const f of items) {
-    const name = f.name.replace(/s+/g, '');
+    const name = f.name.replace(/\s+/g, '');
     const same = kept.some(
-      (k) => k.name.replace(/s+/g, '') === name && metersBetween(k, f) <= SAME_PLACE_M,
+      (k) => k.name.replace(/\s+/g, '') === name && metersBetween(k, f) <= SAME_PLACE_M,
     );
     if (!same) kept.push(f);
   }
