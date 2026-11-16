@@ -69,10 +69,13 @@ export function sortRooms(rooms: readonly ChatRoom[]): ChatRoom[] {
   return [...withMessage, ...empty];
 }
 
-/** 보낸 사람 이름. 지금 동행이 아니면(나갔거나 내보내졌거나 탈퇴) "나간 동행" */
+/** 지금 동행이 아닌 보낸 사람(나갔거나 내보내졌거나 탈퇴) */
+export const LEFT_MEMBER = '나간 동행';
+
+/** 보낸 사람 이름. 지금 동행이 아니면 "나간 동행" */
 export function senderLabel(message: Message, participants: readonly UserCard[]): string | null {
   if (message.type === 'SYSTEM' || !message.senderId) return null;
-  return participants.find((p) => p.id === message.senderId)?.nickname ?? '나간 동행';
+  return participants.find((p) => p.id === message.senderId)?.nickname ?? LEFT_MEMBER;
 }
 
 export type SystemCardKind = 'poll' | 'course' | 'other';

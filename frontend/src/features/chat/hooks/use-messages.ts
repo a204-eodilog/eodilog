@@ -15,6 +15,7 @@ import {
 } from '../chat-inbound';
 import { catchUpOptions } from '../catch-up-options';
 import { isBlocked } from '../chat-rules';
+import { chatSync, eitherSignal } from '../sync-session';
 import type { MessageWindow } from '../types';
 
 import { blockRoom } from './block-room';
@@ -37,12 +38,20 @@ export function useMessages(tripId: string, roomId: string | undefined) {
     queryKey: key,
     // 차단된 방은 다시 요청하지 않는다
     enabled: !!roomId && !alreadyBlocked,
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       // 응답을 기다리는 사이 실시간으로 온 메시지는 창이 없어 버려지므로 모아 둔다.
       // 응답이 그 메시지보다 먼저 만들어졌으면 응답에도 없어서, 모아 둔 것을 함께 합쳐야 빠지지 않는다
+      const s = chatSync();
       beginFirstLoad(tripId);
       try {
-        const page = await getMessages(roomId!, { limit: FIRST_PAGE_LIMIT });
+        // 화면을 떠나 쿼리가 취소되거나 로그아웃하면 요청을 끊는다
+        const page = await getMessages(
+          roomId!,
+          { limit: FIRST_PAGE_LIMIT },
+          eitherSignal(signal, s.signal),
+        );
+        // 기다리는 사이 로그아웃했다. 비운 캐시에 창을 다시 만들지 않는다
+        if (s.stopped) throw new Error('chat session stopped');
         const base = queryClient.getQueryData<MessageWindow>(key);
         // 입구 하나(receive)가 모아 둔 실시간 메시지와 함께 창을 만든다
         receive(queryClient, tripId, roomId!, page.data, 'first-load', {
@@ -91,11 +100,14 @@ export function useMessages(tripId: string, roomId: string | undefined) {
     }
     loadingOlder.current = true;
     setOlderState('loading');
+    const s = chatSync();
     try {
-      const page = await getMessages(roomId, {
-        beforeSequence: current.oldestSequence,
-        limit: OLDER_PAGE_LIMIT,
-      });
+      const page = await getMessages(
+        roomId,
+        { beforeSequence: current.oldestSequence, limit: OLDER_PAGE_LIMIT },
+        s.signal,
+      );
+      if (s.stopped) return;
       receive(queryClient, tripId, roomId, page.data, 'older', { hasOlder: page.page.hasNext });
       setOlderState('idle');
     } catch (error) {

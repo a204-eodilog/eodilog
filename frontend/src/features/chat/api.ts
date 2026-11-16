@@ -42,9 +42,12 @@ export async function getTripChatRoom(tripId: string, signal?: AbortSignal): Pro
 export async function getMessages(
   roomId: string,
   { beforeSequence, limit }: { beforeSequence?: number; limit: number },
+  signal?: AbortSignal,
 ): Promise<MessagePage> {
   const { data } = await apiClient.get<MessagePage>(`/chat/rooms/${roomId}/messages`, {
     params: { limit, ...(beforeSequence !== undefined ? { beforeSequence } : {}) },
+    // 로그아웃(채팅 세션 멈춤)이나 쿼리 취소 때 실제 HTTP 요청도 끊는다
+    signal,
   });
   return data;
 }
@@ -53,10 +56,15 @@ export async function getMessages(
  * POST /chat/rooms/{roomId}/messages. 같은 clientMessageId·같은 본문이면 서버가 처음 메시지를 다시 준다(201).
  * 그래서 다시 보낼 때는 같은 값을 쓴다
  */
-export async function sendMessage(roomId: string, body: SendMessageBody): Promise<Message> {
+export async function sendMessage(
+  roomId: string,
+  body: SendMessageBody,
+  signal?: AbortSignal,
+): Promise<Message> {
   const { data } = await apiClient.post<DataResponse<Message>>(
     `/chat/rooms/${roomId}/messages`,
     body,
+    { signal },
   );
   return data.data;
 }

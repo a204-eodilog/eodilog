@@ -85,6 +85,8 @@ export function ChatRoomView({
 }: Props) {
   const listRef = useRef<FlashListRef<Row>>(null);
   const [atBottom, setAtBottom] = useState(true);
+  // 입력 칸 높이가 바뀔 때만 읽는 "맨 아래인가". 효과의 의존성에 넣지 않으려고 따로 둔다
+  const atBottomRef = useRef(true);
   // 입력 칸은 목록 위에 떠 있다(배경 투명, 2026-11-05 사용자 요청). 마지막 메시지가 가리지 않게 그 높이만큼 아래를 띄운다
   const [composerHeight, setComposerHeight] = useState(0);
 
@@ -99,16 +101,19 @@ export function ChatRoomView({
     const distance = contentSize.height - (contentOffset.y + layoutMeasurement.height);
     const nowBottom = distance <= BOTTOM_RATIO * layoutMeasurement.height;
     if (nowBottom === atBottom) return;
+    atBottomRef.current = nowBottom;
     setAtBottom(nowBottom);
     // 맨 아래를 떠나는 순간까지 본 메시지를 기억한다
     if (!nowBottom) setSeenKey(latest?.key);
   };
 
-  // 글이 길어져 입력 칸이 높아지면 맨 아래를 보던 대화도 같이 올린다(2026-11-05 사용자 요청)
+  // 글이 길어져 입력 칸이 높아지면 맨 아래를 보던 대화도 같이 올린다(2026-11-05 사용자 요청).
+  // 입력 칸 높이가 바뀔 때만 맞춘다. 맨 아래인지는 ref로 읽는다: 규칙 끄기 주석(eslint-disable)이 있으면
+  // React Compiler가 이 컴포넌트 전체를 건너뛰어, 메시지 하나에도 보이는 말풍선이 모두 다시 그려졌다(트러블슈팅 D3)
   useEffect(() => {
-    if (composerHeight > 0 && atBottom) listRef.current?.scrollToEnd({ animated: false });
-    // 입력 칸 높이가 바뀔 때만 맞춘다
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (composerHeight > 0 && atBottomRef.current) {
+      listRef.current?.scrollToEnd({ animated: false });
+    }
   }, [composerHeight]);
 
   // 내가 보내면 맨 아래로 내려간다(T044)

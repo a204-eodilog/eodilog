@@ -229,7 +229,11 @@ describe('보내기', () => {
       await result.current.send('안녕');
       await new Promise((r) => setTimeout(r, 0));
     });
-    expect(jest.mocked(getMessages)).toHaveBeenCalledWith(ROOM, { beforeSequence: 12, limit: 1 });
+    expect(jest.mocked(getMessages)).toHaveBeenCalledWith(
+      ROOM,
+      { beforeSequence: 12, limit: 1 },
+      expect.any(AbortSignal),
+    );
   });
 
   it('내 응답이 바로 다음 순번이면 빈칸 채우기를 하지 않는다', async () => {

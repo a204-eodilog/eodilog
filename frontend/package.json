@@ -80,10 +80,15 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
-    "test": "jest"
+    "test": "jest",
+    "bench": "jest -c jest.bench.config.js"
   },
   "jest": {
     "preset": "jest-expo",
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "[.]bench[.]test[.]"
+    ],
     "moduleNameMapper": {
       "^react-native-keyboard-controller$": "<rootDir>/node_modules/react-native-keyboard-controller/jest",
       "^@/assets/(.*)$": "<rootDir>/assets/$1",

@@ -63,7 +63,7 @@ describe('메시지 창', () => {
     const { result } = await renderHook(() => useMessages('trip-1', 'room-1'), { wrapper });
     await waitFor(() => expect(result.current.window).toBeDefined());
     expect(mockGet).toHaveBeenCalledTimes(1);
-    expect(mockGet).toHaveBeenCalledWith('room-1', { limit: 30 });
+    expect(mockGet).toHaveBeenCalledWith('room-1', { limit: 30 }, expect.any(AbortSignal));
     const seqs = result.current.window!.messages.map((m) => m.sequence);
     expect(seqs[0]).toBe(16);
     expect(seqs[seqs.length - 1]).toBe(45);
@@ -103,7 +103,11 @@ describe('메시지 창', () => {
     await act(async () => {
       await result.current.loadOlder();
     });
-    expect(mockGet).toHaveBeenLastCalledWith('room-1', { beforeSequence: 16, limit: 50 });
+    expect(mockGet).toHaveBeenLastCalledWith(
+      'room-1',
+      { beforeSequence: 16, limit: 50 },
+      expect.any(AbortSignal),
+    );
     expect(result.current.window!.oldestSequence).toBe(1);
     expect(result.current.window!.hasOlder).toBe(false);
     await act(async () => {
