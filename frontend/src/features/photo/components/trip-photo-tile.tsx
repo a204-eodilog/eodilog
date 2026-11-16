@@ -8,6 +8,8 @@ import { colors, radius, spacing } from '@/theme';
 
 import { photoPath } from '../photo-list-rules';
 
+const PHOTO_TRANSITION = { duration: 150, skipOnCacheHit: 'all' } as const;
+
 /**
  * 서버에 올라간 사진 한 칸(S31·장소 미지정 묶음). 오른쪽 아래 올린 사람 얼굴 22(나는 연파랑).
  * selected를 주면 고르기 칸(고른 칸은 어두운 막 + 흰 체크)
@@ -45,7 +47,17 @@ export function TripPhotoTile({
       style={({ pressed }) => [styles.tile, { width, height }, pressed && styles.pressed]}
     >
       {source ? (
-        <Image source={source} style={StyleSheet.absoluteFill} contentFit="cover" />
+        <Image
+          source={source}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+          // 목록이 칸을 다른 사진에 다시 쓸 때 앞 사진이 잠깐 비치지 않게 한다
+          recyclingKey={assetId}
+          // 한 번 받은 사진은 메모리에도 두어, 스크롤로 돌아왔을 때 다시 읽지 않는다
+          cachePolicy="memory-disk"
+          // 받는 동안은 칸의 회색 바탕이 보이고, 다 받으면 서서히 나타난다. 이미 받아 둔 사진은 바로 보인다
+          transition={PHOTO_TRANSITION}
+        />
       ) : (
         <View style={styles.placeholder}>
           <Icon name="image" size={22} color={colors.text.muted} />
