@@ -34,6 +34,8 @@ export type MyPageViewProps = {
   onTrips: () => void;
   onNewTrip: () => void;
   onTimeline: () => void;
+  /** 내 사진 찾기(폰 AI). 이 기기에서 폰 AI를 쓸 수 없으면 없다 */
+  onPhotoSearch?: () => void;
   onFriends: () => void;
   onSettings: () => void;
   onPin: (pin: MyTripPin) => void;
@@ -135,6 +137,17 @@ export function MyPageView(props: MyPageViewProps) {
               ) : null}
               <Tile icon="clock" label="타임라인" onPress={props.onTimeline} />
               <View style={styles.rule} />
+              {props.onPhotoSearch ? (
+                <>
+                  <Tile
+                    icon="search"
+                    label="내 사진 찾기"
+                    note="여행 사진을 폰에서 문장으로 찾아요"
+                    onPress={props.onPhotoSearch}
+                  />
+                  <View style={styles.rule} />
+                </>
+              ) : null}
               <Tile icon="gear" label="설정" onPress={props.onSettings} />
             </View>
           </Stagger>

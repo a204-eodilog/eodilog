@@ -25,6 +25,11 @@ export const env = {
    */
   inviteUrl: process.env.EXPO_PUBLIC_INVITE_URL || null,
   /**
+   * 폰 AI(사진 분류·문장 검색) 모델 파일들이 있는 폴더 주소. 처음 쓸 때 여기서 약 190MB를 받아 폰에 둔다.
+   * 비워 두면(받아 둔 모델도 없으면) 사진 올리기 화면의 '폰에서 정리하기'가 보이지 않는다
+   */
+  ondeviceModelUrl: process.env.EXPO_PUBLIC_ONDEVICE_MODEL_URL || null,
+  /**
    * 개발용 테스트 모드. 로그인을 건너뛰고 서버 대신 src/api/dev-mock.ts의 테스트 데이터로 화면을 띄운다.
    * 로컬·개발 환경에서만 켜진다. 실제 API 연결 확인에는 쓰지 않는다.
    */

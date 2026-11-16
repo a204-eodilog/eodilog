@@ -485,6 +485,8 @@ A가 만든 알림 기반(`events`·`notifications`, `GET /me/notifications`)에
 
 - `NotificationEventRegistrar.register` 호출부가 B 패키지 3곳(알리미 3개, 투표 알림 5종)에 생겼다. 시그니처를 바꿀 때 알려 달라.
 - 설정별 차단 매핑 제안: `POLL_*`·`COURSE_CHANGED` → `user_settings.vote_course_enabled`, `TRIP_MEMBER_JOINED` → `trip_changes_enabled`. `register` 안에서 걸러 주면 B는 고칠 것이 없다.
+  - 2026-11-16 구현(EODI-371, B가 진행): 위 매핑에 `TRIP_INFO_CHANGED` → `trip_changes_enabled`를 더해 `NotificationEventRegistrar.register`의 알림 INSERT에서 거른다. 설정 화면의 "여행 소식" 설명이 "동행 참여·여행 정보 변경"이라서다. 이벤트 행은 그대로 남기고 알림 행만 만들지 않는다. 설정 행이 없으면 켜짐으로 본다. 호출부(알리미)는 고치지 않았다.
+  - 같은 작업에서 알림 응답에 `tripId`(`events.trip_id`)를 더했다. 투표 알림은 `target`이 pollId라 앱이 투표 화면 주소를 만들 수 없었다.
 - `polls.reminder_sent_at` 컬럼(V202611051000)과 공통 설정 `app.polls.reminder-enabled`(`application.yaml` true, `application-test.yaml` false)를 추가했다.
 - 채팅 시스템 카드를 붙일 때 위 이벤트 행을 그대로 쓰면 된다.
 

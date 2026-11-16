@@ -46,6 +46,8 @@ export function useFeed(feedId: string) {
       if (context?.before) queryClient.setQueryData(key, context.before);
       toast.show('좋아요를 바꾸지 못했어요. 다시 눌러 주세요');
     },
+    // 내 공동 피드(S38 좋아요 수·S37 핀·S39·S40)는 ['me', 'feeds'] 캐시를 쓴다. 30초 안에 돌아가도 새 수가 보이게 한다(!298 리뷰)
+    onSettled: () => void queryClient.invalidateQueries({ queryKey: ['me', 'feeds'] }),
   });
 
   return {

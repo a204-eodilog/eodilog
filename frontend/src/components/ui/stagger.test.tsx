@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 import { Animated, Text } from 'react-native';
 
 import { setReduceMotionForTest } from '@/hooks/use-reduce-motion';
@@ -107,5 +107,21 @@ describe('Stagger', () => {
     // 새로 생긴 안내 줄만 나타나기 시작한다. 제목과 내용은 그대로다
     expect(timing).toHaveBeenCalledTimes(3);
     expect(screen.getByText('제목')).toBeTruthy();
+  });
+
+  it('감싼 칸의 위치를 자식에 준 key로 알린다(스크롤 위치를 재는 화면용)', async () => {
+    const onItemLayout = jest.fn();
+    await render(
+      <Stagger onItemLayout={onItemLayout}>
+        <Text>머리</Text>
+        <Text key="photos">사진</Text>
+      </Stagger>,
+    );
+    // 감싼 칸은 자식 글의 부모다
+    const wrapper = screen.getByText('사진').parent!;
+    await fireEvent(wrapper, 'layout', {
+      nativeEvent: { layout: { x: 0, y: 420, width: 1, height: 1 } },
+    });
+    expect(onItemLayout).toHaveBeenCalledWith('photos', 420);
   });
 });

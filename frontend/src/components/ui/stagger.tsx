@@ -1,5 +1,5 @@
-import { Children, isValidElement, useEffect, useState, type ReactNode } from 'react';
-import { Animated, type StyleProp, type ViewStyle } from 'react-native';
+import { Children, isValidElement, useEffect, useState, type Key, type ReactNode } from 'react';
+import { Animated, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native';
 
 import { isReduceMotion } from '@/hooks/use-reduce-motion';
 import { motion } from '@/theme/motion';
@@ -14,6 +14,11 @@ export type StaggerProps = {
   gap?: number;
   /** 줄마다 감싸는 칸의 모양. 부모의 간격(gap)을 그대로 쓰려면 비워 둔다 */
   itemStyle?: StyleProp<ViewStyle>;
+  /**
+   * 줄마다 감싼 칸의 위치(부모 기준 y)를 알린다. 자식의 key(없으면 순서)로 구분한다.
+   * 자식 안에서 onLayout을 받으면 y가 감싼 칸 기준이라, 스크롤 위치가 필요한 화면은 이 값을 더한다
+   */
+  onItemLayout?: (key: Key, y: number) => void;
   children: ReactNode;
 };
 
@@ -28,26 +33,38 @@ export function Stagger({
   active = true,
   gap = motion.stagger.gap,
   itemStyle,
+  onItemLayout,
   children,
 }: StaggerProps) {
   const items = Children.toArray(children);
   return (
     <>
-      {items.map((child, index) => (
-        // 자식의 제 이름(key)으로 구분한다. 순서 번호로 구분하면 위쪽에 안내 띠 같은 것이 나중에 생길 때
-        // 아래 줄이 모두 새로 그려져, 다시 나타나고 입력하던 글도 사라진다
-        <StaggerItem
-          key={isValidElement(child) && child.key != null ? child.key : index}
-          index={index}
-          active={active}
-          gap={gap}
-          style={itemStyle}
-        >
-          {child}
-        </StaggerItem>
-      ))}
+      {items.map((child, index) => {
+        const key = isValidElement(child) && child.key != null ? child.key : index;
+        return (
+          // 자식의 제 이름(key)으로 구분한다. 순서 번호로 구분하면 위쪽에 안내 띠 같은 것이 나중에 생길 때
+          // 아래 줄이 모두 새로 그려져, 다시 나타나고 입력하던 글도 사라진다
+          <StaggerItem
+            key={key}
+            index={index}
+            active={active}
+            gap={gap}
+            style={itemStyle}
+            onLayout={
+              onItemLayout ? (e) => onItemLayout(ownKey(key), e.nativeEvent.layout.y) : undefined
+            }
+          >
+            {child}
+          </StaggerItem>
+        );
+      })}
     </>
   );
+}
+
+/** Children.toArray가 붙인 앞머리(.$)를 떼어 자식에 준 key 그대로 돌려준다 */
+function ownKey(key: Key): Key {
+  return typeof key === 'string' ? key.replace(/^\.\$/, '') : key;
 }
 
 function StaggerItem({
@@ -55,12 +72,14 @@ function StaggerItem({
   active,
   gap,
   style,
+  onLayout,
   children,
 }: {
   index: number;
   active: boolean;
   gap: number;
   style?: StyleProp<ViewStyle>;
+  onLayout?: (e: LayoutChangeEvent) => void;
   children: ReactNode;
 }) {
   const shown = useState(() => new Animated.Value(active && isReduceMotion() ? 1 : 0))[0];
@@ -90,6 +109,7 @@ function StaggerItem({
 
   return (
     <Animated.View
+      onLayout={onLayout}
       style={[
         style,
         {

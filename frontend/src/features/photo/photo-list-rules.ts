@@ -112,3 +112,44 @@ export function uploadSummaryText(photos: readonly TripPhoto[]): string {
 export function photoPath(assetId: string): string {
   return `/api/v1/assets/${encodeURIComponent(assetId)}/download`;
 }
+
+/** 사진 칸 하나. 비슷한 사진 묶음은 접혀 있으면 대표 한 장, 펼치면 모두 보인다 */
+export type GroupTile<T> = {
+  item: T;
+  groupSize: number;
+  expanded: boolean;
+  groupKey: string | null;
+};
+
+/**
+ * 비슷한 사진 묶음(같은 groupId)을 처음 나온 사진 한 장으로 접는다. 펼친 묶음은 모두 보인다.
+ * 순서는 받은 순서 그대로, 묶음 없는 사진은 그대로
+ */
+export function collapseGroups<T>(
+  items: readonly T[],
+  groupOf: (item: T) => string | null,
+  expanded: ReadonlySet<string>,
+): GroupTile<T>[] {
+  const size = new Map<string, number>();
+  for (const it of items) {
+    const g = groupOf(it);
+    if (g) size.set(g, (size.get(g) ?? 0) + 1);
+  }
+  const shown = new Set<string>();
+  const out: GroupTile<T>[] = [];
+  for (const it of items) {
+    const g = groupOf(it);
+    const n = g ? (size.get(g) ?? 1) : 1;
+    if (!g || n < 2) {
+      out.push({ item: it, groupSize: 1, expanded: false, groupKey: null });
+      continue;
+    }
+    if (expanded.has(g)) {
+      out.push({ item: it, groupSize: n, expanded: true, groupKey: g });
+    } else if (!shown.has(g)) {
+      shown.add(g);
+      out.push({ item: it, groupSize: n, expanded: false, groupKey: g });
+    }
+  }
+  return out;
+}

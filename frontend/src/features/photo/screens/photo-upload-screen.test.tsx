@@ -19,7 +19,21 @@ jest.mock('@/components/ui', () => ({
   },
   toast: { show: jest.fn(), error: jest.fn(), success: jest.fn() },
 }));
-jest.mock('../api', () => ({ getTripTitle: jest.fn() }));
+jest.mock('../api', () => ({ getTripTitle: jest.fn(), getTrip: jest.fn() }));
+// 폰 AI(모델·사진첩·설정)는 이 테스트 밖이다. 쓸 수 있는지만 바꿔 본다
+let mockGalleryAvailable = false;
+jest.mock('@/features/ondevice/use-gallery-ai', () => ({
+  useGalleryAi: () => ({ available: mockGalleryAvailable, resultFor: () => null }),
+}));
+jest.mock('@/features/ondevice/gallery-ai', () => ({ toPickedPhoto: jest.fn() }));
+jest.mock('@/features/ondevice/components/gallery-ai-panel', () => ({
+  GalleryAiPanel: () => null,
+}));
+jest.mock('@/features/settings/api', () => ({ getSettings: jest.fn() }));
+jest.mock('@/features/settings/hooks/use-server-settings', () => ({
+  SETTINGS_QUERY_KEY: ['settings'],
+}));
+
 jest.mock('../components/photo-upload-view', () => ({
   PhotoUploadView: ({ onLater, onCancel }: { onLater: () => void; onCancel: () => void }) => {
     const { Button, View } = jest.requireActual<typeof import('react-native')>('react-native');
@@ -37,6 +51,7 @@ jest.mock('../hooks/use-photo-upload', () => ({
 afterEach(() => {
   cleanup();
   jest.clearAllMocks();
+  mockGalleryAvailable = false;
 });
 function pendingPicker() {
   let resolve!: (value: ImagePicker.ImagePickerResult) => void;
@@ -103,5 +118,13 @@ describe('업로드 중단 복귀', () => {
     await fireEvent.press(screen.getByText('나중에'));
     expect(router.back).not.toHaveBeenCalled();
     expect(router.dismissTo).toHaveBeenCalledWith('/trips/trip-1/photos');
+  });
+});
+
+describe('폰 AI가 있을 때', () => {
+  it('사진첩을 자동으로 열지 않고 폰 AI 카드를 보여 준다', async () => {
+    mockGalleryAvailable = true;
+    await render(<PhotoUploadScreen />);
+    expect(ImagePicker.launchImageLibraryAsync).not.toHaveBeenCalled();
   });
 });
