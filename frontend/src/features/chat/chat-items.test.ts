@@ -100,6 +100,39 @@ describe('화면 줄 만들기', () => {
     ]);
   });
 
+  it('새 메시지가 와도 바뀌지 않은 줄은 같은 객체다(FlashList가 다시 그리지 않음, 트러블슈팅 D3)', () => {
+    const before = windowOf(
+      msg(1, { createdAt: '2026-11-05T03:00:00Z' }),
+      msg(2, { createdAt: '2026-11-05T03:05:00Z' }),
+    );
+    const first = toChatItems(before, [], ctx);
+    const after = mergeMessages(before, [msg(3, { createdAt: '2026-11-05T03:10:00Z' })]);
+    const second = toChatItems(after, [], ctx);
+    expect(second.slice(0, first.length)).toEqual(first);
+    first.forEach((item, i) => expect(second[i]).toBe(item));
+    expect(second).toHaveLength(first.length + 1);
+  });
+
+  it('보이는 내용이 바뀐 줄만 새 객체다', () => {
+    const before = windowOf(
+      msg(1, { createdAt: '2026-11-05T03:00:00Z' }),
+      msg(2, { createdAt: '2026-11-05T03:05:00Z' }),
+    );
+    const first = toChatItems(before, [], ctx);
+    // 1번 메시지를 보낸 사람이 지웠다(같은 순번으로 다시 옴)
+    const deleted = mergeMessages(before, [
+      msg(1, { createdAt: '2026-11-05T03:00:00Z', text: null, deletedAt: '2026-11-05T04:00:00Z' }),
+    ]);
+    const second = toChatItems(deleted, [], ctx);
+    expect(second[1]).not.toBe(first[1]);
+    expect(second[1]).toMatchObject({ deleted: true });
+    expect(second[2]).toBe(first[2]);
+    // 동행 이름이 바뀌면 그 사람 줄이 새로 만들어진다
+    const renamed = toChatItems(deleted, [], { ...ctx, participants: [person('user-b', '세은2')] });
+    expect(renamed[2]).not.toBe(second[2]);
+    expect(renamed[2]).toMatchObject({ senderName: '세은2' });
+  });
+
   it('창이 아직 없어도 보내는 중 메시지는 보인다', () => {
     const outbox: OutboxItem[] = [
       {
