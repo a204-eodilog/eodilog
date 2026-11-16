@@ -80,12 +80,19 @@ export function PhotoUploadScreen() {
   // 규칙 끄기 주석을 쓰면 React Compiler가 화면 전체를 건너뛰어, 처음 연 pick을 ref로 잡아 둔다
   const firstPick = useRef(pick);
   const opened = useRef(false);
+  const active = useRef(false);
   useEffect(() => {
-    if (opened.current) return;
-    opened.current = true;
-    void firstPick.current().then((chose) => {
-      if (!chose && router.canGoBack()) router.back();
-    });
+    active.current = true;
+    if (!opened.current) {
+      opened.current = true;
+      void firstPick.current().then((chose) => {
+        if (active.current && !chose && router.canGoBack()) router.back();
+      });
+    }
+    // 사진첩 응답이 늦게 와도 이미 떠난 화면에서 다른 화면을 닫지 않는다.
+    return () => {
+      active.current = false;
+    };
   }, []);
 
   const toggle = (key: string) =>
