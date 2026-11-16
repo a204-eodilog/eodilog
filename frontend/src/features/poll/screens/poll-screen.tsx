@@ -57,7 +57,10 @@ export function PollScreen() {
   // 메뉴로 들어와 처음 고른 투표를 붙잡는다. 앱으로 돌아와 목록을 다시 받을 때 동행이 새 투표를 열었어도
   // 보던 투표가 말없이 바뀌지 않게 한다
   const [pinnedId, setPinnedId] = useState<string | null>(null);
-  if (!pollId && pinnedId === null && list.picked) setPinnedId(list.picked.id);
+  // 이번에 열고 새로 받은 목록으로만 붙잡는다. 캐시에 남은 옛 목록으로 붙잡으면 그사이 동행이 연 투표 대신
+  // 마감된 옛 투표에 고정된다(다시 받기를 기다리는 동안은 옛 목록의 대표 투표를 보인다)
+  if (!pollId && pinnedId === null && list.isFetchedAfterMount && list.picked)
+    setPinnedId(list.picked.id);
   const targetId = pollId ?? pinnedId ?? list.picked?.id ?? null;
   const detail = usePoll(tripId, targetId);
   const [sheetOpen, setSheetOpen] = useState(false);
