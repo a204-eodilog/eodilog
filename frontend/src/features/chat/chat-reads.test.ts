@@ -83,3 +83,16 @@ describe('방 기록 지우기', () => {
     expect(unread('r2')).toBe(1);
   });
 });
+
+describe('목록에 있는 방만 남기기', () => {
+  it('목록에 없는 방의 기록을 지우고 목록에 있는 방은 그대로 둔다', () => {
+    reads().noteRoom('r1', 10);
+    reads().noteMessage('r1', 12, false);
+    // 채팅 탭을 열기 전에 받은 메시지: 방 번호만 알고 목록에는 없는 방
+    reads().noteMessage('gone', 5, false);
+    reads().keepRooms(['r1']);
+    expect(reads().latest.gone).toBeUndefined();
+    expect(reads().read.gone).toBeUndefined();
+    expect(unread('r1')).toBe(2);
+  });
+});
