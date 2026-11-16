@@ -39,6 +39,11 @@ type ReadsState = {
   noteMessage(roomId: string, sequence: number, mine: boolean): void;
   /** 대화방을 열어 이 순번까지 봤다 */
   markRead(roomId: string, sequence: number): void;
+  /**
+   * 방 하나의 기록을 지운다. 여행에서 나가거나 여행이 지워지면 그 방은 목록에서 빠지는데,
+   * 기록이 남으면 채팅 탭 배지에 그 방의 안 읽은 수가 계속 더해진다(기기에 저장돼 앱을 다시 켜도 남는다)
+   */
+  forgetRoom(roomId: string): void;
   clearAll(): void;
 };
 
@@ -85,6 +90,13 @@ export const useChatReads = create<ReadsState>()(
             latest: { ...s.latest, [roomId]: latest },
             read: { ...s.read, [roomId]: read },
           };
+        }),
+      forgetRoom: (roomId) =>
+        set((s) => {
+          if (!(roomId in s.latest) && !(roomId in s.read)) return s;
+          const { [roomId]: _latest, ...latest } = s.latest;
+          const { [roomId]: _read, ...read } = s.read;
+          return { latest, read };
         }),
       clearAll: () => set({ read: {}, latest: {} }),
     }),

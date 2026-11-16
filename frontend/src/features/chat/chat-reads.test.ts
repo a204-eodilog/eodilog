@@ -70,3 +70,16 @@ describe('채팅 안 읽은 수', () => {
     expect(reads().read.r1).toBe(50);
   });
 });
+
+describe('방 기록 지우기', () => {
+  it('지운 방은 채팅 탭 배지 합계에서 빠지고 다른 방은 그대로다', () => {
+    reads().noteRoom('r1', 10);
+    reads().noteMessage('r1', 13, false);
+    reads().noteRoom('r2', 5);
+    reads().noteMessage('r2', 6, false);
+    reads().forgetRoom('r1');
+    expect(reads().latest.r1).toBeUndefined();
+    expect(reads().read.r1).toBeUndefined();
+    expect(unread('r2')).toBe(1);
+  });
+});

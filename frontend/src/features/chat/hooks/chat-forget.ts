@@ -1,10 +1,13 @@
-import type { QueryClient } from '@tanstack/react-query';
+import type { InfiniteData, QueryClient } from '@tanstack/react-query';
 
+import type { PageResponse } from '@/api/types';
+
+import { useChatReads } from '../chat-reads';
 import { forgetTripRooms, tripIdOf } from '../room-index';
 import type { ChatRoom } from '../types';
 
 import { dropRoomFromList } from './chat-cache';
-import { chatRoomKey } from './chat-keys';
+import { CHAT_ROOMS_KEY, chatRoomKey } from './chat-keys';
 import { useChatOutbox } from './use-chat-outbox';
 
 /**
@@ -16,11 +19,22 @@ import { useChatOutbox } from './use-chat-outbox';
  * trip-cache.ts(exitTrip)가 이 함수를 부르므로 이 파일은 trip-cache.ts를 불러오지 않는다(순환 import 방지)
  */
 export function forgetChatForTrip(queryClient: QueryClient, tripId: string) {
-  const roomId = queryClient.getQueryData<ChatRoom>(chatRoomKey(tripId))?.id;
+  // 대화방 화면을 연 적이 없으면 방 정보 캐시가 없다. 그때는 대화방 목록에서 찾는다(빼기 전에)
+  const roomId =
+    queryClient.getQueryData<ChatRoom>(chatRoomKey(tripId))?.id ??
+    queryClient
+      .getQueryData<InfiniteData<PageResponse<ChatRoom>>>(CHAT_ROOMS_KEY)
+      ?.pages.flatMap((p) => p.data)
+      .find((r) => r.tripId === tripId)?.id;
   dropRoomFromList(queryClient, tripId);
   const outbox = useChatOutbox.getState();
   for (const id of Object.keys(outbox.items)) {
     if (id === roomId || tripIdOf(id) === tripId) outbox.clearRoom(id);
+  }
+  // 안 읽은 수 기록도 지운다. 남기면 목록에 없는 방의 수가 채팅 탭 배지에 계속 더해진다
+  const reads = useChatReads.getState();
+  for (const id of Object.keys(reads.latest)) {
+    if (id === roomId || tripIdOf(id) === tripId) reads.forgetRoom(id);
   }
   forgetTripRooms(tripId);
 }

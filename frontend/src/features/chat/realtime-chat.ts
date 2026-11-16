@@ -34,6 +34,11 @@ export function applyChatEvent(queryClient: QueryClient, body: unknown) {
   const event = parseChatEvent(body);
   if (!event) return;
   const { message, roomId } = event;
+  const meId = queryClient.getQueryData<MyProfile>(ME_QUERY_KEY)?.id ?? null;
+  // 안 읽은 수를 센다. 그 방을 보고 있으면 대화방 화면이 곧바로 읽음으로 돌린다.
+  // 방을 몰라도 먼저 센다. 채팅 탭을 한 번도 안 열었으면 방 표·대화방 목록이 비어 있어서,
+  // 아래에서 돌아가 버리면 홈에 있는 동안 온 메시지가 채팅 탭 배지에 세어지지 않았다
+  useChatReads.getState().noteMessage(roomId, message.sequence, message.senderId === meId);
   const tripId = tripIdOf(roomId) ?? learnRoomFromCache(queryClient, roomId);
   if (!tripId) {
     // 아직 모르는 방(새로 참여한 여행 등). 목록을 다시 받으면 표가 채워진다
@@ -42,9 +47,6 @@ export function applyChatEvent(queryClient: QueryClient, body: unknown) {
   }
 
   receive(queryClient, tripId, roomId, [message], 'realtime');
-  const meId = queryClient.getQueryData<MyProfile>(ME_QUERY_KEY)?.id ?? null;
-  // 안 읽은 수를 센다. 그 방을 보고 있으면 대화방 화면이 곧바로 읽음으로 돌린다
-  useChatReads.getState().noteMessage(roomId, message.sequence, message.senderId === meId);
 
   // 모르는 보낸 사람이면 새 동행이다. 닉네임·얼굴을 다시 받는다(research R11)
   if (message.type === 'TEXT' && message.senderId && message.senderId !== meId) {
