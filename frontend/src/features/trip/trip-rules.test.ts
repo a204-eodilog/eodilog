@@ -1,5 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 import {
+  cardFooter,
   stayLabel,
   companionsLabel,
   dayIndex,
@@ -540,5 +541,25 @@ describe('tripDetailView 실제 진행에 맞춘 단계', () => {
     const going = trip({ startDate: '2026-10-27', endDate: '2026-10-29' });
     const progress = { savedPlaceCount: 0, coursePlaceCount: 0 };
     expect(tripDetailView(going, ['부산'], TODAY, null, progress).steps).toEqual([]);
+  });
+});
+
+describe('cardFooter', () => {
+  it('여행 중이 아니면 단계를 보인다', () => {
+    expect(cardFooter({ ongoing: false, places: null, loading: false })).toBe('stages');
+    expect(cardFooter({ ongoing: false, places: ['해운대'], loading: true })).toBe('stages');
+  });
+
+  it('여행 중이고 오늘 갈 곳이 있으면 오늘 코스를 보인다', () => {
+    expect(cardFooter({ ongoing: true, places: ['해운대'], loading: false })).toBe('route');
+  });
+
+  it('오늘 갈 곳을 받는 중이면 날짜 막대를 먼저 그리지 않고 자리만 잡아 둔다', () => {
+    expect(cardFooter({ ongoing: true, places: null, loading: true })).toBe('routeLoading');
+  });
+
+  it('오늘 갈 곳이 없거나 받지 못했으면 날짜 막대를 보인다', () => {
+    expect(cardFooter({ ongoing: true, places: [], loading: false })).toBe('days');
+    expect(cardFooter({ ongoing: true, places: null, loading: false })).toBe('days');
   });
 });

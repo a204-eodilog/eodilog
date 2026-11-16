@@ -124,6 +124,28 @@ export function tripListState(input: {
   return paused ? { kind: 'offline' } : { kind: 'loading' };
 }
 
+/**
+ * 여행 탭 맨 위 카드의 아래 줄.
+ * route: 오늘 갈 곳 / routeLoading: 오늘 갈 곳을 받는 중이라 그 자리만 잡아 둠 /
+ * days: 며칠 가운데 몇째 날인지 / stages: 계획 중·여행 중·다녀옴 단계
+ */
+export type CardFooter = 'route' | 'routeLoading' | 'days' | 'stages';
+
+/**
+ * 여행 중이 아니면 단계. 여행 중이면 오늘 갈 곳이 있을 때 그것을, 받는 중이면 자리 표시를 보인다.
+ * 받는 중에 날짜 막대를 먼저 그리면 코스가 도착할 때 모습이 바뀌어 깜빡인다.
+ * 오늘 갈 곳이 없거나 받지 못했으면 날짜 막대를 보인다
+ */
+export function cardFooter(input: {
+  ongoing: boolean;
+  places: readonly string[] | null;
+  loading: boolean;
+}): CardFooter {
+  if (!input.ongoing) return 'stages';
+  if (input.places && input.places.length > 0) return 'route';
+  return input.loading ? 'routeLoading' : 'days';
+}
+
 /** 여행 카드의 '지금 할 일' 한 줄 */
 export function nextTodoLabel(trip: Trip, today: string): string {
   const status = tripStatus(trip, today);

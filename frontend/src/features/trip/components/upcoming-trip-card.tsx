@@ -6,8 +6,9 @@ import { formatRange } from '@/lib/seoul-date';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
 import { useRegionNames } from '../hooks/use-region-names';
-import { useTodayPlaces } from '../hooks/use-today-places';
+import { useTodayRoute } from '../hooks/use-today-places';
 import {
+  cardFooter,
   dayIndex,
   dDay,
   destinationLabel,
@@ -41,8 +42,10 @@ export function UpcomingTripCard({ trip, today, onPress }: Props) {
   const ongoing = status === 'ONGOING';
   const stageIndex = STAGES.findIndex((s) => s.key === status);
   const progress = tripProgress(trip, today);
-  // 여행 중이면 오늘 갈 곳. 코스가 있으면 날짜 막대 대신 오늘 코스를 보인다(지금 가장 쓸모 있는 정보)
-  const todayPlaces = useTodayPlaces(trip.id, n);
+  // 여행 중이면 오늘 갈 곳. 코스가 있으면 날짜 막대 대신 오늘 코스를 보인다(지금 가장 쓸모 있는 정보).
+  // 받는 동안은 날짜 막대를 먼저 그리지 않고 오늘 코스 자리만 잡아 둔다
+  const todayRoute = useTodayRoute(trip.id, n);
+  const footer = cardFooter({ ongoing: progress !== null, ...todayRoute });
   const kicker = ongoing
     ? `여행 중${n !== null ? ` · ${n}일차` : ''}`
     : `다가오는 여행${d !== null ? ` · D-${d}` : ''}`;
@@ -86,9 +89,11 @@ export function UpcomingTripCard({ trip, today, onPress }: Props) {
         <Icon name="chevron-right" size={16} color={colors.text.muted} />
       </View>
 
-      {progress && todayPlaces && todayPlaces.length > 0 ? (
-        <TodayRoute places={todayPlaces} />
-      ) : progress ? (
+      {footer === 'route' && todayRoute.places ? (
+        <TodayRoute places={todayRoute.places} />
+      ) : footer === 'routeLoading' ? (
+        <TodayRouteLoading />
+      ) : footer === 'days' && progress ? (
         <DayProgress day={progress.day} total={progress.total} />
       ) : (
         <StageSteps index={stageIndex} />
@@ -127,6 +132,22 @@ function TodayRoute({ places }: { places: readonly string[] }) {
           </View>
         ))}
         {more > 0 ? <Text style={[typography.captionBold, styles.soft]}>+{more}</Text> : null}
+      </View>
+    </View>
+  );
+}
+
+/**
+ * 오늘 코스를 받는 동안의 자리 표시. 오늘 코스 한 줄과 같은 높이라 코스가 도착해도 카드가 움직이지 않는다
+ */
+function TodayRouteLoading() {
+  return (
+    <View style={styles.route} accessible accessibilityLabel="오늘 코스를 불러오는 중">
+      <View style={styles.loadingTitle}>
+        <View style={[styles.loadingBar, styles.loadingBarTitle]} />
+      </View>
+      <View style={styles.loadingStops}>
+        <View style={[styles.loadingBar, styles.loadingBarStops]} />
       </View>
     </View>
   );
@@ -241,6 +262,12 @@ const styles = StyleSheet.create({
   },
   stopNoText: { color: colors.brand.primary },
   stopName: { flexShrink: 1 },
+  // 받는 중 자리 표시. 제목 줄(20)과 장소 줄(20) 높이를 오늘 코스와 맞춘다
+  loadingTitle: { height: 20, justifyContent: 'center' },
+  loadingStops: { height: 20, justifyContent: 'center' },
+  loadingBar: { height: 8, borderRadius: radius.full, backgroundColor: colors.onBrand.chip },
+  loadingBarTitle: { width: 56 },
+  loadingBarStops: { width: '70%' },
   // 여행 진행(여행 중). 막대와 숫자가 한 줄
   progress: { flexDirection: 'row', alignItems: 'center', gap: spacing[12] },
   cells: { flex: 1, flexDirection: 'row', gap: spacing[4] },
