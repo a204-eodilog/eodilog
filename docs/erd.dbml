@@ -350,6 +350,7 @@ Table polls {
   closes_at timestamp [not null]
   closed_reason varchar(16) [note: 'DEADLINE/NO_VOTES; 0표 확정 없이 마감']
   closed_at timestamp
+  closed_by_member_id uuid [ref: > trip_members.id, note: '투표를 연 사람이 직접 종료했으면 그 멤버, 시각 마감이면 null. OPEN이면 null(2026-11-16)']
   finalized_at timestamp
   eligible_member_count integer [note: '마감 때의 ACTIVE 멤버 수. OPEN이면 null']
   voted_member_count integer [note: '마감 때 한 표 이상 던진 ACTIVE 멤버 수. OPEN이면 null']

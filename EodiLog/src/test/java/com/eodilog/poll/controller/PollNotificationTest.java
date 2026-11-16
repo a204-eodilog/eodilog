@@ -30,6 +30,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 // 투표 알림 5종(POLL_OPENED·POLL_CANDIDATE_ADDED·POLL_FINALIZED·POLL_CLOSED_NO_VOTES·POLL_REMINDER)의 수신자·멱등을 확인한다
+// 마감 알림은 시각 마감(행동자 없음)과 연 사람의 직접 종료(종료한 사람 제외) 두 경우를 본다
 // 방장(참여 순 1)·동행(2)·동행2(3)가 ACTIVE이고 나간 멤버(4)가 있는 여행이다. 알림은 notifications ⋈ events를 SQL로 읽는다
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -157,6 +158,43 @@ class PollNotificationTest {
 	}
 
 	@Test
+	void notifiesOthersWhenCreatorClosesPoll() throws Exception {
+		JsonNode poll = createPoll(friendId, placePoll("넷째 날", Instant.now().plus(1, ChronoUnit.DAYS)));
+		UUID pollId = id(poll);
+		ballot(ownerId, pollId, poll.get("candidates").get(0).get("id").asString(), 1).andExpect(status().isOk());
+
+		close(friendId, pollId, 1).andExpect(status().isOk());
+		// 다시 종료해도 409로 롤백되고 알림은 한 건이다. 주기 마감도 다시 알리지 않는다
+		close(friendId, pollId, 2).andExpect(status().isConflict());
+		pollAutoCloser.closeDuePolls();
+
+		// 종료한 사람은 받지 않고, 나머지 ACTIVE 동행은 시각 마감과 같은 알림을 받는다
+		assertThat(kinds(ownerId)).containsExactly("POLL_OPENED", "POLL_FINALIZED");
+		assertThat(kinds(secondFriendId)).containsExactly("POLL_OPENED", "POLL_FINALIZED");
+		assertThat(kinds(friendId)).isEmpty();
+		assertThat(kinds(leaverId)).isEmpty();
+		var event = jdbcTemplate.queryForMap("""
+				select actor_user_id, payload_json->>'message' as message, deduplication_key
+				from events where trip_id = ? and type = 'POLL_FINALIZED'""", tripId);
+		assertThat(event.get("actor_user_id")).isEqualTo(friendId);
+		assertThat(event.get("message")).isEqualTo("\"넷째 날\" 투표가 마감됐어요. 결과를 확인해 보세요.");
+		assertThat(event.get("deduplication_key")).isEqualTo("POLL_CLOSED:" + pollId);
+	}
+
+	@Test
+	void notifiesNoVotesCloseWhenCreatorClosesEmptyPoll() throws Exception {
+		UUID pollId = id(createPoll(ownerId, placePoll("다섯째 날", Instant.now().plus(1, ChronoUnit.DAYS))));
+
+		close(ownerId, pollId, 1).andExpect(status().isOk());
+
+		assertThat(kinds(ownerId)).isEmpty();
+		assertThat(kinds(friendId)).containsExactly("POLL_OPENED", "POLL_CLOSED_NO_VOTES");
+		assertThat(jdbcTemplate.queryForObject(
+				"select actor_user_id from events where trip_id = ? and type = 'POLL_CLOSED_NO_VOTES'",
+				UUID.class, tripId)).isEqualTo(ownerId);
+	}
+
+	@Test
 	void remindsOnlyNonVotersOnceAnHourBeforeClosing() throws Exception {
 		// 마감 50분 전 투표는 대상이고, 2시간 전 투표는 아직 아니다
 		JsonNode soon = createPoll(ownerId, placePoll("곧 마감", Instant.now().plus(50, ChronoUnit.MINUTES)));
@@ -245,6 +283,13 @@ class PollNotificationTest {
 				.with(authUser(userId))
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("{\"candidateIds\":[\"%s\"],\"expectedVersion\":%d}".formatted(candidateId, expectedVersion)));
+	}
+
+	private ResultActions close(UUID userId, UUID pollId, long expectedVersion) throws Exception {
+		return mockMvc.perform(post("/api/v1/trips/{tripId}/polls/{pollId}/close", tripId, pollId)
+				.with(authUser(userId))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"expectedVersion\":%d}".formatted(expectedVersion)));
 	}
 
 	private ResultActions addCandidate(UUID userId, UUID pollId, long expectedVersion) throws Exception {

@@ -102,13 +102,24 @@ public class PollCloser {
 				.setLockMode(LockModeType.PESSIMISTIC_WRITE)
 				.getResultList();
 		for (Poll poll : duePolls) {
-			close(trip, poll, now);
+			close(trip, poll, null, now);
 		}
 		entityManager.flush();
 	}
 
+	// 투표를 연 사람의 직접 종료(V-16). 호출한 트랜잭션이 여행 행 → 투표 행 순으로 잠그고 OPEN·마감 전·작성자·version을 확인한 뒤 부른다
+	// 결과 규칙은 시각 마감과 같고, 종료한 사람을 closedByMemberId와 알림 행동자로 남긴다
+	@Transactional(propagation = Propagation.MANDATORY)
+	public void closeByCreator(Trip trip, Poll poll, Closer closer) {
+		close(trip, poll, closer, now());
+		entityManager.flush();
+	}
+
 	// 지금 ACTIVE인 멤버의 표로 집계해 고정한다(V-6d). 표가 있으면 최다 후보를 모두 확정, 0표면 확정 없이 마감(V-13)
-	private void close(Trip trip, Poll poll, Instant now) {
+	// closer가 null이면 서버의 시각 마감이다
+	private void close(Trip trip, Poll poll, Closer closer, Instant now) {
+		UUID closedByMemberId = closer == null ? null : closer.memberId();
+		UUID actorUserId = closer == null ? null : closer.userId();
 		List<PollCandidate> candidates = pollCandidateRepository.findAllByPollIdOrderByDisplayOrder(poll.getId());
 		Map<UUID, Integer> voteCounts = pollTallyRepository.activeVoteCounts(List.of(poll.getId()));
 		int votedMemberCount = pollTallyRepository.activeVoterCounts(List.of(poll.getId()))
@@ -118,8 +129,8 @@ public class PollCloser {
 		candidates.forEach(candidate -> candidate.fixVoteCount(voteCounts.getOrDefault(candidate.getId(), 0)));
 
 		if (votedMemberCount == 0) {
-			poll.closeWithoutVotes(eligibleMemberCount, now);
-			pollNotifier.closed(poll, false);
+			poll.closeWithoutVotes(eligibleMemberCount, closedByMemberId, now);
+			pollNotifier.closed(poll, false, actorUserId);
 			return;
 		}
 		int maxVotes = candidates.stream().mapToInt(PollCandidate::getVoteCount).max().orElse(0);
@@ -127,15 +138,16 @@ public class PollCloser {
 				.filter(candidate -> candidate.getVoteCount() == maxVotes)
 				.toList();
 		selected.forEach(candidate -> pollResultRepository.save(PollResult.of(candidate.getId(), now)));
-		poll.finalizeResult(eligibleMemberCount, votedMemberCount, now);
-		pollNotifier.closed(poll, true);
+		poll.finalizeResult(eligibleMemberCount, votedMemberCount, closedByMemberId, now);
+		pollNotifier.closed(poll, true, actorUserId);
 		if (poll.getType() == PollType.REGION) {
-			addDestinations(trip, selected, now);
+			addDestinations(trip, selected, actorUserId, now);
 		}
 	}
 
 	// 확정 지역을 여행지 끝에 추가하고 이미 있는 지역은 건너뛴다(V-14). 장소 확정은 코스를 바꾸지 않는다
-	private void addDestinations(Trip trip, List<PollCandidate> selected, Instant now) {
+	// 직접 종료면 종료한 사람이 여행 정보 변경 알림의 행동자다(받지 않는다). 시각 마감이면 null
+	private void addDestinations(Trip trip, List<PollCandidate> selected, UUID actorUserId, Instant now) {
 		List<TripDestination> current = tripDestinationRepository.findAllByTripIdOrderByDisplayOrder(trip.getId());
 		Set<UUID> regionIds = new HashSet<>();
 		current.forEach(destination -> regionIds.add(destination.getRegionId()));
@@ -150,13 +162,17 @@ public class PollCloser {
 		}
 		if (added) {
 			trip.markDestinationsChanged(now);
-			eventPublisher.publishEvent(new TripInfoChangedEvent(trip.getId(), null, Set.of("destinationRegionIds"),
+			eventPublisher.publishEvent(new TripInfoChangedEvent(trip.getId(), actorUserId, Set.of("destinationRegionIds"),
 					trip.getVersion(), now));
 		}
 	}
 
 	private Instant now() {
 		return clock.instant().truncatedTo(ChronoUnit.MICROS);
+	}
+
+	// 직접 종료한 사람. memberId는 closedByMemberId로, userId는 알림 행동자(수신 제외)로 쓴다
+	public record Closer(UUID memberId, UUID userId) {
 	}
 
 }

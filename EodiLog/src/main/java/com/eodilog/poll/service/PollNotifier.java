@@ -45,15 +45,17 @@ public class PollNotifier {
 				excluding(pollTallyRepository.activeVoterUserIds(poll.getId()), actorUserId));
 	}
 
-	// 서버가 마감하므로 행동한 사람이 없다. 확정·0표 마감은 type이 다르지만 한 투표는 한 번만 마감하므로 키를 같이 쓴다
+	// 시각 마감은 서버가 하므로 actorUserId가 null이고 ACTIVE 전원이 받는다. 연 사람이 직접 종료하면 그 사람을 행동자로 남기고
+	// 수신에서 뺀다(V-16). 문구는 같다. 확정·0표 마감은 type이 다르지만 한 투표는 한 번만 마감하므로 키를 같이 쓴다
 	@Transactional(propagation = Propagation.MANDATORY)
-	public void closed(Poll poll, boolean withVotes) {
+	public void closed(Poll poll, boolean withVotes, UUID actorUserId) {
 		String type = withVotes ? "POLL_FINALIZED" : "POLL_CLOSED_NO_VOTES";
 		String message = withVotes
 				? "\"" + poll.getTitle() + "\" 투표가 마감됐어요. 결과를 확인해 보세요."
 				: "\"" + poll.getTitle() + "\" 투표가 아무도 참여하지 않아 마감됐어요.";
-		register(poll, type, null, message, "POLL_CLOSED:" + poll.getId(),
-				tripMemberRepository.findActiveUserIds(poll.getTripId()));
+		List<UUID> activeUserIds = tripMemberRepository.findActiveUserIds(poll.getTripId());
+		register(poll, type, actorUserId, message, "POLL_CLOSED:" + poll.getId(),
+				actorUserId == null ? activeUserIds : excluding(activeUserIds, actorUserId));
 	}
 
 	// 아직 표를 내지 않은 멤버만 받는다. 받을 사람이 없으면 이벤트를 남기지 않는다
