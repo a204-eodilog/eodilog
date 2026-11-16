@@ -74,11 +74,12 @@ export function usePhotoUpload(tripId: string) {
         patch(index, { ready });
       }
       if (signal.aborted) throw new Error('aborted');
-      await registerPhoto(tripId, {
+      const photo = await registerPhoto(tripId, {
         batchId,
         assetId: assetId!,
         capturedAt: item.photo.capturedAt,
       });
+      patch(index, { registered: { id: photo.id, version: photo.version } });
     },
     [patch, tripId],
   );

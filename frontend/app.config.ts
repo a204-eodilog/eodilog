@@ -12,6 +12,16 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   slug: config.slug ?? 'eodilog',
   plugins: [
     ...(config.plugins ?? []),
+    // 폰 AI 사진 정리(사진 올리기 화면): ONNX 실행과 여행 기간 사진 읽기
+    'onnxruntime-react-native',
+    [
+      'expo-media-library',
+      {
+        photosPermission: '여행 기간에 찍은 사진을 폰 안에서 정리하려고 사진을 읽어요',
+        savePhotosPermission: false,
+        isAccessMediaLocationEnabled: false,
+      },
+    ],
     './plugins/with-short-object-paths',
     [
       '@mj-studio/react-native-naver-map',
