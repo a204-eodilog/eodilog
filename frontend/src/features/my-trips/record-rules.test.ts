@@ -146,6 +146,7 @@ const feed = (hidden: string[]) => ({
   id: 'f1',
   version: 1,
   visibility: { hiddenViewerUserIds: hidden, version: 1 },
+  likeCount: 3,
 });
 
 describe('hiddenLabel', () => {
@@ -167,6 +168,7 @@ describe('recordFeed', () => {
     expect(recordFeed(feed(['u1']), NAMES, ['서연'])).toEqual({
       status: 'published',
       visibility: '전체 공개 · 하늘에게 숨김',
+      likes: 3,
       hiddenNote: '하늘님은 서연님 피드에서는 볼 수 있어요',
     });
     expect(recordFeed(feed(['u1', 'u2']), NAMES, ['서연', '민준'])).toMatchObject({
@@ -179,6 +181,7 @@ describe('recordFeed', () => {
     expect(recordFeed(feed([]), NAMES, ['서연'])).toEqual({
       status: 'published',
       visibility: '전체 공개',
+      likes: 3,
       hiddenNote: null,
     });
   });

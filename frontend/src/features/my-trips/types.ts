@@ -33,4 +33,6 @@ export type TripFeed = {
   id: string;
   version: number;
   visibility: { hiddenViewerUserIds: string[]; version: number };
+  /** 이 피드에 모두가 누른 좋아요 수. 다시 게시하면 0부터 */
+  likeCount?: number;
 };
