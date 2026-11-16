@@ -25,7 +25,7 @@ sources:
 
 | 백엔드 job kind / API | AI 엔드포인트 | 응답 `data` 최상위 키 |
 | --- | --- | --- |
-| `PLACE_EXTRACTION` | `POST /ai/v1/place-extractions` | `{resultStatus, candidates}` |
+| `PLACE_EXTRACTION` | `POST /ai/v1/place-extractions` | `{resultStatus, candidates, regionHint}` |
 | `TRIP_RECOMMENDATION` | `POST /ai/v1/trip-recommendations` | `{items, basis, insufficientData}` |
 | `ITINERARY_PROPOSAL` | `POST /ai/v1/itinerary-proposals` | `{baseVersion, reason, proposed, diff, appliedAt, canUndo}` |
 | `ROUTE_RECALCULATION` | `POST /ai/v1/route-legs` | `{legs}` |
@@ -120,11 +120,11 @@ sources:
 | `url?` | SNS 게시물·블로그 링크 |
 | `captures?` | 캡처 이미지, **JPG·PNG, 최대 10장**(11장 이상 422 `INPUT_LIMIT_EXCEEDED`), 장당 15MB |
 | `memo?` | 사용자 메모 |
-| `regionHint?` | 여행지 이름(그룹 즐겨찾기에서 시작한 경우) |
+| `regionHint?` | 여행지 이름(그룹 즐겨찾기에서 시작한 경우). 검색 단서로만 쓴다. 응답의 `regionHint`와 이름만 같고 다른 값이다 |
 
 `url`·`captures` 중 하나 이상 필수. 백엔드는 `captureAssetIds`의 파일 바이트를 그대로 전달한다.
 
-**응답 `data`** = 백엔드 `ExtractionResult`의 `resultStatus, candidates`
+**응답 `data`** = 백엔드 `ExtractionResult`의 `resultStatus, candidates, regionHint`
 
 ```json
 {
@@ -135,13 +135,15 @@ sources:
       "evidence": "캡처 속 간판에서 찾았어요", "confidence": 1.0 },
     { "name": "바다 앞 카페", "place": { "…민락점" }, "evidence": "캡처 속 간판에서 찾았어요", "confidence": 1.0 },
     { "name": "신기산업", "place": null, "evidence": "게시물 글에서 찾았어요", "confidence": null }
-  ]
+  ],
+  "regionHint": "부산 수영구"
 }
 ```
 
 - `name`은 자료에서 찾은 **장소 언급**이다. 같은 `name`의 후보들은 같은 언급의 여러 지점이다(화면 "어느 곳인가요?").
 - `place`는 공급자 장소(백엔드 resolver가 `places`에 upsert해 `place.id`를 만든다). 검색 결과가 없으면 `null`, `confidence: null`. 응답에는 `candidateId`와 `place.id`·`regionId`·`source`가 없다(§0.1).
 - `confidence`(0~1): 정규화한 언급 이름과 공급자 장소 이름의 문자열 유사도.
+- `regionHint`(문자열 또는 `null`, 2026-11-16): 자료에 **글자로 적힌** 지역 단서(인스타 위치 태그·본문·메모·간판 주소) 하나, 30자 이하. 장소를 못 찾았을 때 앱이 그 지역에서 검색하게 한다(S12). LLM은 지역과 함께 읽은 곳(`LINK_TEXT`·`MEMO`·`CAPTURE_TEXT`)을 내고, 글·메모에서 읽었다면 그 글에 적힌 그대로 있어야 받는다. 캡처에서 읽었다는 것만 캡처를 근거로 받는다(캡처가 같이 와도 글에서 읽었다는 지역은 글에서 확인). 사진 풍경·음식으로 짐작한 지역, 읽은 곳이 없거나 모르는 값, `FAILED`는 `null`. 요청의 `regionHint`(여행지 이름)를 그대로 돌려주지 않는다
 - `evidence`: 화면 문구 그대로 — `게시물 글에서 찾았어요` / `캡처 속 간판에서 찾았어요` / `캡처 속 글에서 찾았어요` / `메모에서 찾았어요`.
 
 | 상황 | `resultStatus` |
@@ -155,7 +157,7 @@ sources:
 - LLM 장애 → 503 `PROVIDER_UNAVAILABLE`(링크 제목을 장소 언급으로 대신 쓰지 않는다. 메모·캡처가 함께 와도 같음). 장소 검색 장애 → 언급은 `place: null`로 돌려준다.
 - SSRF 방지(내부망 주소 차단, 리다이렉트마다 검사), 캡처는 EXIF를 지우고 1600px로 줄여 LLM에 보낸다. 장소 이름은 적힌 그대로(업종을 붙이지 않음).
 
-**검증:** T-01-1 링크 글·캡처 간판의 장소 2곳 / T-01-2 같은 이름 3지점 → `MULTIPLE_CANDIDATES` / T-01-3 장소 없음 → `NOT_FOUND` / T-01-4 사설 IP → 링크 실패 / T-01-5 403 링크+정상 캡처 → 캡처 결과 / T-01-6 403 링크만 → `FAILED` / T-01-7 검색 장애 → `place:null` / T-01-8 같은 장소 중복 언급 합침 / T-01-9 LLM 이미지에 EXIF 없음 / T-01-10 WebP 422 `UNSUPPORTED_INPUT`, 11장 422 `INPUT_LIMIT_EXCEEDED`
+**검증:** T-01-1 링크 글·캡처 간판의 장소 2곳 / T-01-2 같은 이름 3지점 → `MULTIPLE_CANDIDATES` / T-01-3 장소 없음 → `NOT_FOUND` / T-01-4 사설 IP → 링크 실패 / T-01-5 403 링크+정상 캡처 → 캡처 결과 / T-01-6 403 링크만 → `FAILED` / T-01-7 검색 장애 → `place:null` / T-01-8 같은 장소 중복 언급 합침 / T-01-9 LLM 이미지에 EXIF 없음 / T-01-10 WebP 422 `UNSUPPORTED_INPUT`, 11장 422 `INPUT_LIMIT_EXCEEDED` / 지역 단서: 위치 태그만 있는 캡처 → `NOT_FOUND`+`regionHint`, 글·메모에 없는 지역·단어를 이어 붙인 지역·캡처+링크에서 글에 없는 지역·읽은 곳이 없는 지역·31자 이상은 `null`(`test_place_extraction.py`의 `test_region_*`, `test_location_tag_only_*`). 실제 GMS: 음식 캡처에서 위치 태그를 잘라 내면 3/3회 `null`, 원본은 '강원도 강릉'
 
 ## 3. `POST /ai/v1/preference-inferences` — 취향 행동 추론 (S03)
 
@@ -463,7 +465,7 @@ sources:
 | AS-8 | 모델: GMS `gpt-5.6-luna`, 사진 SigLIP2 `ViT-B-32-SigLIP2-256`(`webli`). 사진은 긴 변 448px로 줄여 넣는다 |
 | AS-9 | 시간 예산: AI 요청 45초, 백엔드 호출 50초, worker 60초 |
 | AS-10 | 근거리 도보 대체: 대중교통 경로가 없고 직선 1km 이내일 때만 `WALK`. 그보다 멀면 `UNAVAILABLE`. 공급자 장애는 거리와 무관하게 `UNAVAILABLE` |
-| AS-11 | 장소 추출: 링크·메모에서 찾았다는 이름은 그 글에 실제로 있을 때만 받는다(글자·공백 차이는 정규화). 언급은 요청당 20개까지, 링크 읽기는 전체 5초, 입력 길이는 `url` 2048자·`memo` 500자·`regionHint` 50자 |
+| AS-11 | 장소 추출: 링크·메모에서 찾았다는 이름은 그 글에 실제로 있을 때만 받는다(글자·공백 차이는 정규화). 언급은 요청당 20개까지, 링크 읽기는 전체 5초, 입력 길이는 `url` 2048자·`memo` 500자·`regionHint` 50자. 응답 `regionHint`는 30자 이하이고 읽었다는 곳(글·메모·캡처)에 실제로 있을 때만 준다 |
 | AS-12 | 네이버 장소 ID: `sha256(정규화한 이름 + 줄바꿈 + 정규화한 도로명 주소, 없으면 지번 주소)`의 16진수. 정규화는 NFKC·소문자·글자와 숫자만. 주소 없는 결과는 뺀다. 가게 이름이나 주소가 바뀌면 다른 장소가 된다 |
 | AS-13 | 취향 추론: 분류나 이름 규칙으로 못 고른 장소만 LLM에 이름·분류를 보낸다(요청당 100곳, 장소당 2태그). 같은 수의 태그는 S03 선택지 순서. `category`가 없으면 이름 규칙(해수욕장·해변·카페·커피·공원·둘레길)만 쓰이므로 LLM 장애 시 결과가 줄어든다. 분류는 카카오(`음식점 > 한식`)와 네이버(`한식>국밥`, `카페,디저트>카페`)를 함께 읽는다: `>`로 단계, 쉼표로 낱말을 나누고, 카페 → 맛집(맨 앞 단계가 음식점·한식·일식·중식·양식·분식·아시아음식·세계음식·퓨전음식·육류·고기요리·해물·생선요리·치킨·닭강정·패스트푸드·뷔페·술집) → 해수욕장·해변 → 산 → 공원 순으로 본다 |
 | AS-14 | 준비물: 걷는 장소는 분류·이름에 공원·둘레길·산책·해변·해수욕장·해안·마을·시장·관광·명소가 있는 곳, 바다는 해수욕장·해변·해안. 시각을 모르는 날은 8시간 판단에서 뺀다. LLM에는 기간·날씨·장소 이름과 분류, 규칙 제안, 기존·삭제 항목 이름(각 최대 50개)을 보내고, 그 항목과 같은 뜻의 물건은 제안하지 말라고 지시한다. 같은 이름만 거르면 `선크림`을 지워도 `자외선 차단제`가 다시 나와서다(실제 GMS 평가 2/2회). 보내는 것은 준비물 이름뿐이라 이미 보내던 장소 이름과 같은 종류의 자료이고, 주소·좌표·ID는 보내지 않는다. 응답은 같음·포함 비교와 §7의 작은 동의어 묶음으로 다시 거른다. 시간별 비 예보의 오전·오후는 한국 시각 |

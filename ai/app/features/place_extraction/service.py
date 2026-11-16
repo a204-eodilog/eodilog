@@ -48,11 +48,12 @@ SYSTEM_PROMPT = """너는 여행 앱 '어디로그'의 장소 추출기다.
 - 좌표나 주소를 지어내지 않는다. 자료에 보이는 주소·지역 단서만 address_hint에 쓴다.
 - 지도 앱 화면 캡처에서 낸 장소는 address_hint를 비우지 않는다. 캡처에 보이는 것 중 이 순서로 고른다: 카드·핀에 붙은 주소(예: '서울 중구 세종대로 110') → 동·구 이름(예: '역삼동', '강남구') → 역 이름(예: '역삼역'). 다른 가게·건물·광장 이름은 쓰지 않고, 캡처에 보이지 않는 지역은 지어내지 않는다.
 - found_in: LINK_TEXT(게시물 글), CAPTURE_SIGN(캡처 속 간판·로고), CAPTURE_TEXT(캡처 속 글), MEMO(메모)
-- region: 장소를 찾았든 못 찾았든, 자료에 글자로 보이는 지역 단서 하나를 쓴다. 위치 태그(예: '강원도 강릉'), 본문·메모의 지역 이름, 간판·지도의 주소 가운데 가장 구체적인 것을 적힌 그대로 쓴다. 사진 풍경이나 음식으로 지역을 짐작하지 않는다. 글자로 보이는 지역이 없으면 null.
+- region: 자료에 지역 이름이 글자로 적혀 있을 때만 하나를 쓴다. 위치 태그(예: '강원도 강릉'), 본문·메모의 지역 이름, 간판·지도의 주소 가운데 가장 구체적인 것을 적힌 그대로 쓴다. 사진 풍경·음식·건물 모양으로 지역을 짐작하지 않는다. 글자로 적힌 지역이 없으면 null로 두는 것이 맞다.
+- region_found_in: region을 읽은 곳. LINK_TEXT(게시물 글), CAPTURE_TEXT(캡처 속 글·위치 태그), MEMO(메모). region이 null이면 null.
 
 JSON으로만 답한다:
-{"places": [{"mention": "장소 이름", "address_hint": "지역 단서 또는 null", "found_in": "..."}], "region": "지역 단서 또는 null"}
-장소가 없으면 {"places": [], "region": "지역 단서 또는 null"}"""
+{"places": [{"mention": "장소 이름", "address_hint": "지역 단서 또는 null", "found_in": "..."}], "region": "지역 단서 또는 null", "region_found_in": "... 또는 null"}
+장소가 없으면 {"places": [], "region": "지역 단서 또는 null", "region_found_in": "... 또는 null"}"""
 
 
 class Candidate(CamelModel):
@@ -178,7 +179,10 @@ class PlaceExtractor:
             raise LLMUnavailable("LLM 응답 형식이 올바르지 않습니다.")
         page_key, memo_key = normalize(page_text), normalize(memo or "")
         mentions = _valid_mentions(items, page_key, bool(captures), memo_key)
-        return mentions, _valid_region(reply.get("region"), page_text, bool(captures), memo or "")
+        region = _valid_region(
+            reply.get("region"), reply.get("region_found_in"), page_text, bool(captures), memo or ""
+        )
+        return mentions, region
 
     async def _resolve(
         self, mention: Mention, region_hint: str | None
@@ -265,8 +269,14 @@ def _page_text(page: PageMeta) -> str:
     return "\n".join(part for part in parts if part)
 
 
-def _valid_region(value: object, page_text: str, has_captures: bool, memo_text: str) -> str | None:
-    """LLM이 준 지역 단서를 그대로 믿지 않는다. 캡처가 없으면 글·메모에 실제로 있어야 한다."""
+def _valid_region(
+    value: object, found_in: object, page_text: str, has_captures: bool, memo_text: str
+) -> str | None:
+    """LLM이 준 지역 단서를 그대로 믿지 않는다. 읽었다는 곳(found_in)에 실제로 있어야 한다.
+
+    글·메모에서 읽었다면 그 글에 그대로 있어야 하고, 캡처에서 읽었다는 것만 캡처를 근거로 받는다.
+    캡처가 같이 왔다고 글에서 읽었다는 지역을 확인 없이 받지 않는다(음식 캡처 + 지역 없는 링크에 '제주'를 지어내는 경우).
+    """
     if not isinstance(value, str):
         return None
     region = value.strip()
@@ -274,9 +284,17 @@ def _valid_region(value: object, page_text: str, has_captures: bool, memo_text: 
     if not key or len(region) > MAX_REGION_CHARS:
         return None
     # 장소명 비교용 정규화는 공백을 지워 '전부 산책'에서도 '부산'을 만든다.
-    if has_captures or region in page_text or region in memo_text:
+    if found_in == "LINK_TEXT":
+        valid = region in page_text
+    elif found_in == "MEMO":
+        valid = region in memo_text
+    elif found_in in ("CAPTURE_TEXT", "CAPTURE_SIGN"):
+        valid = has_captures
+    else:
+        valid = False
+    if valid:
         return region
-    log.info("region_dropped")
+    log.info("region_dropped found_in=%s", found_in if found_in in EVIDENCE_TEXT else "?")
     return None
 
 

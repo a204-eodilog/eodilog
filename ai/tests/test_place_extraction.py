@@ -94,8 +94,11 @@ def mock_llm(*mentions: dict) -> respx.Route:
     )
 
 
-def mock_llm_region(region, *mentions: dict) -> respx.Route:
-    content = json.dumps({"places": list(mentions), "region": region}, ensure_ascii=False)
+def mock_llm_region(region, *mentions: dict, found_in: str | None = "CAPTURE_TEXT") -> respx.Route:
+    content = json.dumps(
+        {"places": list(mentions), "region": region, "region_found_in": found_in},
+        ensure_ascii=False,
+    )
     return respx.post(GMS_URL).mock(
         return_value=httpx.Response(200, json={"choices": [{"message": {"content": content}}]})
     )
@@ -810,7 +813,7 @@ def test_location_tag_only_capture_is_not_found_with_region_hint(client):
 @respx.mock
 def test_region_not_in_link_text_or_memo_is_dropped(client):
     respx.get(LINK_AT_IP).mock(return_value=httpx.Response(200, html=PAGE))
-    mock_llm_region("제주")
+    mock_llm_region("제주", found_in="LINK_TEXT")
 
     data = post(client, url=LINK, memo="야경 보러 감").json()["data"]
 
@@ -820,7 +823,7 @@ def test_region_not_in_link_text_or_memo_is_dropped(client):
 @respx.mock
 def test_region_found_in_link_text_is_kept_with_places(client):
     respx.get(LINK_AT_IP).mock(return_value=httpx.Response(200, html=PAGE))
-    mock_llm_region("남천동", mention("민락 수변공원", "LINK_TEXT"))
+    mock_llm_region("남천동", mention("민락 수변공원", "LINK_TEXT"), found_in="LINK_TEXT")
     mock_places({"민락 수변공원": [document("민락수변공원")]})
 
     data = post(client, url=LINK).json()["data"]
@@ -840,7 +843,7 @@ def test_too_long_or_non_text_region_is_dropped(client):
 @respx.mock
 def test_region_cannot_be_assembled_across_word_boundaries(client):
     respx.get(LINK_AT_IP).mock(return_value=httpx.Response(200, html=PAGE))
-    mock_llm_region("부산")
+    mock_llm_region("부산", found_in="MEMO")
     data = post(client, url=LINK, memo="전부 산책하기 좋은 길").json()["data"]
     assert data["regionHint"] is None
 
@@ -848,6 +851,23 @@ def test_region_cannot_be_assembled_across_word_boundaries(client):
 @respx.mock
 def test_region_in_memo_is_kept_verbatim(client):
     respx.get(LINK_AT_IP).mock(return_value=httpx.Response(200, html=PAGE))
-    mock_llm_region("강원도 강릉")
+    mock_llm_region("강원도 강릉", found_in="MEMO")
     data = post(client, url=LINK, memo="강원도 강릉에서 산책").json()["data"]
     assert data["regionHint"] == "강원도 강릉"
+
+
+@respx.mock
+def test_region_said_from_link_is_checked_even_with_capture(client):
+    # 음식 캡처 + 지역 이름이 없는 링크(!299 리뷰).
+    # 캡처가 같이 와도 글에서 읽었다는 지역은 글에 있어야 한다
+    respx.get(LINK_AT_IP).mock(return_value=httpx.Response(200, html=PAGE))
+    mock_llm_region("제주", found_in="LINK_TEXT")
+    assert post(client, [png()], url=LINK).json()["data"]["regionHint"] is None
+
+
+@respx.mock
+def test_region_without_source_is_dropped(client):
+    mock_llm_region("강원도 강릉", found_in=None)
+    assert post(client, [png()]).json()["data"]["regionHint"] is None
+    mock_llm_region("강원도 강릉", found_in="GUESS")
+    assert post(client, [png()]).json()["data"]["regionHint"] is None
