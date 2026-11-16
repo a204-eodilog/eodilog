@@ -33,6 +33,8 @@ export type FeedDetailViewProps = {
   onPhotos: (index: number) => void;
   onSavePlace: (stop: FeedStop) => void;
   onPlace: (stop: FeedStop) => void;
+  /** 내가 이미 저장한 장소의 id. 그 줄의 책갈피를 채워 보인다. 없으면 모두 빈 책갈피 */
+  savedPlaceIds?: ReadonlySet<string>;
 };
 
 const SECTIONS = [
@@ -227,6 +229,7 @@ function Body({ detail, ...props }: FeedDetailViewProps & { detail: FeedDetail }
                       <View key={stop.itemId}>
                         <StopRow
                           stop={stop}
+                          saved={props.savedPlaceIds?.has(stop.placeId) ?? false}
                           onPress={() => props.onPlace(stop)}
                           onSave={() => props.onSavePlace(stop)}
                         />
@@ -272,10 +275,12 @@ function Body({ detail, ...props }: FeedDetailViewProps & { detail: FeedDetail }
 
 function StopRow({
   stop,
+  saved,
   onPress,
   onSave,
 }: {
   stop: FeedStop;
+  saved: boolean;
   onPress: () => void;
   onSave: () => void;
 }) {
@@ -323,9 +328,15 @@ function StopRow({
         onPress={onSave}
         style={({ pressed }) => [styles.save, pressed && styles.pressed]}
         accessibilityRole="button"
-        accessibilityLabel={`${stop.name} 저장`}
+        accessibilityLabel={saved ? `${stop.name} 저장 해제` : `${stop.name} 저장`}
       >
-        <Icon name="bookmark" size={20} color={colors.text.default} />
+        {/* 저장한 곳은 채운 파란 책갈피. 다시 누르면 저장을 해제한다 */}
+        <Icon
+          name="bookmark"
+          size={20}
+          color={saved ? colors.brand.primary : colors.text.default}
+          filled={saved}
+        />
       </PressableScale>
     </View>
   );

@@ -7,4 +7,5 @@ export {
   type PlaceSaveSheetProps,
   type SavePlace,
 } from './components/place-save-sheet';
-export type { SaveTarget } from './hooks/use-bookmark-mutations';
+export { useUnsavePlace, type SaveTarget } from './hooks/use-bookmark-mutations';
+export { useSavedPlaceIds } from './hooks/use-bookmarks';
