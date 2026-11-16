@@ -41,7 +41,8 @@ export function useExpenseBoard(tripId: string) {
     settlement: settlement.data,
     myMemberId,
     isLoading: queries.some((q) => q.isPending),
-    error: queries.find((q) => q.isError)?.error ?? null,
+    // 보이던 자료가 있으면 다시 받기가 한 번 실패해도 화면을 오류로 바꾸지 않는다(받은 적 없을 때만 오류)
+    error: queries.find((q) => q.isError && q.data === undefined)?.error ?? null,
     refetch: () => Promise.all(queries.map((q) => q.refetch())),
   };
 }

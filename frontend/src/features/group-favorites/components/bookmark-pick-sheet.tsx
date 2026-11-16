@@ -14,6 +14,9 @@ type Props = {
   onClose(): void;
   /** 내 개인 즐겨찾기. 받는 중이면 undefined */
   bookmarks: Bookmark[] | undefined;
+  /** 개인 즐겨찾기를 받지 못했다. 받는 중 표시가 끝나지 않던 것을 오류와 다시 시도로 바꾼다 */
+  failed?: boolean;
+  onRetry?(): void;
   /** 내가 이미 그룹에 담은 장소 */
   inGroup: Set<string>;
   onConfirm(placeIds: string[]): void;
@@ -29,6 +32,8 @@ export function BookmarkPickSheet({
   visible,
   onClose,
   bookmarks,
+  failed = false,
+  onRetry,
   inGroup,
   onConfirm,
   busy,
@@ -57,7 +62,18 @@ export function BookmarkPickSheet({
       description="고른 장소만 동행에게 보여요"
       descriptionVariant="caption"
     >
-      {!bookmarks ? (
+      {!bookmarks && failed ? (
+        <View style={styles.failed} accessibilityRole="alert">
+          <Text style={[typography.body, styles.empty]}>개인 즐겨찾기를 불러오지 못했어요</Text>
+          <Button
+            label="다시 시도"
+            icon="refresh"
+            variant="secondary"
+            size="sm"
+            onPress={onRetry}
+          />
+        </View>
+      ) : !bookmarks ? (
         <Spinner color={colors.brand.primary} style={styles.loading} />
       ) : bookmarks.length === 0 ? (
         <Text style={[typography.body, styles.empty]}>개인 즐겨찾기가 비어 있어요</Text>
@@ -110,6 +126,7 @@ export function BookmarkPickSheet({
 }
 
 const styles = StyleSheet.create({
+  failed: { alignItems: 'center', gap: spacing[12] },
   loading: { marginVertical: spacing[24] },
   empty: { color: colors.text.sub, paddingVertical: spacing[24], textAlign: 'center' },
   scroll: { maxHeight: 360 },

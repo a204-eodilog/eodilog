@@ -205,6 +205,8 @@ export function WeatherScreen() {
   const alts = useWeatherAlternatives(tripId);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  // 이미 준비물에 넣은 이름. 하나만 넣고 실패했을 때 다시 누르면 남은 것만 넣는다
+  const addedLabels = useRef(new Set<string>());
   const [added, setAdded] = useState(false);
 
   const start = trip.data?.startDate ?? null;
@@ -246,12 +248,16 @@ export function WeatherScreen() {
     if (!ok) toast.error('변경안을 만들지 못했어요. 다시 시도해 주세요');
   };
 
-  // 우산과 우비를 준비물에 넣는다. 하나라도 실패하면 알린다
+  // 우산과 우비를 준비물에 넣는다. 하나라도 실패하면 알린다.
+  // 이미 넣은 것은 기억해 다시 누를 때 건너뛴다(추가 API에 중복 방지 키가 없어 우산이 두 개 생겼다)
   const addChecklist = async () => {
     setAdding(true);
     try {
-      await addChecklistItem(tripId, '우산');
-      await addChecklistItem(tripId, '우비');
+      for (const label of ['우산', '우비']) {
+        if (addedLabels.current.has(label)) continue;
+        await addChecklistItem(tripId, label);
+        addedLabels.current.add(label);
+      }
       setAdded(true);
       toast.success('우산과 우비를 준비물에 넣었어요');
       void queryClient.invalidateQueries({ queryKey: [...tripKey(tripId), 'checklist'] });
