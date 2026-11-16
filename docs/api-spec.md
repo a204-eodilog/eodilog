@@ -379,7 +379,7 @@ STOMP over WebSocket으로 서버 → 앱 전달만 한다. 메시지 보내기�
 | InvitationPreview | `tripTitle:string,startDate:date\|null,endDate:date\|null,inviter:{nickname:string},inviterUser:UserCard\|null,expiresAt:datetime,alreadyMember:boolean`. 익명 inviterUser=null, 로그인 시만 본인 기준 관계 상태 포함. alreadyMember는 로그인한 사람이 이미 ACTIVE 멤버일 때만 true |
 | LeaveResult | `tripId:id,tripDeleted:boolean,newOwnerMemberId:id\|null,cleanupJobId:id\|null,status:LEFT\|TRIP_DELETED`. 일반 이탈은 LEFT·cleanupJobId null(200), 내 채팅 삭제로 지울 메시지가 있으면 LEFT·LEAVE_CLEANUP 작업 ID(202), 혼자 남은 사람의 이탈은 TRIP_DELETED·TRIP_DELETE 작업 ID(202) |
 | Region | `id,code:string,name:string,parentId:id\|null,latitude:number\|null,longitude:number\|null` |
-| Place | `id,name,address:string\|null,latitude:number,longitude:number,regionId:id\|null,provider:string\|null,providerPlaceId:string\|null,source:PROVIDER\|MANUAL` |
+| Place | `id,name,address:string\|null,latitude:number,longitude:number,regionId:id\|null,provider:string\|null,providerPlaceId:string\|null,source:PROVIDER\|MANUAL,category:string\|null,imageUrl:string\|null`. category는 공급자 분류 문자열(예: `음식>커피점/카페>카페`, `카페,디저트>카페`), 모르면 null. 앱이 사진 없는 장소에 업종 아이콘을 그릴 때 쓴다. imageUrl은 대표 사진 원본 주소(한국관광공사 firstimage, https로 바꿔 저장. 공공누리 제1유형이라 앱이 출처를 적는다), 네이버·소상공인 장소는 null(2026-11-14) |
 | Bookmark | `place:Place\|null,retainedPlace:{name:string,latitude:number,longitude:number},memo:string\|null,sourceFeedId:id\|null,sourceUnavailable:boolean,createdAt:datetime`. 소실 시 place=null/sourceFeedId=null·retainedPlace/내 메모만 유지, 내부 원본 필드 미포함 |
 | SavedPlace | `place:Place,savedBy:{memberId:id,memo:string\|null}[],savedCount:integer` |
 | JobRef | `jobId:id,status:QUEUED,statusUrl:string` |

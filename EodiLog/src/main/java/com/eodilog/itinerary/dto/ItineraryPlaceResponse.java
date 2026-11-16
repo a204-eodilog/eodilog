@@ -37,12 +37,21 @@ public record ItineraryPlaceResponse(
 
 		@Schema(description = "PROVIDER: 공급자 장소 / MANUAL: 직접 등록", example = "MANUAL",
 				requiredMode = Schema.RequiredMode.REQUIRED)
-		PlaceSource source
+		PlaceSource source,
+
+		@Schema(description = "공급자 분류 문자열. 모르면 null", example = "음식>커피점/카페>카페",
+				requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
+		String category,
+
+		@Schema(description = "대표 사진 주소(한국관광공사). 없으면 null", requiredMode = Schema.RequiredMode.REQUIRED,
+				nullable = true)
+		String imageUrl
 ) {
 
 	public static ItineraryPlaceResponse from(PlaceView place) {
 		return new ItineraryPlaceResponse(place.id(), place.name(), place.address(), place.latitude(),
-				place.longitude(), place.regionId(), place.provider(), place.providerPlaceId(), place.source());
+				place.longitude(), place.regionId(), place.provider(), place.providerPlaceId(), place.source(),
+				place.category(), place.imageUrl());
 	}
 
 }

@@ -12,7 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Repository
 public class JdbcPlaceReader implements PlaceReader {
 
-	static final String COLUMNS = "id,name,address,latitude,longitude,region_id,provider,provider_place_id,source";
+	static final String COLUMNS = "id,name,address,latitude,longitude,region_id,provider,provider_place_id,source,category,image_url";
 
 	private final NamedParameterJdbcTemplate jdbc;
 
@@ -42,6 +42,7 @@ public class JdbcPlaceReader implements PlaceReader {
 	static PlaceView map(ResultSet rs, int row) throws SQLException {
 		return new PlaceView(rs.getObject("id", UUID.class), rs.getString("name"), rs.getString("address"),
 				rs.getBigDecimal("latitude"), rs.getBigDecimal("longitude"), rs.getObject("region_id", UUID.class),
-				rs.getString("provider"), rs.getString("provider_place_id"), PlaceSource.valueOf(rs.getString("source")));
+				rs.getString("provider"), rs.getString("provider_place_id"), PlaceSource.valueOf(rs.getString("source")),
+				rs.getString("category"), rs.getString("image_url"));
 	}
 }
