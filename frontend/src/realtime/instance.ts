@@ -6,6 +6,7 @@ import { useConnectionStore } from './connection-store';
 import { createDevStomp, devRealtime } from './dev-transport';
 import { createRealtimeClient, type StompCallbacks, type StompLike } from './realtime-client';
 import { createStompClient } from './stomp-client';
+import { tokenExpiresAt } from './token-expiry';
 import { wsUrl } from './ws-url';
 
 /** 앱에 하나뿐인 실시간 연결 인스턴스. 바깥에서는 index.ts로 가져다 쓴다 */
@@ -27,6 +28,7 @@ export const realtime = createRealtimeClient({
   createStomp: env.devMock ? createDevStomp : createRealStomp,
   getAccessToken: () => useSessionStore.getState().accessToken,
   refreshAccessToken,
+  getTokenExpiresAt: () => tokenExpiresAt(useSessionStore.getState().accessToken),
   connection: {
     get: () => useConnectionStore.getState().state,
     dispatch: (event) => useConnectionStore.getState().dispatch(event),
