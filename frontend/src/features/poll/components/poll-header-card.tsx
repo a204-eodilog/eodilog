@@ -3,6 +3,8 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Icon, type IconName } from '@/components/ui';
 import { colors, radius, spacing, typography } from '@/theme';
 
+import { decidedDateLine } from '../poll-rules';
+
 type OpenProps = {
   /** "2일 남았어요". 마감 시각이 지났으면 null */
   remaining: string | null;
@@ -104,10 +106,19 @@ type DecidedProps = {
   name: string;
   votes: string;
   voters: string;
+  /** 연 사람이 직접 끝낸 투표. 날짜 줄에서 "자동"을 뺀다 */
+  byHand?: boolean;
 };
 
 /** S22 여행지 확정 카드(Figma 201-11569). 초록 '확정', 자동 확정 날짜, 지도 핀 원, 여행지 이름, 득표와 투표 인원 */
-export function PollDecidedCard({ closedDate, label, name, votes, voters }: DecidedProps) {
+export function PollDecidedCard({
+  closedDate,
+  label,
+  name,
+  votes,
+  voters,
+  byHand = false,
+}: DecidedProps) {
   return (
     <View style={[styles.card, styles.decidedCard]}>
       <View style={styles.top}>
@@ -115,7 +126,7 @@ export function PollDecidedCard({ closedDate, label, name, votes, voters }: Deci
           <Icon name="check" size={14} color={colors.status.success} />
           <Text style={[styles.badgeText, styles.decidedBadgeText]}>확정</Text>
         </View>
-        <IconLine icon="calendar" text={`${closedDate} 마감 후 자동 확정됐어요`} tone="success" />
+        <IconLine icon="calendar" text={decidedDateLine(closedDate, byHand)} tone="success" />
       </View>
       <View style={styles.place}>
         <View style={styles.pin}>

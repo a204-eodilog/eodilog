@@ -12,6 +12,7 @@ import type {
 
 // 계약: specs/20261109-094657-poll-vote/contracts/poll-api.md (백엔드 PollController 기준)
 // 투표 API는 Idempotency-Key를 요구하지 않는다. 두 번 누르기는 화면에서 막는다
+// 직접 종료: 백엔드 전달 문서 to-FE-poll-manual-close-2026-11-16 (EODI-360)
 
 /** S22가 대표 투표를 고를 때 보는 최근 투표 수 */
 export const POLLS_PAGE_LIMIT = 20;
@@ -54,6 +55,22 @@ export async function replaceBallot(
   const { data } = await apiClient.put<DataResponse<Poll>>(
     `/trips/${tripId}/polls/${pollId}/ballot`,
     { candidateIds, expectedVersion },
+  );
+  return data.data;
+}
+
+/**
+ * POST .../close. 투표를 연 사람이 마감 시각 전에 직접 끝낸다. 마감된 투표가 돌아온다(version +1).
+ * 연 사람이 아니면 403, 이미 마감이면 409 POLL_CLOSED, 그사이 후보가 추가됐으면 409 VERSION_CONFLICT
+ */
+export async function closePoll(
+  tripId: string,
+  pollId: string,
+  expectedVersion: number,
+): Promise<Poll> {
+  const { data } = await apiClient.post<DataResponse<Poll>>(
+    `/trips/${tripId}/polls/${pollId}/close`,
+    { expectedVersion },
   );
   return data.data;
 }
