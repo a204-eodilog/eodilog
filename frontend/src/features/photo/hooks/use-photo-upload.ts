@@ -87,7 +87,20 @@ export function usePhotoUpload(tripId: string) {
     [patch, tripId],
   );
 
-  const run = useCallback(async () => {
+  /**
+   * 이번까지 등록을 마친 사진을 AI 주제 분류에 보낸다. 다 올렸든, 취소·화면 이탈로 멈췄든 거친다.
+   * 화면은 기다리지 않고, 적용되면 사진 목록·요약만 다시 받는다(!302 리뷰: 여행 캐시 전체를 다시 받지 않는다)
+   */
+  const flushClassify = useCallback(() => {
+    const toClassify = registeredRef.current;
+    registeredRef.current = [];
+    if (toClassify.length === 0) return;
+    void classifyUploaded(tripId, toClassify).then((applied) => {
+      if (applied) void queryClient.invalidateQueries({ queryKey: ['trips', tripId, 'photos'] });
+    });
+  }, [queryClient, tripId]);
+
+  const upload = useCallback(async () => {
     const controller = new AbortController();
     abortRef.current = controller;
     const { signal } = controller;
@@ -136,16 +149,16 @@ export function usePhotoUpload(tripId: string) {
     }
 
     void queryClient.invalidateQueries({ queryKey: ['trips', tripId, 'photos'] });
-    // 올린 사진을 AI가 주제(풍경·음식·사람·기타)로 나눈다. 화면은 기다리지 않고, 적용되면 사진 목록을 다시 받는다
-    const toClassify = registeredRef.current;
-    registeredRef.current = [];
-    if (toClassify.length > 0) {
-      void classifyUploaded(tripId, toClassify).then((applied) => {
-        if (applied) void queryClient.invalidateQueries({ queryKey: ['trips', tripId] });
-      });
-    }
     setPhase(itemsRef.current.some((i) => i.status === 'failed') ? 'failed' : 'done');
   }, [keys, patch, queryClient, tripId, uploadOne]);
+
+  const run = useCallback(async () => {
+    try {
+      await upload();
+    } finally {
+      flushClassify();
+    }
+  }, [flushClassify, upload]);
 
   /** 고른 사진으로 올리기 시작 */
   const start = useCallback(
@@ -159,6 +172,8 @@ export function usePhotoUpload(tripId: string) {
       }));
       setItems(itemsRef.current);
       batchRef.current = null;
+      // 지난번 사진이 오래된 version으로 이번 분류에 섞이지 않게 비운다
+      registeredRef.current = [];
       void run();
     },
     [run],
