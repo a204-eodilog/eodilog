@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals
 import { IDLE, nextConnection, type ConnectionState } from './connection-machine';
 import {
   createRealtimeClient,
+  RENEW_AHEAD_MS,
   type RealtimeDeps,
   type StompCallbacks,
   type StompLike,
@@ -296,6 +297,180 @@ describe('반쯤 끊긴 연결: 네트워크가 바뀌면 다시 연결', () => 
     t.latest().connect();
     t.client.pause();
     t.client.networkChanged();
+    expect(t.instances).toHaveLength(1);
+  });
+});
+
+describe('토큰 만료 전 미리 갱신', () => {
+  const HOUR = 3_600_000;
+
+  /** 토큰 만료 시각을 테스트가 정한다. 갱신하면 한 시간 뒤로 밀린다 */
+  function setupWithExpiry(over: Partial<RealtimeDeps> = {}) {
+    let expiresAt = Date.now() + HOUR;
+    const refresh = jest.fn<() => Promise<string | null>>(async () => {
+      expiresAt = Date.now() + HOUR;
+      return 'token-2';
+    });
+    const t = setup({
+      now: () => Date.now(),
+      getTokenExpiresAt: () => expiresAt,
+      refreshAccessToken: refresh,
+      ...over,
+    });
+    return {
+      ...t,
+      refresh,
+      setExpiresAt: (at: number) => {
+        expiresAt = at;
+      },
+    };
+  }
+
+  it('만료 1분 전에 갱신하고, 새 연결이 붙을 때까지 옛 연결로 계속 받는다', async () => {
+    const t = setupWithExpiry();
+    const onMessage = jest.fn();
+    const onResync = jest.fn();
+    t.client.subscribe(CHAT, { onMessage, onResync });
+    t.client.start();
+    t.latest().connect();
+    onResync.mockClear();
+
+    await jest.advanceTimersByTimeAsync(HOUR - RENEW_AHEAD_MS - 1);
+    expect(t.refresh).not.toHaveBeenCalled();
+    await jest.advanceTimersByTimeAsync(1);
+    expect(t.refresh).toHaveBeenCalledTimes(1);
+    expect(t.instances).toHaveLength(2);
+
+    // 새 연결은 아직 붙지 않았다. 옛 연결은 닫지 않았고 메시지도 그대로 받는다
+    expect(t.instances[0].deactivate).not.toHaveBeenCalled();
+    t.instances[0].deliver(CHAT, { n: 1 });
+    expect(onMessage).toHaveBeenCalledWith({ n: 1 });
+
+    t.latest().connect();
+    expect(t.instances[0].deactivate).toHaveBeenCalledTimes(1);
+    expect(t.latest().subscribed).toEqual([CHAT]);
+    expect(onResync).toHaveBeenCalledTimes(1);
+    t.latest().deliver(CHAT, { n: 2 });
+    expect(onMessage).toHaveBeenCalledWith({ n: 2 });
+    // 화면 안내에 쓰는 상태는 끊김을 거치지 않는다
+    expect(t.state()).toEqual({ kind: 'connected' });
+  });
+
+  it('갈아탄 뒤 옛 연결이 늦게 닫히거나 오류를 보내도 무시한다', async () => {
+    const t = setupWithExpiry();
+    t.client.start();
+    t.latest().connect();
+    await jest.advanceTimersByTimeAsync(HOUR - RENEW_AHEAD_MS);
+    t.latest().connect();
+    t.instances[0].error('UNAUTHENTICATED');
+    t.instances[0].close();
+    await flush();
+    expect(t.refresh).toHaveBeenCalledTimes(1);
+    expect(t.instances).toHaveLength(2);
+    expect(t.state()).toEqual({ kind: 'connected' });
+  });
+
+  it('갈아탄 연결도 다음 만료 전에 다시 미리 갱신한다', async () => {
+    const t = setupWithExpiry();
+    t.client.start();
+    t.latest().connect();
+    await jest.advanceTimersByTimeAsync(HOUR - RENEW_AHEAD_MS);
+    t.latest().connect();
+    await jest.advanceTimersByTimeAsync(HOUR - RENEW_AHEAD_MS);
+    expect(t.refresh).toHaveBeenCalledTimes(2);
+    expect(t.instances).toHaveLength(3);
+  });
+
+  it('미리 갱신에 실패하면 지금 연결을 그대로 둔다', async () => {
+    const t = setupWithExpiry({ refreshAccessToken: async () => null });
+    t.client.start();
+    t.latest().connect();
+    await jest.advanceTimersByTimeAsync(HOUR - RENEW_AHEAD_MS);
+    expect(t.instances).toHaveLength(1);
+    expect(t.instances[0].deactivate).not.toHaveBeenCalled();
+    expect(t.state()).toEqual({ kind: 'connected' });
+  });
+
+  it('새 연결이 붙기 전에 실패하면 새 연결만 버리고 지금 연결로 계속 받는다', async () => {
+    const t = setupWithExpiry();
+    const onMessage = jest.fn();
+    t.client.subscribe(CHAT, { onMessage });
+    t.client.start();
+    t.latest().connect();
+    await jest.advanceTimersByTimeAsync(HOUR - RENEW_AHEAD_MS);
+    t.latest().close();
+    expect(t.instances[1].deactivate).toHaveBeenCalled();
+    expect(t.instances[0].deactivate).not.toHaveBeenCalled();
+    t.instances[0].deliver(CHAT, { n: 1 });
+    expect(onMessage).toHaveBeenCalledWith({ n: 1 });
+    expect(t.state()).toEqual({ kind: 'connected' });
+    // 버린 연결이 늦게 붙어도 바꾸지 않는다
+    t.instances[1].connect();
+    expect(t.instances[0].deactivate).not.toHaveBeenCalled();
+  });
+
+  it('그 사이 REST 요청이 토큰을 이미 갱신했으면 다시 갱신하지 않고 연결만 새로 맺는다', async () => {
+    const t = setupWithExpiry();
+    t.client.start();
+    t.latest().connect();
+    await jest.advanceTimersByTimeAsync(HOUR / 2);
+    t.setExpiresAt(Date.now() + HOUR);
+    await jest.advanceTimersByTimeAsync(HOUR / 2 - RENEW_AHEAD_MS);
+    expect(t.refresh).not.toHaveBeenCalled();
+    expect(t.instances).toHaveLength(2);
+  });
+
+  it('미리 맺는 중에 지금 연결이 끊기면 새 연결을 버리고 원래 다시 연결 길로 간다', async () => {
+    const t = setupWithExpiry();
+    t.client.start();
+    t.latest().connect();
+    await jest.advanceTimersByTimeAsync(HOUR - RENEW_AHEAD_MS);
+    t.instances[0].close();
+    expect(t.state().kind).toBe('reconnecting');
+    await jest.advanceTimersByTimeAsync(1000);
+    expect(t.instances[1].deactivate).toHaveBeenCalled();
+    expect(t.instances).toHaveLength(3);
+    // 버린 연결이 늦게 붙어도 지금 연결을 건드리지 않는다
+    t.instances[1].connect();
+    expect(t.instances[2].deactivate).not.toHaveBeenCalled();
+  });
+
+  it('백그라운드로 가면 맞춰 둔 미리 갱신을 지운다', async () => {
+    const t = setupWithExpiry();
+    t.client.start();
+    t.latest().connect();
+    t.client.pause();
+    await jest.advanceTimersByTimeAsync(HOUR);
+    expect(t.refresh).not.toHaveBeenCalled();
+    expect(t.instances).toHaveLength(1);
+  });
+
+  it('유효 시간이 미리 갱신 여유보다 짧은 토큰이어도 갱신이 잇달아 돌지 않는다', async () => {
+    let expiresAt = Date.now() + 10_000;
+    const refresh = jest.fn<() => Promise<string | null>>(async () => {
+      expiresAt = Date.now() + 10_000;
+      return 'token-2';
+    });
+    const t = setup({
+      now: () => Date.now(),
+      getTokenExpiresAt: () => expiresAt,
+      refreshAccessToken: refresh,
+    });
+    t.client.start();
+    t.latest().connect();
+    await jest.advanceTimersByTimeAsync(0);
+    t.latest().connect();
+    await jest.advanceTimersByTimeAsync(5_000);
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(t.instances).toHaveLength(2);
+  });
+
+  it('만료 시각을 모르면 미리 갱신하지 않는다', async () => {
+    const t = setup({ now: () => Date.now(), getTokenExpiresAt: () => null });
+    t.client.start();
+    t.latest().connect();
+    await jest.advanceTimersByTimeAsync(HOUR * 2);
+    expect(t.refresh).not.toHaveBeenCalled();
     expect(t.instances).toHaveLength(1);
   });
 });
