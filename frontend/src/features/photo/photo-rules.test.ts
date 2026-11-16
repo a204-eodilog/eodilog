@@ -11,6 +11,7 @@ import {
   skippedMessage,
   uploadCounts,
   type PickerAsset,
+  successfulVersions,
 } from './photo-rules';
 import type { UploadItem } from './types';
 
@@ -133,5 +134,28 @@ describe('일괄 변경 나누기', () => {
   });
   it('비어 있으면 빈 목록', () => {
     expect(inBatches([])).toEqual([]);
+  });
+});
+
+describe('successfulVersions', () => {
+  const versions = new Map([
+    ['p1', 1],
+    ['p2', 3],
+  ]);
+
+  it('성공한 사진만 요청 때의 version으로 적용한다', () => {
+    const result = {
+      photos: [
+        { photoId: 'p1', status: 'SUCCEEDED' },
+        { photoId: 'p2', status: 'FAILED' },
+      ],
+    };
+    expect(successfulVersions(result, versions)).toEqual([{ photoId: 'p1', version: 1 }]);
+  });
+
+  it('보내지 않은 사진이나 빈 결과는 적용하지 않는다', () => {
+    const other = { photos: [{ photoId: 'x', status: 'SUCCEEDED' }] };
+    expect(successfulVersions(other, versions)).toEqual([]);
+    expect(successfulVersions(null, versions)).toEqual([]);
   });
 });

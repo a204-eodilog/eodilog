@@ -1,3 +1,4 @@
+import { randomUUID } from 'expo-crypto';
 import { apiClient } from '@/api/client';
 import { toApiError } from '@/api/errors';
 import type { DataResponse, PageResponse, Trip } from '@/api/types';
@@ -208,4 +209,43 @@ export async function registerPhoto(
     },
   );
   return data.data;
+}
+
+/** POST /trips/{tripId}/photo-classifications(1~50장). 작업 ID를 준다. AI 기능이 꺼져 있으면 409 */
+export async function requestPhotoClassification(
+  tripId: string,
+  photoIds: string[],
+): Promise<string> {
+  const { data } = await apiClient.post<DataResponse<{ jobId: string }>>(
+    `/trips/${encodeURIComponent(tripId)}/photo-classifications`,
+    { photoIds },
+    { headers: { 'Idempotency-Key': randomUUID() } },
+  );
+  return data.data.jobId;
+}
+
+/** GET /jobs/{jobId}. 사진 분류 결과는 result.photos[{photoId,status}] */
+export async function getClassificationJob(jobId: string): Promise<{
+  status: 'QUEUED' | 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED';
+  result: { photos?: { photoId: string; status: string }[] } | null;
+}> {
+  const { data } = await apiClient.get<
+    DataResponse<{
+      status: 'QUEUED' | 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED';
+      result: { photos?: { photoId: string; status: string }[] } | null;
+    }>
+  >(`/jobs/${encodeURIComponent(jobId)}`);
+  return data.data;
+}
+
+/** POST /trips/{tripId}/photo-classifications/{jobId}/apply. 요청 때의 사진 version이 같아야 적용된다 */
+export async function applyPhotoClassification(
+  tripId: string,
+  jobId: string,
+  expectedPhotoVersions: { photoId: string; version: number }[],
+): Promise<void> {
+  await apiClient.post(
+    `/trips/${encodeURIComponent(tripId)}/photo-classifications/${encodeURIComponent(jobId)}/apply`,
+    { expectedPhotoVersions },
+  );
 }

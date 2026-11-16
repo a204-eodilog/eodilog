@@ -14,7 +14,8 @@ import {
   registerPhoto,
   requestUploadIntent,
 } from '../api';
-import type { PickedPhoto, UploadItem } from '../types';
+import { classifyUploaded } from '../classify';
+import type { PickedPhoto, TripPhoto, UploadItem } from '../types';
 
 /** 업로드 화면 단계. pick 고르기 / uploading 올리는 중 / failed 일부(또는 전부) 실패 / done 모두 올림 */
 export type UploadPhase = 'pick' | 'uploading' | 'failed' | 'done';
@@ -38,6 +39,8 @@ export function usePhotoUpload(tripId: string) {
   const batchRef = useRef<string | null>(null);
   const keys = useRef(createIdempotencyKeyStore()).current;
   const abortRef = useRef<AbortController | null>(null);
+  /** 이번 올리기에서 등록을 마친 사진. 다 올린 뒤 AI 주제 분류에 보낸다 */
+  const registeredRef = useRef<TripPhoto[]>([]);
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
@@ -74,16 +77,30 @@ export function usePhotoUpload(tripId: string) {
         patch(index, { ready });
       }
       if (signal.aborted) throw new Error('aborted');
-      await registerPhoto(tripId, {
+      const registered = await registerPhoto(tripId, {
         batchId,
         assetId: assetId!,
         capturedAt: item.photo.capturedAt,
       });
+      registeredRef.current.push(registered);
     },
     [patch, tripId],
   );
 
-  const run = useCallback(async () => {
+  /**
+   * 이번까지 등록을 마친 사진을 AI 주제 분류에 보낸다. 다 올렸든, 취소·화면 이탈로 멈췄든 거친다.
+   * 화면은 기다리지 않고, 적용되면 사진 목록·요약만 다시 받는다(!302 리뷰: 여행 캐시 전체를 다시 받지 않는다)
+   */
+  const flushClassify = useCallback(() => {
+    const toClassify = registeredRef.current;
+    registeredRef.current = [];
+    if (toClassify.length === 0) return;
+    void classifyUploaded(tripId, toClassify).then((applied) => {
+      if (applied) void queryClient.invalidateQueries({ queryKey: ['trips', tripId, 'photos'] });
+    });
+  }, [queryClient, tripId]);
+
+  const upload = useCallback(async () => {
     const controller = new AbortController();
     abortRef.current = controller;
     const { signal } = controller;
@@ -135,6 +152,14 @@ export function usePhotoUpload(tripId: string) {
     setPhase(itemsRef.current.some((i) => i.status === 'failed') ? 'failed' : 'done');
   }, [keys, patch, queryClient, tripId, uploadOne]);
 
+  const run = useCallback(async () => {
+    try {
+      await upload();
+    } finally {
+      flushClassify();
+    }
+  }, [flushClassify, upload]);
+
   /** 고른 사진으로 올리기 시작 */
   const start = useCallback(
     (photos: PickedPhoto[]) => {
@@ -147,6 +172,8 @@ export function usePhotoUpload(tripId: string) {
       }));
       setItems(itemsRef.current);
       batchRef.current = null;
+      // 지난번 사진이 오래된 version으로 이번 분류에 섞이지 않게 비운다
+      registeredRef.current = [];
       void run();
     },
     [run],

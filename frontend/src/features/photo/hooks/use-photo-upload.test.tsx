@@ -13,6 +13,7 @@ import {
   requestUploadIntent,
 } from '../api';
 import type { PickedPhoto } from '../types';
+import { classifyUploaded } from '../classify';
 import { usePhotoUpload } from './use-photo-upload';
 
 jest.mock('../api', () => ({
@@ -24,6 +25,7 @@ jest.mock('../api', () => ({
   cancelAsset: jest.fn(),
   registerPhoto: jest.fn(),
 }));
+jest.mock('../classify', () => ({ classifyUploaded: jest.fn() }));
 jest.mock('expo-crypto', () => {
   let n = 0;
   return { randomUUID: () => `key-${++n}` };
@@ -36,6 +38,7 @@ const put = jest.mocked(putPhoto);
 const complete = jest.mocked(completeAsset);
 const cancel = jest.mocked(cancelAsset);
 const register = jest.mocked(registerPhoto);
+const classify = jest.mocked(classifyUploaded);
 
 const photo = (key: string): PickedPhoto => ({
   key,
@@ -77,6 +80,7 @@ beforeEach(() => {
   complete.mockResolvedValue(undefined);
   cancel.mockResolvedValue(undefined);
   register.mockImplementation(async () => ({}) as Awaited<ReturnType<typeof registerPhoto>>);
+  classify.mockResolvedValue(false);
 });
 
 describe('usePhotoUpload (S30)', () => {
@@ -100,6 +104,33 @@ describe('usePhotoUpload (S30)', () => {
       capturedAt: '2026-11-14T01:00:00.000Z',
     });
     expect(result.current.items.map((i) => i.status)).toEqual(['done', 'done']);
+    // 다 올리면 등록한 두 장을 AI 주제 분류에 보낸다
+    expect(classify).toHaveBeenCalledTimes(1);
+    expect(classify.mock.calls[0][1]).toHaveLength(2);
+  });
+
+  it('중간에 취소해도 이미 등록한 사진은 분류에 보내고, 다음 올리기에 섞지 않는다', async () => {
+    register.mockImplementation(
+      async (_trip, input) => ({ id: input.assetId }) as Awaited<ReturnType<typeof registerPhoto>>,
+    );
+    let releasePut: () => void = () => {};
+    put
+      .mockResolvedValueOnce(undefined)
+      .mockImplementationOnce(() => new Promise<void>((resolve) => (releasePut = resolve)));
+    const { result } = await setup();
+    await act(async () => result.current.start([photo('a'), photo('b')]));
+    await waitFor(() => expect(put).toHaveBeenCalledTimes(2));
+    await act(async () => {
+      result.current.cancel();
+    });
+    await act(async () => releasePut());
+    await waitFor(() => expect(classify).toHaveBeenCalledTimes(1));
+    expect(classify.mock.calls[0][1].map((p) => p.id)).toEqual(['asset-1']);
+
+    put.mockResolvedValue(undefined);
+    await act(async () => result.current.start([photo('c')]));
+    await waitFor(() => expect(classify).toHaveBeenCalledTimes(2));
+    expect(classify.mock.calls[1][1].map((p) => p.id)).toEqual(['asset-3']);
   });
 
   it('등록만 실패한 사진은 다시 시도할 때 파일을 다시 올리지 않고 등록만 한다', async () => {
