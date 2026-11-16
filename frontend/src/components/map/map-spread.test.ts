@@ -66,6 +66,41 @@ describe('spreadMarkers', () => {
     expect(out.slice(0, 2)).toEqual(far);
   });
 
+  /** 모든 핀 쌍의 화면 거리 중 가장 작은 값 */
+  const minGap = (
+    r: NonNullable<ReturnType<typeof fitRegion>>,
+    pts: { latitude: number; longitude: number }[],
+  ) => {
+    let m = Infinity;
+    for (let i = 0; i < pts.length; i += 1)
+      for (let j = i + 1; j < pts.length; j += 1) m = Math.min(m, px(r, pts[i], pts[j]));
+    return m;
+  };
+
+  it('도심처럼 흩어진 20곳은 서로 30px 가까이 떨어지고 제자리에서 두 칸(60px) 안에 있다', () => {
+    // 2026-11-16 공기계: 시청역 둘레 화장실 20곳이 한 묶음이 되어 큰 원으로 놓였다
+    let seed = 7;
+    const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const city = Array.from({ length: 20 }, () => ({
+      latitude: 37.5665 + (rand() - 0.5) * 0.012,
+      longitude: 126.978 + (rand() - 0.5) * 0.014,
+    }));
+    const r = fitRegion(city, 0.006)!;
+    // 처음에는 겹친 핀이 있다(이 시험이 실제로 벌리기를 거친다)
+    expect(minGap(r, city)).toBeLessThan(29);
+    const out = spreadMarkers(city, r, box);
+    expect(minGap(r, out)).toBeGreaterThanOrEqual(29);
+    out.forEach((p, i) => expect(px(r, p, city[i])).toBeLessThanOrEqual(60.5));
+  });
+
+  it('한 자리에 12곳이 몰려도 큰 원을 만들지 않고 두 칸 안에서 나눠 놓는다', () => {
+    const same = Array.from({ length: 12 }, () => ({ latitude: 37.5665, longitude: 126.978 }));
+    const r = fitRegion([...same, { latitude: 37.575, longitude: 126.99 }], 0.006)!;
+    const out = spreadMarkers(same, r, box);
+    out.forEach((p) => expect(px(r, p, same[0])).toBeLessThanOrEqual(60.5));
+    expect(minGap(r, out)).toBeGreaterThan(10);
+  });
+
   it('지도 크기를 모르면(0) 그대로', () => {
     const r = fitRegion(close, 0.01)!;
     expect(spreadMarkers(close, r, { width: 0, height: 0 })).toEqual(close);
