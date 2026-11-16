@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams, usePreventRemove } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -31,6 +31,7 @@ import type { PhotoTopic, PickedPhoto, UploadItem } from '../types';
  */
 export function PhotoUploadScreen() {
   const { tripId = '' } = useLocalSearchParams<{ tripId: string }>();
+  const queryClient = useQueryClient();
   const trip = useQuery({
     queryKey: ['trips', tripId, 'photos', 'trip'],
     queryFn: () => getTrip(tripId),
@@ -63,10 +64,13 @@ export function PhotoUploadScreen() {
   // 다 올리면(이때는 막기가 이미 풀려 있다) 토스트와 함께 S31로
   useEffect(() => {
     if (upload.phase !== 'done') return;
-    void sendDeviceResults(tripId, upload.items, deviceResults.current);
+    // 폰 결과(주제·묶음)를 저장한 뒤 여행 사진 목록을 다시 받아 S31에 바로 보이게 한다
+    void sendDeviceResults(tripId, upload.items, deviceResults.current).then((applied) => {
+      if (applied) void queryClient.invalidateQueries({ queryKey: ['trips', tripId] });
+    });
     toast.success(`사진 ${upload.items.length}장을 올렸어요`);
     router.dismissTo(`/trips/${tripId}/photos`);
-  }, [upload.phase, upload.items, tripId]);
+  }, [upload.phase, upload.items, tripId, queryClient]);
 
   const pick = async () => {
     const remaining = MAX_PHOTOS - picked.length;
@@ -185,22 +189,26 @@ export function PhotoUploadScreen() {
  * 다 올린 뒤 폰 AI 결과(주제·비슷한 사진 묶음)를 서버에 보낸다. 사진이 아니라 결과만 간다.
  * 실패해도 사진은 이미 올라갔으니 조용히 넘어간다(주제는 S32에서 직접 고칠 수 있다)
  */
+/** 올린 사진의 폰 분류 결과를 서버에 저장한다. 한 묶음이라도 저장되면 true */
 async function sendDeviceResults(
   tripId: string,
   items: readonly UploadItem[],
   results: ReadonlyMap<string, { topic: PhotoTopic; groupKey: string | null }>,
-) {
+): Promise<boolean> {
   const photos: DevicePhotoResult[] = items.flatMap((item) => {
     const r = results.get(item.photo.key);
     return item.status === 'done' && item.registered && r
       ? [{ photoId: item.registered.id, expectedVersion: item.registered.version, ...r }]
       : [];
   });
+  let applied = false;
   for (const batch of inBatches(photos)) {
     try {
       await applyDeviceClassification(tripId, batch);
+      applied = true;
     } catch {
       // 409(AI 분류 끔, 버전 다름)나 연결 실패는 무시한다
     }
   }
+  return applied;
 }

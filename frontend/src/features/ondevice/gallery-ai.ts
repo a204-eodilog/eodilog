@@ -12,7 +12,8 @@ import { packVector } from './search-rules';
 /** 한 번에 정리하는 최대 장수(여행 하나에 이보다 많으면 최근 사진부터) */
 export const MAX_GALLERY_PHOTOS = 1000;
 const PAGE = 200;
-const SAVE_EVERY = 20;
+/** 새로 계산한 사진이 이만큼 쌓이면 저장한다. 저장은 파일 전체를 다시 쓰므로(1,000장 약 5MB) 자주 하지 않는다 */
+const SAVE_EVERY = 100;
 
 export type GalleryPhoto = {
   id: string;

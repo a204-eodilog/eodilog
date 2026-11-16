@@ -44,5 +44,3 @@ export function readCache(): Map<string, { id: string; topic: Topic; f: number[]
 }
 
 export function writeCache(): void {}
-
-export function clearCache(): void {}

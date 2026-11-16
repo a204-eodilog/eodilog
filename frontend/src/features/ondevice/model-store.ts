@@ -4,15 +4,11 @@ import { Directory, File, Paths } from 'expo-file-system';
 
 import { env } from '@/config/env';
 
-/** 모델 한 벌. 이름을 바꾸면 새 모델로 보고 다시 받는다 */
-export const MODEL_FILES = [
-  'photo_image_int8.onnx',
-  'photo_text_w4_i32.onnx',
-  'head.json',
-  'tokenizer.json',
-] as const;
+import { MODEL_SPEC, isExpectedSize, type ModelFileName } from './model-spec';
 
-export type ModelFileName = (typeof MODEL_FILES)[number];
+/** 모델 한 벌의 파일 이름(model-spec.ts) */
+export const MODEL_FILES = MODEL_SPEC.map((m) => m.name);
+export type { ModelFileName };
 
 export function modelDir(): Directory {
   return new Directory(Paths.document, 'ondevice-models');
@@ -22,12 +18,12 @@ export function modelFile(name: ModelFileName): File {
   return new File(modelDir(), name);
 }
 
-/** 모델 파일이 다 있는지 */
+/** 모델 파일이 정한 크기로 다 있는지 */
 export function hasModels(): boolean {
   try {
     return MODEL_FILES.every((name) => {
       const f = modelFile(name);
-      return f.exists && (f.size ?? 0) > 0;
+      return f.exists && isExpectedSize(name, f.size);
     });
   } catch {
     return false;
@@ -52,12 +48,17 @@ export async function downloadModels(onProgress?: (done: number, total: number) 
   onProgress?.(done, MODEL_FILES.length);
   for (const name of MODEL_FILES) {
     const target = modelFile(name);
-    if (!(target.exists && (target.size ?? 0) > 0)) {
+    if (!(target.exists && isExpectedSize(name, target.size))) {
       const part = new File(dir, `${name}.part`);
       if (part.exists) part.delete();
       await File.downloadFileAsync(`${base.replace(/\/+$/, '')}/${name}`, part, {
         idempotent: true,
       });
+      // 크기가 다르면(끊김, 다른 모델, 오류 페이지) 쓰지 않는다
+      if (!isExpectedSize(name, part.size)) {
+        part.delete();
+        throw new Error(`모델 파일 크기가 달라요: ${name}`);
+      }
       if (target.exists) target.delete();
       part.move(target);
     }

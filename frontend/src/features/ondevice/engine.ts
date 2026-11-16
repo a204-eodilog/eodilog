@@ -1,10 +1,11 @@
 // 폰 안 사진 AI: 사진 분류 + 한국어 문장 사진 검색. 서버 없이 폰 CPU에서 ONNX 모델을 돌린다.
 // 전처리는 서버(ai/)와 같게: EXIF 방향 → 짧은 변 256 → 가운데 256×256 → (x/255-0.5)/0.5, CHW.
-import { File, Paths } from 'expo-file-system';
+import { Directory, File, Paths } from 'expo-file-system';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as jpeg from 'jpeg-js';
 import { InferenceSession, Tensor } from 'onnxruntime-react-native';
 
+import { MODEL_VERSION } from './model-spec';
 import { modelFile } from './model-store';
 import { SiglipTokenizer, type TokenizerSpec } from './siglip-tokenizer';
 
@@ -140,8 +141,10 @@ export function dot(a: ArrayLike<number>, b: ArrayLike<number>): number {
 }
 
 // ── 임베딩 캐시: 다시 실행해도 같은 사진은 다시 계산하지 않는다 ──
+// 파일 이름에 모델 버전을 붙여, 모델이 바뀌면 예전 결과를 쓰지 않는다
 type CacheEntry = { id: string; topic: Topic; f: number[] };
-const cacheFile = () => new File(Paths.document, 'ondev-embeddings.json');
+const CACHE_PREFIX = 'ondev-embeddings';
+const cacheFile = () => new File(Paths.document, `${CACHE_PREFIX}-${MODEL_VERSION}.json`);
 
 export function readCache(): Map<string, CacheEntry> {
   try {
@@ -156,11 +159,23 @@ export function readCache(): Map<string, CacheEntry> {
 
 export function writeCache(cache: Map<string, CacheEntry>) {
   const f = cacheFile();
-  if (!f.exists) f.create();
+  if (!f.exists) {
+    f.create();
+    clearOldCaches();
+  }
   f.write(JSON.stringify([...cache.values()]));
 }
 
-export function clearCache() {
-  const f = cacheFile();
-  if (f.exists) f.delete();
+/** 다른 모델 버전으로 만든 캐시 파일(예전 이름 포함)을 지운다. 새 캐시 파일을 처음 만들 때 한 번 부른다 */
+function clearOldCaches() {
+  try {
+    const current = cacheFile().name;
+    for (const item of new Directory(Paths.document).list()) {
+      if (item instanceof File && item.name.startsWith(CACHE_PREFIX) && item.name !== current) {
+        item.delete();
+      }
+    }
+  } catch {
+    // 못 지워도 새 캐시는 쓴다
+  }
 }
