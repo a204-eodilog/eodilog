@@ -1,6 +1,7 @@
 import { FlashList } from '@shopify/flash-list';
 import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { Image } from 'expo-image';
+import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -10,7 +11,13 @@ import { SkeletonList } from '@/components/ui/skeleton';
 import { assetSource } from '@/lib/asset-image';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
-import { photoPath, sectionMeta, type PlaceSection, type TopicFilter } from '../photo-list-rules';
+import {
+  collapseGroups,
+  photoPath,
+  sectionMeta,
+  type PlaceSection,
+  type TopicFilter,
+} from '../photo-list-rules';
 import type { TripPhoto } from '../types';
 import { TripPhotoTile } from './trip-photo-tile';
 
@@ -25,18 +32,34 @@ const DRAW_DISTANCE = 100;
 /** 목록 한 칸. 장소 이름 줄(가로 전체)이거나 사진 한 장 */
 type Row =
   | { kind: 'head'; key: string; section: PlaceSection; first: boolean }
-  | { kind: 'photo'; key: string; section: PlaceSection; photo: TripPhoto; index: number };
+  | {
+      kind: 'photo';
+      key: string;
+      section: PlaceSection;
+      photo: TripPhoto;
+      index: number;
+      /** 비슷한 사진 묶음 크기(묶음이 아니면 1), 묶음 키, 펼쳤는지 */
+      groupSize: number;
+      groupKey: string | null;
+      expanded: boolean;
+    };
 
-/** 장소별 묶음을 목록이 그릴 한 줄짜리 배열로 편다(이름 줄 → 그 장소의 사진들) */
-function toRows(sections: PlaceSection[]): Row[] {
+/**
+ * 장소별 묶음을 목록이 그릴 한 줄짜리 배열로 편다(이름 줄 → 그 장소의 사진들).
+ * 비슷한 사진 묶음(groupId)은 펼치지 않았으면 대표 한 장만 넣는다
+ */
+function toRows(sections: PlaceSection[], expanded: ReadonlySet<string>): Row[] {
   return sections.flatMap((section, s): Row[] => [
     { kind: 'head', key: `head:${section.placeId}`, section, first: s === 0 },
-    ...section.photos.map((photo, index): Row => ({
+    ...collapseGroups(section.photos, (p) => p.groupId, expanded).map((t, index): Row => ({
       kind: 'photo',
-      key: photo.id,
+      key: t.item.id,
       section,
-      photo,
+      photo: t.item,
       index,
+      groupSize: t.groupSize,
+      groupKey: t.groupKey,
+      expanded: t.expanded,
     })),
   ]);
 }
@@ -66,10 +89,19 @@ export type TripPhotosViewProps = {
 
 /**
  * S31 여행 사진 목록(WD-FR-19·20). 주제 칩 → 장소 미지정 안내 줄 → 장소별 묶음(3열) → 아래 [공동 피드 게시].
- * 비슷한 사진 묶음(groupId)과 분류 진행(분류 중·분류 실패)은 서버가 아직 지원하지 않아 사진을 한 장씩 보인다
+ * 비슷한 사진 묶음(groupId)은 대표 한 장 + '+n'으로 접고, '+n'을 누르면 펼친다. 분류 진행(분류 중·분류 실패) 표시는 없다
  */
 export function TripPhotosView(props: TripPhotosViewProps) {
   const insets = useSafeAreaInsets();
+  // 펼친 비슷한 사진 묶음(groupId)
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const toggleGroup = (id: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   const { width } = useWindowDimensions();
   const tile = Math.floor(
     (Math.min(width, 480) - layout.screenPaddingX * 2 - GAP * (COLUMNS - 1)) / COLUMNS,
@@ -123,7 +155,7 @@ export function TripPhotosView(props: TripPhotosViewProps) {
     );
   }
 
-  const rows = toRows(props.sections);
+  const rows = toRows(props.sections, expanded);
   return (
     <View style={styles.screen}>
       {header}
@@ -136,7 +168,7 @@ export function TripPhotosView(props: TripPhotosViewProps) {
         overrideItemLayout={(itemLayout, row) => {
           if (row.kind === 'head') itemLayout.span = COLUMNS;
         }}
-        extraData={props.myMemberId}
+        extraData={[props.myMemberId, expanded]}
         decelerationRate={SCROLL_DECELERATION}
         drawDistance={DRAW_DISTANCE}
         contentContainerStyle={styles.body}
@@ -250,19 +282,35 @@ export function TripPhotosView(props: TripPhotosViewProps) {
               </View>
             );
           }
-          const { photo, index } = row;
+          const { photo, index, groupSize, groupKey } = row;
+          // 목록은 칸을 같은 너비로 나눈다. 열마다 조금씩 밀어 사진 사이 간격을 GAP으로 맞춘다
+          const shift = ((index % COLUMNS) * GAP) / COLUMNS;
           return (
-            // 목록은 칸을 같은 너비로 나눈다. 열마다 조금씩 밀어 사진 사이 간격을 GAP으로 맞춘다
-            <View style={{ paddingLeft: ((index % COLUMNS) * GAP) / COLUMNS, paddingBottom: GAP }}>
+            <View style={{ paddingLeft: shift, paddingBottom: GAP }}>
               <TripPhotoTile
                 assetId={photo.assetId}
                 width={tile}
                 height={tile + 1}
                 uploader={props.memberName(photo.uploaderMemberId)}
                 mine={photo.uploaderMemberId === props.myMemberId}
-                label={`${section.name ?? '장소'} 사진 ${index + 1}`}
+                label={`${section.name ?? '장소'} 사진 ${index + 1}${groupSize > 1 ? `, 비슷한 사진 ${groupSize}장` : ''}`}
                 onPress={() => props.onPhoto(photo)}
               />
+              {groupKey ? (
+                <PressableScale
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    row.expanded ? '비슷한 사진 접기' : `비슷한 사진 ${groupSize}장 펼치기`
+                  }
+                  hitSlop={8}
+                  onPress={() => toggleGroup(groupKey)}
+                  style={[styles.groupBadge, { left: shift + 6 }]}
+                >
+                  <Text style={[typography.captionMedium, styles.groupBadgeText]}>
+                    {row.expanded ? '접기' : `+${groupSize - 1}`}
+                  </Text>
+                </PressableScale>
+              ) : null}
             </View>
           );
         }}
@@ -334,6 +382,16 @@ const styles = StyleSheet.create({
   },
   // 첫 묶음은 위에 사진 줄이 없어 24를 그대로 띄운다
   sectionHeadFirst: { paddingTop: spacing[24] },
+  groupBadge: {
+    position: 'absolute',
+    left: 6,
+    top: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: radius.full,
+    backgroundColor: colors.text.default,
+  },
+  groupBadgeText: { color: colors.surface.white },
   bottom: {
     flexDirection: 'row',
     alignItems: 'center',

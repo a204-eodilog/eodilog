@@ -22,6 +22,8 @@ export type UploadItem = {
    */
   assetId: string | null;
   ready: boolean;
+  /** 등록까지 끝난 여행 사진(id·버전). 폰 AI 분류 결과를 보낼 때 쓴다 */
+  registered?: { id: string; version: number } | null;
 };
 
 /** POST /trips/{tripId}/photo-upload-batches 응답 */

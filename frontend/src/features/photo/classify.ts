@@ -2,12 +2,14 @@ import { toApiError } from '@/api/errors';
 import { getSettings } from '@/features/settings/api';
 
 import {
+  applyDeviceClassification,
   applyPhotoClassification,
   getClassificationJob,
   getTripPhotos,
   requestPhotoClassification,
+  type DevicePhotoResult,
 } from './api';
-import { successfulVersions } from './photo-rules';
+import { inBatches, successfulVersions } from './photo-rules';
 import type { TripPhoto } from './types';
 
 /**
@@ -107,4 +109,24 @@ export async function classifyUploaded(
     chunks.map((chunk) => classifyChunk(tripId, chunk).catch(() => false)),
   );
   return results.some(Boolean);
+}
+
+/**
+ * 폰 AI가 분류한 사진의 결과를 저장한다(50장씩). 한 묶음이라도 저장되면 true. 오류는 던지지 않는다.
+ * 409(AI 분류 끔, version 다름)나 연결 실패는 건너뛴다. 사진은 이미 올라가 있다
+ */
+export async function applyDeviceResults(
+  tripId: string,
+  photos: readonly DevicePhotoResult[],
+): Promise<boolean> {
+  let applied = false;
+  for (const batch of inBatches(photos)) {
+    try {
+      await applyDeviceClassification(tripId, batch);
+      applied = true;
+    } catch {
+      // 다음 묶음은 계속한다
+    }
+  }
+  return applied;
 }

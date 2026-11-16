@@ -1,5 +1,7 @@
 import { router } from 'expo-router';
 
+import { ondeviceAvailable } from '@/features/ondevice/model-store';
+
 import { MyPageView } from '../components/mypage-view';
 import { useMyPage } from '../hooks/use-mypage';
 
@@ -14,6 +16,7 @@ export function MyPageScreen() {
       onTrips={() => router.push('/my-trips')}
       onNewTrip={() => router.push('/trips/new')}
       onTimeline={() => router.push('/timeline')}
+      onPhotoSearch={ondeviceAvailable() ? () => router.push('/photo-search') : undefined}
       onFriends={() => router.push('/friends')}
       onSettings={() => router.push('/settings')}
       // 게시한 여행은 S07(피드 ID를 아직 핀에 싣지 않음), 게시 전은 여행 상세. 1차는 내 여행 목록으로

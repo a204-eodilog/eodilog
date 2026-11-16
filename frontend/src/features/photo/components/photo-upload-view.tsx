@@ -1,4 +1,5 @@
 import { SCROLL_DECELERATION } from '@/theme/scroll';
+import type { ReactNode } from 'react';
 import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -34,6 +35,11 @@ export type PhotoUploadViewProps = {
   onCancel: () => void;
   onRetry: () => void;
   onLater: () => void;
+  /**
+   * 폰 AI '이 여행 사진 정리하기' 자리(고르기 단계). 사진 칸 크기·간격을 받아 그린다.
+   * 없거나 null을 돌려주면 지금처럼 선택창만 보인다
+   */
+  renderGalleryAi?: (tile: number, gap: number) => ReactNode;
 };
 
 /**
@@ -57,6 +63,32 @@ export function PhotoUploadView(props: PhotoUploadViewProps) {
   );
   const bottomPad = { paddingBottom: Math.max(insets.bottom + spacing[12], 34) };
 
+  const galleryAi = props.phase === 'pick' ? (props.renderGalleryAi?.(tile, GAP) ?? null) : null;
+
+  if (props.phase === 'pick' && props.picked.length === 0 && galleryAi) {
+    return (
+      <View style={styles.screen}>
+        {header}
+        <ScrollView
+          decelerationRate={SCROLL_DECELERATION}
+          contentContainerStyle={styles.body}
+          keyboardShouldPersistTaps="handled"
+        >
+          {galleryAi}
+          <Button
+            label="갤러리에서 직접 고르기"
+            icon="image"
+            variant="secondary"
+            onPress={props.onPick}
+          />
+          <Text style={[typography.caption, styles.sub, styles.center]}>
+            한 번에 {MAX_PHOTOS}장까지 올릴 수 있어요
+          </Text>
+        </ScrollView>
+      </View>
+    );
+  }
+
   if (props.phase === 'pick' && props.picked.length === 0) {
     return (
       <View style={styles.screen}>
@@ -79,7 +111,11 @@ export function PhotoUploadView(props: PhotoUploadViewProps) {
     return (
       <View style={styles.screen}>
         {header}
-        <ScrollView decelerationRate={SCROLL_DECELERATION} contentContainerStyle={styles.body}>
+        <ScrollView
+          decelerationRate={SCROLL_DECELERATION}
+          contentContainerStyle={styles.body}
+          keyboardShouldPersistTaps="handled"
+        >
           <Stagger itemStyle={styles.staggerItem}>
             <View style={styles.titleRow}>
               <Text style={[typography.title3, styles.text]}>고른 사진</Text>
@@ -107,6 +143,7 @@ export function PhotoUploadView(props: PhotoUploadViewProps) {
               ))}
             </View>
           </Stagger>
+          {galleryAi}
         </ScrollView>
         <View style={[styles.bottom, styles.bottomSplit, bottomPad]}>
           <Text style={[typography.bodyBold, styles.text]}>{count}장 선택</Text>
@@ -235,6 +272,7 @@ const styles = StyleSheet.create({
   sub: { color: colors.text.icon },
   link: { color: colors.brand.primaryDark },
   pressed: { opacity: 0.6 },
+  center: { textAlign: 'center' },
   inline: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
   body: {
     paddingHorizontal: layout.screenPaddingX,

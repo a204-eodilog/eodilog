@@ -211,6 +211,31 @@ export async function registerPhoto(
   return data.data;
 }
 
+/** 폰 AI가 정한 사진 한 장의 주제·비슷한 사진 묶음 키 */
+export type DevicePhotoResult = {
+  photoId: string;
+  expectedVersion: number;
+  topic: PhotoTopic;
+  /** 이 요청 안에서 같은 키를 가진 사진끼리 비슷한 사진. 혼자면 null */
+  groupKey: string | null;
+};
+
+/**
+ * 폰 AI 분류 결과 적용(내가 올린 사진만, 1~50장). 사진은 보내지 않고 결과만 보낸다.
+ * 서버가 버전을 확인하고(다르면 409 VERSION_CONFLICT), 직접 고친 주제는 덮어쓰지 않는다.
+ * AI 사진 분류를 끈 사용자는 409 AI_FEATURE_DISABLED
+ */
+export async function applyDeviceClassification(
+  tripId: string,
+  photos: DevicePhotoResult[],
+): Promise<TripPhoto[]> {
+  const { data } = await apiClient.post<DataResponse<{ photos: TripPhoto[] }>>(
+    `/trips/${encodeURIComponent(tripId)}/photo-classifications/device`,
+    { photos },
+  );
+  return data.data.photos;
+}
+
 /** POST /trips/{tripId}/photo-classifications(1~50장). 작업 ID를 준다. AI 기능이 꺼져 있으면 409 */
 export async function requestPhotoClassification(
   tripId: string,

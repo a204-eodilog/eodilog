@@ -1,4 +1,4 @@
-import type { PickedPhoto, UploadItem } from './types';
+import type { PhotoTopic, PickedPhoto, TripPhoto, UploadItem } from './types';
 
 /** 한 번에 올릴 수 있는 사진 수(결정 Q-7, 백엔드 배치 fileCount 1~50) */
 export const MAX_PHOTOS = 50;
@@ -151,4 +151,38 @@ export function successfulVersions(
   return (result?.photos ?? [])
     .filter((p) => p.status === 'SUCCEEDED' && versions.has(p.photoId))
     .map((p) => ({ photoId: p.photoId, version: versions.get(p.photoId)! }));
+}
+
+/** 폰 AI가 낸 한 장의 결과(주제·비슷한 사진 묶음 키) */
+export type DeviceTopicResult = { topic: PhotoTopic; groupKey: string | null };
+
+/**
+ * 등록을 마친 사진을 폰 결과로 저장할 것과 서버 AI 분류에 보낼 것으로 나눈다.
+ * 같은 사진을 두 곳에서 분류하면 먼저 적용된 쪽이 version을 올려 다른 쪽이 409로 실패한다
+ */
+export function splitClassification(
+  registered: readonly { key: string; photo: TripPhoto }[],
+  resultFor: (key: string) => DeviceTopicResult | null = () => null,
+): {
+  device: {
+    photoId: string;
+    expectedVersion: number;
+    topic: PhotoTopic;
+    groupKey: string | null;
+  }[];
+  server: TripPhoto[];
+} {
+  const device: {
+    photoId: string;
+    expectedVersion: number;
+    topic: PhotoTopic;
+    groupKey: string | null;
+  }[] = [];
+  const server: TripPhoto[] = [];
+  for (const r of registered) {
+    const result = resultFor(r.key);
+    if (result) device.push({ photoId: r.photo.id, expectedVersion: r.photo.version, ...result });
+    else server.push(r.photo);
+  }
+  return { device, server };
 }

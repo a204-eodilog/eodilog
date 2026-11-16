@@ -1,6 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 
 import {
+  splitClassification,
   addPickedPhotos,
   exifCapturedAt,
   inBatches,
@@ -157,5 +158,44 @@ describe('successfulVersions', () => {
     const other = { photos: [{ photoId: 'x', status: 'SUCCEEDED' }] };
     expect(successfulVersions(other, versions)).toEqual([]);
     expect(successfulVersions(null, versions)).toEqual([]);
+  });
+});
+
+describe('splitClassification', () => {
+  const photo = (id: string, version = 1) => ({
+    id,
+    assetId: `a-${id}`,
+    tripId: 't',
+    batchId: null,
+    uploaderMemberId: 'm',
+    placeId: null,
+    capturedAt: null,
+    topics: [],
+    groupId: null,
+    version,
+  });
+
+  it('폰 결과가 있는 사진은 폰 결과로, 없는 사진은 서버 분류로 나눈다', () => {
+    const registered = [
+      { key: 'k1', photo: photo('p1', 2) },
+      { key: 'k2', photo: photo('p2') },
+      { key: 'k3', photo: photo('p3') },
+    ];
+    const results = new Map([
+      ['k1', { topic: 'FOOD' as const, groupKey: 'g1' }],
+      ['k3', { topic: 'LANDSCAPE' as const, groupKey: null }],
+    ]);
+    const { device, server } = splitClassification(registered, (k) => results.get(k) ?? null);
+    expect(device).toEqual([
+      { photoId: 'p1', expectedVersion: 2, topic: 'FOOD', groupKey: 'g1' },
+      { photoId: 'p3', expectedVersion: 1, topic: 'LANDSCAPE', groupKey: null },
+    ]);
+    expect(server.map((p) => p.id)).toEqual(['p2']);
+  });
+
+  it('폰 결과를 모르면 모두 서버 분류로 보낸다', () => {
+    const { device, server } = splitClassification([{ key: 'k1', photo: photo('p1') }]);
+    expect(device).toEqual([]);
+    expect(server.map((p) => p.id)).toEqual(['p1']);
   });
 });

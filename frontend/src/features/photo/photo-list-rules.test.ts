@@ -1,6 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 
 import {
+  collapseGroups,
   courseDays,
   dayLabel,
   filterByTopic,
@@ -116,5 +117,35 @@ describe('uploadSummaryText', () => {
     expect(
       uploadSummaryText([photo('a', null, [], 'm1'), photo('b', null, [], 'm2'), photo('c', null)]),
     ).toBe('사진 3장 · 2명이 올렸어요');
+  });
+});
+
+describe('collapseGroups', () => {
+  const items = [
+    { id: 'a', g: 'x' },
+    { id: 'b', g: null },
+    { id: 'c', g: 'x' },
+    { id: 'd', g: 'x' },
+    { id: 'e', g: 'y' },
+  ];
+
+  it('같은 묶음은 처음 나온 사진 한 장으로 접고 장수를 센다. 묶음 없는 사진은 그대로', () => {
+    const tiles = collapseGroups(items, (i) => i.g, new Set());
+    expect(tiles.map((t) => [t.item.id, t.groupSize])).toEqual([
+      ['a', 3],
+      ['b', 1],
+      ['e', 1],
+    ]);
+  });
+
+  it('펼친 묶음은 모두 보이고 각 칸에 묶음 크기를 남긴다', () => {
+    const tiles = collapseGroups(items, (i) => i.g, new Set(['x']));
+    expect(tiles.map((t) => [t.item.id, t.groupSize, t.expanded])).toEqual([
+      ['a', 3, true],
+      ['b', 1, false],
+      ['c', 3, true],
+      ['d', 3, true],
+      ['e', 1, false],
+    ]);
   });
 });
