@@ -94,6 +94,13 @@ def mock_llm(*mentions: dict) -> respx.Route:
     )
 
 
+def mock_llm_region(region, *mentions: dict) -> respx.Route:
+    content = json.dumps({"places": list(mentions), "region": region}, ensure_ascii=False)
+    return respx.post(GMS_URL).mock(
+        return_value=httpx.Response(200, json={"choices": [{"message": {"content": content}}]})
+    )
+
+
 def mock_places(results: dict[str, list[dict]]) -> respx.Route:
     def respond(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json={"items": results.get(request.url.params["query"], [])})
@@ -233,6 +240,7 @@ def test_no_search_result_gives_null_place_and_multiple_candidates(client):
                 "confidence": None,
             }
         ],
+        "regionHint": None,
     }
 
 
@@ -304,7 +312,7 @@ def test_T01_3_no_mentions_is_not_found(client):
 
     data = post(client, [png()]).json()["data"]
 
-    assert data == {"resultStatus": "NOT_FOUND", "candidates": []}
+    assert data == {"resultStatus": "NOT_FOUND", "candidates": [], "regionHint": None}
 
 
 @respx.mock
@@ -314,7 +322,7 @@ def test_T01_4_private_address_link_fails_without_connecting(client):
 
     data = post(client, url=PRIVATE_LINK).json()["data"]
 
-    assert data == {"resultStatus": "FAILED", "candidates": []}
+    assert data == {"resultStatus": "FAILED", "candidates": [], "regionHint": None}
     assert not internal.called
     assert not llm.called
 
@@ -341,7 +349,7 @@ def test_T01_6_forbidden_link_only_fails(client):
 
     data = post(client, url=LINK).json()["data"]
 
-    assert data == {"resultStatus": "FAILED", "candidates": []}
+    assert data == {"resultStatus": "FAILED", "candidates": [], "regionHint": None}
     assert not llm.called
 
 
@@ -467,7 +475,7 @@ def test_only_broken_captures_fail(client):
 
     data = post(client, [b"not an image"]).json()["data"]
 
-    assert data == {"resultStatus": "FAILED", "candidates": []}
+    assert data == {"resultStatus": "FAILED", "candidates": [], "regionHint": None}
     assert not llm.called
 
 
@@ -787,3 +795,43 @@ def test_business_name_does_not_fall_back_to_region_only(client):
     data = post(client, [png()], memo="부산 중국음식점 방문").json()["data"]
     assert [c.request.url.params["query"] for c in places.calls] == ["부산 중국음식점"]
     assert data["candidates"][0]["place"] is None
+
+
+@respx.mock
+def test_location_tag_only_capture_is_not_found_with_region_hint(client):
+    # 2026-11-16 공기계: 인스타 캡처에 음식 사진과 위치 태그 '강원도 강릉'만 있었다
+    mock_llm_region("강원도 강릉")
+
+    data = post(client, [png()]).json()["data"]
+
+    assert data == {"resultStatus": "NOT_FOUND", "candidates": [], "regionHint": "강원도 강릉"}
+
+
+@respx.mock
+def test_region_not_in_link_text_or_memo_is_dropped(client):
+    respx.get(LINK_AT_IP).mock(return_value=httpx.Response(200, html=PAGE))
+    mock_llm_region("제주")
+
+    data = post(client, url=LINK, memo="야경 보러 감").json()["data"]
+
+    assert data["regionHint"] is None
+
+
+@respx.mock
+def test_region_found_in_link_text_is_kept_with_places(client):
+    respx.get(LINK_AT_IP).mock(return_value=httpx.Response(200, html=PAGE))
+    mock_llm_region("남천동", mention("민락 수변공원", "LINK_TEXT"))
+    mock_places({"민락 수변공원": [document("민락수변공원")]})
+
+    data = post(client, url=LINK).json()["data"]
+
+    assert data["resultStatus"] == "SUCCESS"
+    assert data["regionHint"] == "남천동"
+
+
+@respx.mock
+def test_too_long_or_non_text_region_is_dropped(client):
+    mock_llm_region(["강릉"])
+    assert post(client, [png()]).json()["data"]["regionHint"] is None
+    mock_llm_region("가" * 31)
+    assert post(client, [png()]).json()["data"]["regionHint"] is None

@@ -384,7 +384,7 @@ STOMP over WebSocket으로 서버 → 앱 전달만 한다. 메시지 보내기�
 | SavedPlace | `place:Place,savedBy:{memberId:id,memo:string\|null}[],savedCount:integer` |
 | JobRef | `jobId:id,status:QUEUED,statusUrl:string` |
 | Job | `id,kind:string,status:QUEUED\|RUNNING\|SUCCEEDED\|FAILED\|CANCELLED,progress:integer,result:object\|null,error:{code:string,message:string}\|null(FAILED·CANCELLED에서만),createdAt:datetime,finishedAt:datetime\|null` |
-| ExtractionResult | `job:Job,resultStatus:SUCCESS\|MULTIPLE_CANDIDATES\|NOT_FOUND\|FAILED\|null,candidates:{candidateId:id,name:string,place:Place\|null,evidence:string,confidence:number\|null}[]`. 식별 불가는 처리 성공과 별개. 작업이 SUCCEEDED가 아니면 resultStatus=null·candidates=[]. place는 AI가 찾은 네이버 장소를 공급자 ID로 upsert한 로컬 장소(regionId는 주소의 시·도·시군구로 찾고, 못 찾으면 null), 못 찾으면 null·confidence null. 같은 name의 후보는 한 언급의 여러 지점. FAILED는 모든 자료를 읽지 못함(2026-11-09) |
+| ExtractionResult | `job:Job,resultStatus:SUCCESS\|MULTIPLE_CANDIDATES\|NOT_FOUND\|FAILED\|null,candidates:{candidateId:id,name:string,place:Place\|null,evidence:string,confidence:number\|null}[],regionHint:string\|null`. regionHint는 자료에 글자로 보인 지역 단서(인스타 위치 태그·본문·주소, 30자 이하). 장소를 못 찾았을 때 앱이 그 지역에서 검색하게 한다(2026-11-16). 식별 불가는 처리 성공과 별개. 작업이 SUCCEEDED가 아니면 resultStatus=null·candidates=[]. place는 AI가 찾은 네이버 장소를 공급자 ID로 upsert한 로컬 장소(regionId는 주소의 시·도·시군구로 찾고, 못 찾으면 null), 못 찾으면 null·confidence null. 같은 name의 후보는 한 언급의 여러 지점. FAILED는 모든 자료를 읽지 못함(2026-11-09) |
 | RecommendationResult | `job:Job,items:{type:REGION\|PLACE,region:Region\|null,place:Place\|null,reason:string}[],basis:{sharedPlaceCount:integer,usedMemberCount:integer},insufficientData:boolean` |
 | DiscoveryItem | `type:FEED\|PLACE,feed:FeedCard\|null,place:Place\|null,reason:string` |
 | TrendRegion | `region:Region,rank:integer,previousRank:integer\|null,rankChange:integer\|null,isNew:boolean,publishedTripCount:integer,followingCount:integer,from:date,to:date,sampleSize:integer,updatedAt:datetime,insufficientData:boolean`. 권한 필터 후 집계, 기간/집계 정의 Q-9 |
@@ -441,7 +441,7 @@ STOMP over WebSocket으로 서버 → 앱 전달만 한다. 메시지 보내기�
 
 | kind | `/jobs/{jobId}`의 result |
 | --- | --- |
-| PLACE_EXTRACTION | ExtractionResult의 `resultStatus,candidates` |
+| PLACE_EXTRACTION | ExtractionResult의 `resultStatus,candidates,regionHint` |
 | TRIP_RECOMMENDATION | RecommendationResult의 `items,basis,insufficientData` |
 | ITINERARY_PROPOSAL | ItineraryProposal의 `baseVersion,reason,proposed,diff,appliedAt,canUndo` |
 | VISIT_DETECTION | `{candidates:VisitCandidate[]}`. 조회 시점의 후보 상태(확정·무효 반영)를 돌려주고 위치·입력 스냅샷은 노출하지 않음. 후보만 만들며 자동 확정은 하지 않음(AUTO도 CONFIRM과 같음) |

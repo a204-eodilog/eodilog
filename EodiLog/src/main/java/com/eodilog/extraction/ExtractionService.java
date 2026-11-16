@@ -85,11 +85,11 @@ public class ExtractionService {
 			throw new BusinessException(JobErrorCode.JOB_NOT_FOUND);
 		}
 		if (job.result() == null) {
-			return new ExtractionResult(job, null, List.of());
+			return new ExtractionResult(job, null, List.of(), null);
 		}
 		StoredExtraction stored = StoredExtraction.parse(job.result(), jsonMapper)
 				.orElseThrow(() -> new IllegalStateException("Invalid stored place extraction"));
-		return new ExtractionResult(job, stored.resultStatus(), stored.candidates());
+		return new ExtractionResult(job, stored.resultStatus(), stored.candidates(), stored.regionHint());
 	}
 
 	// 작업 취소와 입력·후보 제거(정책 E-18·E-20). 저장한 일반 장소·북마크는 그대로 둔다

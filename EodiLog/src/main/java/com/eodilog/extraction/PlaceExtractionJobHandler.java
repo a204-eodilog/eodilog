@@ -136,7 +136,8 @@ public class PlaceExtractionJobHandler implements JobHandler {
 			// 예외로 던지면 worker가 영구 실패로 처리한다. DB 일시 장애는 재시도한다(정책 E-14)
 			return JobOutcome.failed(JobFailure.TEMPORARY_FAILURE);
 		}
-		return JobOutcome.succeeded(new StoredExtraction(parsed.get().resultStatus(), candidates).toJson(jsonMapper));
+		return JobOutcome.succeeded(new StoredExtraction(parsed.get().resultStatus(), candidates,
+				parsed.get().regionHint()).toJson(jsonMapper));
 	}
 
 	@Override
@@ -167,7 +168,7 @@ public class PlaceExtractionJobHandler implements JobHandler {
 	}
 
 	// AI 응답 검사(정책 E-13). 최상위·후보 모양이 틀리면 전체 실패, 후보 안의 place만 틀리면 그 후보를 place:null로 바꾼다
-	private record AiResult(ResultStatus resultStatus, List<AiCandidate> candidates) {
+	private record AiResult(ResultStatus resultStatus, List<AiCandidate> candidates, String regionHint) {
 
 		static Optional<AiResult> parse(JsonNode data) {
 			ResultStatus status;
@@ -204,7 +205,8 @@ public class PlaceExtractionJobHandler implements JobHandler {
 				ProviderPlace place = providerPlace(item.get("place"));
 				candidates.add(new AiCandidate(name, place, evidence, place == null ? null : confidence));
 			}
-			return Optional.of(new AiResult(status, candidates));
+			// 지역 단서는 모양이 틀리면 버리고 결과는 살린다
+			return Optional.of(new AiResult(status, candidates, StoredExtraction.regionHint(data.get("regionHint"))));
 		}
 
 		// places 제약(이름 255자, 주소 500자, 공급자 ID 255자, 좌표 범위)에 맞지 않으면 null
