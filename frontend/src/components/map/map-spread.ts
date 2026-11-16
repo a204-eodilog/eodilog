@@ -34,8 +34,11 @@ export function fitRegion(
 }
 
 /**
- * 화면에서 minPx보다 가까운 핀끼리 묶어, 묶음 가운데를 중심으로 둥글게 벌려 놓은 좌표(순서는 그대로).
+ * 화면에서 minPx보다 가까운 핀끼리 서로 밀어 내 번호가 겹치지 않게 한 좌표(순서는 그대로).
  * 지도는 고정이라 확대해서 떼어 볼 수 없어서, 번호가 서로 가리지 않게 핀만 조금 옮긴다(선은 실제 좌표).
+ * 가까운 두 핀을 반씩 떼어 놓기를 여러 번 되풀이하고, 어느 핀도 제자리에서 maxMovePx보다 멀리 가지 않는다.
+ * 예전에는 가까운 핀을 한 묶음으로 모아 원 위에 놓아, 빽빽한 도심(시청역 화장실 20곳)이 실제 위치와
+ * 상관없는 큰 원이 되었다(2026-11-16 공기계). 너무 빽빽해 상한 안에서 다 떼어 놓을 수 없으면 일부는 가깝게 남는다.
  * 지도는 범위 전체가 들어오게 맞추므로 1px당 도(위도 기준)는 가로·세로 중 큰 쪽이다
  */
 export function spreadMarkers<P extends LatLng>(
@@ -43,6 +46,7 @@ export function spreadMarkers<P extends LatLng>(
   region: MapRegion,
   box: MapBox,
   minPx = 30,
+  maxMovePx = minPx * 2,
 ): P[] {
   if (points.length < 2 || box.width <= 0 || box.height <= 0) return [...points];
   const cos = Math.cos(((region.latitude + region.latitudeDelta / 2) * Math.PI) / 180);
@@ -50,38 +54,60 @@ export function spreadMarkers<P extends LatLng>(
     region.latitudeDelta / box.height,
     (region.longitudeDelta * cos) / box.width,
   );
-  const xy = points.map((p) => ({ x: (p.longitude * cos) / degPerPx, y: p.latitude / degPerPx }));
-  const near = (a: number, b: number) => Math.hypot(xy[a].x - xy[b].x, xy[a].y - xy[b].y) < minPx;
+  const home = points.map((p) => ({ x: (p.longitude * cos) / degPerPx, y: p.latitude / degPerPx }));
+  const pos = home.map((p) => ({ ...p }));
+  // 처음부터 다른 핀과 겹친 핀만 움직인다. 떨어져 있던 핀은 밀려온 핀이 닿아도 제자리에 둔다
+  const crowded = home.map((a, i) =>
+    home.some((b, j) => j !== i && Math.hypot(a.x - b.x, a.y - b.y) < minPx),
+  );
+  const moved = new Array<boolean>(points.length).fill(false);
 
-  // 묶음은 첫 핀(씨앗) 가까이 있는 핀만 모은다. 가까운 핀을 줄줄이 이어 묶으면 핀이 빽빽한 도심(시청역 화장실 20곳)이
-  // 통째로 한 묶음이 되어 실제 위치와 상관없는 큰 원으로 놓였다(2026-11-16 공기계)
-  const group = new Array<number>(points.length).fill(-1);
-  let groups = 0;
-  points.forEach((_, i) => {
-    if (group[i] >= 0) return;
-    group[i] = groups;
-    points.forEach((__, b) => {
-      if (group[b] < 0 && near(i, b)) group[b] = groups;
+  for (let round = 0; round < 80; round += 1) {
+    let pushed = false;
+    for (let i = 0; i < pos.length; i += 1) {
+      for (let j = i + 1; j < pos.length; j += 1) {
+        let dx = pos[j].x - pos[i].x;
+        let dy = pos[j].y - pos[i].y;
+        let d = Math.hypot(dx, dy);
+        if (d >= minPx || (!crowded[i] && !crowded[j])) continue;
+        if (d < 1e-6) {
+          // 같은 자리면 방향이 없다. 번호마다 다른 방향(황금각)으로 뗀다
+          const angle = j * 2.399963;
+          dx = Math.cos(angle);
+          dy = Math.sin(angle);
+          d = 1;
+        }
+        const gap = minPx - Math.hypot(pos[j].x - pos[i].x, pos[j].y - pos[i].y);
+        // 둘 다 움직일 수 있으면 반씩, 한쪽만 겹쳤던 핀이면 그 핀만 민다
+        const shareI = crowded[i] ? (crowded[j] ? 0.5 : 1) : 0;
+        const shareJ = 1 - shareI;
+        const ux = dx / d;
+        const uy = dy / d;
+        pos[i].x -= ux * gap * shareI;
+        pos[i].y -= uy * gap * shareI;
+        pos[j].x += ux * gap * shareJ;
+        pos[j].y += uy * gap * shareJ;
+        if (shareI > 0) moved[i] = true;
+        if (shareJ > 0) moved[j] = true;
+        pushed = true;
+      }
+    }
+    // 제자리에서 너무 멀어진 핀은 상한까지 끌어온다
+    pos.forEach((p, i) => {
+      const dx = p.x - home[i].x;
+      const dy = p.y - home[i].y;
+      const d = Math.hypot(dx, dy);
+      if (d > maxMovePx) {
+        p.x = home[i].x + (dx / d) * maxMovePx;
+        p.y = home[i].y + (dy / d) * maxMovePx;
+      }
     });
-    groups += 1;
-  });
-
-  const out = [...points];
-  for (let g = 0; g < groups; g += 1) {
-    const members = points.map((_, i) => i).filter((i) => group[i] === g);
-    if (members.length < 2) continue;
-    const cx = members.reduce((s, i) => s + xy[i].x, 0) / members.length;
-    const cy = members.reduce((s, i) => s + xy[i].y, 0) / members.length;
-    // 이웃한 핀 사이가 minPx가 되는 반지름. 첫 핀은 위(12시)부터 시계 방향
-    const r = members.length === 2 ? minPx / 2 : minPx / 2 / Math.sin(Math.PI / members.length);
-    members.forEach((i, k) => {
-      const angle = -Math.PI / 2 + (2 * Math.PI * k) / members.length;
-      const x = cx + r * Math.cos(angle);
-      const y = cy - r * Math.sin(angle);
-      out[i] = { ...points[i], latitude: y * degPerPx, longitude: (x * degPerPx) / cos };
-    });
+    if (!pushed) break;
   }
-  return out;
+
+  return points.map((p, i) =>
+    moved[i] ? { ...p, latitude: pos[i].y * degPerPx, longitude: (pos[i].x * degPerPx) / cos } : p,
+  );
 }
 
 /**
