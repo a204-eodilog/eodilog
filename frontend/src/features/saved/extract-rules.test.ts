@@ -23,6 +23,7 @@ import {
   stepDetail,
   EXTRACTION_STEP_GUIDES,
   EXTRACTION_STEPS,
+  notFoundNotice,
   withoutBranch,
 } from './extract-rules';
 import type { ExtractionCandidate, ExtractionResult, Job, Place } from './types';
@@ -442,5 +443,24 @@ describe('상호의 업종명 보존', () => {
     '행복 백화점',
   ])('%s를 지점으로 잘라내지 않는다', (name) => {
     expect(withoutBranch(name)).toBe(name);
+  });
+});
+
+describe('notFoundNotice', () => {
+  it('지역이 없으면 직접 검색을 안내한다', () => {
+    expect(notFoundNotice(null)).toEqual({
+      description: '장소를 찾지 못했어요. 직접 골라 주세요',
+      actionLabel: '장소 직접 검색하기',
+      query: undefined,
+    });
+    expect(notFoundNotice('  ').query).toBeUndefined();
+  });
+
+  it('위치 태그만 보였으면 그 지역에서 찾게 하고 검색칸 끝에 빈칸을 둔다', () => {
+    expect(notFoundNotice(' 강원도 강릉 ')).toEqual({
+      description: '강원도 강릉에서 찍은 것 같아요. 가게 이름을 넣어 찾아 주세요',
+      actionLabel: '강원도 강릉에서 찾기',
+      query: '강원도 강릉 ',
+    });
   });
 });

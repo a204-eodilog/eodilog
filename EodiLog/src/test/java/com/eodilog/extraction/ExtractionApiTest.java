@@ -226,7 +226,27 @@ class ExtractionApiTest {
 		assertThat(fields.getValue().get("url")).isNull();
 		assertThat(fields.getValue().get("memo")).isNull();
 		assertThat(files.getValue()).hasSize(1);
-		extractionResult(ownerId, capturesOnly).andExpect(jsonPath("$.data.resultStatus").value("NOT_FOUND"));
+		extractionResult(ownerId, capturesOnly).andExpect(jsonPath("$.data.resultStatus").value("NOT_FOUND"))
+				.andExpect(jsonPath("$.data.regionHint").isEmpty());
+	}
+
+	@Test
+	void passesRegionHintWhenNoPlaceIsFoundAndDropsMalformedHint() throws Exception {
+		// 2026-11-16: 위치 태그 '강원도 강릉'만 보이는 캡처. 장소는 없어도 지역을 앱에 넘긴다
+		answer("""
+				{"resultStatus":"NOT_FOUND","candidates":[],"regionHint":"  강원도 강릉 "}""");
+		UUID tagged = request(ownerId, "{\"url\":\"https://example.com/post\"}");
+		runUntil(tagged, Set.of("SUCCEEDED"));
+		extractionResult(ownerId, tagged).andExpect(jsonPath("$.data.resultStatus").value("NOT_FOUND"))
+				.andExpect(jsonPath("$.data.regionHint").value("강원도 강릉"));
+
+		// 지역 단서만 틀리면 결과는 살리고 지역만 버린다
+		answer("""
+				{"resultStatus":"NOT_FOUND","candidates":[],"regionHint":"%s"}""".formatted("가".repeat(31)));
+		UUID tooLong = request(ownerId, "{\"url\":\"https://example.com/post2\"}");
+		runUntil(tooLong, Set.of("SUCCEEDED"));
+		extractionResult(ownerId, tooLong).andExpect(jsonPath("$.data.resultStatus").value("NOT_FOUND"))
+				.andExpect(jsonPath("$.data.regionHint").isEmpty());
 	}
 
 	@Test

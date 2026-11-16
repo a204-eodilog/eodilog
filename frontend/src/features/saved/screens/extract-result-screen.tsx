@@ -28,6 +28,7 @@ import {
   type GroupPick,
   groupCandidates,
   nextToChoose,
+  notFoundNotice,
   shownStep,
   EXTRACTION_STEP_GUIDES,
   stepDetail,
@@ -116,11 +117,16 @@ export function ExtractResultScreen() {
     else setPicks((p) => ({ ...p, [key]: pick }));
   };
 
-  const choose = async (onPicked: (place: Place) => void, around?: Place, name?: string) => {
+  const choose = async (
+    onPicked: (place: Place) => void,
+    around?: Place,
+    name?: string,
+    query?: string,
+  ) => {
     const place = await pickPlace({
       ...(around ? { near: { latitude: around.latitude, longitude: around.longitude } } : {}),
-      // 못 찾은 이름에서 '본점' 같은 지점 표시를 떼고 검색칸에 넣는다
-      ...(name ? { query: withoutBranch(name) } : {}),
+      // 못 찾은 이름에서 '본점' 같은 지점 표시를 떼고 검색칸에 넣는다. 이름이 없으면 받은 검색어(지역)를 넣는다
+      ...(name ? { query: withoutBranch(name) } : query ? { query } : {}),
     });
     if (place) onPicked(place);
   };
@@ -253,18 +259,27 @@ export function ExtractResultScreen() {
   if (view === 'notFound' || view === 'failed') {
     const failed = view === 'failed';
     const notice = failedNotice(sent, failCause(data, timedOut));
+    const missing = notFoundNotice(data?.regionHint);
     return (
       <View style={styles.screen}>
         <Header title="장소 찾기" largeTitle />
         <CenterNotice
           icon={failed ? notice.icon : 'search'}
           title={failed ? notice.title : '장소를 알아내지 못했어요'}
-          description={failed ? notice.description : '장소를 찾지 못했어요. 직접 골라 주세요'}
-          actionLabel={failed ? '다시 시도' : '장소 직접 검색하기'}
+          description={failed ? notice.description : missing.description}
+          actionLabel={failed ? '다시 시도' : missing.actionLabel}
           actionIcon={failed ? 'refresh' : 'search'}
           actionLoading={retry.isPending}
           onAction={
-            failed ? tryAgain : () => void choose((place) => setPicked({ place, evidence: PICKED }))
+            failed
+              ? tryAgain
+              : () =>
+                  void choose(
+                    (place) => setPicked({ place, evidence: PICKED }),
+                    undefined,
+                    undefined,
+                    missing.query,
+                  )
           }
         />
       </View>

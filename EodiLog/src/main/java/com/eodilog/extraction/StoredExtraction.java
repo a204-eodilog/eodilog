@@ -12,15 +12,30 @@ import tools.jackson.databind.json.JsonMapper;
 import tools.jackson.databind.node.ArrayNode;
 import tools.jackson.databind.node.ObjectNode;
 
-// PLACE_EXTRACTION result(명세 §10): {resultStatus, candidates:[{candidateId,name,place,evidence,confidence}]}
+// PLACE_EXTRACTION result(명세 §10): {resultStatus, candidates:[{candidateId,name,place,evidence,confidence}], regionHint}
 // 저장할 때와 공개할 때 같은 규칙으로 다시 읽어, 허용한 필드만 내보낸다(정책 E-15)
-record StoredExtraction(ResultStatus resultStatus, List<Candidate> candidates) {
+record StoredExtraction(ResultStatus resultStatus, List<Candidate> candidates, String regionHint) {
 
 	static final int MAX_CANDIDATES = 60;
 	static final int TEXT_MAX_LENGTH = 255;
+	// 지역 단서(위치 태그 '강원도 강릉시 주문진읍' 정도). AI의 MAX_REGION_CHARS와 같다
+	static final int REGION_MAX_LENGTH = 30;
 
 	StoredExtraction {
 		candidates = List.copyOf(candidates);
+	}
+
+	StoredExtraction(ResultStatus resultStatus, List<Candidate> candidates) {
+		this(resultStatus, candidates, null);
+	}
+
+	/** 지역 단서는 덧붙이는 값이라, 모양이 틀리면 결과 전체를 버리지 않고 null로 둔다 */
+	static String regionHint(JsonNode node) {
+		if (node == null || !node.isString()) {
+			return null;
+		}
+		String value = node.asString().strip();
+		return value.isEmpty() || value.length() > REGION_MAX_LENGTH ? null : value;
 	}
 
 	static Optional<StoredExtraction> parse(JsonNode source, JsonMapper jsonMapper) {
@@ -50,7 +65,7 @@ record StoredExtraction(ResultStatus resultStatus, List<Candidate> candidates) {
 				}
 				candidates.add(new Candidate(candidateId, name, place, evidence, confidence));
 			}
-			return Optional.of(new StoredExtraction(status, candidates));
+			return Optional.of(new StoredExtraction(status, candidates, regionHint(source.get("regionHint"))));
 		} catch (RuntimeException ex) {
 			return Optional.empty();
 		}
@@ -75,6 +90,11 @@ record StoredExtraction(ResultStatus resultStatus, List<Candidate> candidates) {
 			} else {
 				node.put("confidence", candidate.confidence());
 			}
+		}
+		if (regionHint == null) {
+			root.putNull("regionHint");
+		} else {
+			root.put("regionHint", regionHint);
 		}
 		return root;
 	}
