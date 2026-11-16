@@ -1,6 +1,5 @@
 import { toApiError } from '@/api/errors';
 import { waitForRefresh } from '@/api/session';
-import { queryClient } from '@/api/query-client';
 import { useSessionStore } from '@/stores/session-store';
 
 import { deleteAccount, deleteCurrentSession } from './api';
@@ -16,7 +15,7 @@ export async function signOut(): Promise<void> {
   } catch {
     // 서버 폐기는 확인하지 못했지만 이 기기에서는 로그아웃한다
   }
-  queryClient.clear();
+  // 캐시 비우기·채팅 정리·저장소 지우기는 clearSession 한 곳에서 한다(토큰 만료 로그아웃과 같은 정리)
   await useSessionStore.getState().clearSession();
 }
 
@@ -35,6 +34,6 @@ export async function withdraw(): Promise<void> {
   } catch (error) {
     if (toApiError(error).status !== 401) throw error;
   }
-  queryClient.clear();
+  // 캐시 비우기는 clearSession이 한다(로그아웃과 같은 정리)
   await useSessionStore.getState().clearSession();
 }

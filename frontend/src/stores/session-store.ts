@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 import { DEV_MOCK_TOKENS } from '@/api/dev-mock';
+import { queryClient } from '@/api/query-client';
 import type { Session } from '@/api/types';
 import { env } from '@/config/env';
 import { clearChatSession } from '@/features/chat/session-cleanup';
@@ -109,20 +110,28 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     set({ status: 'signedIn' });
   },
 
+  /**
+   * 로그아웃의 모든 정리를 여기 한 곳에서 한다(2026-11-09). 로그아웃 버튼(signOut)과 토큰 만료 자동 로그아웃이 둘 다 거친다.
+   * 예전에는 캐시 비우기가 로그아웃 버튼 쪽에만 있어, 토큰 만료로 나간 뒤 다른 계정으로 로그인하면 이전 사용자의
+   * 내 정보·여행 목록·채팅이 남았다. 또 채팅 정리가 기기 저장소를 지우는 await 뒤에 있어, 그사이 도착한 채팅 응답이
+   * 비운 캐시를 다시 채웠다. 그래서 기다림 없이 먼저 로그아웃 상태로 바꾸고 → 캐시와 채팅을 비운 뒤 → 기기 저장소를 지운다
+   */
   clearSession: async (options) => {
-    // 저장소 삭제가 실패해도 화면에서는 로그아웃 상태로 만든다
-    await persist(null).catch(() => undefined);
-    // 이 기기에 남긴 초대 링크도 지운다(동행 초대 명세 FR-033)
-    await clearInviteLinks().catch(() => undefined);
-    // 이 기기에 남은 채팅 상태(방 표·보내는 중 메시지)를 지운다(채팅 명세 FR-031).
-    // 실시간 연결은 여기서 끊지 않는다. 생명주기 훅이 로그인 상태를 보고 끊는다(순환 import 방지)
-    clearChatSession();
     set({
       accessToken: null,
       refreshToken: null,
       status: 'signedOut',
       expired: options?.expired ?? false,
     });
+    // 서버 데이터 캐시(내 정보·여행·채팅 등)를 비운다
+    queryClient.clear();
+    // 채팅 받기·보내기를 멈추고 이 기기의 채팅 상태(방 표·보내는 중 메시지)를 지운다(채팅 명세 FR-031).
+    // 실시간 연결은 여기서 끊지 않는다. 생명주기 훅이 로그인 상태를 보고 끊는다(순환 import 방지)
+    clearChatSession();
+    // 저장소 삭제가 실패해도 화면에서는 이미 로그아웃 상태다
+    await persist(null).catch(() => undefined);
+    // 이 기기에 남긴 초대 링크도 지운다(동행 초대 명세 FR-033)
+    await clearInviteLinks().catch(() => undefined);
   },
 
   dismissExpired: () => set({ expired: false }),

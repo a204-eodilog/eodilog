@@ -4,11 +4,9 @@ import { deleteAccount, deleteCurrentSession } from './api';
 import { signOut, withdraw } from './logout';
 
 const mockClearSession = jest.fn(async () => undefined);
-const mockClearCache = jest.fn();
 
 jest.mock('./api', () => ({ deleteAccount: jest.fn(), deleteCurrentSession: jest.fn() }));
 jest.mock('@/api/session', () => ({ waitForRefresh: jest.fn(async () => undefined) }));
-jest.mock('@/api/query-client', () => ({ queryClient: { clear: () => mockClearCache() } }));
 jest.mock('@/stores/session-store', () => ({
   useSessionStore: { getState: () => ({ clearSession: mockClearSession }) },
 }));
@@ -24,7 +22,7 @@ describe('탈퇴', () => {
     await withdraw();
 
     expect(deleteAccount).toHaveBeenCalledTimes(1);
-    expect(mockClearCache).toHaveBeenCalledTimes(1);
+    // 캐시 비우기는 clearSession 안에서 한다(sign-out-cleanup.test.ts가 확인한다)
     expect(mockClearSession).toHaveBeenCalledTimes(1);
   });
 
@@ -36,7 +34,7 @@ describe('탈퇴', () => {
 
     await withdraw();
 
-    expect(mockClearCache).toHaveBeenCalledTimes(1);
+    // 캐시 비우기는 clearSession 안에서 한다(sign-out-cleanup.test.ts가 확인한다)
     expect(mockClearSession).toHaveBeenCalledTimes(1);
   });
 
@@ -45,7 +43,6 @@ describe('탈퇴', () => {
 
     await expect(withdraw()).rejects.toThrow('network');
 
-    expect(mockClearCache).not.toHaveBeenCalled();
     expect(mockClearSession).not.toHaveBeenCalled();
   });
 });

@@ -5,20 +5,18 @@ import { sendMessage } from '../api';
 import { receive } from '../chat-inbound';
 import { cleanMessageText, sendFailure } from '../chat-rules';
 import { tripIdOf } from '../room-index';
+import { chatSync, enqueueOn, type SendContext } from '../sync-session';
 
 import { useChatOutbox } from './use-chat-outbox';
 
 /**
  * 방마다 한 번에 하나씩 차례로 보낸다. 동시에 보내면 서버 도착 순서가 바뀔 수 있다(research R8).
- * 거절된 항목은 큐에서 빠지고 뒤 항목은 계속 보낸다. 연결 문제로 기다리는 항목이 있으면 뒤 항목도 기다린다
+ * 거절된 항목은 큐에서 빠지고 뒤 항목은 계속 보낸다. 연결 문제로 기다리는 항목이 있으면 뒤 항목도 기다린다.
+ * 줄은 로그인 세션(sync-session.ts)에 있어 로그아웃하면 함께 버려진다
  */
-const queues = new Map<string, Promise<void>>();
-
 function enqueue(roomId: string, job: () => Promise<void>) {
-  const previous = queues.get(roomId) ?? Promise.resolve();
-  const next = previous.then(job, job);
-  queues.set(roomId, next);
-  return next;
+  const s = chatSync();
+  return enqueueOn(s.sendTails, roomId, () => (s.stopped ? Promise.resolve() : job()));
 }
 
 type Options = {
@@ -43,31 +41,23 @@ export const autoResend = {
  * 앱 층(startChatRealtime)이 넘겨주는 queryClient와 차단 정리.
  * 앱을 다시 켜면 화면이 아직 없어도 기기에 저장돼 있던 메시지를 보낼 수 있어야 해서 둔다
  */
-let engineClient: QueryClient | null = null;
-let engineOnBlocked: ((tripId: string) => void) | undefined;
-
 export function attachSendEngine(
   queryClient: QueryClient | null,
   onBlocked?: (tripId: string) => void,
 ) {
-  engineClient = queryClient;
-  engineOnBlocked = onBlocked;
+  chatSync().send = { queryClient, onBlocked };
 }
 
 /** 다시 보낼 때 필요한 것. 화면에서 보낸 적이 있으면 그때 것을, 없으면(앱을 막 켬) 엔진과 방 표에서 찾는다 */
-type RoomContext = { queryClient: QueryClient; tripId: string; onBlocked?: () => void };
-const contexts = new Map<string, RoomContext>();
-/** 방마다 연결 신호 없이 다시 시도할 타이머 */
-const timers = new Map<string, { attempt: number; timer: ReturnType<typeof setTimeout> | null }>();
-
-function contextOf(roomId: string): RoomContext | null {
-  const seen = contexts.get(roomId);
+function contextOf(roomId: string): SendContext | null {
+  const s = chatSync();
+  const seen = s.sendContexts.get(roomId);
   if (seen) return seen;
   const tripId = tripIdOf(roomId);
-  if (!engineClient || !tripId) return null;
-  const onBlocked = engineOnBlocked;
+  const { queryClient, onBlocked } = s.send;
+  if (!queryClient || !tripId) return null;
   return {
-    queryClient: engineClient,
+    queryClient,
     tripId,
     onBlocked: onBlocked && (() => onBlocked(tripId)),
   };
@@ -75,6 +65,7 @@ function contextOf(roomId: string): RoomContext | null {
 
 /** 연결 신호가 없을 때를 위한 다음 시도. 이미 잡혀 있으면 그대로 둔다 */
 function scheduleResend(roomId: string) {
+  const { resendTimers: timers } = chatSync();
   const t = timers.get(roomId) ?? { attempt: 0, timer: null };
   timers.set(roomId, t);
   if (t.timer) return;
@@ -123,6 +114,7 @@ function resendRoom(roomId: string): Promise<void> {
 /** 연결이 돌아왔을 때 부른다. 기다리던 메시지를 방마다 바로 다시 보낸다(앱을 다시 켠 뒤 저장돼 있던 것 포함) */
 export function resendWaitingNow(): Promise<void> {
   const jobs: Promise<void>[] = [];
+  const { resendTimers: timers } = chatSync();
   for (const roomId of Object.keys(useChatOutbox.getState().items)) {
     const t = timers.get(roomId);
     if (t?.timer) {
@@ -134,11 +126,12 @@ export function resendWaitingNow(): Promise<void> {
   return Promise.all(jobs).then(() => undefined);
 }
 
-/** 로그아웃처럼 더 보낼 일이 없을 때 타이머를 멈춘다 */
+/** 자동 재전송 타이머만 멈춘다(테스트 정리용). 로그아웃은 stopChatSync가 세션 전체를 멈춘다 */
 export function stopAutoResend() {
-  for (const t of timers.values()) if (t.timer) clearTimeout(t.timer);
-  timers.clear();
-  contexts.clear();
+  const s = chatSync();
+  for (const t of s.resendTimers.values()) if (t.timer) clearTimeout(t.timer);
+  s.resendTimers.clear();
+  s.sendContexts.clear();
 }
 
 /** 아직 자동으로 다시 보낼 시간 안인지 */
@@ -159,7 +152,8 @@ async function deliver(
   const item = list.find((i) => i.clientMessageId === clientMessageId);
   // 기다리는 사이 [지우기]했거나 이미 서버 메시지로 바뀌었다
   if (!item || item.status !== 'sending') return;
-  contexts.set(roomId, { queryClient, tripId, onBlocked });
+  const s = chatSync();
+  s.sendContexts.set(roomId, { queryClient, tripId, onBlocked });
   // 앞에 쓴 메시지가 연결을 기다리는 중이면 이것도 기다린다. 먼저 보내면 서버 순서가 뒤바뀐다
   if (list.some((i) => i.waiting && i.queuedAt < item.queuedAt)) {
     outbox.markWaiting(roomId, clientMessageId, autoResend.now());
@@ -167,14 +161,17 @@ async function deliver(
     return;
   }
   try {
-    const message = await sendMessage(roomId, { clientMessageId, text: item.text });
-    const t = timers.get(roomId);
+    const message = await sendMessage(roomId, { clientMessageId, text: item.text }, s.signal);
+    // 응답을 기다리는 사이 로그아웃했다. 비운 캐시에 이전 사용자의 대화를 다시 쓰지 않는다
+    if (s.stopped) return;
+    const t = s.resendTimers.get(roomId);
     if (t) t.attempt = 0;
     // 실시간과 같은 입구로 넣는다. 그래야 동시에 보낸 다른 사람 메시지(그 사이 순번)의 실시간을 놓쳤을 때
     // 내 응답이 그 빈칸을 가리지 않고 빈칸 채우기가 시작된다(C5-A)
     receive(queryClient, tripId, roomId, [message], 'send');
     useChatOutbox.getState().remove(roomId, clientMessageId);
   } catch (error) {
+    if (s.stopped) return;
     const failure = sendFailure(error);
     if (failure === 'blocked') {
       useChatOutbox.getState().markFailed(roomId, clientMessageId, 'retry');

@@ -8,8 +8,9 @@ import { catchUpOptions } from './catch-up-options';
 import { configureInbound, receive, resyncChat } from './chat-inbound';
 import { useChatReads } from './chat-reads';
 import { CHAT_ROOMS_KEY, chatRoomKey } from './hooks/chat-keys';
-import { attachSendEngine, resendWaitingNow, stopAutoResend } from './hooks/use-send-message';
+import { attachSendEngine, resendWaitingNow } from './hooks/use-send-message';
 import { rememberRooms, tripIdOf } from './room-index';
+import { stopChatSync } from './sync-session';
 import type { ChatRealtimeEvent, ChatRoom, Message } from './types';
 
 /** 서버가 보내는 개인 채팅 큐(contracts/realtime.md). src/realtime/destinations.ts에 허용돼 있다 */
@@ -94,10 +95,9 @@ export function startChatRealtime(queryClient: QueryClient) {
       void resendWaitingNow();
     },
   });
+  // 로그아웃: 받기·보내기 세션을 멈춘다(기다리던 요청 취소·타이머 해제·줄과 설정 버림)
   return () => {
     unsubscribe();
-    stopAutoResend();
-    attachSendEngine(null);
-    configureInbound({});
+    stopChatSync();
   };
 }
