@@ -57,6 +57,15 @@ apiClient.interceptors.response.use(
     if (error.response?.status !== 401 || !config || config._retried) {
       return Promise.reject(error);
     }
+    // 이 요청이 나간 뒤에 이미 갱신이 끝났다(옛 토큰으로 나간 요청의 401이 늦게 왔다).
+    // 여기서 또 갱신하면 서버가 방금 받은 토큰까지 폐기해, 새 토큰으로 다시 보낸 다른 요청들이 실패한다.
+    // 갱신하지 않고 지금 토큰으로 한 번만 다시 보낸다
+    const current = useSessionStore.getState().accessToken;
+    if (current && String(config.headers.Authorization ?? '') !== `Bearer ${current}`) {
+      config._retried = true;
+      config.headers.Authorization = `Bearer ${current}`;
+      return apiClient(config);
+    }
     // access 토큰이 만료됐다. 갱신을 한 번만 시도하고 원래 요청을 다시 보낸다
     const token = await refreshAccessToken();
     if (!token) return Promise.reject(error);
