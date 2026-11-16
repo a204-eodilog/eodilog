@@ -6,6 +6,15 @@ export const MAX_PHOTOS = 50;
 /** 사진 한 장 최대 크기(백엔드 STORAGE_MAX_BYTES 기본 15MiB) */
 export const MAX_PHOTO_BYTES = 15 * 1024 * 1024;
 
+/**
+ * 사진을 고를 때 다시 압축하는 품질(0~1). 크기(4000×3000)는 그대로 두고 용량만 줄인다.
+ * 같은 사진 10장을 폰에서 재 보니 1.0은 30.0MB, 0.8은 17.8MB, 0.7은 8.7MB였고,
+ * 원본과의 화질 차이(PSNR)는 0.8이 32.5dB, 0.7이 32.1dB로 거의 같아 0.7로 정했다.
+ * 안드로이드는 다시 압축해도 촬영 시각·위치(EXIF)를 새 파일에 옮겨 적는다(서버가 파일에서 읽는다).
+ * 선택창이 주는 fileSize는 압축 전 원본 크기라서, 실제 보낼 크기는 파일을 읽어야 알 수 있다
+ */
+export const PHOTO_PICK_QUALITY = 0.7;
+
 /** 여행 사진으로 받는 형식(명세 §7: JPG/PNG/HEIC) */
 const ACCEPTED: Record<string, string> = {
   'image/jpeg': 'image/jpeg',

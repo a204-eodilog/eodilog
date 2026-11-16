@@ -8,7 +8,7 @@ import { ConfirmSheet, toast } from '@/components/ui';
 import { getTripTitle } from '../api';
 import { PhotoUploadView } from '../components/photo-upload-view';
 import { usePhotoUpload } from '../hooks/use-photo-upload';
-import { addPickedPhotos, MAX_PHOTOS, skippedMessage } from '../photo-rules';
+import { addPickedPhotos, MAX_PHOTOS, PHOTO_PICK_QUALITY, skippedMessage } from '../photo-rules';
 import type { PickedPhoto } from '../types';
 
 /**
@@ -58,7 +58,7 @@ export function PhotoUploadScreen() {
         selectionLimit: remaining,
         orderedSelection: true,
         exif: true,
-        quality: 1,
+        quality: PHOTO_PICK_QUALITY,
       });
       if (result.canceled) return;
       const { photos, skipped } = addPickedPhotos(picked, result.assets);

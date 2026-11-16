@@ -1,3 +1,4 @@
+import { FlashList } from '@shopify/flash-list';
 import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { Image } from 'expo-image';
 import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
@@ -15,6 +16,30 @@ import { TripPhotoTile } from './trip-photo-tile';
 
 const COLUMNS = 3;
 const GAP = spacing[10];
+/**
+ * 화면 밖으로 미리 그려 둘 거리. 목록 기본값(250)이면 사진 100장 화면에서 보이는 22장 말고도 30장을 더 받는다.
+ * 사진은 한 장이 1MB쯤이라 미리 받는 양을 줄인다. 받는 동안은 칸의 회색 바탕이 보인다
+ */
+const DRAW_DISTANCE = 100;
+
+/** 목록 한 칸. 장소 이름 줄(가로 전체)이거나 사진 한 장 */
+type Row =
+  | { kind: 'head'; key: string; section: PlaceSection; first: boolean }
+  | { kind: 'photo'; key: string; section: PlaceSection; photo: TripPhoto; index: number };
+
+/** 장소별 묶음을 목록이 그릴 한 줄짜리 배열로 편다(이름 줄 → 그 장소의 사진들) */
+function toRows(sections: PlaceSection[]): Row[] {
+  return sections.flatMap((section, s): Row[] => [
+    { kind: 'head', key: `head:${section.placeId}`, section, first: s === 0 },
+    ...section.photos.map((photo, index): Row => ({
+      kind: 'photo',
+      key: photo.id,
+      section,
+      photo,
+      index,
+    })),
+  ]);
+}
 
 export type TripPhotosViewProps = {
   state: 'loading' | 'error' | 'ready';
@@ -98,82 +123,111 @@ export function TripPhotosView(props: TripPhotosViewProps) {
     );
   }
 
-  const empty = props.sections.length === 0;
+  const rows = toRows(props.sections);
   return (
     <View style={styles.screen}>
       {header}
-      <ScrollView decelerationRate={SCROLL_DECELERATION} contentContainerStyle={styles.body}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chips}
-        >
-          {props.chips.map((chip) => {
-            const on = chip.key === props.topic;
-            return (
-              <PressableScale
-                key={chip.key}
-                accessibilityRole="button"
-                accessibilityState={{ selected: on }}
-                accessibilityLabel={`${chip.label} ${chip.count}장`}
-                onPress={() => props.onTopic(chip.key)}
-                style={({ pressed }) => [
-                  styles.chip,
-                  on && styles.chipOn,
-                  pressed && styles.pressed,
-                ]}
-              >
-                <Text style={[typography.bodyMedium, on ? styles.chipTextOn : styles.chipText]}>
-                  {chip.label}
-                </Text>
-                <Text style={[typography.captionMedium, on ? styles.chipTextOn : styles.chipText]}>
-                  {chip.count}
-                </Text>
-              </PressableScale>
-            );
-          })}
-        </ScrollView>
-
-        {props.unplaced.length > 0 ? (
-          <PressableScale
-            accessibilityRole="button"
-            accessibilityLabel={`장소 미지정 ${props.unplaced.length}장, 연결하기`}
-            onPress={props.onUnplaced}
-            style={({ pressed }) => [styles.unplaced, pressed && styles.pressed]}
-          >
-            <View style={styles.stack}>
-              {props.unplaced.slice(0, 3).map((p, i) => {
-                const source = assetSource(photoPath(p.assetId));
+      {/* 사진이 많아도 화면에 보이는 줄만 만들고 받는다(예전에는 모든 장소의 모든 사진을 한 번에 그렸다) */}
+      <FlashList
+        data={rows}
+        keyExtractor={(row) => row.key}
+        numColumns={COLUMNS}
+        getItemType={(row) => row.kind}
+        overrideItemLayout={(itemLayout, row) => {
+          if (row.kind === 'head') itemLayout.span = COLUMNS;
+        }}
+        extraData={props.myMemberId}
+        decelerationRate={SCROLL_DECELERATION}
+        drawDistance={DRAW_DISTANCE}
+        contentContainerStyle={styles.body}
+        ListHeaderComponent={
+          <View style={styles.listHead}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.chips}
+            >
+              {props.chips.map((chip) => {
+                const on = chip.key === props.topic;
                 return (
-                  <View key={p.id} style={[styles.stackItem, { marginLeft: i === 0 ? 0 : -12 }]}>
-                    {source ? (
-                      <Image source={source} style={StyleSheet.absoluteFill} contentFit="cover" />
-                    ) : null}
-                  </View>
+                  <PressableScale
+                    key={chip.key}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: on }}
+                    accessibilityLabel={`${chip.label} ${chip.count}장`}
+                    onPress={() => props.onTopic(chip.key)}
+                    style={({ pressed }) => [
+                      styles.chip,
+                      on && styles.chipOn,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <Text style={[typography.bodyMedium, on ? styles.chipTextOn : styles.chipText]}>
+                      {chip.label}
+                    </Text>
+                    <Text
+                      style={[typography.captionMedium, on ? styles.chipTextOn : styles.chipText]}
+                    >
+                      {chip.count}
+                    </Text>
+                  </PressableScale>
                 );
               })}
-            </View>
-            <View style={styles.flex}>
-              <Text style={[typography.bodyBold, styles.text]}>
-                장소 미지정 {props.unplaced.length}장
-              </Text>
-              <Text style={[typography.caption, styles.sub]}>어디서 찍었는지 연결해 주세요</Text>
-            </View>
-            <View style={styles.inline}>
-              <Text style={[typography.captionMedium, styles.link]}>연결하기</Text>
-              <Icon name="chevron-right" size={14} color={colors.brand.primaryDark} />
-            </View>
-          </PressableScale>
-        ) : null}
+            </ScrollView>
 
-        {empty ? (
+            {props.unplaced.length > 0 ? (
+              <PressableScale
+                accessibilityRole="button"
+                accessibilityLabel={`장소 미지정 ${props.unplaced.length}장, 연결하기`}
+                onPress={props.onUnplaced}
+                style={({ pressed }) => [styles.unplaced, pressed && styles.pressed]}
+              >
+                <View style={styles.stack}>
+                  {props.unplaced.slice(0, 3).map((p, i) => {
+                    const source = assetSource(photoPath(p.assetId));
+                    return (
+                      <View
+                        key={p.id}
+                        style={[styles.stackItem, { marginLeft: i === 0 ? 0 : -12 }]}
+                      >
+                        {source ? (
+                          <Image
+                            source={source}
+                            style={StyleSheet.absoluteFill}
+                            contentFit="cover"
+                            cachePolicy="memory-disk"
+                          />
+                        ) : null}
+                      </View>
+                    );
+                  })}
+                </View>
+                <View style={styles.flex}>
+                  <Text style={[typography.bodyBold, styles.text]}>
+                    장소 미지정 {props.unplaced.length}장
+                  </Text>
+                  <Text style={[typography.caption, styles.sub]}>
+                    어디서 찍었는지 연결해 주세요
+                  </Text>
+                </View>
+                <View style={styles.inline}>
+                  <Text style={[typography.captionMedium, styles.link]}>연결하기</Text>
+                  <Icon name="chevron-right" size={14} color={colors.brand.primaryDark} />
+                </View>
+              </PressableScale>
+            ) : null}
+          </View>
+        }
+        ListEmptyComponent={
           <Text style={[typography.body, styles.sub, styles.emptyText]}>
             {props.topic === 'ALL' ? '장소에 연결된 사진이 아직 없어요' : '이 주제의 사진이 없어요'}
           </Text>
-        ) : (
-          props.sections.map((section) => (
-            <View key={section.placeId} style={styles.section}>
-              <View style={styles.sectionHead}>
+        }
+        renderItem={({ item: row }) => {
+          const { section } = row;
+          if (row.kind === 'head') {
+            return (
+              <View style={[styles.sectionHead, row.first && styles.sectionHeadFirst]}>
                 <View style={[styles.inline, styles.flex]}>
                   <Icon name="map-pin" size={18} color={colors.text.default} />
                   <Text style={[typography.title3, styles.text, styles.flex]} numberOfLines={1}>
@@ -194,24 +248,25 @@ export function TripPhotosView(props: TripPhotosViewProps) {
                   </PressableScale>
                 ) : null}
               </View>
-              <View style={styles.grid}>
-                {section.photos.map((photo, i) => (
-                  <TripPhotoTile
-                    key={photo.id}
-                    assetId={photo.assetId}
-                    width={tile}
-                    height={tile + 1}
-                    uploader={props.memberName(photo.uploaderMemberId)}
-                    mine={photo.uploaderMemberId === props.myMemberId}
-                    label={`${section.name ?? '장소'} 사진 ${i + 1}`}
-                    onPress={() => props.onPhoto(photo)}
-                  />
-                ))}
-              </View>
+            );
+          }
+          const { photo, index } = row;
+          return (
+            // 목록은 칸을 같은 너비로 나눈다. 열마다 조금씩 밀어 사진 사이 간격을 GAP으로 맞춘다
+            <View style={{ paddingLeft: ((index % COLUMNS) * GAP) / COLUMNS, paddingBottom: GAP }}>
+              <TripPhotoTile
+                assetId={photo.assetId}
+                width={tile}
+                height={tile + 1}
+                uploader={props.memberName(photo.uploaderMemberId)}
+                mine={photo.uploaderMemberId === props.myMemberId}
+                label={`${section.name ?? '장소'} 사진 ${index + 1}`}
+                onPress={() => props.onPhoto(photo)}
+              />
             </View>
-          ))
-        )}
-      </ScrollView>
+          );
+        }}
+      />
       <View style={[styles.bottom, { paddingBottom: Math.max(insets.bottom + spacing[12], 34) }]}>
         <Text style={[typography.caption, styles.sub, styles.flex]}>{props.footer}</Text>
         <Button label="공동 피드 게시" icon="globe" size="lg" onPress={props.onPublish} />
@@ -232,9 +287,11 @@ const styles = StyleSheet.create({
   body: {
     paddingHorizontal: layout.screenPaddingX,
     paddingTop: spacing[16],
-    paddingBottom: spacing[24],
-    gap: spacing[24],
+    // 마지막 사진 줄 아래에 이미 GAP만큼 떨어져 있다
+    paddingBottom: spacing[24] - GAP,
   },
+  // 주제 칩과 장소 미지정 줄 사이 24
+  listHead: { gap: spacing[24] },
   chips: { gap: spacing[10] },
   chip: {
     height: 36,
@@ -267,9 +324,16 @@ const styles = StyleSheet.create({
     backgroundColor: colors.line.default,
   },
   emptyText: { textAlign: 'center', paddingVertical: spacing[24] },
-  section: { gap: spacing[12] },
-  sectionHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[8] },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: GAP },
+  // 장소 이름 줄. 위 묶음의 마지막 사진 줄과 24(그 줄 아래 GAP 포함), 아래 사진과 12
+  sectionHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[8],
+    paddingTop: spacing[24] - GAP,
+    paddingBottom: spacing[12],
+  },
+  // 첫 묶음은 위에 사진 줄이 없어 24를 그대로 띄운다
+  sectionHeadFirst: { paddingTop: spacing[24] },
   bottom: {
     flexDirection: 'row',
     alignItems: 'center',
