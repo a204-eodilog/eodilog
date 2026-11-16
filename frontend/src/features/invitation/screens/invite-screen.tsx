@@ -154,7 +154,7 @@ function InviteContent({ token, first }: { token: string; first: boolean }) {
           </Text>
           <View style={styles.moving}>
             <Spinner size="small" color={colors.text.icon} />
-            <Text style={[typography.caption, styles.noticeDescription]}>이동하는 중</Text>
+            <Text style={[typography.caption, styles.movingText]}>이동하는 중</Text>
           </View>
         </View>
       </SafeAreaView>
@@ -313,7 +313,9 @@ const styles = StyleSheet.create({
   circleSuccess: { backgroundColor: colors.status.successBg },
   noticeTitle: { color: colors.text.default, textAlign: 'center', marginTop: spacing[20] },
   noticeDescription: { color: colors.text.icon, textAlign: 'center', marginTop: spacing[8] },
-  moving: { flexDirection: 'row', alignItems: 'center', gap: spacing[10], marginTop: spacing[24] },
+  moving: { flexDirection: 'row', alignItems: 'center', gap: spacing[8], marginTop: spacing[24] },
+  // 설명 글의 위 여백을 그대로 쓰면 글만 내려가 돌아가는 표시와 높이가 어긋난다
+  movingText: { color: colors.text.icon },
   // Button은 기본이 왼쪽 붙음(alignSelf flex-start)이라 가운데로 다시 맞춘다
   home: { alignSelf: 'center', marginTop: spacing[24] },
   homeAfterRetry: { alignSelf: 'center', marginTop: spacing[8] },

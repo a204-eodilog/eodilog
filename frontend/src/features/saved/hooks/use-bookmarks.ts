@@ -1,5 +1,5 @@
 import { onlineManager, useQuery } from '@tanstack/react-query';
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 
 import { secureStorage } from '@/lib/secure-storage';
 
@@ -10,6 +10,15 @@ export const bookmarkKeys = { all: ['me', 'bookmarks'] as const };
 /** 개인 즐겨찾기 전부. 저장(S08)·해제(S14)가 생기면 이 키를 다시 읽는다 */
 export function useBookmarks() {
   return useQuery({ queryKey: bookmarkKeys.all, queryFn: getAllBookmarks });
+}
+
+/**
+ * 내가 개인 즐겨찾기에 담아 둔 장소의 id 묶음. 다른 화면이 "이미 저장한 곳"을 표시할 때 쓴다(S07 장소 줄).
+ * 아직 받는 중이거나 받지 못했으면 비어 있다
+ */
+export function useSavedPlaceIds(): ReadonlySet<string> {
+  const { data } = useBookmarks();
+  return useMemo(() => new Set((data ?? []).flatMap((b) => (b.place ? [b.place.id] : []))), [data]);
 }
 
 /**

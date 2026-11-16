@@ -144,18 +144,24 @@ const liftOut: EntryExitAnimationFunction = () => {
   };
 };
 
+/** 안내가 차지할 수 있는 가장 넓은 폭. 화면 양옆이 보이게 남긴다 */
+const CARD_MAX_WIDTH = '86%';
+/** 한 줄일 때는 알약으로 보이고, 두 줄이 되면 둥근 네모로 보이는 둥글기. 끝까지 둥글리면 두 줄일 때 글이 모서리에 붙는다 */
+const CARD_RADIUS = 22;
+
 const styles = StyleSheet.create({
-  // 흰 알약. 글자 길이만큼만 차지하고 가운데에 선다. 어느 화면 위에서도 떠 보이게 옅은 테두리와 그림자를 둔다
+  // 흰 알약. 글자 길이만큼만 차지하고 가운데에 선다. 어느 화면 위에서도 떠 보이게 옅은 테두리와 그림자를 둔다.
+  // 글이 길어도 화면 폭을 다 채우지 않게 폭을 묶는다. 넘치는 글은 줄을 바꾼다
   card: {
     alignSelf: 'center',
-    maxWidth: '100%',
+    maxWidth: CARD_MAX_WIDTH,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[8],
     paddingVertical: spacing[8],
     paddingLeft: spacing[8],
     paddingRight: spacing[14],
-    borderRadius: radius.full,
+    borderRadius: CARD_RADIUS,
     borderWidth: 1,
     borderColor: colors.line.default,
     backgroundColor: colors.surface.white,
