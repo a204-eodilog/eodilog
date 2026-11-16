@@ -478,7 +478,7 @@ class ItineraryProposalApiTest {
 	}
 
 	// AI spec §5 응답 모양. 입력 places 순서대로 1일차 2곳, 2일차 1곳. 현재 코스에 같은 장소가 있으면 그 항목 id를 유지한다
-	@Test void categoryIsOnlyInAiInputsAndRemovedPlacesCannotReturn() throws Exception {
+	@Test void categoryIsInAiInputsAndProposalAndRemovedPlacesCannotReturn() throws Exception {
         jdbcTemplate.update("update places set category='카페' where id=?",placeA);
         replaceCourse(ownerId,1,"[{\"placeId\":\""+placeA+"\",\"day\":1,\"order\":1}]","[]").andExpect(status().isOk());
         UUID initial=request(ownerId,2);runUntil(initial,Set.of("SUCCEEDED"));
@@ -486,7 +486,7 @@ class ItineraryProposalApiTest {
         assertThat(body.getValue().path("places").get(0).path("category").asString()).isEqualTo("카페");
         assertThat(body.getValue().path("places").get(1).path("category").isNull()).isTrue();
         assertThat(body.getValue().path("current").path("items").get(0).path("place").path("category").asString()).isEqualTo("카페");
-        getProposal(ownerId,tripId,initial).andExpect(jsonPath("$.data.proposed.items[0].place.category").doesNotExist());
+        getProposal(ownerId,tripId,initial).andExpect(jsonPath("$.data.proposed.items[0].place.category").value("카페"));
         answerWith(input->{var out=jsonMapper.createObjectNode().put("baseVersion",2).put("reason","PLACE_REMOVED");var proposed=out.putObject("proposed");proposed.putArray("items").addObject().putNull("id").set("place",jsonMapper.createObjectNode().put("id",placeA.toString()));proposed.putArray("legs");out.putObject("diff").put("description","removed");return out;});
         String removed="{\"reason\":\"PLACE_REMOVED\",\"expectedVersion\":2,\"excludedPlaceIds\":[\""+placeA+"\"]}";
         UUID job=UUID.fromString(data(requestProposal(ownerId,tripId,UUID.randomUUID().toString(),removed).andExpect(status().isAccepted())).path("jobId").asString());runUntil(job,Set.of("FAILED"));

@@ -147,7 +147,8 @@ class WeatherAlternativeAiContractTest {
 		UUID secondJob = requestAlternatives(userId, date, beach, 4);
 		JsonNode swap = pick(alternatives(userId, secondJob), "PLACE_SWAP");
 		assertThat(swap.get("place").get("id").asString()).isEqualTo(indoor.toString());
-		assertThat(swap.get("place").has("category")).isFalse();
+		assertThat(swap.get("place").has("category")).isTrue();
+		assertThat(swap.get("place").has("imageUrl")).isTrue();
 		JsonNode swapped = proposeApplyUndo(userId, secondJob, swap, 4);
 		assertThat(swapped.get(0).get("place").get("id").asString()).isEqualTo(indoor.toString());
 	}

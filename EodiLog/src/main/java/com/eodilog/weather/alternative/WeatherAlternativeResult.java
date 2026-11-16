@@ -22,9 +22,9 @@ public final class WeatherAlternativeResult {
 	static final int REASON_MAX_LENGTH = 200;
 	private static final Pattern START_TIME = Pattern.compile("^([01][0-9]|2[0-3]):[0-5][0-9]$");
 	private static final Set<String> TYPES = Set.of("TIME_SHIFT", "PLACE_SWAP", "INFO");
-	// 공개 Place 필드. 실내 판단용 category는 AI 입력에만 쓰고 결과에는 싣지 않는다
+	// 공개 Place 필드(명세 §10 Place). category·imageUrl도 공개 칸이라 결과에 싣는다(EODI-349)
 	private static final Set<String> PLACE_FIELDS = Set.of("id", "name", "address", "latitude", "longitude",
-			"regionId", "provider", "providerPlaceId", "source");
+			"regionId", "provider", "providerPlaceId", "source", "category", "imageUrl");
 
 	private WeatherAlternativeResult() {
 	}

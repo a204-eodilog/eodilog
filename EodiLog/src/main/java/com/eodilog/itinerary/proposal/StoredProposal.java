@@ -63,9 +63,8 @@ record StoredProposal(long baseVersion, ProposalReason reason, List<Item> items,
 			}
 			Map<UUID, PlaceView> places = new HashMap<>();
 			for (JsonNode place : input.get("places")) {
-				ObjectNode publicPlace = ((ObjectNode) place).deepCopy();
-				publicPlace.remove("category");
-				PlaceView view = jsonMapper.treeToValue(publicPlace, PlaceView.class);
+				// 입력 장소는 공개 Place와 같은 모양이다. category도 공개 칸이라 그대로 둔다(EODI-349)
+				PlaceView view = jsonMapper.treeToValue(place, PlaceView.class);
 				places.put(view.id(), view);
 			}
 			List<UUID> currentPlaceIds = new ArrayList<>();
