@@ -28,6 +28,7 @@ dev의 AI 기능을 실제 모델로 호출해, 명세대로 동작하는지와 
 | [llm-features-eval.md](./llm-features-eval.md) | 취향 추정, 준비물 제안, 장소 추출(링크·메모, 캡처 5장) |
 | [capture-eval.md](./capture-eval.md) | 앱 화면 캡처 50장(지도앱 상세·목록, 블로그, SNS, 채팅, 음성) 장소 추출 |
 | [photo-classification-eval.md](./photo-classification-eval.md) | 사진 주제 분류, 유사 사진 묶음, 지연 시간 |
+| [ondevice-photo-ai.md](./ondevice-photo-ai.md) | 폰 안 사진 AI: 주제 분류와 한국어 문장 검색, 모델 줄이기, 묶기 기준값, 모델 파일 |
 | [../vision-llm-comparison.md](../vision-llm-comparison.md) | 캡처 장소 추출의 GMS와 자체 비전 모델 비교 |
 
 ## 찾은 문제

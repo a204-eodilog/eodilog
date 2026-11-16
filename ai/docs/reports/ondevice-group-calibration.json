@@ -1,0 +1,54 @@
+{
+ "n_photos": 1931,
+ "n_neg_pairs": 1863415,
+ "pos": {
+  "min": 0.8822,
+  "p01": 0.9223,
+  "median": 0.9675
+ },
+ "neg": {
+  "p99": 0.787,
+  "p9999": 0.9077,
+  "max": 1.0
+ },
+ "thresholds": {
+  "fmr1e-4": {
+   "threshold": 0.9077,
+   "recall": 99.48
+  },
+  "fmr1e-5": {
+   "threshold": 0.9373,
+   "recall": 95.55
+  },
+  "t0.85": {
+   "threshold": 0.85,
+   "recall": 100.0,
+   "false_pairs": 2809,
+   "fmr": 0.0015074473480142642
+  },
+  "t0.88": {
+   "threshold": 0.88,
+   "recall": 100.0,
+   "false_pairs": 809,
+   "fmr": 0.00043414912942098244
+  },
+  "t0.9": {
+   "threshold": 0.9,
+   "recall": 99.74,
+   "false_pairs": 300,
+   "fmr": 0.00016099473278899224
+  },
+  "t0.92": {
+   "threshold": 0.92,
+   "recall": 99.12,
+   "false_pairs": 86,
+   "fmr": 4.615182339951111e-05
+  },
+  "t0.94": {
+   "threshold": 0.94,
+   "recall": 93.79,
+   "false_pairs": 15,
+   "fmr": 8.049736639449613e-06
+  }
+ }
+}
