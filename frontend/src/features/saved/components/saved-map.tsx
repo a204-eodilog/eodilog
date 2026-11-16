@@ -34,11 +34,11 @@ export function SavedMap({ items, onOpen, bottomInset }: SavedMapProps) {
   // 그 지역 장소가 다 빠졌으면 지역 고르기를 풀고, 카드 수가 바뀌면 카드 줄(아래 resetKey)과 함께 첫 카드로 돌아간다
   if (city !== null && !groups.some((g) => g.city === city)) setCity(null);
   const shown = city ? (groups.find((g) => g.city === city)?.items ?? []) : items;
+  // 따라가기(following)는 그대로 둔다. 따라가던 중이면 첫 카드의 핀을 보인다
   const [shownCount, setShownCount] = useState(shown.length);
   if (shownCount !== shown.length) {
     setShownCount(shown.length);
     setFocused(0);
-    setFollowing(false);
   }
 
   const openCity = (name: string) => {
