@@ -17,6 +17,7 @@ type Example = 'draft' | 'published' | 'error';
 
 const PUBLISHED: RecordFeed = {
   status: 'published',
+  likes: 4,
   visibility: publishedVisibility(['하늘']),
   hiddenNote: '하늘님은 서연님 피드에서는 볼 수 있어요',
 };

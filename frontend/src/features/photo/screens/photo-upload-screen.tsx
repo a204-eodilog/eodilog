@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams, usePreventRemove } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { ConfirmSheet, toast } from '@/components/ui';
 
@@ -45,11 +45,12 @@ export function PhotoUploadScreen() {
     router.dismissTo(`/trips/${tripId}/photos`);
   }, [upload.phase, upload.items.length, tripId]);
 
-  const pick = async () => {
+  /** 사진첩을 연다. 고르지 않고 닫았으면 false */
+  const pick = async (): Promise<boolean> => {
     const remaining = MAX_PHOTOS - picked.length;
     if (remaining <= 0) {
       toast.show(`한 번에 ${MAX_PHOTOS}장까지 올릴 수 있어요`);
-      return;
+      return true;
     }
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -60,17 +61,39 @@ export function PhotoUploadScreen() {
         exif: true,
         quality: PHOTO_PICK_QUALITY,
       });
-      if (result.canceled) return;
+      if (result.canceled) return false;
       const { photos, skipped } = addPickedPhotos(picked, result.assets);
       const added = photos.slice(picked.length);
       setPicked(photos);
       setSelected((prev) => new Set([...prev, ...added.map((p) => p.key)]));
       const message = skippedMessage(skipped);
       if (message) toast.show(message);
+      return true;
     } catch {
       toast.error('사진을 불러오지 못했어요');
+      return true;
     }
   };
+
+  // 들어오자마자 사진첩을 연다. [사진 올리기]를 누른 뒤 빈 화면에서 한 번 더 누르게 하지 않는다(2026-11-16 사용자 지적).
+  // 처음 연 사진첩을 고르지 않고 닫으면 온 화면으로 돌아간다
+  // 규칙 끄기 주석을 쓰면 React Compiler가 화면 전체를 건너뛰어, 처음 연 pick을 ref로 잡아 둔다
+  const firstPick = useRef(pick);
+  const opened = useRef(false);
+  const active = useRef(false);
+  useEffect(() => {
+    active.current = true;
+    if (!opened.current) {
+      opened.current = true;
+      void firstPick.current().then((chose) => {
+        if (active.current && !chose && router.canGoBack()) router.back();
+      });
+    }
+    // 사진첩 응답이 늦게 와도 이미 떠난 화면에서 다른 화면을 닫지 않는다.
+    return () => {
+      active.current = false;
+    };
+  }, []);
 
   const toggle = (key: string) =>
     setSelected((prev) => {

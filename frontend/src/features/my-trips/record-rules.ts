@@ -114,6 +114,7 @@ export function recordFeed(
   return {
     status: 'published',
     visibility: publishedVisibility(label ? [label] : []),
+    likes: feed.likeCount ?? 0,
     hiddenNote: who && where ? `${who}은 ${where}에서는 볼 수 있어요` : null,
   };
 }
