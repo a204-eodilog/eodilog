@@ -13,7 +13,7 @@
 | 기본               | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-724)  | `/dev/home?state=basic` | 아래 "기본"                                                                      |
 | 지도 확대          | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=516-203)  | `?state=zoom`           | 4단계(배율 3.2)부터 지역 알약 → 사진 핀(표지 + 지역 이름 + 친구 얼굴)            |
 | 추천 시트 펼침     | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-1161) | `?state=sheet`          | 시트를 끌어 올리면 세로 목록                                                     |
-| 친구 없음          | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-1689) | `?state=no-friends`     | 점선 + 자리 3곳, "친구가 생기면 여기에 보여요", 아래 카드 [트렌드] [친구 찾기]   |
+| 친구 없음          | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-1689) | `?state=no-friends`     | 지도에는 아무것도 올리지 않음, 아래 카드 [친구 찾기] 하나(요즘 뜨는 여행지는 지도 위 단추) |
 | 첫 방문(여행 없음) | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=665-602)  | `?state=first`          | 지도 없이 걷는 마스코트 + "첫 여행을 만들어 볼까요?" + [새 여행]                 |
 | 공개된 기록 없음   | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-2030) | `?state=no-public`      | "친구 N명 · 아직 공개한 여행이 없어요", 아래 카드 [친구 찾기] [요즘 뜨는 여행지] |
 | 지도 로드 실패     | [열기](https://www.figma.com/design/GDzsmFpkkSRSUzQTWpBtVc/eodilog?node-id=201-2369) | `?state=error`          | 회색 바탕, 지도 아이콘 + "지도를 불러오지 못했어요" + [다시 시도]                |

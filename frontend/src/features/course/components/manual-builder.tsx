@@ -120,7 +120,18 @@ export function ManualBuilder(props: Props) {
           <Icon name="people" size={18} color={colors.text.icon} />
           <Text style={[typography.bodyBold, styles.trayTitle]}>그룹 즐겨찾기</Text>
           {props.saved.length > 0 ? (
-            <Text style={[typography.caption, styles.left]}>{left.length}곳 남았어요</Text>
+            <>
+              <Text style={[typography.caption, styles.left]}>{left.length}곳 남았어요</Text>
+              {/* 즐겨찾기에 없는 곳도 찾아 넣는다(2026-11-14 사용자 요청) */}
+              <PressableScale
+                accessibilityLabel="다른 장소 찾기"
+                style={styles.find}
+                onPress={props.onFind}
+                accessibilityRole="button"
+              >
+                <Icon name="search" size={16} color={colors.brand.primary} />
+              </PressableScale>
+            </>
           ) : null}
         </View>
         {props.saved.length === 0 ? (
@@ -277,7 +288,14 @@ const styles = StyleSheet.create({
   },
   chipText: { color: colors.text.default, flexShrink: 1 },
   emptyTray: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  find: { flexDirection: 'row', alignItems: 'center', gap: spacing[4], minHeight: 44 },
+  find: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing[4],
+    minHeight: 44,
+    minWidth: 44,
+  },
   findText: { color: colors.brand.primary },
   buildRow: { flexDirection: 'row', justifyContent: 'flex-end' },
   build: {

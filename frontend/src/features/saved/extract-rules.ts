@@ -299,6 +299,25 @@ export function shownStep(progress: number, elapsedMs: number): 0 | 1 | 2 {
  * 지금 단계 아래 "지금 하는 일" 한 줄(FE 제안). 첫 단계는 보낸 입력(링크·캡처 수)에 맞춘다.
  * sent가 없으면(앱을 다시 켜 보낸 입력을 잊음) 일반 문구
  */
+/**
+ * 이름 끝의 지점 표시를 뗀다. '강릉길감자 본점' → '강릉길감자'. 공공데이터에는 지점 없는 상호로만 있는 곳이 많다.
+ * 띄어 쓴 마지막 낱말만 본다(붙여 쓴 '카페정점'은 그대로). AI 서버의 without_branch와 같은 규칙
+ */
+export function withoutBranch(name: string): string {
+  // 업종명도 '점'으로 끝난다. 지점으로 오인해 검색어가 지역명만 남지 않게 보존한다.
+  if (
+    /(?:음식점|서점|상점|편의점|백화점|면세점|판매점|전문점|대리점|할인점|제과점|정육점|문구점|안경점|기념품점|주점|반점)$/.test(
+      name.trim(),
+    )
+  )
+    return name.trim();
+  const base = name
+    .trim()
+    .replace(/\s+(?:본점|\d+호점|\S+점)$/, '')
+    .trim();
+  return base || name.trim();
+}
+
 export function stepDetail(
   step: 0 | 1 | 2,
   sent: { link: string | null; captureCount: number } | null,

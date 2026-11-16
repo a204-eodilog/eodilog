@@ -111,6 +111,7 @@ export function SavedPlaceScreen() {
         longitude={item.longitude}
         memo={bookmark.memo}
         imageUrl={item.imageUrl}
+        provider={item.provider}
         source={bookmarkSource(bookmark)}
         editable={editable}
         busy={busy}

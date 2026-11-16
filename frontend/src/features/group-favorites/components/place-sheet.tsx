@@ -142,7 +142,9 @@ export function PlaceSheet({ item, members, myMemberId, onClose, ...props }: Pro
                 accessibilityRole="button"
                 accessibilityLabel="내 저장 빼기"
               >
-                <Icon name="trash" size={22} color={colors.status.danger} />
+                {/* 아이콘만으로는 무엇을 하는지 몰라 글자를 붙인다(2026-11-15 사용자 지적) */}
+                <Icon name="trash" size={20} color={colors.status.danger} />
+                <Text style={[typography.bodyMedium, styles.removeText]}>내 저장 빼기</Text>
               </PressableScale>
             </>
           ) : (
@@ -200,4 +202,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing[6],
   },
+  removeText: { color: colors.status.danger },
 });

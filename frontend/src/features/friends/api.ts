@@ -5,7 +5,11 @@ import type { Follow, FriendsBoard } from '@/features/friends/types';
 /** 명세의 목록 최대 크기. 다음 커서가 있으면 끝까지 읽는다. */
 const PAGE_LIMIT = 100;
 
-async function getFollows(path: string, signal?: AbortSignal, received = false): Promise<Follow[]> {
+async function getFollows(
+  path: string,
+  signal?: AbortSignal,
+  direction?: 'RECEIVED' | 'SENT',
+): Promise<Follow[]> {
   const follows: Follow[] = [];
   const cursors = new Set<string>();
   let cursor: string | undefined;
@@ -15,7 +19,7 @@ async function getFollows(path: string, signal?: AbortSignal, received = false):
       params: {
         limit: PAGE_LIMIT,
         ...(cursor ? { cursor } : {}),
-        ...(received ? { direction: 'RECEIVED' } : {}),
+        ...(direction ? { direction } : {}),
       },
     });
     follows.push(...data.data);
@@ -33,15 +37,18 @@ async function getFollows(path: string, signal?: AbortSignal, received = false):
 export const getFollowing = (signal?: AbortSignal) => getFollows('/me/following', signal);
 export const getFollowers = (signal?: AbortSignal) => getFollows('/me/followers', signal);
 export const getFollowRequests = (signal?: AbortSignal) =>
-  getFollows('/me/follow-requests', signal, true);
+  getFollows('/me/follow-requests', signal, 'RECEIVED');
+export const getSentFollowRequests = (signal?: AbortSignal) =>
+  getFollows('/me/follow-requests', signal, 'SENT');
 
 export async function getFriendsBoard(signal?: AbortSignal): Promise<FriendsBoard> {
-  const [following, followers, requests] = await Promise.all([
+  const [following, followers, requests, sent] = await Promise.all([
     getFollowing(signal),
     getFollowers(signal),
     getFollowRequests(signal),
+    getSentFollowRequests(signal),
   ]);
-  return { following, followers, requests };
+  return { following, followers, requests, sent };
 }
 
 export async function acceptFollowRequest(requestId: string): Promise<Follow> {
@@ -51,6 +58,7 @@ export async function acceptFollowRequest(requestId: string): Promise<Follow> {
   return data.data;
 }
 
+/** 받은 요청 거절과 보낸 요청 취소가 같은 주소다(서버가 당사자를 보고 나눈다) */
 export async function rejectFollowRequest(requestId: string): Promise<void> {
   await apiClient.delete('/me/follow-requests/' + encodeURIComponent(requestId));
 }

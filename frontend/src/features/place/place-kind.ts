@@ -41,8 +41,11 @@ const CATEGORY_RULES: [PlaceKind, RegExp][] = [
   ['cafe', /카페|디저트|베이커리|제과|커피/],
   ['food', /음식점|한식|중식|일식|양식|분식|술집|뷔페|식당|요리|고기|해물|생선|치킨|패스트푸드/],
   ['stay', /숙박|호텔|모텔|펜션|리조트|게스트하우스|민박|캠핑|야영/],
-  ['culture', /박물관|미술관|문화|유적|전시|공연|사찰|궁궐|기념관|종교/],
-  ['nature', /명소|해수욕장|해변|공원|자연|폭포|계곡|산|섬|수목원|휴양림|호수|전망대/],
+  ['culture', /박물관|미술관|문화|유적|전시|공연|사찰|궁궐|기념관|종교|축제/],
+  [
+    'nature',
+    /명소|해수욕장|해변|공원|자연|폭포|계곡|산|섬|수목원|휴양림|호수|전망대|레포츠|여행코스/,
+  ],
   ['shop', /쇼핑|시장|마트|백화점|아울렛|편의점|상가/],
 ];
 
@@ -69,6 +72,8 @@ export function placeKind(name: string, category?: string | null): PlaceKind {
   for (const [kind, pattern] of RULES) {
     if (pattern.test(text)) return kind;
   }
+  // 관광공사 분류 '관광지'는 해변·궁궐·사찰이 다 들어 있어 이름을 먼저 본다. 이름에 단서가 없으면 자연으로 둔다
+  if ((category ?? '').trim() === '관광지') return 'nature';
   return 'place';
 }
 

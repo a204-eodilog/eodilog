@@ -52,3 +52,19 @@ describe('placeKind', () => {
     expect(placeKindLook('광안리 바다뷰 카페')).toMatchObject({ icon: 'coffee', label: '카페' });
   });
 });
+
+describe('관광공사 분류', () => {
+  it('관광지는 이름을 먼저 보고, 단서가 없으면 자연이다', () => {
+    expect(placeKind('흰여울문화마을', '관광지')).toBe('culture');
+    expect(placeKind('강문해변', '관광지')).toBe('nature');
+    expect(placeKind('두물머리', '관광지')).toBe('nature');
+  });
+  it('다른 관광공사 분류도 읽는다', () => {
+    expect(placeKind('어딘가', '문화시설')).toBe('culture');
+    expect(placeKind('어딘가', '축제공연행사')).toBe('culture');
+    expect(placeKind('어딘가', '레포츠')).toBe('nature');
+    expect(placeKind('어딘가', '숙박')).toBe('stay');
+    expect(placeKind('어딘가', '음식점')).toBe('food');
+    expect(placeKind('어딘가', '쇼핑')).toBe('shop');
+  });
+});

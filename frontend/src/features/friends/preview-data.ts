@@ -32,6 +32,14 @@ export const PREVIEW_BOARD: FriendsBoard = {
   following: people.slice(0, 5).map((p, i) => relation('out-' + i, me, p, 'ACCEPTED')),
   followers: people.slice(0, 5).map((p, i) => relation('in-' + i, p, me, 'ACCEPTED')),
   requests: [relation('request-1', people[5], me, 'REQUESTED')],
+  sent: [
+    relation(
+      'sent-1',
+      me,
+      { ...people[5], id: 'preview-person-sent', nickname: '바다' },
+      'REQUESTED',
+    ),
+  ],
 };
 export const PREVIEW_TRIPS: Record<string, string> = {
   'preview-person-0': '함께 간 여행 2개 · 겨울 여행 동행',

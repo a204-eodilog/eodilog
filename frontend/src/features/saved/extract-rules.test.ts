@@ -23,6 +23,7 @@ import {
   stepDetail,
   EXTRACTION_STEP_GUIDES,
   EXTRACTION_STEPS,
+  withoutBranch,
 } from './extract-rules';
 import type { ExtractionCandidate, ExtractionResult, Job, Place } from './types';
 
@@ -418,5 +419,28 @@ describe('parseAddStart', () => {
   it('없거나 모르는 값이면 보통으로 연다', () => {
     expect(parseAddStart(undefined)).toBeNull();
     expect(parseAddStart('photo')).toBeNull();
+  });
+});
+
+describe('withoutBranch', () => {
+  it('띄어 쓴 지점 표시만 뗀다', () => {
+    expect(withoutBranch('강릉길감자 본점')).toBe('강릉길감자');
+    expect(withoutBranch('스타벅스 강남역점')).toBe('스타벅스');
+    expect(withoutBranch('교촌치킨 2호점')).toBe('교촌치킨');
+    expect(withoutBranch('본점')).toBe('본점');
+    expect(withoutBranch('카페정점')).toBe('카페정점');
+  });
+});
+
+describe('상호의 업종명 보존', () => {
+  it.each([
+    '부산 중국음식점',
+    '제주 기념품점',
+    '서울 독립서점',
+    '동네 문구점',
+    '우리 제과점',
+    '행복 백화점',
+  ])('%s를 지점으로 잘라내지 않는다', (name) => {
+    expect(withoutBranch(name)).toBe(name);
   });
 });

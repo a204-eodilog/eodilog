@@ -1,11 +1,11 @@
 import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { apiErrorCode } from '@/api/errors';
-import { MapMarker, MapView } from '@/components/map';
+import { MapMarker, MapView, type MapViewRef } from '@/components/map';
 import { Button, CenterNotice, Header, Icon, toast } from '@/components/ui';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { SkeletonList } from '@/components/ui/skeleton';
@@ -31,6 +31,7 @@ import {
   shownStep,
   EXTRACTION_STEP_GUIDES,
   stepDetail,
+  withoutBranch,
 } from '../extract-rules';
 import { forgetExtraction, sentExtraction } from '../extract-session';
 import { useExtraction, useRetryExtraction } from '../hooks/use-extraction';
@@ -108,10 +109,12 @@ export function ExtractResultScreen() {
     else setPicks((p) => ({ ...p, [key]: pick }));
   };
 
-  const choose = async (onPicked: (place: Place) => void, around?: Place) => {
-    const place = await pickPlace(
-      around ? { near: { latitude: around.latitude, longitude: around.longitude } } : {},
-    );
+  const choose = async (onPicked: (place: Place) => void, around?: Place, name?: string) => {
+    const place = await pickPlace({
+      ...(around ? { near: { latitude: around.latitude, longitude: around.longitude } } : {}),
+      // 못 찾은 이름에서 '본점' 같은 지점 표시를 떼고 검색칸에 넣는다
+      ...(name ? { query: withoutBranch(name) } : {}),
+    });
     if (place) onPicked(place);
   };
 
@@ -247,12 +250,7 @@ export function ExtractResultScreen() {
         }}
       >
         {mapSize ? (
-          <MapView
-            key={
-              region ? `${region.latitude}-${region.longitude}-${region.latitudeDelta}` : 'korea'
-            }
-            {...(region ? { initialRegion: region } : {})}
-          >
+          <FittedMap region={region}>
             {asking
               ? options.map((o, i) => (
                   <MapMarker
@@ -278,7 +276,7 @@ export function ExtractResultScreen() {
                     onPress={() => setFocused(item.key)}
                   />
                 ))}
-          </MapView>
+          </FittedMap>
         ) : null}
         <View style={styles.chipWrap} pointerEvents="none">
           <SourceChip link={sent?.link ?? null} captures={sent?.captureCount ?? 0} />
@@ -354,6 +352,7 @@ export function ExtractResultScreen() {
                   void choose(
                     (place) => pickFor(asking.key, { place, evidence: PICKED }),
                     options[choiceIndex]?.place,
+                    asking.name,
                   )
                 }
                 style={styles.notHere}
@@ -443,7 +442,11 @@ export function ExtractResultScreen() {
                         icon="search"
                         label={`${item.name} 직접 찾기`}
                         onPress={() =>
-                          void choose((place) => pickFor(item.key, { place, evidence: PICKED }))
+                          void choose(
+                            (place) => pickFor(item.key, { place, evidence: PICKED }),
+                            undefined,
+                            item.name,
+                          )
                         }
                       />
                     )}
@@ -538,6 +541,37 @@ function RoundButton({
     >
       <Icon name={icon} size={18} color={colors.text.icon} />
     </PressableScale>
+  );
+}
+
+type MapRegion = NonNullable<ReturnType<typeof extractRegion>>;
+
+/**
+ * 보여 줄 범위가 바뀌면 지도를 새로 만들지 않고 카메라만 옮긴다.
+ * 질문마다 지도를 다시 만들면(key 바꾸기) 새 지도가 준비되기 전에 핀이 빠지면서
+ * 안드로이드에서 앱이 죽었다(2026-11-14 공기계: 후보 묻기 11번 뒤 IndexOutOfBounds)
+ */
+function FittedMap({ region, children }: { region: MapRegion | null; children: ReactNode }) {
+  const map = useRef<MapViewRef>(null);
+  const [initial] = useState(region);
+  const latitude = region?.latitude;
+  const longitude = region?.longitude;
+  const latitudeDelta = region?.latitudeDelta;
+  const longitudeDelta = region?.longitudeDelta;
+  useEffect(() => {
+    if (
+      latitude === undefined ||
+      longitude === undefined ||
+      latitudeDelta === undefined ||
+      longitudeDelta === undefined
+    )
+      return;
+    map.current?.animateRegionTo?.({ latitude, longitude, latitudeDelta, longitudeDelta });
+  }, [latitude, longitude, latitudeDelta, longitudeDelta]);
+  return (
+    <MapView ref={map} {...(initial ? { initialRegion: initial } : {})}>
+      {children}
+    </MapView>
   );
 }
 

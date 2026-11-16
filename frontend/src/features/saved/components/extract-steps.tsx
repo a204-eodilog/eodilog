@@ -38,7 +38,8 @@ export function ExtractSteps({
   guides: readonly string[];
 }) {
   return (
-    <View accessibilityLiveRegion="polite">
+    // 부모가 왼쪽 정렬(alignItems: flex-start)이어도 가로를 다 써야 단계 이름이 보인다(폭이 0이 되어 번호만 보였다)
+    <View accessibilityLiveRegion="polite" style={styles.wrap}>
       {steps.map((label, i) => {
         const done = i < current;
         const now = i === current;
@@ -104,6 +105,7 @@ function Spinner() {
 }
 
 const styles = StyleSheet.create({
+  wrap: { alignSelf: 'stretch' },
   row: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing[14] },
   rowGap: { paddingBottom: spacing[24] },
   // 동그라미 가운데 아래에서 다음 동그라미까지 잇는 선

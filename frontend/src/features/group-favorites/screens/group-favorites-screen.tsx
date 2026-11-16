@@ -359,6 +359,8 @@ export function GroupFavoritesScreen() {
         onClose={() => setPollOpen(false)}
         tripId={tripId}
         initialType="PLACE"
+        // 목록에서 이미 골랐으니 시트에서는 고른 곳만 보이고 유형을 바꾸지 않는다
+        fixed
         // 장소를 고르는 동안에는 [N곳으로 투표 열기]가 보인다
         prefetch={selecting !== null}
         initialSelected={[...(selecting ?? [])]}

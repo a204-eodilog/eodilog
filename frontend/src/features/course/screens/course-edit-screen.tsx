@@ -103,6 +103,8 @@ export type DraftViewProps = {
   noTime?: NoTime;
   /** 추천안을 적용하면 이미 있는 코스 전체가 바뀐다. 그렇다고 알린다(백엔드 안내 2026-11-09) */
   replacesCourse?: boolean;
+  /** 이 날에 장소를 더 넣는다. 없으면 버튼을 그리지 않는다 */
+  onAddPlace?(): void;
 };
 
 /** S23 코스 초안 모습(Figma 201-12879, 201-13071). 데이터는 화면이나 미리보기가 넘긴다 */
@@ -183,6 +185,17 @@ export function DraftView(props: DraftViewProps) {
               noTime={noTime}
             />
           )}
+          {props.onAddPlace ? (
+            <PressableScale
+              accessibilityRole="button"
+              accessibilityLabel={`${day + 1}일차에 장소 추가`}
+              onPress={props.onAddPlace}
+              style={styles.addPlace}
+            >
+              <Icon name="plus" size={16} color={colors.brand.primary} />
+              <Text style={[typography.captionMedium, styles.addPlaceText]}>장소 추가</Text>
+            </PressableScale>
+          ) : null}
           {noRoute ? (
             <View style={styles.hint}>
               <Icon name="info" size={14} color={colors.text.sub} />
@@ -261,6 +274,13 @@ export function CourseEditScreen() {
   const [leaving, setLeaving] = useState(false);
   /** setup: 여행지·기간 확인과 구성 방식 선택 / auto: 자동 추천 / manual: 직접 만들기 / draft: 코스 초안 */
   const [mode, setMode] = useState<'setup' | 'auto' | 'manual' | 'draft'>('draft');
+  /** 초안의 [장소 추가]로 직접 만들기에 잠깐 들어왔다. 끝내면 출처(저장 코스·추천안)를 그대로 두고 초안으로 돌아간다 */
+  const [addingFromDraft, setAddingFromDraft] = useState(false);
+  const finishAdding = () => {
+    setAddingFromDraft(false);
+    setMode('draft');
+    setSelectedLeg(null);
+  };
   const [dates, setDates] = useState<{ start: string; end: string | null } | null>(null);
   const [savingDates, setSavingDates] = useState(false);
   const saved = useTripSavedPlaces(tripId, mode !== 'draft');
@@ -643,6 +663,10 @@ export function CourseEditScreen() {
         onPlace={(place) => change(addPlace(draft, current, place, newKey()))}
         onFind={() => void findPlace()}
         onBuild={() => {
+          if (addingFromDraft) {
+            finishAdding();
+            return;
+          }
           setMode('draft');
           setOrigin('manual');
           setDay(0);
@@ -685,6 +709,12 @@ export function CourseEditScreen() {
         basis={queried && origin === 'saved' ? basisLine(queried) : null}
         onMore={setSheetIndex}
         {...sheetHandlers(current, draft)}
+        // 만든 코스에 장소를 더 넣는다. 직접 만들기의 즐겨찾기 칩·장소 찾기를 그대로 쓴다(2026-11-14 사용자 요청)
+        onAddPlace={() => {
+          setSheetIndex(null);
+          setAddingFromDraft(true);
+          setMode('manual');
+        }}
         onRecalculate={() => {
           // 다시 계산은 저장된 코스에만 할 수 있다
           if (dirty || origin !== 'saved' || !itinerary.data) {
@@ -720,7 +750,13 @@ export function CourseEditScreen() {
         subtitle={trip.data?.title}
         subtitleIcon="trip"
         // 고친 것이나 아직 저장하지 않은 추천안·직접 만든 코스가 있으면 버릴지 묻는다
-        onBack={() => (unsaved ? setLeaving(true) : leave())}
+        onBack={() =>
+          mode === 'manual' && addingFromDraft
+            ? finishAdding()
+            : unsaved
+              ? setLeaving(true)
+              : leave()
+        }
         right={
           people.length > 0 ? (
             <AvatarGroup
@@ -769,6 +805,21 @@ const styles = StyleSheet.create({
   hint: { flexDirection: 'row', alignItems: 'center', gap: spacing[6] },
   hintText: { color: colors.text.sub, flexShrink: 1 },
   emptyDay: { color: colors.text.sub, paddingVertical: spacing[16] },
+  // 직접 만들기의 "여기에 놓아요" 칸과 같은 점선 파랑 줄
+  addPlace: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing[4],
+    minHeight: 44,
+    marginTop: spacing[8],
+    borderRadius: radius.md,
+    backgroundColor: colors.brand.primaryBg,
+    borderWidth: 1.5,
+    borderColor: colors.brand.primaryLight,
+    borderStyle: 'dashed',
+  },
+  addPlaceText: { color: colors.brand.primary },
   bottom: {
     flexDirection: 'row',
     justifyContent: 'flex-end',

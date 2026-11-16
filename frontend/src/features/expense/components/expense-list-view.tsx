@@ -60,16 +60,19 @@ export function ExpenseListView({
         title="경비"
         subtitle={tripTitle}
         subtitleIcon="trip"
+        // 지출이 없을 때는 가운데 [지출 추가]가 있어 위 +를 숨긴다(2026-11-15 사용자 지적: + 두 개). 지출이 생기면 위 +만 남는다
         right={
-          <PressableScale
-            accessibilityRole="button"
-            accessibilityLabel="지출 추가"
-            hitSlop={8}
-            onPress={onAdd}
-            style={styles.headerButton}
-          >
-            <Icon name="plus" color={colors.text.default} />
-          </PressableScale>
+          expenses.length === 0 ? undefined : (
+            <PressableScale
+              accessibilityRole="button"
+              accessibilityLabel="지출 추가"
+              hitSlop={8}
+              onPress={onAdd}
+              style={styles.headerButton}
+            >
+              <Icon name="plus" color={colors.text.default} />
+            </PressableScale>
+          )
         }
       />
 

@@ -26,6 +26,16 @@ describe('친구 관계 변경 규칙', () => {
     expect(board.followers).toEqual(PREVIEW_BOARD.followers);
     expect(board.requests).toHaveLength(0);
   });
+  it('보낸 요청을 취소하면 보낸 요청에서만 빠진다', () => {
+    const board = applyFriendsAction(PREVIEW_BOARD, {
+      kind: 'cancel',
+      follow: PREVIEW_BOARD.sent[0],
+      at: '2026-11-14T00:00:00Z',
+    });
+    expect(board.sent).toHaveLength(0);
+    expect(board.requests).toEqual(PREVIEW_BOARD.requests);
+    expect(board.following).toEqual(PREVIEW_BOARD.following);
+  });
   it('팔로우 해제와 팔로워 삭제는 해당 방향만 지운다', () => {
     const board = applyFriendsAction(PREVIEW_BOARD, {
       kind: 'unfollow',
