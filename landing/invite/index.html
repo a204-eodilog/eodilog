@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- 초대 토큰이 주소에 담겨 오므로 검색에 잡히지 않게 하고, 다른 곳으로 주소가 새지 않게 한다 -->
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="referrer" content="no-referrer" />
+    <title>어디로그 여행 초대</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        padding: 24px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+        color: #191f28;
+        background: #ffffff;
+        text-align: center;
+      }
+      h1 {
+        margin: 0;
+        font-size: 20px;
+      }
+      p {
+        margin: 0;
+        font-size: 15px;
+        line-height: 1.5;
+        color: #4e5968;
+      }
+      a.button {
+        margin-top: 12px;
+        display: inline-block;
+        min-width: 220px;
+        padding: 14px 20px;
+        border-radius: 12px;
+        background: #2a72e5;
+        color: #ffffff;
+        font-size: 16px;
+        font-weight: 600;
+        text-decoration: none;
+      }
+      a.button:active {
+        background: #1f5bc2;
+      }
+      [hidden] {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <h1 id="title">어디로그 여행에 초대받았어요</h1>
+    <p id="message">앱이 자동으로 열리지 않으면 아래 버튼을 눌러 주세요.</p>
+    <a id="open" class="button" href="#" hidden>어디로그에서 열기</a>
+    <noscript><p>이 페이지는 자바스크립트가 켜져 있어야 앱으로 넘어갈 수 있어요.</p></noscript>
+
+    <script>
+      (function () {
+        // 초대 링크는 https://…/invite/#토큰 모양이다. 메신저는 앱 주소(eodilog://)를 누를 수 있게 만들어 주지 않아서
+        // 이 페이지가 받아 앱 주소(eodilog://invitations/토큰)로 넘긴다.
+        // 토큰은 # 뒤에 있어 서버로 가지 않는다. 이 페이지도 저장하거나 어디로 보내지 않는다.
+        var APP_SCHEME = 'eodilog';
+        var APP_PACKAGE = 'com.eodilog.app';
+        var PATH = 'invitations/';
+
+        var token = decodeURIComponent((window.location.hash || '').replace(/^#/, ''));
+
+        // 주소창과 방문 기록에 토큰이 남지 않게 지운다
+        if (window.history && window.history.replaceState) {
+          window.history.replaceState(null, '', window.location.pathname);
+        }
+
+        var title = document.getElementById('title');
+        var message = document.getElementById('message');
+        var open = document.getElementById('open');
+
+        // 서버가 만드는 토큰은 영문·숫자·-·_ 뿐이다. 다른 글자가 섞였으면 앱으로 넘기지 않는다
+        if (!/^[A-Za-z0-9_-]{16,128}$/.test(token)) {
+          title.textContent = '초대 링크가 올바르지 않아요';
+          message.textContent = '초대한 사람에게 링크를 다시 받아 주세요.';
+          return;
+        }
+
+        var appUrl = APP_SCHEME + '://' + PATH + token;
+        // 안드로이드의 앱 안 브라우저(카카오톡 등)는 앱 주소로 바로 넘어가는 것을 막는 일이 있어 intent 주소를 쓴다
+        var isAndroid = /Android/i.test(window.navigator.userAgent || '');
+        var target = isAndroid
+          ? 'intent://' + PATH + token + '#Intent;scheme=' + APP_SCHEME + ';package=' + APP_PACKAGE + ';end'
+          : appUrl;
+
+        open.href = target;
+        open.hidden = false;
+        // 자동으로 앱을 연다. 브라우저가 막으면 위 버튼으로 연다
+        window.location.replace(target);
+      })();
+    </script>
+  </body>
+</html>

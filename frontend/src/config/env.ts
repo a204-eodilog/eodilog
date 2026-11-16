@@ -19,6 +19,12 @@ export const env = {
    */
   kakaoRedirectUri: process.env.EXPO_PUBLIC_KAKAO_REDIRECT_URI || null,
   /**
+   * 동행 초대 링크를 받아 앱으로 넘겨 주는 https 주소(landing/invite). 예: https://eodilog.example.com/invite/
+   * 메신저는 eodilog:// 같은 앱 주소를 누를 수 있게 만들어 주지 않아서, 공유하는 링크는 이 주소 뒤에 #토큰을 붙인다.
+   * 비워 두면 앱 주소(eodilog://invitations/토큰)를 그대로 쓴다. 복사해 브라우저에 넣으면 열리지만 메신저에서는 안 눌린다
+   */
+  inviteUrl: process.env.EXPO_PUBLIC_INVITE_URL || null,
+  /**
    * 개발용 테스트 모드. 로그인을 건너뛰고 서버 대신 src/api/dev-mock.ts의 테스트 데이터로 화면을 띄운다.
    * 로컬·개발 환경에서만 켜진다. 실제 API 연결 확인에는 쓰지 않는다.
    */
