@@ -17,6 +17,11 @@ export function todoHref(target: TodoTarget, tripId: string): string | null {
       return `/trips/${tripId}/today`;
     case 'photos':
       return `/trips/${tripId}/photos`;
+    // 사진을 아직 안 올렸으면 빈 사진 목록을 거치지 않고 바로 올리기(사진첩이 바로 열린다)
+    case 'photoUpload':
+      return `/trips/${tripId}/photos/upload`;
+    case 'expenses':
+      return `/trips/${tripId}/expenses`;
     case 'feed':
       return publishHref(tripId);
     default:

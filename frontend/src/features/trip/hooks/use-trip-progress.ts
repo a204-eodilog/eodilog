@@ -3,6 +3,10 @@ import { useQuery } from '@tanstack/react-query';
 import { toApiError } from '@/api/errors';
 import { getItinerary } from '@/features/course/api';
 import { itineraryKey } from '@/features/course/hooks/course-keys';
+import { getSettlementState } from '@/features/expense/api';
+import { expenseKeys } from '@/features/expense/hooks/use-expense-board';
+import { getPhotoSummary } from '@/features/photo/api';
+import { photoKeys } from '@/features/photo/hooks/use-trip-photos';
 
 import { getSavedPlaceCount } from '../api';
 import type { TripProgress } from '../trip-rules';
@@ -38,5 +42,31 @@ export function useTripProgress(tripId: string, enabled: boolean): TripProgress 
   return {
     savedPlaceCount: enabled && typeof saved.data === 'number' ? saved.data : null,
     coursePlaceCount: enabled && Array.isArray(items) ? items.length : null,
+  };
+}
+
+/**
+ * 다녀온 여행이 어디까지 왔는지(올린 사진 수, 정산했는지). 여행 상세의 사진·정산 단계에 쓴다.
+ * 사진 목록·경비 화면과 같은 캐시라 올리거나 정산하고 돌아오면 바로 맞는다. 받지 못한 값은 null이다
+ */
+export function useAfterTripProgress(tripId: string, enabled: boolean) {
+  const summary = useQuery({
+    queryKey: photoKeys.summary(tripId),
+    queryFn: () => getPhotoSummary(tripId),
+    enabled,
+    retry: retryUnlessGone,
+  });
+  const settlement = useQuery({
+    queryKey: expenseKeys.settlement(tripId),
+    queryFn: () => getSettlementState(tripId),
+    enabled,
+    retry: retryUnlessGone,
+  });
+  return {
+    photoCount: enabled && summary.data ? summary.data.totalCount : null,
+    settled:
+      enabled && settlement.data
+        ? settlement.data.current !== null && !settlement.data.recalculationRequired
+        : null,
   };
 }

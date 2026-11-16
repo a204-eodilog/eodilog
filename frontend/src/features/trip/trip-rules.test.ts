@@ -386,6 +386,38 @@ describe('tripDetailView', () => {
     ]);
     expect(view.showPublish).toBe(true);
     expect(view.note).toBeNull();
+    // 사진을 아직 안 올렸으면 빈 사진 목록을 거치지 않고 바로 올리기로 간다
+    expect(view.action).toEqual({ label: '사진 올리기', target: 'photoUpload' });
+  });
+
+  it('다녀옴: 사진을 올리면 정산 단계로, 정산하면 게시를 권한다', () => {
+    const t = trip({ startDate: '2026-10-01', endDate: '2026-10-02' });
+    const base = { savedPlaceCount: null, coursePlaceCount: null };
+
+    const photosDone = tripDetailView(t, [], TODAY, null, {
+      ...base,
+      photoCount: 3,
+      settled: false,
+    });
+    expect(photosDone.steps.map((s) => [s.label, s.state, s.target])).toEqual([
+      ['사진 올리기', 'done', 'photos'],
+      ['경비 정산하기', 'current', 'expenses'],
+    ]);
+    expect(photosDone.action).toEqual({ label: '경비 정산하기', target: 'expenses' });
+
+    const allDone = tripDetailView(t, [], TODAY, null, { ...base, photoCount: 3, settled: true });
+    expect(allDone.steps.map((s) => s.state)).toEqual(['done', 'done']);
+    expect(allDone.action).toBeNull();
+    expect(allDone.greeting).toBe('기록을 피드로 게시해 볼까요?');
+    expect(allDone.showPublish).toBe(true);
+
+    // 사진 수를 모르면 안 올린 것으로 보고 앞 단계에 둔다
+    const unknown = tripDetailView(t, [], TODAY, null, {
+      ...base,
+      photoCount: null,
+      settled: null,
+    });
+    expect(unknown.steps[0].state).toBe('current');
   });
 
   it('여행지 2곳이면 두 이름을 이어 쓴다', () => {

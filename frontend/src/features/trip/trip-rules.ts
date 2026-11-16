@@ -165,7 +165,8 @@ export type TodoStep = {
 };
 
 /** 지금 할 일 버튼이 가는 곳. 아직 없는 화면은 준비 중 안내를 띄운다 */
-export type TodoTarget = 'favorites' | 'polls' | 'course' | 'today' | 'photos' | 'feed';
+export type TodoTarget =
+  'favorites' | 'polls' | 'course' | 'today' | 'photos' | 'photoUpload' | 'expenses' | 'feed';
 
 /**
  * 계획 중인 여행이 어디까지 왔는지. 여행 상세의 단계를 실제 진행에 맞추는 데 쓴다.
@@ -176,6 +177,10 @@ export type TripProgress = {
   savedPlaceCount: number | null;
   /** 코스에 넣은 장소 수 */
   coursePlaceCount: number | null;
+  /** 다녀온 여행: 올린 사진 수 */
+  photoCount?: number | null;
+  /** 다녀온 여행: 정산을 계산했는지(지출이 바뀌어 다시 계산해야 하면 false) */
+  settled?: boolean | null;
 };
 
 export type TripDetailView = {
@@ -242,13 +247,31 @@ export function tripDetailView(
   }
 
   if (status === 'COMPLETED') {
+    // 사진을 올리고 정산하면 단계가 넘어간다(2026-11-16 시연 리허설: 사진을 올려도 "사진 올리기부터"에 머물렀다).
+    // 모르는 값(null)은 안 한 것으로 보고 앞 단계에 둔다
+    const hasPhotos = (progress?.photoCount ?? 0) > 0;
+    const settled = progress?.settled === true;
     return {
       headline: `${subject}, 어땠나요?`,
+      ...(hasPhotos && settled ? { greeting: '기록을 피드로 게시해 볼까요?' } : {}),
       steps: [
-        { label: '사진 올리기', state: 'current' },
-        { label: '경비 정산하기', state: 'upcoming' },
+        // 끝낸 사진 단계는 사진 목록으로, 지금 할 때는 바로 올리기로 간다(빈 사진 목록을 한 번 더 거치지 않게)
+        {
+          label: '사진 올리기',
+          state: hasPhotos ? 'done' : 'current',
+          target: hasPhotos ? 'photos' : 'photoUpload',
+        },
+        {
+          label: '경비 정산하기',
+          state: settled ? 'done' : hasPhotos ? 'current' : 'upcoming',
+          target: 'expenses',
+        },
       ],
-      action: { label: '사진 올리기', target: 'photos' },
+      action: !hasPhotos
+        ? { label: '사진 올리기', target: 'photoUpload' }
+        : !settled
+          ? { label: '경비 정산하기', target: 'expenses' }
+          : null,
       note: null,
       showPublish: true,
     };
