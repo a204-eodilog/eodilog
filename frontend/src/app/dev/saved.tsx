@@ -81,6 +81,7 @@ export default function SavedStates() {
       onGroup={() => setExample(null)}
       onOpen={ready}
       onAdd={ready}
+      onSearch={ready}
     />
   );
 }

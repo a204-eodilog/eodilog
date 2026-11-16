@@ -26,6 +26,11 @@ export type SavedViewProps = {
   onOpen: (item: SavedItem) => void;
   /** [+] → S11. 저장 없음의 두 카드는 S11을 링크 칸 / 사진 고르기로 바로 시작한다 */
   onAdd: (start?: AddStart) => void;
+  /**
+   * 장소 이름으로 찾아 저장(S13 → S08). 가게 이름을 이미 알 때 링크·캡처 없이 바로 담는다(2026-11-16 사용자 결정).
+   * 앱의 중심은 링크·캡처라 [+]보다 작게 둔다
+   */
+  onSearch: () => void;
 };
 
 /**
@@ -47,6 +52,7 @@ export function SavedView({
   onGroup,
   onOpen,
   onAdd,
+  onSearch,
 }: SavedViewProps) {
   const insets = useSafeAreaInsets();
   const empty = items.length === 0;
@@ -58,14 +64,24 @@ export function SavedView({
         <Text style={[typography.title1, styles.text]} accessibilityRole="header">
           저장
         </Text>
-        <PressableScale
-          accessibilityRole="button"
-          accessibilityLabel="링크나 캡처로 장소 추가"
-          onPress={() => onAdd()}
-          style={({ pressed }) => [styles.add, pressed && styles.pressed]}
-        >
-          <Icon name="bookmark-plus" size={24} color={colors.brand.primary} />
-        </PressableScale>
+        <View style={styles.barActions}>
+          <PressableScale
+            accessibilityRole="button"
+            accessibilityLabel="장소 이름으로 찾아 저장"
+            onPress={onSearch}
+            style={({ pressed }) => [styles.search, pressed && styles.pressed]}
+          >
+            <Icon name="search" size={22} color={colors.text.icon} />
+          </PressableScale>
+          <PressableScale
+            accessibilityRole="button"
+            accessibilityLabel="링크나 캡처로 장소 추가"
+            onPress={() => onAdd()}
+            style={({ pressed }) => [styles.add, pressed && styles.pressed]}
+          >
+            <Icon name="bookmark-plus" size={24} color={colors.brand.primary} />
+          </PressableScale>
+        </View>
       </View>
 
       {/* 둘째 줄: 개인·그룹 + 목록·지도 */}
@@ -124,6 +140,15 @@ export function SavedView({
               onPress={() => onAdd('capture')}
             />
           </View>
+          <PressableScale
+            accessibilityRole="button"
+            onPress={onSearch}
+            hitSlop={8}
+            style={({ pressed }) => [styles.searchLink, pressed && styles.pressed]}
+          >
+            <Icon name="search" size={16} color={colors.text.sub} />
+            <Text style={[typography.bodyMedium, styles.sub]}>가게 이름을 알면 바로 찾기</Text>
+          </PressableScale>
         </View>
       ) : view === 'list' ? (
         <ScrollView decelerationRate={SCROLL_DECELERATION} contentContainerStyle={styles.list}>
@@ -248,6 +273,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: layout.screenPaddingX,
+  },
+  barActions: { flexDirection: 'row', alignItems: 'center' },
+  search: { width: 44, height: 48, alignItems: 'center', justifyContent: 'center' },
+  searchLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[6],
+    marginTop: spacing[20],
+    minHeight: layout.minTouchTarget,
   },
   // 장소 추가 아이콘 24, 누르는 칸 48. 아이콘 오른쪽 끝이 아래 내용 오른쪽 끝과 맞도록 칸 여백만큼 밖으로 뺀다
   add: {

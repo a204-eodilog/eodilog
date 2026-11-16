@@ -7,6 +7,9 @@ import { CenterNotice } from '@/components/ui';
 import { SkeletonList } from '@/components/ui/skeleton';
 import { colors } from '@/theme';
 
+import { pickPlace } from '@/features/place';
+
+import { PlaceSaveSheet } from '../components/place-save-sheet';
 import { SavedView } from '../components/saved-view';
 import { GroupTripSheet } from '../components/group-trip-sheet';
 import { useBookmarks, useOnline, useSavedView } from '../hooks/use-bookmarks';
@@ -23,6 +26,12 @@ export function SavedScreen() {
   const online = useOnline();
   const [view, setView] = useSavedView();
   const [groupOpen, setGroupOpen] = useState(false);
+  // 장소 이름으로 찾아 고른 곳. 저장 위치(개인·그룹)를 묻는 시트를 띄운다
+  const [found, setFound] = useState<{ id: string; name: string } | null>(null);
+  const search = async () => {
+    const place = await pickPlace();
+    if (place) setFound({ id: place.id, name: place.name });
+  };
   // 그룹 시트를 열 때만 내 여행을 읽는다
   const trips = useTripOptions(groupOpen);
 
@@ -70,6 +79,24 @@ export function SavedScreen() {
         onAdd={(start) =>
           router.push(start ? { pathname: '/saved/add', params: { start } } : '/saved/add')
         }
+        onSearch={() => void search()}
+      />
+      <PlaceSaveSheet
+        visible={found !== null}
+        places={found ? [found] : []}
+        initialChoice="personal"
+        // 이미 저장 탭이라 완료 안내에 [보기]를 붙이지 않는다
+        opensSavedTab
+        onClose={() => setFound(null)}
+        onSaved={(target) => {
+          setFound(null);
+          if (target.kind === 'trip') {
+            router.push({
+              pathname: '/trips/[tripId]/favorites',
+              params: { tripId: target.tripId },
+            });
+          }
+        }}
       />
       <GroupTripSheet
         visible={groupOpen}
