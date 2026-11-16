@@ -39,7 +39,8 @@ export function useDeleteBookmark(placeId: string) {
         old?.filter((b) => !samePlace(b, placeId)),
       );
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: bookmarkKeys.all }),
+    // 다시 받기를 기다리지 않는다. promise를 돌려주면 목록을 다 받을 때까지 화면의 onSuccess(닫기·토스트)가 미뤄진다
+    onSettled: () => void queryClient.invalidateQueries({ queryKey: bookmarkKeys.all }),
   });
 }
 

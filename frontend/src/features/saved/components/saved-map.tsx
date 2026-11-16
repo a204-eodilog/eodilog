@@ -45,7 +45,16 @@ export function SavedMap({ items, onOpen, bottomInset }: SavedMapProps) {
     map.current?.animateRegionTo?.(regionForPlace(first));
   }, [first]);
 
+  // S10은 탭이라 S14에서 저장을 해제하고 돌아와도 고른 지역·카드 위치가 남는다.
+  // 그 지역 장소가 다 빠졌으면 지역 고르기를 풀고, 카드 수가 바뀌면 카드 줄(아래 resetKey)과 함께 첫 카드로 돌아간다
+  if (city !== null && !groups.some((g) => g.city === city)) setCity(null);
   const shown = city ? (groups.find((g) => g.city === city)?.items ?? []) : items;
+  // 따라가기(following)는 그대로 둔다. 따라가던 중이면 첫 카드의 핀을 보인다
+  const [shownCount, setShownCount] = useState(shown.length);
+  if (shownCount !== shown.length) {
+    setShownCount(shown.length);
+    setFocused(0);
+  }
 
   const openCity = (name: string) => {
     touched.current = true;
@@ -103,12 +112,12 @@ export function SavedMap({ items, onOpen, bottomInset }: SavedMapProps) {
         ))}
       </MapView>
 
-      {/* 조금만 밀어도 한 장씩, 늘 같은 빠르기로 넘어간다(easy-pager). 지역을 바꾸면 첫 카드로 돌아간다 */}
+      {/* 조금만 밀어도 한 장씩, 늘 같은 빠르기로 넘어간다(easy-pager). 지역을 바꾸거나 카드 수가 바뀌면 첫 카드로 돌아간다 */}
       <EasyPager
         step={width}
         count={shown.length}
         onPage={focusCard}
-        resetKey={city}
+        resetKey={`${city ?? ''}|${shown.length}`}
         style={[styles.cards, { bottom: bottomInset }]}
       >
         {shown.map((item) => (
