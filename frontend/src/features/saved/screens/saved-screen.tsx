@@ -26,11 +26,15 @@ export function SavedScreen() {
   const online = useOnline();
   const [view, setView] = useSavedView();
   const [groupOpen, setGroupOpen] = useState(false);
-  // 장소 이름으로 찾아 고른 곳. 저장 위치(개인·그룹)를 묻는 시트를 띄운다
+  // 장소 이름으로 찾아 고른 곳과 저장 위치(개인·그룹) 시트. 닫을 때는 시트만 내린다.
+  // 고른 곳까지 비우면 시트가 내려가는 동안 제목이 "장소 0곳"으로 바뀌었다(!308 리뷰)
   const [found, setFound] = useState<{ id: string; name: string } | null>(null);
+  const [saveOpen, setSaveOpen] = useState(false);
   const search = async () => {
     const place = await pickPlace();
-    if (place) setFound({ id: place.id, name: place.name });
+    if (!place) return;
+    setFound({ id: place.id, name: place.name });
+    setSaveOpen(true);
   };
   // 그룹 시트를 열 때만 내 여행을 읽는다
   const trips = useTripOptions(groupOpen);
@@ -82,15 +86,17 @@ export function SavedScreen() {
         onSearch={() => void search()}
       />
       <PlaceSaveSheet
-        visible={found !== null}
+        visible={saveOpen && found !== null}
         places={found ? [found] : []}
         initialChoice="personal"
         // 이미 저장 탭이라 완료 안내에 [보기]를 붙이지 않는다
         opensSavedTab
-        onClose={() => setFound(null)}
+        onClose={() => setSaveOpen(false)}
         onSaved={(target) => {
-          setFound(null);
+          setSaveOpen(false);
           if (target.kind === 'trip') {
+            // S12에서 그룹에 담을 때처럼 여행 상세를 먼저 열고 S20을 올린다. 뒤로 가면 여행 상세로 간다(!308 리뷰)
+            router.push({ pathname: '/trips/[tripId]', params: { tripId: target.tripId } });
             router.push({
               pathname: '/trips/[tripId]/favorites',
               params: { tripId: target.tripId },
