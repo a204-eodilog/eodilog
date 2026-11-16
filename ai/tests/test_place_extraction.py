@@ -835,3 +835,19 @@ def test_too_long_or_non_text_region_is_dropped(client):
     assert post(client, [png()]).json()["data"]["regionHint"] is None
     mock_llm_region("가" * 31)
     assert post(client, [png()]).json()["data"]["regionHint"] is None
+
+
+@respx.mock
+def test_region_cannot_be_assembled_across_word_boundaries(client):
+    respx.get(LINK_AT_IP).mock(return_value=httpx.Response(200, html=PAGE))
+    mock_llm_region("부산")
+    data = post(client, url=LINK, memo="전부 산책하기 좋은 길").json()["data"]
+    assert data["regionHint"] is None
+
+
+@respx.mock
+def test_region_in_memo_is_kept_verbatim(client):
+    respx.get(LINK_AT_IP).mock(return_value=httpx.Response(200, html=PAGE))
+    mock_llm_region("강원도 강릉")
+    data = post(client, url=LINK, memo="강원도 강릉에서 산책").json()["data"]
+    assert data["regionHint"] == "강원도 강릉"

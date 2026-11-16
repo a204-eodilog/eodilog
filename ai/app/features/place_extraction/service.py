@@ -178,7 +178,7 @@ class PlaceExtractor:
             raise LLMUnavailable("LLM 응답 형식이 올바르지 않습니다.")
         page_key, memo_key = normalize(page_text), normalize(memo or "")
         mentions = _valid_mentions(items, page_key, bool(captures), memo_key)
-        return mentions, _valid_region(reply.get("region"), page_key, bool(captures), memo_key)
+        return mentions, _valid_region(reply.get("region"), page_text, bool(captures), memo or "")
 
     async def _resolve(
         self, mention: Mention, region_hint: str | None
@@ -273,7 +273,8 @@ def _valid_region(value: object, page_text: str, has_captures: bool, memo_text: 
     key = normalize(region)
     if not key or len(region) > MAX_REGION_CHARS:
         return None
-    if has_captures or key in page_text or key in memo_text:
+    # 장소명 비교용 정규화는 공백을 지워 '전부 산책'에서도 '부산'을 만든다.
+    if has_captures or region in page_text or region in memo_text:
         return region
     log.info("region_dropped")
     return None
