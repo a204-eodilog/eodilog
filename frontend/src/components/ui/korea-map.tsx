@@ -143,6 +143,9 @@ export function KoreaMap({
   const [box, setBox] = useState<{ width: number; height: number } | null>(null);
   const onLayout = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
+    // 처음 레이아웃에서 폭·높이가 0으로 한 번 오면 배율이 0이 되어 선 굵기·그림자 위치가 Infinity가 된다
+    // (콘솔 경고 translate(0 Infinity)). 크기가 잡힌 뒤에만 그린다
+    if (width <= 0 || height <= 0) return;
     if (!box || box.width !== width || box.height !== height) setBox({ width, height });
   };
 

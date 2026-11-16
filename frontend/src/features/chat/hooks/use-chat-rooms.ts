@@ -89,6 +89,13 @@ export function useChatRooms() {
     const { noteRoom } = useChatReads.getState();
     for (const room of rooms) if (room.lastMessage) noteRoom(room.id, room.lastMessage.sequence);
   }, [rooms]);
+
+  // 목록을 끝까지 받았으면 목록에 없는 방의 안 읽은 수 기록을 지운다(나간·지워진 여행의 방이 배지에 남지 않게).
+  // 채팅 탭을 열지 않은 채 메시지를 받고 여행에서 나가면 방을 찾을 길이 없어 나갈 때 지우지 못한다(!300 리뷰)
+  useEffect(() => {
+    if (!data || hasNextPage) return;
+    useChatReads.getState().keepRooms(rooms.map((r) => r.id));
+  }, [data, hasNextPage, rooms]);
   const latest = useChatReads((r) => r.latest);
   const read = useChatReads((r) => r.read);
 

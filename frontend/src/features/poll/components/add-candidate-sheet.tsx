@@ -89,6 +89,18 @@ export function AddCandidateSheet({
       <View style={styles.card}>
         {loading ? (
           <Spinner color={colors.brand.primary} />
+        ) : saved.isError && !previewOptions ? (
+          // 못 받았을 때 "넣을 곳이 없어요"로 보이면 다시 받을 방법이 없다. 투표 열기 시트처럼 다시 시도를 둔다
+          <View style={styles.failed} accessibilityRole="alert">
+            <Text style={styles.empty}>그룹 즐겨찾기를 불러오지 못했어요</Text>
+            <Button
+              label="다시 시도"
+              icon="refresh"
+              variant="secondary"
+              size="sm"
+              onPress={() => void saved.refetch()}
+            />
+          </View>
         ) : options.length === 0 ? (
           <Text style={styles.empty}>더 넣을 수 있는 곳이 없어요</Text>
         ) : (
@@ -178,6 +190,7 @@ const styles = StyleSheet.create({
   name: { ...typography.bodySmall, fontFamily: fontFamily.medium, color: colors.text.default },
   nameOn: { fontFamily: fontFamily.bold },
   sub: { ...typography.caption, color: colors.text.icon },
+  failed: { alignItems: 'center', gap: spacing[12], paddingVertical: spacing[12] },
   empty: {
     ...typography.sub,
     color: colors.text.sub,

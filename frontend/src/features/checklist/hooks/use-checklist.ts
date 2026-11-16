@@ -24,11 +24,24 @@ export function useChecklist(tripId: string) {
   });
 }
 
+/**
+ * 여행 중(S25) 도구 줄의 "N/M 챙김" 요약을 다시 받게 한다. 목록 캐시만 고치면 요약은 따로 받은 값이라
+ * 그대로 남는다(여행 중 화면은 스택 아래에 살아 있어 돌아와도 다시 받지 않는다).
+ * 목록 키 전체를 무효화하면 낙관적으로 바꾼 목록을 서버 값이 덮으므로 요약 키만 무효화한다
+ */
+function refreshSummary(queryClient: QueryClient, tripId: string) {
+  void queryClient.invalidateQueries({
+    queryKey: [...checklistKey(tripId), 'summary'],
+    exact: true,
+  });
+}
+
 /** 캐시의 항목 하나를 바꾼다. 목록이 아직 없으면 그대로 둔다 */
 export function putCachedItem(queryClient: QueryClient, tripId: string, item: ChecklistItem) {
   queryClient.setQueryData<ChecklistItem[]>(checklistKey(tripId), (list) =>
     list?.map((i) => (i.id === item.id ? item : i)),
   );
+  refreshSummary(queryClient, tripId);
 }
 
 /** 캐시에서 항목 하나를 뺀다(다른 동행이 지웠거나 내가 지움) */
@@ -36,6 +49,7 @@ export function removeCachedItem(queryClient: QueryClient, tripId: string, itemI
   queryClient.setQueryData<ChecklistItem[]>(checklistKey(tripId), (list) =>
     list?.filter((i) => i.id !== itemId),
   );
+  refreshSummary(queryClient, tripId);
 }
 
 /** 캐시 목록 끝에 항목을 더한다. 이미 있으면 바꾼다 */
@@ -46,4 +60,5 @@ export function appendCachedItem(queryClient: QueryClient, tripId: string, item:
       ? list.map((i) => (i.id === item.id ? item : i))
       : [...list, item];
   });
+  refreshSummary(queryClient, tripId);
 }

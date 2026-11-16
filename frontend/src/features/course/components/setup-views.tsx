@@ -51,7 +51,8 @@ export { CheckLine };
 type ChooseProps = {
   regionName: string;
   period: string;
-  savedCount: number;
+  /** 모은 장소 수. 받는 중이면 'loading', 받지 못했으면 'error'(0곳으로 보이지 않게) */
+  savedCount: number | 'loading' | 'error';
   onAuto(): void;
   onManual(): void;
   /** 자동 추천 요청을 보내는 중. 서버가 받으면 생성 중 화면으로 넘어간다 */
@@ -77,7 +78,15 @@ export function ChooseView({
         <View style={styles.summary}>
           <CheckLine text={`여행지 ${regionName}`} />
           <CheckLine text={`기간 ${period}`} />
-          <CheckLine text={`모은 장소 ${savedCount}곳`} />
+          <CheckLine
+            text={
+              savedCount === 'loading'
+                ? '모은 장소를 불러오는 중이에요'
+                : savedCount === 'error'
+                  ? '모은 장소를 불러오지 못했어요'
+                  : `모은 장소 ${savedCount}곳`
+            }
+          />
         </View>
         <Text style={[typography.captionBold, styles.subHeading]}>어떻게 짤까요?</Text>
         <Option

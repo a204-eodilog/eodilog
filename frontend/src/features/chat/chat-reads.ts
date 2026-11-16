@@ -39,6 +39,17 @@ type ReadsState = {
   noteMessage(roomId: string, sequence: number, mine: boolean): void;
   /** 대화방을 열어 이 순번까지 봤다 */
   markRead(roomId: string, sequence: number): void;
+  /**
+   * 방 하나의 기록을 지운다. 여행에서 나가거나 여행이 지워지면 그 방은 목록에서 빠지는데,
+   * 기록이 남으면 채팅 탭 배지에 그 방의 안 읽은 수가 계속 더해진다(기기에 저장돼 앱을 다시 켜도 남는다)
+   */
+  forgetRoom(roomId: string): void;
+  /**
+   * 대화방 목록을 끝까지 받았을 때 목록에 없는 방의 기록을 지운다.
+   * 채팅 탭을 열지 않은 채 받은 메시지는 방 번호만 알고 여행을 몰라, 여행에서 나가거나 여행이 지워져도
+   * forgetRoom으로 찾아 지울 수 없다. 목록이 내 방 전부이므로 거기에 없는 방은 더 볼 수 없는 방이다
+   */
+  keepRooms(roomIds: readonly string[]): void;
   clearAll(): void;
 };
 
@@ -85,6 +96,25 @@ export const useChatReads = create<ReadsState>()(
             latest: { ...s.latest, [roomId]: latest },
             read: { ...s.read, [roomId]: read },
           };
+        }),
+      forgetRoom: (roomId) =>
+        set((s) => {
+          if (!(roomId in s.latest) && !(roomId in s.read)) return s;
+          const { [roomId]: _latest, ...latest } = s.latest;
+          const { [roomId]: _read, ...read } = s.read;
+          return { latest, read };
+        }),
+      keepRooms: (roomIds) =>
+        set((s) => {
+          const keep = new Set(roomIds);
+          const pick = (r: Record<string, number>) =>
+            Object.fromEntries(Object.entries(r).filter(([id]) => keep.has(id)));
+          const latest = pick(s.latest);
+          const read = pick(s.read);
+          const same =
+            Object.keys(latest).length === Object.keys(s.latest).length &&
+            Object.keys(read).length === Object.keys(s.read).length;
+          return same ? s : { latest, read };
         }),
       clearAll: () => set({ read: {}, latest: {} }),
     }),
