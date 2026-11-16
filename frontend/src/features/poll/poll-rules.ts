@@ -34,6 +34,36 @@ export function pollViewState(poll: Poll | null, now: Date): PollViewState {
   return poll.selectedCandidateIds.length > 1 ? 'tie' : 'decided';
 }
 
+/** 결과 화면에 보일 마감 시각. 직접 끝낸 투표는 예정 시각(closesAt)보다 이른 실제 시각(closedAt)을 쓴다 */
+export function closedTimeOf(poll: Poll): string {
+  return poll.closedAt ?? poll.closesAt;
+}
+
+/** 마감 시각에 서버가 마감한 것이 아니라 연 사람이 직접 끝낸 투표인가 */
+export function isClosedByHand(poll: Poll): boolean {
+  return !!poll.closedByMemberId;
+}
+
+/** 여행지 확정 카드의 날짜 줄. 직접 끝낸 투표에는 "자동"이 맞지 않는다 */
+export function decidedDateLine(closedDate: string, byHand: boolean): string {
+  return byHand
+    ? `${closedDate} 투표를 연 사람이 마감해 확정됐어요`
+    : `${closedDate} 마감 후 자동 확정됐어요`;
+}
+
+/**
+ * 직접 종료 확인 창의 설명. 지금 끝내면 어떻게 되는지를 표 상황에 맞게 알린다.
+ * 표가 없으면 확정 없이 끝나고, 있으면 최다 후보로 확정된다. 아직 투표하지 않은 동행이 있으면 그 수를 덧붙인다
+ */
+export function closeConfirmDescription(poll: Poll): string {
+  if (poll.votedMemberCount === 0) {
+    return '아직 아무도 투표하지 않았어요. 지금 마감하면 확정 없이 끝나요. 되돌릴 수 없어요';
+  }
+  const left = notVotedCount(poll);
+  const head = left > 0 ? `${left}명이 아직 투표하지 않았어요. ` : '';
+  return `${head}지금 마감하면 가장 많이 받은 곳으로 확정돼요. 되돌릴 수 없어요`;
+}
+
 /** 진행 중 카드의 남은 시간. 하루 이상 일, 한 시간 이상 시간, 그 밖은 분(최소 1분). 지났으면 null */
 export function remainingLabel(closesAt: string, now: Date): string | null {
   const left = Date.parse(closesAt) - now.getTime();

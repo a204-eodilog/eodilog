@@ -31,6 +31,9 @@ type MockPoll = {
   candidates: Candidate[];
   myCandidateIds: string[];
   selectedCandidateIds: string[];
+  /** 실제 마감 시각과 직접 끝낸 멤버. 가짜 서버의 투표는 모두 내가 연 것으로 본다 */
+  closedAt: string | null;
+  closedByMemberId: string | null;
   createdAt: string;
   /** 다른 동행의 표(후보 ID → 표 수)와 투표한 다른 동행 수 */
   otherVotes: Record<string, number>;
@@ -84,6 +87,9 @@ const placeView = (p: (typeof PLACES)[number]) => ({
   source: 'PROVIDER',
 });
 
+/** 가짜 서버에서 나의 여행 멤버 ID. 투표를 연 사람과 직접 끝낸 사람으로 쓴다 */
+const MY_MEMBER_ID = 'member-me';
+
 export function createPollMock({ getTrips, ok, fail }: Helpers) {
   let polls: MockPoll[] = [];
   let seq = 0;
@@ -120,8 +126,11 @@ export function createPollMock({ getTrips, ok, fail }: Helpers) {
     poll.votedMemberCount = poll.otherVoters + (poll.myCandidateIds.length > 0 ? 1 : 0);
   }
 
-  function close(poll: MockPoll) {
+  function close(poll: MockPoll, byHand = false) {
     recount(poll);
+    // 시각 마감은 예정 시각에, 직접 종료는 지금 끝난 것으로 남긴다
+    poll.closedAt = byHand ? new Date(now()).toISOString() : poll.closesAt;
+    poll.closedByMemberId = byHand ? MY_MEMBER_ID : null;
     const max = Math.max(0, ...poll.candidates.map((c) => c.voteCount));
     poll.version += 1;
     if (max === 0) {
@@ -181,6 +190,8 @@ export function createPollMock({ getTrips, ok, fail }: Helpers) {
       })),
       myCandidateIds: [],
       selectedCandidateIds: [],
+      closedAt: null,
+      closedByMemberId: null,
       createdAt: addedAt,
       otherVotes: {},
       otherVoters: 0,
@@ -213,7 +224,12 @@ export function createPollMock({ getTrips, ok, fail }: Helpers) {
 
   const view = (p: MockPoll) => {
     const { createdAt: _c, otherVotes: _o, otherVoters: _v, ...rest } = p;
-    return rest;
+    return {
+      ...rest,
+      createdByMemberId: MY_MEMBER_ID,
+      // 진행 중이고 마감 시각 전이면 내가 끝낼 수 있다(모두 내가 연 투표)
+      canClose: p.status === 'OPEN' && Date.parse(p.closesAt) > now(),
+    };
   };
 
   function handle(
@@ -249,7 +265,7 @@ export function createPollMock({ getTrips, ok, fail }: Helpers) {
       });
     }
 
-    const m = /^\/trips\/([^/]+)\/polls(?:\/([^/]+))?(?:\/(ballot|candidates))?$/.exec(url);
+    const m = /^\/trips\/([^/]+)\/polls(?:\/([^/]+))?(?:\/(ballot|candidates|close))?$/.exec(url);
     if (!m) return null;
     seed();
     const [, tripId, pollId, action] = m;
@@ -298,6 +314,11 @@ export function createPollMock({ getTrips, ok, fail }: Helpers) {
     if (poll.status !== 'OPEN') throw fail(config, 409, 'POLL_CLOSED', '이미 마감된 투표입니다.');
     if (body.expectedVersion !== poll.version) {
       throw fail(config, 409, 'VERSION_CONFLICT', '투표가 변경되었습니다. 다시 조회해 주세요.');
+    }
+
+    if (method === 'post' && action === 'close') {
+      close(poll, true);
+      return ok(config, { data: view(poll) });
     }
 
     if (method === 'put' && action === 'ballot') {
