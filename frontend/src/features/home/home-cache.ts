@@ -12,11 +12,14 @@ export function markHomeStale(client: QueryClient) {
   return client.invalidateQueries({ queryKey: HOME_KEY, refetchType: 'none' });
 }
 
-/** 홈에 돌아왔을 때 표시된 홈 자료만 다시 받는다. 표시 없는 자료는 탭을 오갈 때마다 받지 않는다 */
+/**
+ * 홈에 돌아왔을 때 표시된 홈 자료와, 받은 지 오래된(기본 30초) 홈 자료를 다시 받는다. 방금 받은 자료는 탭을 오갈 때마다 받지 않는다.
+ * 친구가 다른 기기에서 공동 피드를 게시하면 이 기기에는 표시가 생기지 않아, 표시만 보면 앱을 다시 켜기 전까지 새 지역이 물들지 않았다(2026-11-16 시연 리허설)
+ */
 export function refetchStaleHome(client: QueryClient) {
   return client.refetchQueries({
     queryKey: HOME_KEY,
     type: 'active',
-    predicate: (query) => query.state.isInvalidated,
+    predicate: (query) => query.state.isInvalidated || query.isStale(),
   });
 }
