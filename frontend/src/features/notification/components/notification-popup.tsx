@@ -22,14 +22,18 @@ function Choices({ left, right }: { left: Choice; right: Choice }) {
         accessibilityRole="button"
         style={({ pressed }) => [styles.choice, styles.secondary, pressed && styles.pressed]}
       >
-        <Text style={[typography.bodyMedium, styles.leftText]}>{left.label}</Text>
+        <Text style={[typography.bodyMedium, styles.leftText]} numberOfLines={1}>
+          {left.label}
+        </Text>
       </PressableScale>
       <PressableScale
         onPress={right.onPress}
         accessibilityRole="button"
         style={({ pressed }) => [styles.choice, styles.primary, pressed && styles.pressed]}
       >
-        <Text style={[typography.bodyMedium, styles.primaryText]}>{right.label}</Text>
+        <Text style={[typography.bodyMedium, styles.primaryText]} numberOfLines={1}>
+          {right.label}
+        </Text>
       </PressableScale>
     </View>
   );
@@ -157,7 +161,9 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   // Figma 투표 시작 카드 310(좌우 40), 모아 보기 카드 330(좌우 30)
-  narrow: { width: '79.5%', maxWidth: 310, paddingHorizontal: spacing[24], alignItems: 'center' },
+  // 줄마다 나타나는 효과가 칸을 하나씩 감싼다. 카드에서 가운데로 모으면 그 칸이 내용만큼 줄어
+  // 버튼 줄이 폭을 받지 못한다. 그래서 카드는 늘려 두고 아이콘과 마감 줄만 스스로 가운데에 선다
+  narrow: { width: '79.5%', maxWidth: 310, paddingHorizontal: spacing[24] },
   wide: { width: '84.6%', maxWidth: 330, paddingHorizontal: 22 },
   manyHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[12] },
   bell: {
@@ -184,11 +190,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.brand.primaryBg,
     alignItems: 'center',
     justifyContent: 'center',
+    alignSelf: 'center',
     marginBottom: spacing[8],
   },
   center: { color: colors.text.default, textAlign: 'center' },
   message: { color: colors.text.icon, textAlign: 'center' },
-  deadline: { flexDirection: 'row', alignItems: 'center', gap: spacing[6] },
+  deadline: { flexDirection: 'row', alignItems: 'center', alignSelf: 'center', gap: spacing[6] },
   deadlineText: { color: colors.brand.primaryDark },
   choices: {
     flexDirection: 'row',
@@ -204,7 +211,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: spacing[12],
   },
-  primary: { backgroundColor: colors.brand.primary },
+  // 오른쪽 글자가 더 길다("투표하러 가기"). 같은 폭이면 두 줄로 꺾여 잘리므로 오른쪽을 더 넓게 준다
+  primary: { flex: 1.5, backgroundColor: colors.brand.primary },
   // 왼쪽 버튼도 회색 알약으로 그려 두 버튼의 크기와 무게를 맞춘다
   secondary: { backgroundColor: colors.surface.default },
   leftText: { color: colors.text.icon },
