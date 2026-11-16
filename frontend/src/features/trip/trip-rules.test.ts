@@ -420,6 +420,20 @@ describe('tripDetailView', () => {
     expect(unknown.steps[0].state).toBe('current');
   });
 
+  it('다녀옴: 확인된 지출이 0건이면 정산 없이 게시를 권하고 미확인은 건너뛰지 않는다', () => {
+    const t = trip({ startDate: '2026-10-01', endDate: '2026-10-02' });
+    const base = { savedPlaceCount: null, coursePlaceCount: null, photoCount: 3, settled: false };
+    const empty = tripDetailView(t, [], TODAY, null, { ...base, expenseCount: 0 });
+    expect(empty.steps[1].state).toBe('done');
+    expect(empty.greeting).toBe('기록을 피드로 게시해 볼까요?');
+    expect(empty.action).toBeNull();
+    for (const expenseCount of [null, undefined, 1]) {
+      expect(tripDetailView(t, [], TODAY, null, { ...base, expenseCount }).action?.target).toBe(
+        'expenses',
+      );
+    }
+  });
+
   it('여행지 2곳이면 두 이름을 이어 쓴다', () => {
     const t = trip({
       startDate: '2026-11-14',

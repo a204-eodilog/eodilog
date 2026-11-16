@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { toApiError } from '@/api/errors';
 import { getItinerary } from '@/features/course/api';
 import { itineraryKey } from '@/features/course/hooks/course-keys';
-import { getSettlementState } from '@/features/expense/api';
+import { getAllExpenses, getSettlementState } from '@/features/expense/api';
 import { expenseKeys } from '@/features/expense/hooks/use-expense-board';
 import { getPhotoSummary } from '@/features/photo/api';
 import { photoKeys } from '@/features/photo/hooks/use-trip-photos';
@@ -62,7 +62,14 @@ export function useAfterTripProgress(tripId: string, enabled: boolean) {
     enabled,
     retry: retryUnlessGone,
   });
+  const expenses = useQuery({
+    queryKey: expenseKeys.expenses(tripId),
+    queryFn: () => getAllExpenses(tripId),
+    enabled,
+    retry: retryUnlessGone,
+  });
   return {
+    expenseCount: enabled && expenses.data ? expenses.data.length : null,
     photoCount: enabled && summary.data ? summary.data.totalCount : null,
     settled:
       enabled && settlement.data

@@ -181,6 +181,8 @@ export type TripProgress = {
   photoCount?: number | null;
   /** 다녀온 여행: 정산을 계산했는지(지출이 바뀌어 다시 계산해야 하면 false) */
   settled?: boolean | null;
+  /** 확인한 지출 건수. 조회 전·실패는 null이며 0건과 구분한다 */
+  expenseCount?: number | null;
 };
 
 export type TripDetailView = {
@@ -250,7 +252,7 @@ export function tripDetailView(
     // 사진을 올리고 정산하면 단계가 넘어간다(2026-11-16 시연 리허설: 사진을 올려도 "사진 올리기부터"에 머물렀다).
     // 모르는 값(null)은 안 한 것으로 보고 앞 단계에 둔다
     const hasPhotos = (progress?.photoCount ?? 0) > 0;
-    const settled = progress?.settled === true;
+    const settled = progress?.settled === true || progress?.expenseCount === 0;
     return {
       headline: `${subject}, 어땠나요?`,
       ...(hasPhotos && settled ? { greeting: '기록을 피드로 게시해 볼까요?' } : {}),
