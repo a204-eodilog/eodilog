@@ -28,7 +28,7 @@ public class NotificationService {
             """;
     private static final String SELECT = """
             SELECT n.id,n.event_id,e.type,e.payload_json->>'message' AS message,e.target_type,e.target_id,
-                   n.read_at,n.created_at FROM notifications n JOIN events e ON e.id=n.event_id WHERE
+                   e.trip_id,n.read_at,n.created_at FROM notifications n JOIN events e ON e.id=n.event_id WHERE
             """;
     private final NamedParameterJdbcTemplate named;
     private final JdbcTemplate jdbc;
@@ -65,7 +65,7 @@ public class NotificationService {
         jdbc.update("UPDATE notifications SET read_at=? WHERE id=? AND read_at IS NULL", Timestamp.from(when), notificationId);
         receipt(current.eventId(), userId, when);
         return new NotificationView(current.id(), current.eventId(), current.kind(), current.message(),
-                current.target(), when, current.createdAt());
+                current.target(), current.tripId(), when, current.createdAt());
     }
 
     @Transactional
@@ -130,6 +130,7 @@ public class NotificationService {
         return new NotificationView(rs.getObject("id", UUID.class), rs.getObject("event_id", UUID.class),
                 rs.getString("type"), rs.getString("message"),
                 new NotificationView.Target(rs.getString("target_type"), rs.getObject("target_id", UUID.class)),
+                rs.getObject("trip_id", UUID.class),
                 read == null ? null : read.toInstant(), rs.getTimestamp("created_at").toInstant());
     }
 
