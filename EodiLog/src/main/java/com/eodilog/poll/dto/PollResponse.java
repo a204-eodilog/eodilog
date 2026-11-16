@@ -39,6 +39,14 @@ public record PollResponse(
 				requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
 		PollClosedReason closedReason,
 
+		@Schema(description = "실제로 마감한 시각(UTC). 연 사람이 직접 종료했으면 closesAt보다 이르다. 진행 중이면 null",
+				example = "2026-11-03T09:30:00Z", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
+		Instant closedAt,
+
+		@Schema(description = "직접 종료한 멤버 ID(투표를 연 사람). 마감 시각에 서버가 마감했거나 진행 중이면 null",
+				requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
+		UUID closedByMemberId,
+
 		@Schema(description = "투표할 수 있는 인원. 진행 중이면 지금 ACTIVE 멤버 수, 마감했으면 마감 때 수", example = "4",
 				requiredMode = Schema.RequiredMode.REQUIRED)
 		int eligibleMemberCount,
@@ -55,6 +63,14 @@ public record PollResponse(
 
 		@Schema(description = "확정된 후보 ID. 최다 득표 후보 전부(동률 포함). 진행 중이거나 0표면 []",
 				requiredMode = Schema.RequiredMode.REQUIRED)
-		List<UUID> selectedCandidateIds
+		List<UUID> selectedCandidateIds,
+
+		@Schema(description = "투표를 연 멤버 ID", example = "0193c2a1-7e2b-7c4d-9a1e-2f3b4c5d6e10",
+				requiredMode = Schema.RequiredMode.REQUIRED)
+		UUID createdByMemberId,
+
+		@Schema(description = "내가 지금 이 투표를 종료할 수 있는지. 진행 중이고 마감 시각 전이며 내가 연 투표일 때만 true",
+				example = "true", requiredMode = Schema.RequiredMode.REQUIRED)
+		boolean canClose
 ) {
 }

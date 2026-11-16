@@ -14,6 +14,7 @@ import com.eodilog.poll.domain.PollVote;
 import com.eodilog.poll.dto.AddCandidateRequest;
 import com.eodilog.poll.dto.BallotRequest;
 import com.eodilog.poll.dto.CandidateInput;
+import com.eodilog.poll.dto.ClosePollRequest;
 import com.eodilog.poll.dto.CreatePollRequest;
 import com.eodilog.poll.dto.PollResponse;
 import com.eodilog.poll.exception.PollErrorCode;
@@ -40,7 +41,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
-// 여행 안 지역·장소 투표(명세 §6, 정책 §13). ACTIVE 멤버 누구나 열고·투표하고·후보를 추가한다
+// 여행 안 지역·장소 투표(명세 §6, 정책 §13). ACTIVE 멤버 누구나 열고·투표하고·후보를 추가하고, 연 사람은 직접 종료한다
 // 조회·쓰기 모두 먼저 마감 시각이 지난 투표를 따로 커밋해 마감한 뒤 요청을 처리한다(V-12 지연 마감)
 // 마감을 요청 트랜잭션과 나눠야 요청이 409·400으로 롤백돼도 마감이 남는다. 그래서 메서드마다 트랜잭션을 직접 연다
 @Service
@@ -229,18 +230,51 @@ public class PollService {
 		return pollResponseAssembler.assemble(poll, access.member().getId());
 	}
 
-	// 판정 순서: 투표 404 → 마감 409 POLL_CLOSED → version 409(V-3). 마감 시각이 지난 투표는 요청 전에 마감했고,
-	// 그 사이 마감 시각이 된 투표는 OPEN이어도 쓰기를 거부한다(다음 조회·주기 마감이 마감한다)
+	// 투표를 연 사람이 마감 시각 전에 직접 종료한다(V-16). 결과는 시각 마감과 같다: 최다 후보 모두 확정, 0표면 확정 없이 마감
+	// 판정 순서: 입력 400 → 여행 ACTIVE 404 → 투표 404 → 연 사람 아님 403 → 마감 409 POLL_CLOSED → version 409
+	// 투표·후보 추가와 같이 여행 행을 먼저 잠가, 종료 전에 커밋된 표는 집계에 들어가고 종료 뒤의 표는 409가 된다
+	public PollResponse closePoll(UUID userId, UUID tripId, UUID pollId, ClosePollRequest request) {
+		List<ErrorField> errors = new ArrayList<>();
+		requireExpectedVersion(request.expectedVersion(), errors);
+		throwIfInvalid(errors);
+
+		pollCloser.closeDuePollsNow(tripId);
+		return writeTransaction.execute(status -> close(userId, tripId, pollId, request.expectedVersion()));
+	}
+
+	private PollResponse close(UUID userId, UUID tripId, UUID pollId, long expectedVersion) {
+		TripAccess access = tripAccessChecker.requireActiveMemberForUpdate(tripId, userId);
+		UUID memberId = access.member().getId();
+		Poll poll = lockPoll(tripId, pollId);
+		if (!poll.isCreatedBy(memberId)) {
+			throw new BusinessException(CommonErrorCode.FORBIDDEN, "투표를 연 사람만 종료할 수 있습니다.");
+		}
+		requireOpenVersion(poll, expectedVersion);
+		pollCloser.closeByCreator(access.trip(), poll, new PollCloser.Closer(memberId, userId));
+		return pollResponseAssembler.assemble(poll, memberId);
+	}
+
+	// 판정 순서: 투표 404 → 마감 409 POLL_CLOSED → version 409(V-3)
 	private Poll requireWritablePoll(UUID tripId, UUID pollId, long expectedVersion) {
-		Poll poll = pollRepository.findByIdAndTripIdForUpdate(pollId, tripId)
+		Poll poll = lockPoll(tripId, pollId);
+		requireOpenVersion(poll, expectedVersion);
+		return poll;
+	}
+
+	private Poll lockPoll(UUID tripId, UUID pollId) {
+		return pollRepository.findByIdAndTripIdForUpdate(pollId, tripId)
 				.orElseThrow(() -> new BusinessException(PollErrorCode.POLL_NOT_FOUND));
+	}
+
+	// 마감 시각이 지난 투표는 요청 전에 마감했고, 그 사이 마감 시각이 된 투표는 OPEN이어도 쓰기를 거부한다
+	// (다음 조회·주기 마감이 마감한다)
+	private void requireOpenVersion(Poll poll, long expectedVersion) {
 		if (poll.getStatus() != PollStatus.OPEN || poll.isDue(now())) {
 			throw new BusinessException(PollErrorCode.POLL_CLOSED);
 		}
 		if (poll.getVersion() != expectedVersion) {
 			throw new BusinessException(PollErrorCode.VERSION_CONFLICT);
 		}
-		return poll;
 	}
 
 	// 모든 입력 오류를 한 번에 알린다. 후보 존재 확인까지 입력 검증이다(V-2·V-4·V-5)

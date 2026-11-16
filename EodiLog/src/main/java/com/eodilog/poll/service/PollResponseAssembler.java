@@ -12,6 +12,8 @@ import com.eodilog.poll.repository.PollTallyRepository;
 import com.eodilog.trip.domain.TripMemberStatus;
 import com.eodilog.trip.repository.TripMemberRepository;
 import jakarta.persistence.EntityManager;
+import java.time.Clock;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -30,6 +32,7 @@ public class PollResponseAssembler {
 	private final PollTallyRepository pollTallyRepository;
 	private final TripMemberRepository tripMemberRepository;
 	private final EntityManager entityManager;
+	private final Clock clock;
 
 	public PollResponse assemble(Poll poll, UUID memberId) {
 		return assemble(List.of(poll), memberId).getFirst();
@@ -59,6 +62,7 @@ public class PollResponseAssembler {
 				: pollResultRepository.findAllByCandidateIdIn(finalizedCandidateIds).stream()
 						.map(PollResult::getCandidateId).collect(Collectors.toSet());
 
+		Instant now = clock.instant();
 		return polls.stream().map(poll -> {
 			List<PollCandidate> candidates = candidatesByPoll.getOrDefault(poll.getId(), List.of());
 			boolean open = poll.getStatus() == PollStatus.OPEN;
@@ -69,11 +73,15 @@ public class PollResponseAssembler {
 							candidate.getCreatedAt()))
 					.toList();
 			List<UUID> selectedIds = candidates.stream().map(PollCandidate::getId).filter(selected::contains).toList();
+			// 종료 버튼 표시용. 실제 종료 요청은 잠금 뒤 같은 조건을 다시 확인한다(V-16)
+			boolean canClose = open && !poll.isDue(now) && poll.isCreatedBy(memberId);
 			return new PollResponse(poll.getId(), poll.getTripId(), poll.getType(), poll.getTitle(), poll.getStatus(),
-					poll.getVersion(), poll.getClosesAt(), poll.getClosedReason(),
+					poll.getVersion(), poll.getClosesAt(), poll.getClosedReason(), poll.getClosedAt(),
+					poll.getClosedByMemberId(),
 					open ? activeMemberCount : poll.getEligibleMemberCount(),
 					open ? openVoterCounts.getOrDefault(poll.getId(), 0) : poll.getVotedMemberCount(),
-					candidateResponses, myCandidateIds.getOrDefault(poll.getId(), List.of()), selectedIds);
+					candidateResponses, myCandidateIds.getOrDefault(poll.getId(), List.of()), selectedIds,
+					poll.getCreatedByMemberId(), canClose);
 		}).toList();
 	}
 

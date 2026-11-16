@@ -501,6 +501,182 @@ class PollApiTest {
 	}
 
 	@Test
+	void creatorClosesPollEarlyAndFinalizesTopCandidates() throws Exception {
+		JsonNode poll = data(createPoll(friendId, placePoll(insertPlace(), insertPlace())));
+		UUID pollId = id(poll);
+		String first = candidateId(poll, 0);
+		String second = candidateId(poll, 1);
+		String closesAt = poll.get("closesAt").asString();
+		ballot(ownerId, pollId, "[\"%s\"]".formatted(first), 1).andExpect(status().isOk());
+		ballot(friendId, pollId, "[\"%s\",\"%s\"]".formatted(first, second), 1).andExpect(status().isOk());
+
+		// 종료 버튼은 연 사람에게만 보인다
+		getPoll(friendId, pollId)
+				.andExpect(jsonPath("$.data.canClose").value(true))
+				.andExpect(jsonPath("$.data.createdByMemberId").value(friendMemberId.toString()))
+				.andExpect(jsonPath("$.data.closedAt").isEmpty())
+				.andExpect(jsonPath("$.data.closedByMemberId").isEmpty());
+		getPoll(ownerId, pollId).andExpect(jsonPath("$.data.canClose").value(false));
+
+		close(friendId, pollId, 1)
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.status").value("FINALIZED"))
+				.andExpect(jsonPath("$.data.closedReason").value("DEADLINE"))
+				.andExpect(jsonPath("$.data.version").value(2))
+				.andExpect(jsonPath("$.data.closesAt").value(closesAt))
+				.andExpect(jsonPath("$.data.closedAt").isNotEmpty())
+				.andExpect(jsonPath("$.data.closedByMemberId").value(friendMemberId.toString()))
+				.andExpect(jsonPath("$.data.canClose").value(false))
+				.andExpect(jsonPath("$.data.eligibleMemberCount").value(2))
+				.andExpect(jsonPath("$.data.votedMemberCount").value(2))
+				.andExpect(jsonPath("$.data.candidates[0].voteCount").value(2))
+				.andExpect(jsonPath("$.data.candidates[1].voteCount").value(1))
+				.andExpect(jsonPath("$.data.selectedCandidateIds", contains(first)));
+		assertThat(count("select count(*) from poll_results r join poll_candidates c on c.id = r.candidate_id"
+				+ " where c.poll_id = ?", pollId)).isEqualTo(1);
+
+		// 종료 뒤에는 쓰기·재종료 모두 409이고, 원래 마감 시각이 지나도 주기 마감이 다시 마감하지 않는다
+		expectCode(ballot(ownerId, pollId, "[]", 2), 409, "POLL_CLOSED");
+		expectCode(addCandidate(ownerId, pollId, "{\"placeId\":\"%s\"}".formatted(insertPlace()), 2), 409,
+				"POLL_CLOSED");
+		expectCode(close(friendId, pollId, 2), 409, "POLL_CLOSED");
+		expire(pollId);
+		pollAutoCloser.closeDuePolls();
+		assertThat(count("select version from polls where id = ?", pollId)).isEqualTo(2);
+		assertThat(jdbcTemplate.queryForObject("select closed_by_member_id from polls where id = ?", UUID.class,
+				pollId)).isEqualTo(friendMemberId);
+	}
+
+	@Test
+	void onlyCreatorCanClose() throws Exception {
+		UUID pollId = id(data(createPoll(friendId, placePoll(insertPlace()))));
+		UUID otherFriendId = insertUser("다른 동행");
+		insertMember(tripId, otherFriendId, 3, "ACTIVE");
+
+		// 방장도 남이 연 투표는 종료하지 못한다
+		expectCode(close(ownerId, pollId, 1), 403, "FORBIDDEN");
+		expectCode(close(otherFriendId, pollId, 1), 403, "FORBIDDEN");
+		expectTripNotFound(close(insertUser("모르는 사람"), pollId, 1));
+		UUID otherTripId = createTrip("{\"title\":\"부산\"}");
+		mockMvc.perform(post("/api/v1/trips/{tripId}/polls/{pollId}/close", otherTripId, pollId).with(authUser(ownerId))
+						.contentType(MediaType.APPLICATION_JSON).content("{\"expectedVersion\":1}"))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.error.code").value("POLL_NOT_FOUND"));
+		expectField(mockMvc.perform(post("/api/v1/trips/{tripId}/polls/{pollId}/close", tripId, pollId)
+				.with(authUser(friendId)).contentType(MediaType.APPLICATION_JSON).content("{}")), "expectedVersion");
+
+		// 후보가 추가돼 version이 오르면 예전 화면의 종료는 409
+		addCandidate(ownerId, pollId, "{\"placeId\":\"%s\"}".formatted(insertPlace()), 1).andExpect(status().isCreated());
+		expectCode(close(friendId, pollId, 1), 409, "VERSION_CONFLICT");
+
+		// 연 사람이 나가면 아무도 종료하지 못하고, 같은 멤버십으로 다시 들어오면 종료할 수 있다
+		jdbcTemplate.update("update trip_members set status = 'LEFT', left_at = now() where id = ?", friendMemberId);
+		expectTripNotFound(close(friendId, pollId, 2));
+		expectCode(close(ownerId, pollId, 2), 403, "FORBIDDEN");
+		jdbcTemplate.update("update trip_members set status = 'ACTIVE', left_at = null where id = ?", friendMemberId);
+		close(friendId, pollId, 2).andExpect(status().isOk());
+
+		assertThat(jdbcTemplate.queryForObject("select status from polls where id = ?", String.class, pollId))
+				.isEqualTo("CLOSED");
+	}
+
+	@Test
+	void closesEmptyPollWithoutResult() throws Exception {
+		UUID pollId = id(data(createPoll(ownerId, placePoll(insertPlace()))));
+
+		close(ownerId, pollId, 1)
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.status").value("CLOSED"))
+				.andExpect(jsonPath("$.data.closedReason").value("NO_VOTES"))
+				.andExpect(jsonPath("$.data.votedMemberCount").value(0))
+				.andExpect(jsonPath("$.data.selectedCandidateIds", hasSize(0)))
+				.andExpect(jsonPath("$.data.closedByMemberId").value(ownerMemberId().toString()));
+	}
+
+	@Test
+	void closingTiedRegionPollAppendsAllWinnersToDestinations() throws Exception {
+		UUID busan = insertRegion();
+		UUID seoul = insertRegion();
+		JsonNode poll = data(createPoll(friendId, """
+				{"type":"REGION","title":"어디로","candidates":[{"regionId":"%s"},{"regionId":"%s"}],"closesAt":"%s"}"""
+				.formatted(busan, seoul, Instant.now().plus(1, ChronoUnit.DAYS))));
+		UUID pollId = id(poll);
+		ballot(ownerId, pollId, "[\"%s\"]".formatted(candidateId(poll, 0)), 1).andExpect(status().isOk());
+		ballot(friendId, pollId, "[\"%s\"]".formatted(candidateId(poll, 1)), 1).andExpect(status().isOk());
+		long versionBefore = count("select version from trips where id = ?", tripId);
+
+		close(friendId, pollId, 1)
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.selectedCandidateIds", hasSize(2)));
+
+		mockMvc.perform(get("/api/v1/trips/{tripId}", tripId).with(authUser(ownerId)))
+				.andExpect(jsonPath("$.data.version").value((int) versionBefore + 1))
+				.andExpect(jsonPath("$.data.destinationRegionIds", contains(busan.toString(), seoul.toString())));
+		// 여행 정보 변경 알림의 행동자는 종료한 사람이라 그 사람은 받지 않는다
+		assertThat(count("""
+				select count(*) from notifications n join events e on e.id = n.event_id
+				where e.trip_id = ? and e.type = 'TRIP_INFO_CHANGED' and n.recipient_user_id = ?""", tripId, friendId))
+				.isZero();
+		assertThat(count("""
+				select count(*) from notifications n join events e on e.id = n.event_id
+				where e.trip_id = ? and e.type = 'TRIP_INFO_CHANGED' and n.recipient_user_id = ?""", tripId, ownerId))
+				.isEqualTo(1);
+	}
+
+	@Test
+	void rejectsCloseAfterDeadlineAndKeepsAutoClose() throws Exception {
+		UUID pollId = id(data(createPoll(friendId, placePoll(insertPlace()))));
+		expire(pollId);
+		getPoll(friendId, pollId).andExpect(status().isOk());
+
+		// 마감 시각이 지나면 종료 요청 전에 시각 마감이 먼저 커밋되고 종료는 409다. 직접 종료한 사람은 남지 않는다
+		expectCode(close(friendId, pollId, 1), 409, "POLL_CLOSED");
+		assertThat(jdbcTemplate.queryForObject("select status from polls where id = ?", String.class, pollId))
+				.isEqualTo("CLOSED");
+		assertThat(jdbcTemplate.queryForObject("select closed_by_member_id from polls where id = ?", UUID.class,
+				pollId)).isNull();
+	}
+
+	@Test
+	void serializesCloseWithConcurrentBallots() throws Exception {
+		// 종료와 투표가 동시에 와도 투표가 먼저면 결과에 들어가고, 종료가 먼저면 투표는 409다. 어긋난 집계가 남지 않는다
+		for (int round = 0; round < 5; round++) {
+			JsonNode poll = data(createPoll(friendId, placePoll(insertPlace())));
+			UUID pollId = id(poll);
+			String candidate = candidateId(poll, 0);
+
+			ExecutorService executor = Executors.newFixedThreadPool(2);
+			CountDownLatch start = new CountDownLatch(1);
+			try {
+				Future<Integer> ballotStatus = executor.submit(() -> {
+					start.await();
+					return ballot(ownerId, pollId, "[\"%s\"]".formatted(candidate), 1)
+							.andReturn().getResponse().getStatus();
+				});
+				Future<Integer> closeStatus = executor.submit(() -> {
+					start.await();
+					return close(friendId, pollId, 1).andReturn().getResponse().getStatus();
+				});
+				start.countDown();
+				assertThat(closeStatus.get()).isEqualTo(200);
+				int voted = ballotStatus.get();
+				assertThat(voted).isIn(200, 409);
+
+				JsonNode closed = data(getPoll(ownerId, pollId));
+				if (voted == 200) {
+					assertThat(closed.get("status").asString()).isEqualTo("FINALIZED");
+					assertThat(closed.get("candidates").get(0).get("voteCount").asInt()).isEqualTo(1);
+				} else {
+					assertThat(closed.get("status").asString()).isEqualTo("CLOSED");
+					assertThat(closed.get("candidates").get(0).get("voteCount").asInt()).isZero();
+				}
+			} finally {
+				executor.shutdownNow();
+			}
+		}
+	}
+
+	@Test
 	void documentsPollApis() throws Exception {
 		mockMvc.perform(get("/v3/api-docs"))
 				.andExpect(status().isOk())
@@ -511,7 +687,25 @@ class PollApiTest {
 				.andExpect(jsonPath("$.paths['/api/v1/trips/{tripId}/polls/{pollId}/ballot'].put.responses['409'].description")
 						.value(containsString("POLL_CLOSED")))
 				.andExpect(jsonPath("$.paths['/api/v1/trips/{tripId}/polls/{pollId}/candidates'].post.responses['201']")
-						.exists());
+						.exists())
+				.andExpect(jsonPath("$.paths['/api/v1/trips/{tripId}/polls/{pollId}/close'].post.responses['200']")
+						.exists())
+				.andExpect(jsonPath("$.paths['/api/v1/trips/{tripId}/polls/{pollId}/close'].post.responses['403'].description")
+						.value(containsString("FORBIDDEN")))
+				.andExpect(jsonPath("$.paths['/api/v1/trips/{tripId}/polls/{pollId}/close'].post.responses['409'].description")
+						.value(containsString("POLL_CLOSED")));
+	}
+
+	private ResultActions close(UUID userId, UUID pollId, long expectedVersion) throws Exception {
+		return mockMvc.perform(post("/api/v1/trips/{tripId}/polls/{pollId}/close", tripId, pollId)
+				.with(authUser(userId))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"expectedVersion\":%d}".formatted(expectedVersion)));
+	}
+
+	private UUID ownerMemberId() {
+		return jdbcTemplate.queryForObject("select id from trip_members where trip_id = ? and user_id = ?", UUID.class,
+				tripId, ownerId);
 	}
 
 	private ResultActions createPoll(UUID userId, String body) throws Exception {

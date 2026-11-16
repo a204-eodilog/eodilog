@@ -6,6 +6,7 @@ import com.eodilog.global.common.response.PageResponse;
 import com.eodilog.global.security.AuthUser;
 import com.eodilog.poll.dto.AddCandidateRequest;
 import com.eodilog.poll.dto.BallotRequest;
+import com.eodilog.poll.dto.ClosePollRequest;
 import com.eodilog.poll.dto.CreatePollRequest;
 import com.eodilog.poll.dto.PollResponse;
 import com.eodilog.poll.service.PollService;
@@ -32,7 +33,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "투표", description = "여행 지역·장소 투표 열기·조회·내 선택·후보 추가")
+@Tag(name = "투표", description = "여행 지역·장소 투표 열기·조회·내 선택·후보 추가·종료")
 @RestController
 @RequestMapping("/api/v1/trips/{tripId}/polls")
 @RequiredArgsConstructor
@@ -138,6 +139,33 @@ public class PollController {
 			@RequestBody AddCandidateRequest request) {
 		PollResponse poll = pollService.addCandidate(CurrentUser.requireUserId(authUser), tripId, pollId, request);
 		return ResponseEntity.status(HttpStatus.CREATED).body(DataResponse.of(poll));
+	}
+
+	@Operation(summary = "투표 종료", description = """
+			투표를 연 사람만 마감 시각 전에 직접 종료한다. 방장도 남이 연 투표는 종료하지 못한다(403).
+			결과는 마감 시각의 자동 마감과 같다. 표가 있으면 최다 득표 후보를 모두 확정(FINALIZED, 동률 포함)하고,
+			0표면 확정 없이 마감(CLOSED/NO_VOTES)한다. 지역 투표가 확정되면 확정 지역을 여행지 끝에 추가한다.
+			성공하면 version이 오르고 응답의 closedAt·closedByMemberId가 채워진다. 마감 알림은 종료한 사람을 뺀 동행이 받는다.
+			화면은 응답의 canClose가 true일 때만 종료 버튼을 보인다.""")
+	@ApiResponse(responseCode = "200", description = "종료 성공")
+	@ApiResponse(responseCode = "403", description = "FORBIDDEN: 투표를 연 사람이 아님",
+			content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+	@ApiResponse(responseCode = "404",
+			description = "TRIP_NOT_FOUND: 없거나 볼 수 없는 여행 / POLL_NOT_FOUND: 없거나 다른 여행의 투표",
+			content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+	@ApiResponse(responseCode = "409",
+			description = "POLL_CLOSED: 이미 마감됐거나 마감 시각이 지난 투표 / VERSION_CONFLICT: 후보가 추가돼 다시 조회 후 시도",
+			content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+	@PostMapping("/{pollId}/close")
+	public ResponseEntity<DataResponse<PollResponse>> closePoll(
+			@Parameter(hidden = true) @AuthenticationPrincipal AuthUser authUser,
+			@Parameter(description = "여행 ID(UUID)", example = "0193c2a1-7e2b-7c4d-9a1e-2f3b4c5d6e70")
+			@PathVariable UUID tripId,
+			@Parameter(description = "투표 ID(UUID)", example = "0193c2a1-7e2b-7c4d-9a1e-2f3b4c5d6e40")
+			@PathVariable UUID pollId,
+			@RequestBody ClosePollRequest request) {
+		return ResponseEntity.ok(DataResponse.of(
+				pollService.closePoll(CurrentUser.requireUserId(authUser), tripId, pollId, request)));
 	}
 
 }

@@ -12,6 +12,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.UuidGenerator;
 
+// 마감은 시각 마감(서버)과 연 사람의 직접 종료 두 가지이며 결과 규칙은 같다(V-12·V-16)
 // version은 후보 추가와 마감 때만 오른다. 다른 멤버의 투표로는 오르지 않아 동시 투표끼리 409를 만들지 않는다(V-8)
 // 집계 인원은 마감 때만 저장한다. OPEN 동안은 지금 ACTIVE 멤버로 그때그때 센다(V-6c·V-6d)
 @Entity
@@ -44,6 +45,9 @@ public class Poll {
 	private PollClosedReason closedReason;
 
 	private Instant closedAt;
+
+	// 투표를 연 사람이 직접 종료했으면 그 멤버, 서버가 시각 마감했으면 null(V-16)
+	private UUID closedByMemberId;
 
 	private Instant finalizedAt;
 
@@ -84,21 +88,28 @@ public class Poll {
 		this.version++;
 	}
 
-	// 0표 마감. 결정권자를 기다리지 않고 확정 없이 끝낸다
-	public void closeWithoutVotes(int eligibleMemberCount, Instant now) {
+	// 직접 종료할 수 있는 사람은 투표를 연 멤버 한 명이다. 방장도 남의 투표는 종료하지 못한다(V-16)
+	public boolean isCreatedBy(UUID memberId) {
+		return createdByMemberId.equals(memberId);
+	}
+
+	// 0표 마감. 결정권자를 기다리지 않고 확정 없이 끝낸다. closedByMemberId는 직접 종료한 멤버, 시각 마감이면 null
+	public void closeWithoutVotes(int eligibleMemberCount, UUID closedByMemberId, Instant now) {
 		this.status = PollStatus.CLOSED;
 		this.closedReason = PollClosedReason.NO_VOTES;
 		this.closedAt = now;
+		this.closedByMemberId = closedByMemberId;
 		this.eligibleMemberCount = eligibleMemberCount;
 		this.votedMemberCount = 0;
 		this.version++;
 	}
 
 	// 최다 득표 후보를 모두 확정한 마감. 확정 후보는 poll_results에 따로 저장한다
-	public void finalizeResult(int eligibleMemberCount, int votedMemberCount, Instant now) {
+	public void finalizeResult(int eligibleMemberCount, int votedMemberCount, UUID closedByMemberId, Instant now) {
 		this.status = PollStatus.FINALIZED;
 		this.closedReason = PollClosedReason.DEADLINE;
 		this.closedAt = now;
+		this.closedByMemberId = closedByMemberId;
 		this.finalizedAt = now;
 		this.eligibleMemberCount = eligibleMemberCount;
 		this.votedMemberCount = votedMemberCount;
