@@ -260,11 +260,14 @@ export function WeatherScreen() {
       }
       setAdded(true);
       toast.success('우산과 우비를 준비물에 넣었어요');
-      void queryClient.invalidateQueries({ queryKey: [...tripKey(tripId), 'checklist'] });
     } catch {
       toast.error('준비물에 넣지 못했어요. 다시 시도해 주세요');
     } finally {
       setAdding(false);
+      // 하나라도 넣었으면 준비물·"N/M 챙김"을 다시 받는다. 우산만 들어가고 우비가 실패해도 서버에는 우산이 있다(!300 리뷰)
+      if (addedLabels.current.size > 0) {
+        void queryClient.invalidateQueries({ queryKey: [...tripKey(tripId), 'checklist'] });
+      }
     }
   };
 

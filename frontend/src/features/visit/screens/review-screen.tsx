@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams, usePreventRemove } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { CenterNotice, ConfirmSheet, Header, toast } from '@/components/ui';
@@ -46,10 +46,20 @@ export function ReviewScreen() {
   const [discarding, setDiscarding] = useState(false);
   // 고치기 시작한 값과 다르면 입력한 것이 있다. 작성 모드가 아니면 score·body는 처음 값(null, '')이다
   const typed = score !== (editing?.score ?? null) || body !== (editing?.body ?? '');
-  // 기기 뒤로 가기·뒤로 몸짓도 위 [뒤로]처럼 버릴지 묻는다(헤더 [뒤로]만 물어서 쓴 글이 그냥 사라졌다)
-  usePreventRemove(typed && !discarding, () => setLeaving(true));
+  // 기기 뒤로 가기·뒤로 몸짓도 위 [뒤로]처럼 버릴지 묻는다(헤더 [뒤로]만 물어서 쓴 글이 그냥 사라졌다).
+  // 막은 동작은 뒤로 가기만이 아니다(탭 다시 누르기 등). [그만두기]면 막았던 그 동작을 그대로 이어 간다(!300 리뷰)
+  const blocked = useRef<(() => void) | null>(null);
+  usePreventRemove(typed && !discarding, ({ repeat }) => {
+    blocked.current = repeat;
+    setLeaving(true);
+  });
   useEffect(() => {
-    if (discarding) goBack();
+    if (!discarding) return;
+    // 막기가 풀린 뒤에 잇는다. 헤더 [뒤로]로 물었으면 막은 동작이 없어 뒤로 간다
+    const repeat = blocked.current;
+    blocked.current = null;
+    if (repeat) repeat();
+    else goBack();
   }, [discarding]);
 
   if (board.isLoading || board.error || !board.trip || !board.visit) {
@@ -200,7 +210,11 @@ export function ReviewScreen() {
       {/* 값 문서: [뒤로]는 입력한 것이 있으면 버릴지 확인 */}
       <ConfirmSheet
         visible={leaving}
-        onClose={() => setLeaving(false)}
+        onClose={() => {
+          // 계속 쓰기로 했다. 막았던 동작은 버린다(나중에 위 [뒤로]로 나갈 때 그 동작을 잇지 않게)
+          blocked.current = null;
+          setLeaving(false);
+        }}
         onConfirm={() => {
           setLeaving(false);
           // 막기를 푼 뒤에 나간다(usePreventRemove가 켜진 채로 나가면 다시 막힌다)

@@ -95,3 +95,30 @@ it('지금 토큰으로 보낸 요청이 401이면 갱신한 뒤 다시 보낸�
   expect(refresh).toHaveBeenCalledTimes(1);
   expect(sent).toEqual(['Bearer old-access', 'Bearer new-access']);
 });
+
+it('토큰 없이 나간 요청의 401은 늦은 401로 보지 않고 갱신을 거친다', async () => {
+  // 로그인 전에 나간 요청: 그 사이 로그인했지만 받은 토큰도 이미 만료다
+  useSessionStore.setState({ accessToken: null });
+  const refresh = jest
+    .spyOn(publicClient, 'post')
+    .mockResolvedValue({ data: { data: session('new-access', 'new-refresh') } });
+  const sent: string[] = [];
+  const adapter = jest.fn(async (config: InternalAxiosRequestConfig) => {
+    const auth = String(AxiosHeaders.from(config.headers).get('Authorization') ?? '');
+    sent.push(auth);
+    if (auth === '' || auth === 'Bearer null' || auth === 'undefined') {
+      useSessionStore.setState({ accessToken: 'expired-access' });
+      throw unauthorized(config);
+    }
+    if (auth !== 'Bearer new-access') throw unauthorized(config);
+    return { data: { ok: true }, status: 200, statusText: 'OK', headers: {}, config };
+  });
+
+  const res = await apiClient.get('/me', { adapter });
+
+  expect(res.status).toBe(200);
+  expect(refresh).toHaveBeenCalledTimes(1);
+  expect(sent[sent.length - 1]).toBe('Bearer new-access');
+  // 만료된 지금 토큰으로 한 번 더 보내지 않는다
+  expect(sent).not.toContain('Bearer expired-access');
+});
