@@ -53,21 +53,16 @@ export function spreadMarkers<P extends LatLng>(
   const xy = points.map((p) => ({ x: (p.longitude * cos) / degPerPx, y: p.latitude / degPerPx }));
   const near = (a: number, b: number) => Math.hypot(xy[a].x - xy[b].x, xy[a].y - xy[b].y) < minPx;
 
+  // 묶음은 첫 핀(씨앗) 가까이 있는 핀만 모은다. 가까운 핀을 줄줄이 이어 묶으면 핀이 빽빽한 도심(시청역 화장실 20곳)이
+  // 통째로 한 묶음이 되어 실제 위치와 상관없는 큰 원으로 놓였다(2026-11-16 공기계)
   const group = new Array<number>(points.length).fill(-1);
   let groups = 0;
   points.forEach((_, i) => {
     if (group[i] >= 0) return;
-    const queue = [i];
     group[i] = groups;
-    while (queue.length > 0) {
-      const a = queue.pop()!;
-      points.forEach((__, b) => {
-        if (group[b] < 0 && near(a, b)) {
-          group[b] = groups;
-          queue.push(b);
-        }
-      });
-    }
+    points.forEach((__, b) => {
+      if (group[b] < 0 && near(i, b)) group[b] = groups;
+    });
     groups += 1;
   });
 

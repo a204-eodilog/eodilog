@@ -66,6 +66,17 @@ describe('spreadMarkers', () => {
     expect(out.slice(0, 2)).toEqual(far);
   });
 
+  it('빽빽한 핀이 줄줄이 이어져도 한 원으로 모으지 않고 제자리 가까이 둔다', () => {
+    // 20곳이 한 줄로 촘촘하다. 예전에는 전부 한 묶음이 되어 지름 190px 원으로 놓였다. 이제 각 핀은 제자리에서 두 칸(60px) 안
+    const line = Array.from({ length: 20 }, (_, i) => ({
+      latitude: 37.5665,
+      longitude: 126.978 + i * 0.0004,
+    }));
+    const r = fitRegion(line, 0.01)!;
+    const out = spreadMarkers(line, r, box);
+    out.forEach((p, i) => expect(px(r, p, line[i])).toBeLessThanOrEqual(60));
+  });
+
   it('지도 크기를 모르면(0) 그대로', () => {
     const r = fitRegion(close, 0.01)!;
     expect(spreadMarkers(close, r, { width: 0, height: 0 })).toEqual(close);

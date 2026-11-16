@@ -4,7 +4,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Spinner } from '@/components/ui/spinner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { fitRegion, type MapBox, MapMarker, MapView, spreadMarkers } from '@/components/map';
+import { FittedMap, fitRegion, type MapBox, MapMarker, spreadMarkers } from '@/components/map';
 import { AvatarGroup, Header, Icon } from '@/components/ui';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { withIga } from '@/lib/korean';
@@ -109,11 +109,8 @@ export function FacilitiesView(props: FacilitiesViewProps) {
           }}
         >
           {props.base && region ? (
-            <MapView
-              // 처음 범위는 한 번만 반영돼서, 시설 유형을 바꾸면 새로 맞춘다
-              key={props.rows.map((r) => r.id).join('|') || 'base'}
-              initialRegion={region}
-            >
+            // 시설 유형을 바꾸면 지도를 새로 만들지 않고 카메라만 옮긴다(지도를 다시 만들면 안드로이드에서 앱이 죽었다)
+            <FittedMap region={region}>
               <MapMarker
                 latitude={pins[0].latitude}
                 longitude={pins[0].longitude}
@@ -130,7 +127,7 @@ export function FacilitiesView(props: FacilitiesViewProps) {
                   onPress={() => props.onDirections(r)}
                 />
               ))}
-            </MapView>
+            </FittedMap>
           ) : null}
         </View>
 
@@ -187,10 +184,12 @@ export function FacilitiesView(props: FacilitiesViewProps) {
                     {r.walk ? (
                       <>
                         <Icon name="walk" size={14} color={colors.text.icon} />
-                        <Text style={styles.metaText}>{r.walk}</Text>
+                        {/* "도보 1분"이 두 줄로 꺾이지 않게 줄이지 않는다 */}
+                        <Text style={[styles.metaText, styles.walk]}>{r.walk}</Text>
                       </>
                     ) : null}
-                    {r.status ? (
+                    {/* 실시간 상태는 전기차 충전소만 있다. 다른 시설에 '확인하지 못했어요'를 붙이면 문제가 있는 것처럼 보인다 */}
+                    {props.type !== 'EV_CHARGER' ? null : r.status ? (
                       <>
                         <Icon name="check" size={14} color={colors.status.success} />
                         <Text style={styles.ok} numberOfLines={1}>
@@ -312,6 +311,7 @@ const styles = StyleSheet.create({
     marginRight: spacing[6],
     flexShrink: 1,
   },
+  walk: { flexShrink: 0 },
   ok: { ...typography.caption, color: colors.status.success, flexShrink: 1 },
   go: {
     width: 40,
