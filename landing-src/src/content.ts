@@ -108,5 +108,10 @@ export type Release = {
  * 첫 번째 항목의 url이 있으면 QR도 그 주소로 바뀐다
  */
 export const releases: Release[] = [
-  { version: '준비 중', date: '곧 공개', note: '첫 안드로이드 설치 파일을 준비하고 있어요.', url: null },
+  {
+    version: '1.0.0',
+    date: '2026.11.16',
+    note: '안드로이드 설치 파일이에요. 받는 주소는 11월 30일까지 쓸 수 있어요.',
+    url: 'https://expo.dev/artifacts/eas/3r65H9rWa5oYguk-fyffeMgg1_sAFSrkumalR7kdrc4.apk',
+  },
 ]

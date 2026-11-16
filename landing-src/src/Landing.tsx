@@ -373,7 +373,11 @@ export function Landing() {
             <div className="download-copy">
               <p className="eyebrow on-brand">앱 받기</p>
               <h2>다음 여행은 어디로그로 시작해요</h2>
-              <p>안드로이드 설치 파일을 준비하고 있어요. 공개되면 아래 목록과 QR에서 바로 받을 수 있어요.</p>
+              <p>
+                {latest?.url
+                  ? '안드로이드 폰에서 아래 받기를 누르거나 QR을 찍어 설치해요. 설치할 때 "출처를 알 수 없는 앱" 허용을 물으면 허용해 주세요.'
+                  : '안드로이드 설치 파일을 준비하고 있어요. 공개되면 아래 목록과 QR에서 바로 받을 수 있어요.'}
+              </p>
               <ul className="releases" aria-label="배포한 버전">
                 {releases.map((release) => (
                   <li key={release.version}>
