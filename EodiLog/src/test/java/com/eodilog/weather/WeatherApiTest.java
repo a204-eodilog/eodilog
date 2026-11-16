@@ -2,6 +2,7 @@ package com.eodilog.weather;
 
 import static com.eodilog.global.security.AuthUserRequestPostProcessors.authUser;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -255,7 +256,7 @@ class WeatherApiTest {
 		assertThat(sent.get("alternativePool").get(1).get("openStatus").get("checkedAt").isNull()).isTrue();
 		assertThat(sent.get("defaultTransportMode").asString()).isEqualTo("WALK");
 
-		// 결과는 공통 작업 조회로 본다. 공개 장소에는 category가 없고 날씨는 입력에 고정한 값이다
+		// 결과는 공통 작업 조회로 본다. 공개 장소에 category·imageUrl이 실리고 날씨는 입력에 고정한 값이다
 		mockMvc.perform(get("/api/v1/jobs/{jobId}", jobId).with(authUser(friendId)))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.data.result.baseVersion").value(2))
@@ -265,7 +266,8 @@ class WeatherApiTest {
 				.andExpect(jsonPath("$.data.result.alternatives[0].targetStartTime").value("14:00"))
 				.andExpect(jsonPath("$.data.result.alternatives[1].alternativeId").value(PLACE_SWAP_ID.toString()))
 				.andExpect(jsonPath("$.data.result.alternatives[1].place.name").value("해운대 박물관"))
-				.andExpect(jsonPath("$.data.result.alternatives[1].place.category").doesNotExist())
+				.andExpect(jsonPath("$.data.result.alternatives[1].place.category").value("문화시설"))
+				.andExpect(jsonPath("$.data.result.alternatives[1].place.imageUrl").value(nullValue()))
 				.andExpect(jsonPath("$.data.result.alternatives[2].type").value("INFO"))
 				.andExpect(jsonPath("$.data.result.alternatives[2].place").isEmpty())
 				.andExpect(jsonPath("$.data.result.weather.source").value("KMA_SHORT_TERM_FORECAST"));
