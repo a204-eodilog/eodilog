@@ -80,9 +80,9 @@ export type LeaveResult = {
 /** POST /trips/{tripId}/invitations 201. 서버는 토큰 해시만 보관하므로 이 응답에서만 url을 알 수 있다 */
 export type InvitationSecret = {
   id: string;
-  /** 초대 토큰(43자). 화면에는 쓰지 않고 url만 보인다 */
+  /** 초대 토큰(43자). 이 값으로 앱 주소를 만들어 공유한다(invite-link.ts) */
   token: string;
-  /** 공유할 링크. 서버가 만든 앱 주소 그대로 쓴다 */
+  /** 서버가 만든 링크. 예전 앱 이름으로 시작해 쓰지 않는다 */
   url: string;
   /** 만료 시각(UTC). 만든 때부터 7일 */
   expiresAt: string;
