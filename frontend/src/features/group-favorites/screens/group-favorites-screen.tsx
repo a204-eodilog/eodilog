@@ -376,6 +376,8 @@ export function GroupFavoritesScreen() {
         visible={picking}
         onClose={() => setPicking(false)}
         bookmarks={bookmarks.data}
+        failed={bookmarks.isError}
+        onRetry={() => void bookmarks.refetch()}
         // 동행만 담은 장소는 내가 더 담아 겹치게 할 수 있어 내가 담은 장소만 막는다
         inGroup={new Set(list.items.filter((i) => isMine(i, myMemberId)).map((i) => i.place.id))}
         busy={mutations.busy}

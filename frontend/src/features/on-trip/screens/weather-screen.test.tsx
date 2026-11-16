@@ -135,6 +135,8 @@ const proposalOf = (status: Job['status']) =>
     canUndo: false,
   }) as ItineraryProposal;
 
+let lastClient: QueryClient | null = null;
+
 function renderScreen() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: Infinity } },
@@ -143,6 +145,7 @@ function renderScreen() {
     frame: { x: 0, y: 0, width: 375, height: 812 },
     insets: { top: 47, left: 0, right: 0, bottom: 34 },
   };
+  lastClient = client;
   return render(
     <SafeAreaProvider initialMetrics={metrics}>
       <QueryClientProvider client={client}>
@@ -226,6 +229,24 @@ describe('S26 날씨 대안', () => {
     expect(mockAdd).toHaveBeenNthCalledWith(2, 'trip-1', '우비');
     expect(toast.success).toHaveBeenCalledWith('우산과 우비를 준비물에 넣었어요');
     expect(await screen.findByText('준비물에 넣었어요')).toBeTruthy();
+  });
+
+  it('우산만 넣고 우비가 실패하면 준비물을 다시 받고, 다시 누르면 우비만 넣는다', async () => {
+    mockJob.mockResolvedValue(job('SUCCEEDED', alternativesResult({ alternatives: [] })));
+    mockAdd.mockResolvedValueOnce({} as never).mockRejectedValueOnce(new Error('503'));
+    await renderScreen();
+    const invalidate = jest.spyOn(lastClient!, 'invalidateQueries');
+    await fireEvent.press(await screen.findByText('준비물에 넣기'));
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith('준비물에 넣지 못했어요. 다시 시도해 주세요'),
+    );
+    // 서버에는 우산이 들어갔으니 준비물·"N/M 챙김"을 다시 받는다
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['trips', 'trip-1', 'checklist'] });
+
+    mockAdd.mockResolvedValue({} as never);
+    await fireEvent.press(screen.getByText('준비물에 넣기'));
+    await waitFor(() => expect(mockAdd).toHaveBeenCalledTimes(3));
+    expect(mockAdd).toHaveBeenNthCalledWith(3, 'trip-1', '우비');
   });
 
   it('날씨를 새로 받지 못해도 마지막 날씨와 대안은 남는다', async () => {

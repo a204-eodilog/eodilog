@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { errorLook } from '@/api/error-look';
 import { AvatarGroup, ErrorState, Header, toast } from '@/components/ui';
+import { ConfirmSheet } from '@/components/ui/confirm-sheet';
 import { SkeletonList } from '@/components/ui/skeleton';
 import { useTrip } from '@/features/trip/hooks/use-trip';
 import { colors } from '@/theme';
@@ -29,12 +30,16 @@ import { pollRoutes } from '../poll-routes';
 import { useAddCandidates } from '../hooks/use-add-candidates';
 import { useBallot } from '../hooks/use-ballot';
 import { useCandidateNames } from '../hooks/use-candidate-names';
+import { useClosePoll } from '../hooks/use-close-poll';
 import { usePoll } from '../hooks/use-poll';
 import { usePolls } from '../hooks/use-polls';
 import {
   ballotFailLines,
+  closeConfirmDescription,
+  closedTimeOf,
   decidedLines,
   defaultClosesAt,
+  isClosedByHand,
   notVotedCount,
   notVotedLine,
   pollTypeLabel,
@@ -57,7 +62,10 @@ export function PollScreen() {
   // 메뉴로 들어와 처음 고른 투표를 붙잡는다. 앱으로 돌아와 목록을 다시 받을 때 동행이 새 투표를 열었어도
   // 보던 투표가 말없이 바뀌지 않게 한다
   const [pinnedId, setPinnedId] = useState<string | null>(null);
-  if (!pollId && pinnedId === null && list.picked) setPinnedId(list.picked.id);
+  // 이번에 열고 새로 받은 목록으로만 붙잡는다. 캐시에 남은 옛 목록으로 붙잡으면 그사이 동행이 연 투표 대신
+  // 마감된 옛 투표에 고정된다(다시 받기를 기다리는 동안은 옛 목록의 대표 투표를 보인다)
+  if (!pollId && pinnedId === null && list.isFetchedAfterMount && list.picked)
+    setPinnedId(list.picked.id);
   const targetId = pollId ?? pinnedId ?? list.picked?.id ?? null;
   const detail = usePoll(tripId, targetId);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -136,12 +144,15 @@ export function PollScreen() {
   );
 }
 
-/** 진행 중 투표: 내 선택 저장과 실패 안내를 붙여 PollOpenView로 그린다 */
+/** 진행 중 투표: 내 선택 저장과 실패 안내, 연 사람의 직접 종료를 붙여 PollOpenView로 그린다 */
 function OpenSection({ tripId, poll }: { tripId: string; poll: Poll }) {
   const { data: me } = useMe();
   const ballot = useBallot(tripId, poll);
   const add = useAddCandidates(tripId, poll.id);
   const [addOpen, setAddOpen] = useState(false);
+  const close = useClosePoll(tripId, poll.id);
+  const [closeOpen, setCloseOpen] = useState(false);
+  const [closeFailed, setCloseFailed] = useState(false);
   const view = ballot.view ?? poll;
   const { names } = useCandidateNames(view.candidates);
   const nameOf = (ids: string[]) => ids.map((id) => names[id]).filter(Boolean);
@@ -164,6 +175,34 @@ function OpenSection({ tripId, poll }: { tripId: string; poll: Poll }) {
       toast.show('후보를 넣지 못했어요. 다시 눌러 주세요');
     }
   };
+  const openClose = () => {
+    setCloseFailed(false);
+    setCloseOpen(true);
+  };
+  // 확인 창에서 [마감하기]. 성공하면 캐시가 마감된 투표로 바뀌어 이 구역이 결과 화면으로 바뀐다
+  const submitClose = () => {
+    if (close.isPending) return;
+    setCloseFailed(false);
+    close.mutate(poll.version, {
+      onSuccess: () => {
+        setCloseOpen(false);
+        toast.success('투표를 마감했어요');
+      },
+      onError: (e) => {
+        if (e.reason === 'failed') {
+          // 통신 실패. 확인 창에 남겨 다시 누르게 한다
+          setCloseFailed(true);
+          return;
+        }
+        setCloseOpen(false);
+        if (e.reason === 'closed') toast.show('이미 마감된 투표예요');
+        // 새 후보를 못 본 채 닫지 않게, 다시 받은 목록을 보여 주고 한 번 더 누르게 한다
+        else if (e.reason === 'changed') {
+          toast.show('그사이 후보가 추가됐어요. 확인하고 다시 눌러 주세요');
+        } else toast.show('투표를 연 사람만 마감할 수 있어요');
+      },
+    });
+  };
   return (
     <>
       <PollOpenView
@@ -176,6 +215,7 @@ function OpenSection({ tripId, poll }: { tripId: string; poll: Poll }) {
         onCancel={ballot.cancel}
         onRetry={ballot.retry}
         onAddCandidate={() => setAddOpen(true)}
+        onClosePoll={poll.canClose ? openClose : undefined}
       />
       <AddCandidateSheet
         visible={addOpen}
@@ -186,6 +226,17 @@ function OpenSection({ tripId, poll }: { tripId: string; poll: Poll }) {
         poll={poll}
         onSubmit={submitAdd}
         busy={add.isPending}
+      />
+      <ConfirmSheet
+        visible={closeOpen}
+        onClose={() => setCloseOpen(false)}
+        onConfirm={submitClose}
+        title="투표를 지금 마감할까요?"
+        description={closeConfirmDescription(view)}
+        confirmLabel="마감하기"
+        loading={close.isPending}
+        error={closeFailed ? '마감하지 못했어요' : undefined}
+        errorDescription="다시 눌러 주세요"
       />
     </>
   );
@@ -232,7 +283,7 @@ function ResultSection({
         heading={lines.heading}
         header={
           <PollClosedHeaderCard
-            closedAt={seoulDateTime(poll.closesAt)}
+            closedAt={seoulDateTime(closedTimeOf(poll))}
             title={resultHeadline('tie', winnerNames, topVotes).title}
             sub={notVotedLine(notVotedCount(poll))}
           />
@@ -261,7 +312,8 @@ function ResultSection({
         showMine={false}
         header={
           <PollDecidedCard
-            closedDate={seoulDate(poll.closesAt)}
+            closedDate={seoulDate(closedTimeOf(poll))}
+            byHand={isClosedByHand(poll)}
             label={`${tripTitle} 여행지`}
             name={winnerNames[0] ?? ''}
             votes={lines.votes}
@@ -286,7 +338,7 @@ function ResultSection({
       heading="결과"
       header={
         <PollClosedHeaderCard
-          closedAt={seoulDateTime(poll.closesAt)}
+          closedAt={seoulDateTime(closedTimeOf(poll))}
           title={headline.title}
           sub={headline.sub}
         />

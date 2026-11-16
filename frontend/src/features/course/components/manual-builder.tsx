@@ -18,6 +18,10 @@ type Props = {
   day: number;
   onSelectDay(day: number): void;
   saved: SavedPlace[];
+  /** 그룹 즐겨찾기를 받는 중·실패. 없으면 받은 것으로 본다(받는 중·실패를 "비어 있어요"로 보이지 않게) */
+  savedStatus?: 'loading' | 'error' | 'ready';
+  /** 그룹 즐겨찾기 다시 받기 */
+  onRetrySaved?(): void;
   /** 날짜별 지역(여러 지역일 때). 그 날 지역 장소를 칩 줄 앞에 둔다 */
   dayRegionIds?: string[];
   dayRegionNames?: string[];
@@ -134,7 +138,27 @@ export function ManualBuilder(props: Props) {
             </>
           ) : null}
         </View>
-        {props.saved.length === 0 ? (
+        {props.saved.length === 0 && props.savedStatus === 'error' ? (
+          <View style={styles.emptyTray}>
+            <Text style={[typography.caption, styles.dropText]}>
+              그룹 즐겨찾기를 불러오지 못했어요
+            </Text>
+            <PressableScale
+              accessibilityLabel="그룹 즐겨찾기 다시 불러오기"
+              style={styles.find}
+              onPress={props.onRetrySaved}
+              accessibilityRole="button"
+            >
+              <Icon name="refresh" size={16} color={colors.brand.primary} />
+            </PressableScale>
+          </View>
+        ) : props.saved.length === 0 && props.savedStatus === 'loading' ? (
+          <View style={styles.emptyTray}>
+            <Text style={[typography.caption, styles.dropText]}>
+              그룹 즐겨찾기를 불러오는 중이에요
+            </Text>
+          </View>
+        ) : props.saved.length === 0 ? (
           <View style={styles.emptyTray}>
             <Text style={[typography.caption, styles.dropText]}>그룹 즐겨찾기가 비어 있어요</Text>
             <PressableScale

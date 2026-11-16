@@ -62,6 +62,8 @@ export type ExtractionResult = {
   job: Job;
   resultStatus: 'SUCCESS' | 'MULTIPLE_CANDIDATES' | 'NOT_FOUND' | 'FAILED' | null;
   candidates: ExtractionCandidate[];
+  /** 자료에 글자로 보인 지역(인스타 위치 태그 등). 장소를 못 찾았을 때 그 지역에서 찾게 한다. 예전 서버는 주지 않는다 */
+  regionHint?: string | null;
 };
 
 /** 업로드 준비 (docs/api-spec.md UploadIntent). uploadUrl에는 API 인증 헤더를 보내지 않는다 */

@@ -9,6 +9,7 @@ import { useChatOutbox } from './hooks/use-chat-outbox';
 import { emptyWindow, mergeMessages } from './message-merge';
 import { getMessages } from './api';
 import { configureInbound, gapFillTiming } from './chat-inbound';
+import { unreadOf, useChatReads } from './chat-reads';
 import { applyChatEvent } from './realtime-chat';
 import { clearRoomIndex, rememberRooms } from './room-index';
 import { msg, range } from './testing';
@@ -77,6 +78,17 @@ describe('실시간 채팅 반영', () => {
     const spy = jest.spyOn(qc, 'invalidateQueries');
     applyChatEvent(qc, event(msg(1, { roomId: 'room-x', id: 'x-1' })));
     expect(spy).toHaveBeenCalledWith({ queryKey: CHAT_ROOMS_KEY }, { cancelRefetch: false });
+  });
+
+  it('채팅 탭을 열기 전이라 방을 몰라도 안 읽은 수는 센다', () => {
+    // 앱을 켜고 채팅 탭을 열지 않았다: 방 표도 대화방 목록도 없다
+    clearRoomIndex();
+    useChatReads.getState().clearAll();
+    const qc = new QueryClient();
+    qc.setQueryData(ME_QUERY_KEY, { id: 'me' });
+    applyChatEvent(qc, event(msg(11, { roomId: 'room-1', id: 'm-11', senderId: 'user-b' })));
+    const { latest, read } = useChatReads.getState();
+    expect(unreadOf(latest['room-1'], read['room-1'])).toBe(1);
   });
 
   it('열린 방 이벤트는 창에 들어가고 목록의 최근 메시지가 바뀐다', () => {

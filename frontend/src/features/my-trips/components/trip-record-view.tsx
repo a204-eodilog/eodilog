@@ -17,7 +17,8 @@ import { OutlinePillButton } from './outline-pill-button';
 
 /** 공동 피드 상태. 게시됨이면 노출 줄("전체 공개 · 하늘에게 숨김")과 숨긴 친구 안내 */
 export type RecordFeed =
-  { status: 'draft' } | { status: 'published'; visibility: string; hiddenNote: string | null };
+  | { status: 'draft' }
+  | { status: 'published'; visibility: string; likes: number; hiddenNote: string | null };
 
 export type TripRecordViewProps = {
   tripTitle: string;
@@ -90,6 +91,13 @@ export function TripRecordView({
                 >
                   {feed.visibility}
                 </Text>
+              ) : null}
+              {/* 친구들이 누른 좋아요 합계(2026-11-16 사용자 요청). 내 피드 상세에 들어가지 않아도 보이게 한다 */}
+              {feed.status === 'published' ? (
+                <View style={styles.likes} accessible accessibilityLabel={`좋아요 ${feed.likes}개`}>
+                  <Icon name="heart" size={14} color={colors.text.inverse} />
+                  <Text style={[typography.captionBold, styles.onBrand]}>{feed.likes}</Text>
+                </View>
               ) : null}
             </View>
             <Text style={[typography.hero, styles.onBrand]} numberOfLines={2}>
@@ -271,6 +279,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
     backgroundColor: colors.onBrand.chip,
   },
+  likes: { flexDirection: 'row', alignItems: 'center', gap: spacing[4], marginLeft: 'auto' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[8] },
   chip: {
     flexDirection: 'row',

@@ -2,6 +2,10 @@ import { describe, expect, it } from '@jest/globals';
 
 import {
   applyMyBallot,
+  closeConfirmDescription,
+  closedTimeOf,
+  decidedDateLine,
+  isClosedByHand,
   ballotFailLines,
   decidedLines,
   notVotedLine,
@@ -221,6 +225,38 @@ describe('결과 문구', () => {
     expect(decidedLines(decided)).toEqual({ votes: '3명 중 2표', voters: '모두 투표했어요' });
     expect(decidedLines({ ...decided, votedMemberCount: 2 }).voters).toBe(
       '1명이 투표하지 않았어요',
+    );
+  });
+});
+
+describe('직접 종료', () => {
+  it('마감 시각은 실제로 끝난 시각을 먼저 쓰고, 없으면 예정 시각', () => {
+    expect(closedTimeOf(poll({ closesAt: 'B', closedAt: 'A' }))).toBe('A');
+    expect(closedTimeOf(poll({ closesAt: 'B', closedAt: null }))).toBe('B');
+    // 서버에 반영되기 전 응답에는 closedAt이 없다
+    expect(closedTimeOf(poll({ closesAt: 'B', closedAt: undefined }))).toBe('B');
+  });
+
+  it('끝낸 멤버가 있으면 직접 끝낸 투표', () => {
+    expect(isClosedByHand(poll({ closedByMemberId: 'm1' }))).toBe(true);
+    expect(isClosedByHand(poll({ closedByMemberId: null }))).toBe(false);
+    expect(isClosedByHand(poll({ closedByMemberId: undefined }))).toBe(false);
+  });
+
+  it('확정 카드 날짜 줄은 직접 끝냈으면 자동이라고 하지 않는다', () => {
+    expect(decidedDateLine('10.27(화)', false)).toBe('10.27(화) 마감 후 자동 확정됐어요');
+    expect(decidedDateLine('10.27(화)', true)).toBe('10.27(화) 투표를 연 사람이 마감해 확정됐어요');
+  });
+
+  it('확인 창 설명은 표 상황에 맞춘다', () => {
+    expect(closeConfirmDescription(poll({ votedMemberCount: 0 }))).toBe(
+      '아직 아무도 투표하지 않았어요. 지금 마감하면 확정 없이 끝나요. 되돌릴 수 없어요',
+    );
+    expect(closeConfirmDescription(poll({ eligibleMemberCount: 3, votedMemberCount: 2 }))).toBe(
+      '1명이 아직 투표하지 않았어요. 지금 마감하면 가장 많이 받은 곳으로 확정돼요. 되돌릴 수 없어요',
+    );
+    expect(closeConfirmDescription(poll({ eligibleMemberCount: 3, votedMemberCount: 3 }))).toBe(
+      '지금 마감하면 가장 많이 받은 곳으로 확정돼요. 되돌릴 수 없어요',
     );
   });
 });

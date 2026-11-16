@@ -19,7 +19,13 @@ public record ExtractionResult(
 		ResultStatus resultStatus,
 
 		@Schema(description = "후보. 같은 name의 후보들은 한 언급의 여러 지점이다", requiredMode = Schema.RequiredMode.REQUIRED)
-		List<Candidate> candidates) {
+		List<Candidate> candidates,
+
+		@Schema(description = """
+				자료에 글자로 보인 지역 단서(인스타 위치 태그·본문·주소, 30자 이하). 장소를 못 찾았을 때 앱이 '이 지역에서 찾기'에 쓴다.
+				없거나 작업이 성공하기 전이면 null""",
+				example = "강원도 강릉", nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
+		String regionHint) {
 
 	public enum ResultStatus {
 		SUCCESS, MULTIPLE_CANDIDATES, NOT_FOUND, FAILED

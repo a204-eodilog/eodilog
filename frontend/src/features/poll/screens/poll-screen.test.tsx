@@ -6,6 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import {
   addCandidate,
+  closePoll,
   createPoll,
   getPoll,
   getPolls,
@@ -41,6 +42,7 @@ jest.mock('../api', () => ({
   createPoll: jest.fn(),
   replaceBallot: jest.fn(),
   addCandidate: jest.fn(),
+  closePoll: jest.fn(),
   getPlace: jest.fn(),
   getTripSavedPlaces: jest.fn(),
 }));
@@ -62,6 +64,33 @@ jest.mock('@/features/trip/hooks/use-region-names', () => ({
     ready: true,
   }),
 }));
+
+// 확인 시트도 하단 시트라 내용만 그린다: 제목, 설명, 오류, 확인 버튼
+jest.mock('@/components/ui/confirm-sheet', () => {
+  const { Pressable, Text, View } =
+    jest.requireActual<typeof import('react-native')>('react-native');
+  return {
+    ConfirmSheet: (props: {
+      visible: boolean;
+      title: string;
+      description?: string;
+      confirmLabel: string;
+      error?: string;
+      loading?: boolean;
+      onConfirm: () => void;
+    }) =>
+      props.visible ? (
+        <View>
+          <Text>{props.title}</Text>
+          <Text>{props.description}</Text>
+          {props.error ? <Text>{props.error}</Text> : null}
+          <Pressable accessibilityRole="button" disabled={props.loading} onPress={props.onConfirm}>
+            <Text>{props.confirmLabel}</Text>
+          </Pressable>
+        </View>
+      ) : null,
+  };
+});
 
 jest.mock('@/hooks/use-me', () => ({ useMe: () => ({ data: { nickname: '영광' } }) }));
 
@@ -144,6 +173,7 @@ const mockCreatePoll = jest.mocked(createPoll);
 const mockSaved = jest.mocked(getTripSavedPlaces);
 const mockReplace = jest.mocked(replaceBallot);
 const mockAddCandidate = jest.mocked(addCandidate);
+const mockClosePoll = jest.mocked(closePoll);
 
 let lastClient: QueryClient;
 function renderScreen() {
@@ -311,6 +341,90 @@ describe('진행 중 투표', () => {
     await fireEvent.press(await screen.findByLabelText('내 투표 취소'));
     expect(mockReplace).toHaveBeenCalledWith('trip-1', 'poll-1', [], 1);
     expect(await screen.findByText('후보를 눌러 투표해요')).toBeTruthy();
+  });
+});
+
+describe('직접 종료', () => {
+  // 지역 투표가 확정되면 여행 캐시를 투표마다 한 번만 새로 한다. 아래 '마감 결과' 테스트의 poll-1과 겹치지 않게 다른 투표로 둔다
+  const MINE = { ...OPEN, id: 'poll-mine', canClose: true, eligibleMemberCount: 3 };
+  const CLOSED_BY_ME = {
+    ...MINE,
+    status: 'FINALIZED' as const,
+    closedReason: 'DEADLINE' as const,
+    version: 2,
+    canClose: false,
+    closesAt: '2099-01-01T00:00:00Z',
+    closedAt: '2026-10-27T09:40:00Z',
+    closedByMemberId: 'member-me',
+    candidates: [
+      candidate('c1', { regionId: 'busan', voteCount: 2 }),
+      candidate('c2', { regionId: 'gangneung', voteCount: 1 }),
+    ],
+    selectedCandidateIds: ['c1'],
+  };
+
+  beforeEach(() => {
+    mockParams.pollId = 'poll-mine';
+  });
+
+  it('내가 끝낼 수 없는 투표에는 투표 종료 버튼이 없다', async () => {
+    mockGetPoll.mockResolvedValue(OPEN);
+    await renderScreen();
+    expect(await screen.findByText('부산에 투표했어요')).toBeTruthy();
+    expect(screen.queryByText('투표 종료')).toBeNull();
+  });
+
+  it('투표 종료를 누르면 확인을 받고, 마감하면 실제 마감 시각으로 결과 화면이 된다', async () => {
+    mockGetPoll.mockResolvedValue(MINE);
+    mockClosePoll.mockResolvedValue(CLOSED_BY_ME);
+    await renderScreen();
+    await fireEvent.press(await screen.findByText('투표 종료'));
+    expect(screen.getByText('투표를 지금 마감할까요?')).toBeTruthy();
+    // 3명 중 2명이 투표했다
+    expect(
+      screen.getByText(
+        '1명이 아직 투표하지 않았어요. 지금 마감하면 가장 많이 받은 곳으로 확정돼요. 되돌릴 수 없어요',
+      ),
+    ).toBeTruthy();
+    expect(mockClosePoll).not.toHaveBeenCalled();
+
+    await fireEvent.press(screen.getByText('마감하기'));
+    expect(mockClosePoll).toHaveBeenCalledWith('trip-1', 'poll-mine', 1);
+    expect(await screen.findByText('투표가 마감됐어요')).toBeTruthy();
+    // 예정 시각(2099년)이 아니라 실제로 끝낸 시각
+    expect(screen.getByText('10.27(화) 18:40 마감')).toBeTruthy();
+
+    await fireEvent.press(screen.getByText('확정된 여행지 보기'));
+    expect(await screen.findByText('10.27(화) 투표를 연 사람이 마감해 확정됐어요')).toBeTruthy();
+  });
+
+  it('그사이 후보가 추가돼 거절되면 다시 받아 새 후보를 보이고 마감하지 않는다', async () => {
+    const withNew = {
+      ...MINE,
+      version: 2,
+      candidates: [...MINE.candidates, candidate('c3', { regionId: 'yeosu' })],
+    };
+    mockGetPoll.mockResolvedValueOnce(MINE).mockResolvedValue(withNew);
+    mockClosePoll.mockRejectedValueOnce(versionConflict());
+    await renderScreen();
+    await fireEvent.press(await screen.findByText('투표 종료'));
+    await fireEvent.press(screen.getByText('마감하기'));
+    expect(await screen.findByLabelText('여수시 0표')).toBeTruthy();
+    // 확인 창이 닫히고 진행 중 화면에 남는다
+    await waitFor(() => expect(screen.queryByText('투표를 지금 마감할까요?')).toBeNull());
+    expect(screen.getByText('투표 종료')).toBeTruthy();
+  });
+
+  it('통신이 실패하면 확인 창에 남아 다시 누를 수 있다', async () => {
+    mockGetPoll.mockResolvedValue(MINE);
+    mockClosePoll.mockRejectedValueOnce(new Error('network')).mockResolvedValue(CLOSED_BY_ME);
+    await renderScreen();
+    await fireEvent.press(await screen.findByText('투표 종료'));
+    await fireEvent.press(screen.getByText('마감하기'));
+    expect(await screen.findByText('마감하지 못했어요')).toBeTruthy();
+    await fireEvent.press(screen.getByText('마감하기'));
+    expect(await screen.findByText('투표가 마감됐어요')).toBeTruthy();
+    expect(mockClosePoll).toHaveBeenCalledTimes(2);
   });
 });
 

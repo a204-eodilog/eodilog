@@ -78,23 +78,49 @@ const hhmm = (iso: string) => {
     : `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 };
 
-/** 서버 응답 → S28 줄. 가까운 순(걷는 시간), 모르면 뒤로 */
+/** 같은 곳으로 볼 거리(m). 공공데이터에 같은 약국이 두 번(주소 표기만 다르게) 들어 있다 */
+const SAME_PLACE_M = 30;
+
+function metersBetween(a: Facility, b: Facility): number {
+  const lat = ((a.latitude + b.latitude) / 2) * (Math.PI / 180);
+  const dy = (a.latitude - b.latitude) * 111_320;
+  const dx = (a.longitude - b.longitude) * 111_320 * Math.cos(lat);
+  return Math.hypot(dx, dy);
+}
+
+/**
+ * 이름이 같고 30m 안에 있는 시설은 하나만 남긴다(가까운 쪽).
+ * 2026-11-16 공기계: 해운대 '더좋은약사와약국'·'해운메디약국'이 두 줄씩 나와 핀이 겹쳤다
+ */
+export function withoutDuplicates(items: readonly Facility[]): Facility[] {
+  const kept: Facility[] = [];
+  for (const f of items) {
+    const name = f.name.replace(/\s+/g, '');
+    const same = kept.some(
+      (k) => k.name.replace(/\s+/g, '') === name && metersBetween(k, f) <= SAME_PLACE_M,
+    );
+    if (!same) kept.push(f);
+  }
+  return kept;
+}
+
+/** 서버 응답 → S28 줄. 가까운 순(걷는 시간), 모르면 뒤로. 같은 곳이 두 번 오면 하나만 */
 export function toFacilityRows(items: readonly Facility[]): FacilityRow[] {
-  return [...items]
-    .sort((a, b) => (a.walkingSeconds ?? Infinity) - (b.walkingSeconds ?? Infinity))
-    .map((f, i) => {
-      const at = hhmm(f.queriedAt);
-      return {
-        id: f.providerId,
-        number: i + 1,
-        name: f.name,
-        walk:
-          f.walkingSeconds === null
-            ? null
-            : `도보 ${Math.max(1, Math.round(f.walkingSeconds / 60))}분`,
-        status: f.availability ? `${f.availability}${at ? ` · ${at} 확인` : ''}` : null,
-        latitude: f.latitude,
-        longitude: f.longitude,
-      };
-    });
+  return withoutDuplicates(
+    [...items].sort((a, b) => (a.walkingSeconds ?? Infinity) - (b.walkingSeconds ?? Infinity)),
+  ).map((f, i) => {
+    const at = hhmm(f.queriedAt);
+    return {
+      id: f.providerId,
+      number: i + 1,
+      name: f.name,
+      walk:
+        f.walkingSeconds === null
+          ? null
+          : `도보 ${Math.max(1, Math.round(f.walkingSeconds / 60))}분`,
+      status: f.availability ? `${f.availability}${at ? ` · ${at} 확인` : ''}` : null,
+      latitude: f.latitude,
+      longitude: f.longitude,
+    };
+  });
 }

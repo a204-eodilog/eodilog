@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams, usePreventRemove } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -11,18 +11,17 @@ import { useGalleryAi } from '@/features/ondevice/use-gallery-ai';
 import { getSettings } from '@/features/settings/api';
 import { SETTINGS_QUERY_KEY } from '@/features/settings/hooks/use-server-settings';
 
-import { applyDeviceClassification, getTrip, type DevicePhotoResult } from '../api';
+import { getTrip } from '../api';
 import { PhotoUploadView } from '../components/photo-upload-view';
 import { usePhotoUpload } from '../hooks/use-photo-upload';
 import {
   addPickedPhotos,
-  inBatches,
   MAX_PHOTO_BYTES,
   MAX_PHOTOS,
   PHOTO_PICK_QUALITY,
   skippedMessage,
 } from '../photo-rules';
-import type { PhotoTopic, PickedPhoto, UploadItem } from '../types';
+import type { PhotoTopic, PickedPhoto } from '../types';
 
 /**
  * S30 사진 선택·업로드(/trips/[tripId]/photos/upload). S17 [사진 올리기]·S33 [사진 올리기]에서 온다.
@@ -31,7 +30,6 @@ import type { PhotoTopic, PickedPhoto, UploadItem } from '../types';
  */
 export function PhotoUploadScreen() {
   const { tripId = '' } = useLocalSearchParams<{ tripId: string }>();
-  const queryClient = useQueryClient();
   const trip = useQuery({
     queryKey: ['trips', tripId, 'photos', 'trip'],
     queryFn: () => getTrip(tripId),
@@ -43,10 +41,13 @@ export function PhotoUploadScreen() {
     const r = tripTimeRange(trip.data?.startDate ?? null, trip.data?.endDate ?? null);
     return r ? [r] : null;
   }, [trip.data?.startDate, trip.data?.endDate]);
-  const gallery = useGalleryAi({ ranges, aiMode: settings.data?.ai.photoClassification });
+  const gallery = useGalleryAi({ ranges, aiMode: settings.data?.ai?.photoClassification });
   // 폰 AI로 담은 사진의 분석 결과(기기 사진 id → 주제·묶음 키). 다 올린 뒤 서버에 결과만 보낸다
   const deviceResults = useRef(new Map<string, { topic: PhotoTopic; groupKey: string | null }>());
-  const upload = usePhotoUpload(tripId);
+  // 폰 AI가 이미 분류한 사진은 그 결과를 저장하고 서버 AI 분류에는 보내지 않는다(같은 사진을 두 번 분류하지 않게)
+  const upload = usePhotoUpload(tripId, {
+    deviceResultFor: (key) => deviceResults.current.get(key) ?? null,
+  });
   const [picked, setPicked] = useState<PickedPhoto[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [confirmCancel, setConfirmCancel] = useState(false);
@@ -64,19 +65,16 @@ export function PhotoUploadScreen() {
   // 다 올리면(이때는 막기가 이미 풀려 있다) 토스트와 함께 S31로
   useEffect(() => {
     if (upload.phase !== 'done') return;
-    // 폰 결과(주제·묶음)를 저장한 뒤 여행 사진 목록을 다시 받아 S31에 바로 보이게 한다
-    void sendDeviceResults(tripId, upload.items, deviceResults.current).then((applied) => {
-      if (applied) void queryClient.invalidateQueries({ queryKey: ['trips', tripId] });
-    });
     toast.success(`사진 ${upload.items.length}장을 올렸어요`);
     router.dismissTo(`/trips/${tripId}/photos`);
-  }, [upload.phase, upload.items, tripId, queryClient]);
+  }, [upload.phase, upload.items, tripId]);
 
-  const pick = async () => {
+  /** 사진첩을 연다. 고르지 않고 닫았으면 false */
+  const pick = async (): Promise<boolean> => {
     const remaining = MAX_PHOTOS - picked.length;
     if (remaining <= 0) {
       toast.show(`한 번에 ${MAX_PHOTOS}장까지 올릴 수 있어요`);
-      return;
+      return true;
     }
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -87,15 +85,17 @@ export function PhotoUploadScreen() {
         exif: true,
         quality: PHOTO_PICK_QUALITY,
       });
-      if (result.canceled) return;
+      if (result.canceled) return false;
       const { photos, skipped } = addPickedPhotos(picked, result.assets);
       const added = photos.slice(picked.length);
       setPicked(photos);
       setSelected((prev) => new Set([...prev, ...added.map((p) => p.key)]));
       const message = skippedMessage(skipped);
       if (message) toast.show(message);
+      return true;
     } catch {
       toast.error('사진을 불러오지 못했어요');
+      return true;
     }
   };
 
@@ -126,6 +126,29 @@ export function PhotoUploadScreen() {
     else if (added.length < chosen.filter((g) => !have.has(g.id)).length)
       toast.show(added.length === 0 ? '사진을 담지 못했어요' : '일부 사진은 담지 못했어요');
   };
+
+  // 들어오자마자 사진첩을 연다. [사진 올리기]를 누른 뒤 빈 화면에서 한 번 더 누르게 하지 않는다(2026-11-16 사용자 지적).
+  // 처음 연 사진첩을 고르지 않고 닫으면 온 화면으로 돌아간다.
+  // 폰 AI를 쓸 수 있으면 열지 않는다. 빈 화면이 여행 기간 사진을 정리해 보여 주는 폰 AI 카드이기 때문이다
+  // ([갤러리에서 직접 고르기]로 사진첩도 열 수 있다)
+  // 규칙 끄기 주석을 쓰면 React Compiler가 화면 전체를 건너뛰어, 처음 연 pick을 ref로 잡아 둔다
+  const firstPick = useRef(pick);
+  const showsGalleryAi = useRef(gallery.available);
+  const opened = useRef(false);
+  const active = useRef(false);
+  useEffect(() => {
+    active.current = true;
+    if (!opened.current && !showsGalleryAi.current) {
+      opened.current = true;
+      void firstPick.current().then((chose) => {
+        if (active.current && !chose && router.canGoBack()) router.back();
+      });
+    }
+    // 사진첩 응답이 늦게 와도 이미 떠난 화면에서 다른 화면을 닫지 않는다.
+    return () => {
+      active.current = false;
+    };
+  }, []);
 
   const toggle = (key: string) =>
     setSelected((prev) => {
@@ -189,26 +212,3 @@ export function PhotoUploadScreen() {
  * 다 올린 뒤 폰 AI 결과(주제·비슷한 사진 묶음)를 서버에 보낸다. 사진이 아니라 결과만 간다.
  * 실패해도 사진은 이미 올라갔으니 조용히 넘어간다(주제는 S32에서 직접 고칠 수 있다)
  */
-/** 올린 사진의 폰 분류 결과를 서버에 저장한다. 한 묶음이라도 저장되면 true */
-async function sendDeviceResults(
-  tripId: string,
-  items: readonly UploadItem[],
-  results: ReadonlyMap<string, { topic: PhotoTopic; groupKey: string | null }>,
-): Promise<boolean> {
-  const photos: DevicePhotoResult[] = items.flatMap((item) => {
-    const r = results.get(item.photo.key);
-    return item.status === 'done' && item.registered && r
-      ? [{ photoId: item.registered.id, expectedVersion: item.registered.version, ...r }]
-      : [];
-  });
-  let applied = false;
-  for (const batch of inBatches(photos)) {
-    try {
-      await applyDeviceClassification(tripId, batch);
-      applied = true;
-    } catch {
-      // 409(AI 분류 끔, 버전 다름)나 연결 실패는 무시한다
-    }
-  }
-  return applied;
-}

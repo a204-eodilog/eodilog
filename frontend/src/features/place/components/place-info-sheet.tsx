@@ -9,12 +9,16 @@ import { PressableScale } from '@/components/ui/pressable-scale';
 import { assetSource } from '@/lib/asset-image';
 import { colors, radius, spacing, typography } from '@/theme';
 
+import { useSavedPlaceIds, useUnsavePlace } from '@/features/saved';
+
 import { getPlace, getPlaceReviews, getPlaceSocial, type PlaceInfo, toPlaceInfo } from '../info';
 
 export type PlaceInfoSheetViewProps = {
   visible: boolean;
   state: 'loading' | 'error' | 'ready';
   info?: PlaceInfo;
+  /** 내 개인 즐겨찾기에 이미 있는 곳. 저장 버튼을 '저장한 곳' 모양으로 바꾸고, 누르면 해제한다 */
+  saved?: boolean;
   onClose: () => void;
   onSave: () => void;
   onVisitors: () => void;
@@ -88,13 +92,23 @@ export function PlaceInfoSheetView(props: PlaceInfoSheetViewProps) {
             </View>
           ) : null}
           <View style={styles.saveRow}>
+            {/* 이미 저장한 곳은 책갈피 색을 바꿔 알린다(글은 붙이지 않는다). 다시 누르면 저장을 해제한다 */}
             <PressableScale
               onPress={props.onSave}
-              style={({ pressed }) => [styles.save, pressed && styles.pressed]}
+              style={({ pressed }) => [
+                styles.save,
+                props.saved && styles.saveDone,
+                pressed && styles.pressed,
+              ]}
               accessibilityRole="button"
-              accessibilityLabel={`${info.name} 저장`}
+              accessibilityLabel={props.saved ? `${info.name} 저장 해제` : `${info.name} 저장`}
             >
-              <Icon name="bookmark" size={22} color={colors.text.inverse} />
+              <Icon
+                name="bookmark"
+                size={22}
+                color={props.saved ? colors.brand.primary : colors.text.inverse}
+                filled={props.saved}
+              />
             </PressableScale>
           </View>
         </View>
@@ -142,6 +156,9 @@ export function PlaceInfoSheet({
     enabled: !!id,
     retry: false,
   });
+  const savedIds = useSavedPlaceIds();
+  const unsave = useUnsavePlace();
+  const saved = !!id && savedIds.has(id);
   const state = place.isError && !place.data ? 'error' : place.data ? 'ready' : 'loading';
   return (
     <PlaceInfoSheetView
@@ -152,8 +169,16 @@ export function PlaceInfoSheet({
           ? toPlaceInfo({ place: place.data, social: social.data, reviews: reviews.data, reason })
           : undefined
       }
+      saved={saved}
       onClose={onClose}
-      onSave={() => place.data && onSave({ id: place.data.id, name: place.data.name })}
+      // 이미 저장한 곳이면 저장을 처음부터 다시 하지 않고 해제한다.
+      // 안내와 [되돌리기]는 이 창 아래에 떠서 창이 열려 있으면 누를 수 없다. 그래서 창을 먼저 닫는다
+      onSave={() => {
+        if (saved) {
+          onClose();
+          unsave(id);
+        } else if (place.data) onSave({ id: place.data.id, name: place.data.name });
+      }}
       onVisitors={() => placeId && onVisitors?.(placeId)}
       onRetry={() => void place.refetch()}
     />
@@ -163,6 +188,7 @@ export function PlaceInfoSheet({
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   pressed: { opacity: 0.7 },
+  saveDone: { backgroundColor: colors.brand.primaryBg },
   loading: { marginVertical: spacing[32] },
   error: { alignItems: 'center', gap: spacing[10], paddingVertical: spacing[24] },
   retry: {
@@ -187,7 +213,13 @@ const styles = StyleSheet.create({
   line: { flexDirection: 'row', alignItems: 'center', gap: spacing[10], minHeight: 28 },
   lineText: { ...typography.body, color: colors.text.default },
   score: { ...typography.bodyBold, color: colors.text.default },
-  saveRow: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: spacing[4] },
+  saveRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    gap: spacing[10],
+    marginTop: spacing[4],
+  },
   save: {
     width: 52,
     height: 52,

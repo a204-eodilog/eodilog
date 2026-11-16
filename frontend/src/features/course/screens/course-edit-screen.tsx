@@ -630,7 +630,8 @@ export function CourseEditScreen() {
         <ChooseView
           regionName={regionName}
           period={formatTripPeriod(trip.data.startDate, trip.data.endDate)}
-          savedCount={saved.data?.length ?? 0}
+          // 받는 중·실패를 0곳과 나눈다(받지 못해도 "모은 장소 0곳"으로 보였다)
+          savedCount={saved.data ? saved.data.length : saved.isError ? 'error' : 'loading'}
           onAuto={() => void runAuto()}
           onManual={startManual}
           autoBusy={auto.status === 'requesting'}
@@ -660,6 +661,8 @@ export function CourseEditScreen() {
         day={current}
         onSelectDay={setDay}
         saved={saved.data ?? []}
+        savedStatus={saved.data ? 'ready' : saved.isError ? 'error' : 'loading'}
+        onRetrySaved={() => void saved.refetch()}
         onPlace={(place) => change(addPlace(draft, current, place, newKey()))}
         onFind={() => void findPlace()}
         onBuild={() => {

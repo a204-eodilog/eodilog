@@ -1005,6 +1005,112 @@ class PhotoUploadApiTest {
         assertThat(storage.streamsOpened.get()).isEqualTo(storage.streamsClosed.get());
     }
 
+    @Test void deviceClassificationGroupsSharedKeysOnlyAndAcceptsConfirmMode() throws Exception {
+        jdbc.update("insert into user_settings(user_id,photo_classification_mode) values(?,'CONFIRM')",owner);
+        var ids=classificationPhotos(4);
+        String body=deviceBody(deviceItem(ids.get(0),1,"FOOD","g1"),deviceItem(ids.get(1),1,"PEOPLE","g1"),
+                deviceItem(ids.get(2),1,"LANDSCAPE","solo"),deviceItem(ids.get(3),1,"OTHER",null));
+        device(owner,body).andExpect(status().isOk()).andExpect(jsonPath("$.data.photos.length()").value(4))
+                .andExpect(jsonPath("$.data.photos[0].id").value(ids.get(0).toString()))
+                .andExpect(jsonPath("$.data.photos[0].version").value(2))
+                .andExpect(jsonPath("$.data.photos[0].topics[0]").value("FOOD"))
+                .andExpect(jsonPath("$.data.photos[1].topics[0]").value("PEOPLE"))
+                .andExpect(jsonPath("$.data.photos[0].groupId").exists())
+                .andExpect(jsonPath("$.data.photos[2].groupId").doesNotExist())
+                .andExpect(jsonPath("$.data.photos[3].groupId").doesNotExist());
+        UUID group=jdbc.queryForObject("select group_id from photos where id=?",UUID.class,ids.get(0));
+        assertThat(group).isNotNull().isEqualTo(jdbc.queryForObject("select group_id from photos where id=?",UUID.class,ids.get(1)));
+        assertThat(count("select count(*) from photo_groups where trip_id=? and source_job_id is null",trip)).isEqualTo(1);
+        assertThat(count("select count(*) from photo_groups where trip_id=?",trip)).isEqualTo(1);
+        assertThat(count("select count(*) from photo_topics where source='AI' and photo_id in (select id from photos where trip_id=?)",trip)).isEqualTo(4);
+        assertThat(count("select count(*) from photos where trip_id=? and version=2",trip)).isEqualTo(4);
+        mvc.perform(get("/api/v1/trips/{trip}/photos",trip).param("groupId",group.toString()).with(authUser(friend)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.length()").value(2));
+        // Resending the same body is stale now: nothing changes a second time.
+        device(owner,body).andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("VERSION_CONFLICT"));
+        assertThat(count("select count(*) from photo_groups where trip_id=?",trip)).isEqualTo(1);
+        // AUTO is allowed too, and a group key never reuses a client value as the stored id.
+        jdbc.update("update user_settings set photo_classification_mode='AUTO' where user_id=?",owner);
+        device(owner,deviceBody(deviceItem(ids.get(2),2,"FOOD","g1"),deviceItem(ids.get(3),2,"FOOD","g1"))).andExpect(status().isOk());
+        assertThat(count("select count(*) from photo_groups where trip_id=?",trip)).isEqualTo(2);
+        assertThat(jdbc.queryForObject("select group_id from photos where id=?",UUID.class,ids.get(2))).isNotEqualTo(group);
+    }
+
+    @Test void deviceClassificationIsBlockedWhenOffAndChangesNothing() throws Exception {
+        var ids=classificationPhotos(1);
+        jdbc.update("insert into user_settings(user_id,photo_classification_mode) values(?,'OFF')",owner);
+        device(owner,deviceBody(deviceItem(ids.getFirst(),1,"FOOD",null)))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("AI_FEATURE_DISABLED"));
+        assertThat(count("select version from photos where id=?",ids.getFirst())).isEqualTo(1);
+        assertThat(count("select count(*) from photo_topics where photo_id=?",ids.getFirst())).isZero();
+    }
+
+    @Test void deviceClassificationVersionConflictWritesNothing() throws Exception {
+        var ids=classificationPhotos(3);
+        device(owner,deviceBody(deviceItem(ids.get(0),1,"FOOD","g"),deviceItem(ids.get(1),1,"FOOD","g"),deviceItem(ids.get(2),5,"FOOD","g")))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("VERSION_CONFLICT"));
+        assertThat(count("select count(*) from photos where trip_id=? and version=1 and group_id is null",trip)).isEqualTo(3);
+        assertThat(count("select count(*) from photo_groups where trip_id=?",trip)).isZero();
+        assertThat(count("select count(*) from photo_topics where photo_id in (select id from photos where trip_id=?)",trip)).isZero();
+    }
+
+    @Test void deviceClassificationRejectsPhotosTheCallerDoesNotOwnOrCannotSee() throws Exception {
+        var mine=classificationPhotos(1);
+        UUID batch=batch(friend,1,UUID.randomUUID().toString());UUID asset=intent(friend,batch,true);complete(friend,asset).andExpect(status().isOk());
+        UUID theirs=UUID.fromString(data(register(friend,batch,asset).andExpect(status().isCreated())).path("id").asString());
+        device(owner,deviceBody(deviceItem(mine.getFirst(),1,"FOOD","g"),deviceItem(theirs,1,"FOOD","g")))
+                .andExpect(status().isNotFound()).andExpect(jsonPath("$.error.code").value("PHOTO_NOT_FOUND"));
+        device(owner,deviceBody(deviceItem(UUID.randomUUID(),1,"FOOD",null))).andExpect(status().isNotFound());
+        mvc.perform(post("/api/v1/trips/{trip}/photo-classifications/device",trip).with(authUser(outsider)).contentType(MediaType.APPLICATION_JSON)
+                .content(deviceBody(deviceItem(mine.getFirst(),1,"FOOD",null)))).andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("TRIP_NOT_FOUND"));
+        remove(owner,mine.getFirst()).andExpect(status().isAccepted());
+        device(owner,deviceBody(deviceItem(mine.getFirst(),2,"FOOD",null))).andExpect(status().isNotFound());
+        assertThat(count("select count(*) from photo_topics where photo_id in (?,?)",mine.getFirst(),theirs)).isZero();
+        assertThat(count("select version from photos where id=?",theirs)).isEqualTo(1);
+        assertThat(count("select count(*) from photo_groups where trip_id=?",trip)).isZero();
+    }
+
+    @Test void deviceClassificationProtectsManualTopicsLikeApply() throws Exception {
+        var ids=classificationPhotos(2);
+        edit(owner,ids.get(1),"{\"expectedVersion\":1,\"topics\":[\"PEOPLE\"]}").andExpect(status().isOk());
+        device(owner,deviceBody(deviceItem(ids.get(0),1,"FOOD","g"),deviceItem(ids.get(1),2,"FOOD","g")))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("VERSION_CONFLICT"));
+        assertThat(jdbc.queryForList("select topic||':'||source from photo_topics where photo_id=?",String.class,ids.get(1))).containsExactly("PEOPLE:MANUAL");
+        assertThat(count("select version from photos where id=?",ids.get(0))).isEqualTo(1);
+        assertThat(count("select count(*) from photo_groups where trip_id=?",trip)).isZero();
+        // A cleared topic list ([]) is a manual edit too.
+        edit(owner,ids.get(0),"{\"expectedVersion\":1,\"topics\":[]}").andExpect(status().isOk());
+        device(owner,deviceBody(deviceItem(ids.get(0),2,"FOOD",null))).andExpect(status().isConflict());
+        assertThat(count("select count(*) from photo_topics where photo_id=?",ids.get(0))).isZero();
+    }
+
+    @Test void deviceClassificationValidatesBodyBeforeWriting() throws Exception {
+        var ids=classificationPhotos(1);UUID id=ids.getFirst();
+        for(String invalid:List.of(
+                "{\"photos\":[]}","{}",
+                "{\"photos\":[{\"photoId\":\""+id+"\",\"expectedVersion\":1,\"topic\":\"CAT\"}]}",
+                "{\"photos\":[{\"photoId\":\""+id+"\",\"expectedVersion\":1,\"topic\":\"food\"}]}",
+                "{\"photos\":[{\"photoId\":\""+id+"\",\"expectedVersion\":1}]}",
+                "{\"photos\":[{\"photoId\":\""+id+"\",\"expectedVersion\":1,\"topic\":[\"FOOD\"]}]}",
+                "{\"photos\":[{\"photoId\":\""+id+"\",\"expectedVersion\":0,\"topic\":\"FOOD\"}]}",
+                "{\"photos\":[{\"photoId\":\""+id+"\",\"expectedVersion\":1.5,\"topic\":\"FOOD\"}]}",
+                "{\"photos\":[{\"photoId\":\""+id+"\",\"expectedVersion\":\"1\",\"topic\":\"FOOD\"}]}",
+                "{\"photos\":[{\"photoId\":\""+id+"\",\"expectedVersion\":1,\"topic\":\"FOOD\",\"groupKey\":\"\"}]}",
+                "{\"photos\":[{\"photoId\":\""+id+"\",\"expectedVersion\":1,\"topic\":\"FOOD\",\"groupKey\":\""+"k".repeat(65)+"\"}]}",
+                "{\"photos\":[{\"expectedVersion\":1,\"topic\":\"FOOD\"}]}",
+                deviceBody(deviceItem(id,1,"FOOD",null),deviceItem(id,1,"PEOPLE",null))))
+            device(owner,invalid).andExpect(status().isBadRequest());
+        var many=new ArrayList<Map<String,Object>>();
+        for(int i=0;i<51;i++) many.add(deviceItem(UUID.randomUUID(),1,"FOOD",null));
+        device(owner,json.writeValueAsString(Map.of("photos",many)))
+                .andExpect(status().isUnprocessableEntity()).andExpect(jsonPath("$.error.code").value("INPUT_LIMIT_EXCEEDED"));
+        assertThat(count("select version from photos where id=?",id)).isEqualTo(1);
+        assertThat(count("select count(*) from photo_topics where photo_id=?",id)).isZero();
+        device(owner,deviceBody(deviceItem(id,1,"FOOD","k".repeat(64)))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.photos[0].groupId").doesNotExist());
+    }
+
     @Test @EnabledIfEnvironmentVariable(named="PHOTO_AI_URL",matches=".+")
     void realPhotoAiUploadWorkerApplyAndSummary() throws Exception {
         classificationAi.real=true;
@@ -1029,6 +1135,13 @@ class PhotoUploadApiTest {
     UUID classify(List<UUID> ids) throws Exception {return UUID.fromString(data(mvc.perform(post("/api/v1/trips/{trip}/photo-classifications",trip).with(authUser(owner)).header("Idempotency-Key",UUID.randomUUID()).contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of("photoIds",ids)))).andExpect(status().isAccepted())).path("jobId").asString());}
     String classificationBody(List<UUID> ids) {return json.writeValueAsString(Map.of("expectedPhotoVersions",ids.stream().map(id->Map.of("photoId",id,"version",1)).toList()));}
     ResultActions applyClassification(UUID job,String body) throws Exception {return mvc.perform(post("/api/v1/trips/{trip}/photo-classifications/{job}/apply",trip,job).with(authUser(owner)).contentType(MediaType.APPLICATION_JSON).content(body));}
+    Map<String,Object> deviceItem(UUID id,long version,String topic,String groupKey) {
+        Map<String,Object> item=new LinkedHashMap<>();item.put("photoId",id);item.put("expectedVersion",version);item.put("topic",topic);
+        if(groupKey!=null) item.put("groupKey",groupKey);
+        return item;
+    }
+    @SafeVarargs final String deviceBody(Map<String,Object>... items) {return json.writeValueAsString(Map.of("photos",List.of(items)));}
+    ResultActions device(UUID user,String body) throws Exception {return mvc.perform(post("/api/v1/trips/{trip}/photo-classifications/device",trip).with(authUser(user)).contentType(MediaType.APPLICATION_JSON).content(body));}
     void awaitClassification(UUID job,String state) throws Exception {awaitClassification(job,state,20);}
     void awaitClassification(UUID job,String state,int seconds) throws Exception {
         long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(seconds);

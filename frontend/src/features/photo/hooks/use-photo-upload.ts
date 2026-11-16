@@ -14,7 +14,9 @@ import {
   registerPhoto,
   requestUploadIntent,
 } from '../api';
-import type { PickedPhoto, UploadItem } from '../types';
+import { applyDeviceResults, classifyUploaded } from '../classify';
+import { splitClassification, type DeviceTopicResult } from '../photo-rules';
+import type { PickedPhoto, TripPhoto, UploadItem } from '../types';
 
 /** 업로드 화면 단계. pick 고르기 / uploading 올리는 중 / failed 일부(또는 전부) 실패 / done 모두 올림 */
 export type UploadPhase = 'pick' | 'uploading' | 'failed' | 'done';
@@ -29,7 +31,15 @@ const BATCH_GONE = ['PHOTO_BATCH_EXPIRED', 'PHOTO_BATCH_FULL'];
  * 실패한 사진만 다시 올릴 수 있고, 완료까지 끝난 사진은 다시 보내지 않고 등록만 한다.
  * 취소하면 남은 사진을 멈추고 완료 전 파일은 지운다. 이미 등록한 사진은 남는다
  */
-export function usePhotoUpload(tripId: string) {
+export type PhotoUploadOptions = {
+  /**
+   * 폰 AI가 이미 분류한 사진(고른 목록의 key)의 결과. 있으면 그 결과를 저장하고 서버 AI 분류에는 보내지 않는다.
+   * 같은 사진을 서버·폰에서 두 번 분류하면 먼저 적용된 쪽이 version을 올려 다른 쪽 적용이 409로 실패한다
+   */
+  deviceResultFor?: (key: string) => DeviceTopicResult | null;
+};
+
+export function usePhotoUpload(tripId: string, options: PhotoUploadOptions = {}) {
   const queryClient = useQueryClient();
   const [phase, setPhase] = useState<UploadPhase>('pick');
   const [items, setItems] = useState<UploadItem[]>([]);
@@ -38,6 +48,12 @@ export function usePhotoUpload(tripId: string) {
   const batchRef = useRef<string | null>(null);
   const keys = useRef(createIdempotencyKeyStore()).current;
   const abortRef = useRef<AbortController | null>(null);
+  /** 이번 올리기에서 등록을 마친 사진(고른 목록의 key와 함께). 다 올린 뒤 AI 주제 분류에 보낸다 */
+  const registeredRef = useRef<{ key: string; photo: TripPhoto }[]>([]);
+  const deviceResultRef = useRef(options.deviceResultFor);
+  useEffect(() => {
+    deviceResultRef.current = options.deviceResultFor;
+  });
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
@@ -74,17 +90,33 @@ export function usePhotoUpload(tripId: string) {
         patch(index, { ready });
       }
       if (signal.aborted) throw new Error('aborted');
-      const photo = await registerPhoto(tripId, {
+      const registered = await registerPhoto(tripId, {
         batchId,
         assetId: assetId!,
         capturedAt: item.photo.capturedAt,
       });
-      patch(index, { registered: { id: photo.id, version: photo.version } });
+      patch(index, { registered: { id: registered.id, version: registered.version } });
+      registeredRef.current.push({ key: item.photo.key, photo: registered });
     },
     [patch, tripId],
   );
 
-  const run = useCallback(async () => {
+  /**
+   * 이번까지 등록을 마친 사진을 AI 주제 분류에 보낸다. 다 올렸든, 취소·화면 이탈로 멈췄든 거친다.
+   * 화면은 기다리지 않고, 적용되면 사진 목록·요약만 다시 받는다(!302 리뷰: 여행 캐시 전체를 다시 받지 않는다)
+   */
+  const flushClassify = useCallback(() => {
+    const { device, server } = splitClassification(registeredRef.current, deviceResultRef.current);
+    registeredRef.current = [];
+    const refresh = (applied: boolean) => {
+      if (applied) void queryClient.invalidateQueries({ queryKey: ['trips', tripId, 'photos'] });
+    };
+    // 폰 결과는 바로 저장한다(작업을 기다리지 않음). 서버 분류는 폰 결과가 없는 사진만
+    if (device.length > 0) void applyDeviceResults(tripId, device).then(refresh);
+    if (server.length > 0) void classifyUploaded(tripId, server).then(refresh);
+  }, [queryClient, tripId]);
+
+  const upload = useCallback(async () => {
     const controller = new AbortController();
     abortRef.current = controller;
     const { signal } = controller;
@@ -136,6 +168,14 @@ export function usePhotoUpload(tripId: string) {
     setPhase(itemsRef.current.some((i) => i.status === 'failed') ? 'failed' : 'done');
   }, [keys, patch, queryClient, tripId, uploadOne]);
 
+  const run = useCallback(async () => {
+    try {
+      await upload();
+    } finally {
+      flushClassify();
+    }
+  }, [flushClassify, upload]);
+
   /** 고른 사진으로 올리기 시작 */
   const start = useCallback(
     (photos: PickedPhoto[]) => {
@@ -148,6 +188,8 @@ export function usePhotoUpload(tripId: string) {
       }));
       setItems(itemsRef.current);
       batchRef.current = null;
+      // 지난번 사진이 오래된 version으로 이번 분류에 섞이지 않게 비운다
+      registeredRef.current = [];
       void run();
     },
     [run],

@@ -36,6 +36,15 @@ export type Poll = {
   myCandidateIds: string[];
   /** FINALIZED만 값이 있다 */
   selectedCandidateIds: string[];
+  // 아래 넷은 직접 종료 기능(2026-11-16)과 함께 생겼다. 서버에 반영되기 전 응답에는 없어서 없어도 되게 둔다
+  /** 투표를 연 멤버 ID(여행 멤버 ID, 사용자 ID 아님) */
+  createdByMemberId?: string;
+  /** 내가 지금 종료할 수 있는지. 진행 중이고 마감 시각 전이며 내가 연 투표일 때만 true. 종료 버튼은 이 값만 본다 */
+  canClose?: boolean;
+  /** 실제 마감 시각. 직접 종료하면 closesAt보다 이르다. 진행 중이면 null */
+  closedAt?: string | null;
+  /** 직접 종료한 멤버. 마감 시각에 서버가 마감했거나 진행 중이면 null */
+  closedByMemberId?: string | null;
 };
 
 /** 지역 투표는 regionId만, 장소 투표는 placeId만 보낸다 */

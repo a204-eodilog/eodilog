@@ -54,6 +54,8 @@ type OpenViewProps = {
   onRetry: () => void;
   /** 후보 추가 시트 열기. 없으면 [+ 후보 추가]를 숨긴다 */
   onAddCandidate?: () => void;
+  /** [투표 종료]. 내가 연 투표일 때만 넘긴다. 없으면 버튼을 숨긴다 */
+  onClosePoll?: () => void;
 };
 
 /**
@@ -70,6 +72,7 @@ export function PollOpenView({
   onCancel,
   onRetry,
   onAddCandidate,
+  onClosePoll,
 }: OpenViewProps) {
   const scrollRef = useRef<ScrollViewInstance>(null);
   // 아래에 뜨는 안내·버튼이 홈 표시줄에 가리지 않게 안전 영역만큼 올린다
@@ -139,6 +142,10 @@ export function PollOpenView({
             onCancel={onCancel}
             onChange={() => scrollRef.current?.scrollTo({ y: 0, animated: true })}
           />
+          {/* 연 사람만 보이는 직접 종료. 투표 바꾸기 실패 안내 중에는 숨긴다. 누르면 확인 창이 먼저 뜬다 */}
+          {onClosePoll && !failLines ? (
+            <Button label="투표 종료" variant="neutral" block onPress={onClosePoll} />
+          ) : null}
         </Stagger>
       </ScrollView>
       {failLines ? (

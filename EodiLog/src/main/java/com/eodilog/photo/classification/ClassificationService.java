@@ -2,6 +2,7 @@ package com.eodilog.photo.classification;
 
 import com.eodilog.asset.AssetErrorCode;
 import com.eodilog.global.common.error.*;
+import com.eodilog.global.id.UuidV7;
 import com.eodilog.global.idempotency.IdempotencyService;
 import com.eodilog.job.*;
 import com.eodilog.photo.PhotoErrorCode;
@@ -29,6 +30,7 @@ public class ClassificationService {
     private final JobService jobs;
     private final JsonMapper json;
     private final Clock clock;
+    private static final Set<String> TOPICS=Set.of("LANDSCAPE","FOOD","PEOPLE","OTHER");
 
     @Transactional
     public JobRef request(UUID user,UUID trip,String key,PhotoClassificationRequest request) {
@@ -82,29 +84,70 @@ public class ClassificationService {
                     || !current.getFirst().asset().toString().equals(snapshots.get(id).path("assetId").asString())) throw new BusinessException(ClassificationError.VERSION_CONFLICT);
         }
         if(replay) return json.treeToValue(receipt.getFirst()[1],PhotoClassificationResponse.class);
-        Map<UUID,Integer> groups=new HashMap<>();
+        List<Assignment> assignments=new ArrayList<>();
         for(var target:wanted) {
-            var group=successful.get(target.photoId()).path("groupId");
-            if(!group.isNull()) groups.merge(UUID.fromString(group.asString()),1,Integer::sum);
+            var prediction=successful.get(target.photoId());
+            UUID group=prediction.path("groupId").isNull()?null:UUID.fromString(prediction.path("groupId").asString());
+            assignments.add(new Assignment(target.photoId(),prediction.path("topics").get(0).asString(),group));
         }
+        ObjectNode response=write(trip,job,assignments);
+        jdbc.update("insert into photo_classification_applies(job_id,request_json,response_json) values(?,?::jsonb,?::jsonb)",job,json.writeValueAsString(body),json.writeValueAsString(response));
+        jdbc.update("update jobs set applied_at=?,applied_by_member_id=? where id=?",Timestamp.from(clock.instant()),member.getId(),job);
+        return json.treeToValue(response,PhotoClassificationResponse.class);
+    }
+    /**
+     * On-device results for the caller's own just-uploaded photos. Same checks as apply minus the job: ACTIVE member,
+     * setting not OFF, every photo the caller's live photo in this trip (404 PHOTO_NOT_FOUND), then version and manual
+     * topic protection (409 VERSION_CONFLICT). Nothing is written unless every photo passes.
+     */
+    @Transactional
+    public PhotoClassificationResponse applyDevice(UUID user,UUID trip,DevicePhotoClassificationRequest request) {
+        var member=trips.requireActiveMemberForUpdate(trip,user).member();
+        enabled(user);
+        var wanted=request.photos();
+        List<UUID> ids=wanted.stream().map(DevicePhotoClassificationRequest.Photo::photoId).toList();
+        validateIds(ids);
+        if(wanted.stream().anyMatch(p->p.expectedVersion()==null || p.expectedVersion()<1 || p.topic()==null || !TOPICS.contains(p.topic())
+                || (p.groupKey()!=null && (p.groupKey().isEmpty() || p.groupKey().length()>64)))) throw new BusinessException(CommonErrorCode.VALIDATION_ERROR);
+        List<Object> params=new ArrayList<>(ids);
+        params.add(trip); params.add(member.getId());
+        // Same lock order as the photo batch API: trip, then photos by id.
+        Map<UUID,Current> current=new HashMap<>();
+        jdbc.query("select id,version,(topics_manually_edited or exists(select 1 from photo_topics t where t.photo_id=photos.id and t.source='MANUAL')),asset_id from photos where id in ("
+                        +String.join(",",Collections.nCopies(ids.size(),"?"))+") and trip_id=? and uploader_member_id=? and deleted_at is null order by id for update",
+                (rs,row)->current.put(rs.getObject(1,UUID.class),new Current(rs.getLong(2),rs.getBoolean(3),rs.getObject(4,UUID.class))),params.toArray());
+        if(current.size()!=ids.size()) throw new BusinessException(PhotoErrorCode.PHOTO_NOT_FOUND);
+        for(var target:wanted) {
+            var photo=current.get(target.photoId());
+            if(photo.version()!=target.expectedVersion() || photo.manual()) throw new BusinessException(ClassificationError.VERSION_CONFLICT);
+        }
+        // Client keys only say which photos belong together; the stored group id is always generated here.
+        Map<String,UUID> keys=new HashMap<>();
+        List<Assignment> assignments=new ArrayList<>();
+        for(var target:wanted) assignments.add(new Assignment(target.photoId(),target.topic(),
+                target.groupKey()==null?null:keys.computeIfAbsent(target.groupKey(),k->UuidV7.generate())));
+        return json.treeToValue(write(trip,null,assignments),PhotoClassificationResponse.class);
+    }
+
+    /** Shared write: groups with 2+ photos get a photo_groups row (null job = on-device), then one AI topic and a version bump per photo. */
+    private ObjectNode write(UUID trip,UUID job,List<Assignment> assignments) {
+        Map<UUID,Integer> groups=new HashMap<>();
+        for(var target:assignments) if(target.group()!=null) groups.merge(target.group(),1,Integer::sum);
         for(var entry:groups.entrySet()) if(entry.getValue()>=2) {
             int inserted=jdbc.update("insert into photo_groups(id,trip_id,source_job_id) values(?,?,?) on conflict(id) do nothing",entry.getKey(),trip,job);
             if(inserted!=1) throw new BusinessException(ClassificationError.VERSION_CONFLICT);
         }
         ObjectNode response=json.createObjectNode(); var photos=response.putArray("photos");
-        for(var target:wanted) {
-            var prediction=successful.get(target.photoId());
-            UUID group=prediction.path("groupId").isNull()?null:UUID.fromString(prediction.path("groupId").asString());
+        for(var target:assignments) {
+            UUID group=target.group();
             if(group!=null && groups.get(group)<2) group=null;
             jdbc.update("update photos set group_id=?,version=version+1 where id=?",group,target.photoId());
             jdbc.update("delete from photo_topics where photo_id=?",target.photoId());
-            jdbc.update("insert into photo_topics(photo_id,topic,source) values(?,?,'AI')",target.photoId(),prediction.path("topics").get(0).asString());
+            jdbc.update("insert into photo_topics(photo_id,topic,source) values(?,?,'AI')",target.photoId(),target.topic());
             PhotoResponse photo=jdbc.queryForObject(PhotoService.PHOTO_SELECT+" where id=?",PhotoService::map,target.photoId());
             photos.add(json.valueToTree(photo));
         }
-        jdbc.update("insert into photo_classification_applies(job_id,request_json,response_json) values(?,?::jsonb,?::jsonb)",job,json.writeValueAsString(body),json.writeValueAsString(response));
-        jdbc.update("update jobs set applied_at=?,applied_by_member_id=? where id=?",Timestamp.from(clock.instant()),member.getId(),job);
-        return json.treeToValue(response,PhotoClassificationResponse.class);
+        return response;
     }
     private void enabled(UUID user) { if(access.disabled(user)) throw new BusinessException(ClassificationError.AI_FEATURE_DISABLED); }
     private static void validateIds(List<UUID> ids) {
@@ -113,4 +156,5 @@ public class ClassificationService {
     }
     private record Stored(JsonNode input,JsonNode result,UUID requester) { }
     private record Current(long version,boolean manual,UUID asset) { }
+    private record Assignment(UUID photoId,String topic,UUID group) { }
 }

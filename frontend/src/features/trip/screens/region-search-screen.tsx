@@ -6,6 +6,7 @@ import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, Chip, EmptyState, ErrorState, Header, Icon } from '@/components/ui';
+import { KeyboardLift } from '@/components/ui/keyboard-lift';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { caret, colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -78,9 +79,10 @@ export function RegionSearchScreen({
         </View>
       ) : null}
 
-      <View style={styles.flex}>
+      {/* 자판이 올라오면 목록과 아래 버튼을 함께 올린다. 화면 끝까지 그리는 안드로이드에서는 화면이 줄지 않아
+          자판이 [N곳 고르기]·[완료]를 가렸다(S16 새 여행 화면과 같은 방식) */}
+      <KeyboardLift style={styles.flex}>
         <View style={styles.list}>
-          {/* 검색창을 누르면 키보드가 화면 아래쪽을 덮는다. 안내가 가려지지 않게 위쪽 칸 안에서 가운데에 둔다 */}
           {query.length === 0 ? (
             <View style={styles.notice}>
               <EmptyState
@@ -144,7 +146,7 @@ export function RegionSearchScreen({
             onPress={onDone ?? (() => router.back())}
           />
         </View>
-      </View>
+      </KeyboardLift>
     </View>
   );
 }

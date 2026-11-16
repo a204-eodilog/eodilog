@@ -386,3 +386,27 @@ export function extractRegion(
     longitudeDelta: lngDelta,
   };
 }
+
+/**
+ * 장소를 못 찾았을 때 안내. 캡처에 지역(위치 태그 '강원도 강릉' 등)만 보였으면 그 지역에서 찾게 한다(2026-11-16 사용자 요청).
+ * 검색칸에는 지역 뒤에 빈칸을 두어 가게 이름을 이어 쓰게 한다
+ */
+export function notFoundNotice(regionHint: string | null | undefined): {
+  description: string;
+  actionLabel: string;
+  query: string | undefined;
+} {
+  const region = regionHint?.trim();
+  if (!region) {
+    return {
+      description: '장소를 찾지 못했어요. 직접 골라 주세요',
+      actionLabel: '장소 직접 검색하기',
+      query: undefined,
+    };
+  }
+  return {
+    description: `${region}에서 찍은 것 같아요. 가게 이름을 넣어 찾아 주세요`,
+    actionLabel: `${region}에서 찾기`,
+    query: `${region} `,
+  };
+}

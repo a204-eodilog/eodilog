@@ -1,11 +1,11 @@
 import { SCROLL_DECELERATION } from '@/theme/scroll';
 import { router, useLocalSearchParams } from 'expo-router';
-import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { apiErrorCode } from '@/api/errors';
-import { MapMarker, MapView, type MapViewRef } from '@/components/map';
+import { FittedMap, MapMarker } from '@/components/map';
 import { Button, CenterNotice, Header, Icon, toast } from '@/components/ui';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { SkeletonList } from '@/components/ui/skeleton';
@@ -28,6 +28,7 @@ import {
   type GroupPick,
   groupCandidates,
   nextToChoose,
+  notFoundNotice,
   shownStep,
   EXTRACTION_STEP_GUIDES,
   stepDetail,
@@ -116,11 +117,16 @@ export function ExtractResultScreen() {
     else setPicks((p) => ({ ...p, [key]: pick }));
   };
 
-  const choose = async (onPicked: (place: Place) => void, around?: Place, name?: string) => {
+  const choose = async (
+    onPicked: (place: Place) => void,
+    around?: Place,
+    name?: string,
+    query?: string,
+  ) => {
     const place = await pickPlace({
       ...(around ? { near: { latitude: around.latitude, longitude: around.longitude } } : {}),
-      // 못 찾은 이름에서 '본점' 같은 지점 표시를 떼고 검색칸에 넣는다
-      ...(name ? { query: withoutBranch(name) } : {}),
+      // 못 찾은 이름에서 '본점' 같은 지점 표시를 떼고 검색칸에 넣는다. 이름이 없으면 받은 검색어(지역)를 넣는다
+      ...(name ? { query: withoutBranch(name) } : query ? { query } : {}),
     });
     if (place) onPicked(place);
   };
@@ -253,18 +259,27 @@ export function ExtractResultScreen() {
   if (view === 'notFound' || view === 'failed') {
     const failed = view === 'failed';
     const notice = failedNotice(sent, failCause(data, timedOut));
+    const missing = notFoundNotice(data?.regionHint);
     return (
       <View style={styles.screen}>
         <Header title="장소 찾기" largeTitle />
         <CenterNotice
           icon={failed ? notice.icon : 'search'}
           title={failed ? notice.title : '장소를 알아내지 못했어요'}
-          description={failed ? notice.description : '장소를 찾지 못했어요. 직접 골라 주세요'}
-          actionLabel={failed ? '다시 시도' : '장소 직접 검색하기'}
+          description={failed ? notice.description : missing.description}
+          actionLabel={failed ? '다시 시도' : missing.actionLabel}
           actionIcon={failed ? 'refresh' : 'search'}
           actionLoading={retry.isPending}
           onAction={
-            failed ? tryAgain : () => void choose((place) => setPicked({ place, evidence: PICKED }))
+            failed
+              ? tryAgain
+              : () =>
+                  void choose(
+                    (place) => setPicked({ place, evidence: PICKED }),
+                    undefined,
+                    undefined,
+                    missing.query,
+                  )
           }
         />
       </View>
@@ -603,37 +618,6 @@ function RoundButton({
     >
       <Icon name={icon} size={18} color={colors.text.icon} />
     </PressableScale>
-  );
-}
-
-type MapRegion = NonNullable<ReturnType<typeof extractRegion>>;
-
-/**
- * 보여 줄 범위가 바뀌면 지도를 새로 만들지 않고 카메라만 옮긴다.
- * 질문마다 지도를 다시 만들면(key 바꾸기) 새 지도가 준비되기 전에 핀이 빠지면서
- * 안드로이드에서 앱이 죽었다(2026-11-14 공기계: 후보 묻기 11번 뒤 IndexOutOfBounds)
- */
-function FittedMap({ region, children }: { region: MapRegion | null; children: ReactNode }) {
-  const map = useRef<MapViewRef>(null);
-  const [initial] = useState(region);
-  const latitude = region?.latitude;
-  const longitude = region?.longitude;
-  const latitudeDelta = region?.latitudeDelta;
-  const longitudeDelta = region?.longitudeDelta;
-  useEffect(() => {
-    if (
-      latitude === undefined ||
-      longitude === undefined ||
-      latitudeDelta === undefined ||
-      longitudeDelta === undefined
-    )
-      return;
-    map.current?.animateRegionTo?.({ latitude, longitude, latitudeDelta, longitudeDelta });
-  }, [latitude, longitude, latitudeDelta, longitudeDelta]);
-  return (
-    <MapView ref={map} {...(initial ? { initialRegion: initial } : {})}>
-      {children}
-    </MapView>
   );
 }
 

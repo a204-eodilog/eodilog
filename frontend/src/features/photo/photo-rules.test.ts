@@ -1,6 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 
 import {
+  splitClassification,
   addPickedPhotos,
   exifCapturedAt,
   inBatches,
@@ -11,6 +12,7 @@ import {
   skippedMessage,
   uploadCounts,
   type PickerAsset,
+  successfulVersions,
 } from './photo-rules';
 import type { UploadItem } from './types';
 
@@ -133,5 +135,67 @@ describe('일괄 변경 나누기', () => {
   });
   it('비어 있으면 빈 목록', () => {
     expect(inBatches([])).toEqual([]);
+  });
+});
+
+describe('successfulVersions', () => {
+  const versions = new Map([
+    ['p1', 1],
+    ['p2', 3],
+  ]);
+
+  it('성공한 사진만 요청 때의 version으로 적용한다', () => {
+    const result = {
+      photos: [
+        { photoId: 'p1', status: 'SUCCEEDED' },
+        { photoId: 'p2', status: 'FAILED' },
+      ],
+    };
+    expect(successfulVersions(result, versions)).toEqual([{ photoId: 'p1', version: 1 }]);
+  });
+
+  it('보내지 않은 사진이나 빈 결과는 적용하지 않는다', () => {
+    const other = { photos: [{ photoId: 'x', status: 'SUCCEEDED' }] };
+    expect(successfulVersions(other, versions)).toEqual([]);
+    expect(successfulVersions(null, versions)).toEqual([]);
+  });
+});
+
+describe('splitClassification', () => {
+  const photo = (id: string, version = 1) => ({
+    id,
+    assetId: `a-${id}`,
+    tripId: 't',
+    batchId: null,
+    uploaderMemberId: 'm',
+    placeId: null,
+    capturedAt: null,
+    topics: [],
+    groupId: null,
+    version,
+  });
+
+  it('폰 결과가 있는 사진은 폰 결과로, 없는 사진은 서버 분류로 나눈다', () => {
+    const registered = [
+      { key: 'k1', photo: photo('p1', 2) },
+      { key: 'k2', photo: photo('p2') },
+      { key: 'k3', photo: photo('p3') },
+    ];
+    const results = new Map([
+      ['k1', { topic: 'FOOD' as const, groupKey: 'g1' }],
+      ['k3', { topic: 'LANDSCAPE' as const, groupKey: null }],
+    ]);
+    const { device, server } = splitClassification(registered, (k) => results.get(k) ?? null);
+    expect(device).toEqual([
+      { photoId: 'p1', expectedVersion: 2, topic: 'FOOD', groupKey: 'g1' },
+      { photoId: 'p3', expectedVersion: 1, topic: 'LANDSCAPE', groupKey: null },
+    ]);
+    expect(server.map((p) => p.id)).toEqual(['p2']);
+  });
+
+  it('폰 결과를 모르면 모두 서버 분류로 보낸다', () => {
+    const { device, server } = splitClassification([{ key: 'k1', photo: photo('p1') }]);
+    expect(device).toEqual([]);
+    expect(server.map((p) => p.id)).toEqual(['p1']);
   });
 });

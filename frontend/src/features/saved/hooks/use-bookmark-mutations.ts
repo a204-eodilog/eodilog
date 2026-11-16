@@ -1,4 +1,5 @@
 import { type QueryClient, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useCallback } from 'react';
 
 import { toast } from '@/components/ui';
 
@@ -61,6 +62,43 @@ export function restoreBookmark(queryClient: QueryClient, bookmark: Bookmark): v
       }),
     )
     .finally(() => void queryClient.invalidateQueries({ queryKey: bookmarkKeys.all }));
+}
+
+/**
+ * 다른 화면의 채운 책갈피를 눌러 개인 즐겨찾기에서 빼는 함수를 준다(N7 장소 정보 창, S07 장소 줄).
+ * 이미 저장한 곳을 다시 누르면 저장을 처음부터 다시 하지 않고 해제한다. 실수로 눌렀을 때를 위해 [되돌리기]를 붙인다.
+ * 창이 닫힌 뒤에도 안내가 뜨도록 화면에 묶인 mutate 대신 그냥 함수로 보낸다
+ */
+export function useUnsavePlace(): (placeId: string) => void {
+  const queryClient = useQueryClient();
+  return useCallback(
+    (placeId: string) => {
+      const before = queryClient
+        .getQueryData<Bookmark[]>(bookmarkKeys.all)
+        ?.find((b) => samePlace(b, placeId));
+      // 누르자마자 표시가 바뀌게 목록에서 먼저 뺀다. 실패하면 아래에서 다시 읽어 돌아온다
+      queryClient.setQueryData<Bookmark[]>(bookmarkKeys.all, (old) =>
+        old?.filter((b) => !samePlace(b, placeId)),
+      );
+      deleteBookmark(placeId)
+        .then(() =>
+          toast.show(
+            '저장을 해제했어요',
+            before
+              ? {
+                  action: {
+                    label: '되돌리기',
+                    onPress: () => restoreBookmark(queryClient, before),
+                  },
+                }
+              : undefined,
+          ),
+        )
+        .catch(() => toast.error('저장을 해제하지 못했어요. 다시 시도해 주세요'))
+        .finally(() => void queryClient.invalidateQueries({ queryKey: bookmarkKeys.all }));
+    },
+    [queryClient],
+  );
 }
 
 /** 그룹 즐겨찾기에 추가. 그 여행의 저장 장소 목록(S20)은 C 화면이 읽는다 */

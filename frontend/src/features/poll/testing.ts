@@ -29,6 +29,10 @@ export function poll(over: Partial<Poll> = {}): Poll {
     candidates: [candidate('c1'), candidate('c2'), candidate('c3')],
     myCandidateIds: [],
     selectedCandidateIds: [],
+    createdByMemberId: 'member-other',
+    canClose: false,
+    closedAt: null,
+    closedByMemberId: null,
     ...over,
   };
 }
