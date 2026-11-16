@@ -14,7 +14,8 @@ import {
   registerPhoto,
   requestUploadIntent,
 } from '../api';
-import type { PickedPhoto, UploadItem } from '../types';
+import { classifyUploaded } from '../classify';
+import type { PickedPhoto, TripPhoto, UploadItem } from '../types';
 
 /** 업로드 화면 단계. pick 고르기 / uploading 올리는 중 / failed 일부(또는 전부) 실패 / done 모두 올림 */
 export type UploadPhase = 'pick' | 'uploading' | 'failed' | 'done';
@@ -38,6 +39,8 @@ export function usePhotoUpload(tripId: string) {
   const batchRef = useRef<string | null>(null);
   const keys = useRef(createIdempotencyKeyStore()).current;
   const abortRef = useRef<AbortController | null>(null);
+  /** 이번 올리기에서 등록을 마친 사진. 다 올린 뒤 AI 주제 분류에 보낸다 */
+  const registeredRef = useRef<TripPhoto[]>([]);
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
@@ -74,11 +77,12 @@ export function usePhotoUpload(tripId: string) {
         patch(index, { ready });
       }
       if (signal.aborted) throw new Error('aborted');
-      await registerPhoto(tripId, {
+      const registered = await registerPhoto(tripId, {
         batchId,
         assetId: assetId!,
         capturedAt: item.photo.capturedAt,
       });
+      registeredRef.current.push(registered);
     },
     [patch, tripId],
   );
@@ -132,6 +136,14 @@ export function usePhotoUpload(tripId: string) {
     }
 
     void queryClient.invalidateQueries({ queryKey: ['trips', tripId, 'photos'] });
+    // 올린 사진을 AI가 주제(풍경·음식·사람·기타)로 나눈다. 화면은 기다리지 않고, 적용되면 사진 목록을 다시 받는다
+    const toClassify = registeredRef.current;
+    registeredRef.current = [];
+    if (toClassify.length > 0) {
+      void classifyUploaded(tripId, toClassify).then((applied) => {
+        if (applied) void queryClient.invalidateQueries({ queryKey: ['trips', tripId] });
+      });
+    }
     setPhase(itemsRef.current.some((i) => i.status === 'failed') ? 'failed' : 'done');
   }, [keys, patch, queryClient, tripId, uploadOne]);
 

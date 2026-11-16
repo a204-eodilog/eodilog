@@ -142,3 +142,13 @@ export function inBatches<T>(items: readonly T[], size: number = PHOTO_BATCH_MAX
   for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
   return out;
 }
+
+/** 성공한 사진만 적용한다. 적용할 때는 분류를 요청할 때의 사진 version을 보낸다 */
+export function successfulVersions(
+  result: { photos?: { photoId: string; status: string }[] } | null,
+  versions: ReadonlyMap<string, number>,
+): { photoId: string; version: number }[] {
+  return (result?.photos ?? [])
+    .filter((p) => p.status === 'SUCCEEDED' && versions.has(p.photoId))
+    .map((p) => ({ photoId: p.photoId, version: versions.get(p.photoId)! }));
+}
