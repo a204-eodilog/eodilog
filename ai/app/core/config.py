@@ -38,6 +38,12 @@ class Settings(BaseSettings):
     stt_timeout_seconds: float = 25
     voice_llm_timeout_seconds: float = 15
 
+    # 말로 새 여행(실험). 10분 녹음 받아쓰기와 긴 글 정리는 요청 밖 작업으로 돌아 따로 상한을 둔다
+    voice_trip_stt_timeout_seconds: float = 150
+    voice_trip_llm_timeout_seconds: float = 60
+    # 로컬 웹 미리보기에서 AI 서버를 바로 부를 때만 쓴다. 쉼표로 나눈 origin. 운영에서는 비워 둔다
+    dev_cors_origins: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:

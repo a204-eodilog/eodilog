@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 
 import httpx
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.clients.gms import GmsClient
 from app.clients.kakao_routing import KakaoRoutingClient
@@ -38,6 +39,9 @@ from app.features.trip_recommendation.service import TripRecommender
 from app.features.visit_detection.router import router as visit_detection_router
 from app.features.voice_expense.router import router as voice_expense_router
 from app.features.voice_expense.service import VoiceExpenseDrafter
+from app.features.voice_trip.jobs import TripJobs
+from app.features.voice_trip.router import router as voice_trip_router
+from app.features.voice_trip.service import VoiceTripMaker
 from app.features.weather_alternatives.router import router as weather_alternatives_router
 from app.features.weather_alternatives.service import WeatherAlternativeSuggester
 
@@ -117,6 +121,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.voice_expense_drafter = _build_voice_expense_drafter(
         app.state.settings, app.state.http
     )
+    _attach_voice_trip(app, app.state.settings, app.state.http)
 
     # 뒤에 등록한 미들웨어가 바깥을 감싼다. 예산 초과 503에도 trace가 추적 ID를 붙인다
     app.add_middleware(RequestBudgetMiddleware, seconds=app.state.settings.request_budget_seconds)
@@ -136,6 +141,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         _log_metrics(request, response.status_code, usage, started)
         return response
 
+    origins = [o.strip() for o in app.state.settings.dev_cors_origins.split(",") if o.strip()]
+    if origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=origins,
+            allow_methods=["POST", "GET"],
+            allow_headers=["*"],
+        )
+
     register_error_handlers(app)
 
     # 배포 상태 확인용이라 내부 토큰을 요구하지 않는다
@@ -154,6 +168,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(route_legs_router)
     app.include_router(visit_detection_router)
     app.include_router(voice_expense_router)
+    app.include_router(voice_trip_router)
 
     return app
 
@@ -181,6 +196,33 @@ def _build_llm(settings: Settings, http: httpx.AsyncClient) -> GmsClient:
         model=settings.llm_model,
         timeout_seconds=settings.llm_timeout_seconds,
     )
+
+
+def _attach_voice_trip(app: FastAPI, settings: Settings, http: httpx.AsyncClient) -> None:
+    """말로 새 여행(실험): 긴 녹음 받아쓰기, 초안 정리, 고치기, 후보 찾기."""
+    app.state.voice_trip_stt = GmsTranscriber(
+        http,
+        api_key=settings.gms_api_key,
+        base_url=settings.gms_base_url,
+        model=settings.stt_model,
+        timeout_seconds=settings.voice_trip_stt_timeout_seconds,
+    )
+    app.state.voice_trip_maker = VoiceTripMaker(
+        llm=GmsClient(
+            http,
+            api_key=settings.gms_api_key,
+            base_url=settings.gms_base_url,
+            model=settings.llm_model,
+            timeout_seconds=settings.voice_trip_llm_timeout_seconds,
+        ),
+        places=NaverLocalClient(
+            http,
+            client_id=settings.naver_client_id,
+            client_secret=settings.naver_client_secret,
+            timeout_seconds=settings.place_search_timeout_seconds,
+        ),
+    )
+    app.state.voice_trip_jobs = TripJobs()
 
 
 def _build_voice_expense_drafter(
