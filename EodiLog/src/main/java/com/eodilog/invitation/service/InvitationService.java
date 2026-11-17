@@ -1,6 +1,5 @@
 package com.eodilog.invitation.service;
 
-import com.eodilog.chat.service.ChatParticipationService;
 import com.eodilog.global.common.error.BusinessException;
 import com.eodilog.global.common.error.CommonErrorCode;
 import com.eodilog.invitation.domain.InvitationToken;
@@ -9,10 +8,8 @@ import com.eodilog.invitation.dto.InvitationPreviewResponse;
 import com.eodilog.invitation.dto.InvitationSecretResponse;
 import com.eodilog.invitation.exception.InvitationErrorCode;
 import com.eodilog.invitation.repository.TripInvitationRepository;
-import com.eodilog.poll.service.PollCloser;
 import com.eodilog.trip.domain.Trip;
 import com.eodilog.trip.domain.TripMember;
-import com.eodilog.trip.domain.TripMemberStatus;
 import com.eodilog.trip.dto.TripResponse;
 import com.eodilog.trip.repository.TripMemberRepository;
 import com.eodilog.trip.repository.TripRepository;
@@ -39,17 +36,15 @@ public class InvitationService {
 
 	// Q-4 기본값(2026-10-30 결정). 정원은 링크별이 아니라 여행의 ACTIVE 멤버 수(방장 포함)다
 	public static final Duration EXPIRES_AFTER = Duration.ofDays(7);
-	public static final int MAX_ACTIVE_MEMBERS = 20;
+	public static final int MAX_ACTIVE_MEMBERS = TripJoiner.MAX_ACTIVE_MEMBERS;
 
 	private final TripInvitationRepository tripInvitationRepository;
 	private final TripRepository tripRepository;
 	private final TripMemberRepository tripMemberRepository;
 	private final TripAccessChecker tripAccessChecker;
 	private final TripResponseAssembler tripResponseAssembler;
-	private final ChatParticipationService chatParticipationService;
 	private final UserCardReader userCardReader;
-	private final PollCloser pollCloser;
-	private final InvitationNotifier invitationNotifier;
+	private final TripJoiner tripJoiner;
 	private final Clock clock;
 
 	// 프론트 초대 화면 경로가 정해지면 환경별로 바꾼다. 기본은 앱 스킴(frontend/app.json)
@@ -103,7 +98,7 @@ public class InvitationService {
 	}
 
 	// 형식 404 → 링크·여행 확인 410 → 이미 ACTIVE면 링크 상태와 상관없이 그대로 반환 → 링크 검사 410 → 정원 409 → 참여 순이다
-	// 멤버십·채팅 참여·여행 version을 한 트랜잭션에서 바꾼다. 여행 행 잠금으로 정원 검사와 순번 발급이 겹치지 않는다
+	// 참여 처리(TripJoiner)는 여행 행 잠금 아래 한 트랜잭션에서 멤버십·채팅 참여·여행 version을 바꾼다
 	@Transactional
 	public TripResponse acceptInvitation(UUID userId, String token) {
 		LinkedTrip linked = requireLinkedTrip(token, true);
@@ -113,23 +108,7 @@ public class InvitationService {
 			return tripResponseAssembler.assemble(userId, trip);
 		}
 		requireUsable(linked.invitation(), true);
-		if (tripMemberRepository.countByTripIdAndStatus(trip.getId(), TripMemberStatus.ACTIVE) >= MAX_ACTIVE_MEMBERS) {
-			throw new BusinessException(InvitationErrorCode.TRIP_FULL);
-		}
-
-		// 마감 시각이 지난 투표는 멤버가 바뀌기 전 기준으로 먼저 마감한다(정책 §13 V-6b·V-12)
-		pollCloser.closeDuePolls(trip.getId());
-		Instant now = now();
-		long joinOrder = tripMemberRepository.findMaxJoinOrder(trip.getId()) + 1;
-		TripMember member = existing.map(left -> {
-			left.rejoin(joinOrder, now);
-			return left;
-		}).orElseGet(() -> tripMemberRepository.save(TripMember.join(trip.getId(), userId, joinOrder, now)));
-		chatParticipationService.joinTripRoom(trip.getId(), userId, now);
-		// 응답의 members가 바뀌므로 멤버 관리(M-2)처럼 여행 version을 올린다
-		trip.markMembersChanged(now);
-		tripRepository.flush();
-		invitationNotifier.memberJoined(member);
+		tripJoiner.join(trip, userId, existing, now());
 		return tripResponseAssembler.assemble(userId, trip);
 	}
 

@@ -10,7 +10,9 @@ public enum InvitationErrorCode implements ErrorCode {
 	// 같은 여행에 새 링크가 발급됐거나 멤버가 취소해 막힌 링크. 동행에게 새 링크를 받으면 된다
 	INVITATION_REVOKED(HttpStatus.GONE, "더 이상 쓸 수 없는 초대 링크입니다. 동행에게 새 링크를 받아 주세요."),
 	// 여행당 ACTIVE 멤버 상한(Q-4)에 닿았다
-	TRIP_FULL(HttpStatus.CONFLICT, "여행 인원이 가득 찼습니다.");
+	TRIP_FULL(HttpStatus.CONFLICT, "여행 인원이 가득 찼습니다."),
+	// 앱 내 친구 초대: 없는 초대·내가 받은 초대가 아님·이미 처리돼 거절할 수 없는 초대
+	FRIEND_INVITATION_NOT_FOUND(HttpStatus.NOT_FOUND, "초대를 찾을 수 없습니다.");
 
 	private final HttpStatus status;
 	private final String message;
