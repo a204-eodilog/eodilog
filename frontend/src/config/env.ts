@@ -30,6 +30,11 @@ export const env = {
    */
   ondeviceModelUrl: process.env.EXPO_PUBLIC_ONDEVICE_MODEL_URL || null,
   /**
+   * 말로 새 여행 만들기 개발용: AI 서버에 바로 붙을 주소(예: http://localhost:8000, 폰은 adb reverse tcp:8000 tcp:8000).
+   * 보통은 비워 둔다. 비우면 백엔드 /api/v1/voice-trip을 거친다
+   */
+  voicePlanUrl: process.env.EXPO_PUBLIC_VOICE_PLAN_URL || null,
+  /**
    * 개발용 테스트 모드. 로그인을 건너뛰고 서버 대신 src/api/dev-mock.ts의 테스트 데이터로 화면을 띄운다.
    * 로컬·개발 환경에서만 켜진다. 실제 API 연결 확인에는 쓰지 않는다.
    */

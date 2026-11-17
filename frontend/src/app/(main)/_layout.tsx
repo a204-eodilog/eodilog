@@ -28,6 +28,9 @@ export default function MainLayout() {
       {/* 화면 넘김. 안드로이드에서 ios_from_right는 200ms라 너무 빨랐다. slide_from_right는 400ms다(2026-11-13 사용자 결정) */}
       <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
         <Stack.Screen name="trips/new" options={{ animation: 'fade_from_bottom' }} />
+        {/* 실험: 말로 새 여행 만들기 */}
+        <Stack.Screen name="trips/new-voice" options={{ animation: 'fade_from_bottom' }} />
+        <Stack.Screen name="trips/voice-draft" options={{ animation: 'fade_from_bottom' }} />
       </Stack>
       <NotificationPopupHost />
     </>
