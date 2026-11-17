@@ -25,7 +25,7 @@ import type { PhotoTopic, PickedPhoto } from '../types';
 
 /**
  * S30 사진 선택·업로드(/trips/[tripId]/photos/upload). S17 [사진 올리기]·S33 [사진 올리기]에서 온다.
- * 다 올리면·[나중에]·[올리기 취소] 뒤에는 S31로 간다(뒤에 S31이 있으면 그리로 돌아가고, 없으면 S30 자리에 S31).
+ * 다 올리면 S31로, [나중에]·[올리기 취소]는 온 화면으로 돌아간다. 이전 화면이 없으면 S31로 간다.
  * 올리는 중 [뒤로]·기기 뒤로는 '올리기 취소' 확인
  */
 export function PhotoUploadScreen() {
@@ -57,9 +57,11 @@ export function PhotoUploadScreen() {
   // 올리는 중에 기기 뒤로·뒤로 몸짓으로 나가려 하면 확인을 띄운다
   usePreventRemove(uploading && !leaving, () => setConfirmCancel(true));
 
-  // 취소·나중에: 막기를 푼 다음 화면에서 S31로
+  // 취소·나중에: 막기를 푼 뒤 온 화면으로 돌아간다. 직접 진입해 이전 화면이 없으면 S31로 간다
   useEffect(() => {
-    if (leaving) router.dismissTo(`/trips/${tripId}/photos`);
+    if (!leaving) return;
+    if (router.canGoBack()) router.back();
+    else router.dismissTo(`/trips/${tripId}/photos`);
   }, [leaving, tripId]);
 
   // 다 올리면(이때는 막기가 이미 풀려 있다) 토스트와 함께 S31로

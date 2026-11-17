@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, jest } from '@jest/globals';
-import { act, cleanup, render } from '@testing-library/react-native';
+import { act, cleanup, render, fireEvent, screen } from '@testing-library/react-native';
 import { StrictMode } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
@@ -8,12 +8,15 @@ import { PhotoUploadScreen } from './photo-upload-screen';
 jest.mock('@tanstack/react-query', () => ({ useQuery: () => ({ data: '여행' }) }));
 jest.mock('expo-image-picker', () => ({ launchImageLibraryAsync: jest.fn() }));
 jest.mock('expo-router', () => ({
-  router: { back: jest.fn(), canGoBack: () => true, dismissTo: jest.fn() },
+  router: { back: jest.fn(), canGoBack: jest.fn(() => true), dismissTo: jest.fn() },
   useLocalSearchParams: () => ({ tripId: 'trip-1' }),
   usePreventRemove: jest.fn(),
 }));
 jest.mock('@/components/ui', () => ({
-  ConfirmSheet: () => null,
+  ConfirmSheet: ({ visible, onConfirm }: { visible: boolean; onConfirm: () => void }) => {
+    const { Button } = jest.requireActual<typeof import('react-native')>('react-native');
+    return visible ? <Button title="취소 확인" onPress={onConfirm} /> : null;
+  },
   toast: { show: jest.fn(), error: jest.fn(), success: jest.fn() },
 }));
 jest.mock('../api', () => ({ getTripTitle: jest.fn(), getTrip: jest.fn() }));
@@ -30,7 +33,18 @@ jest.mock('@/features/settings/api', () => ({ getSettings: jest.fn() }));
 jest.mock('@/features/settings/hooks/use-server-settings', () => ({
   SETTINGS_QUERY_KEY: ['settings'],
 }));
-jest.mock('../components/photo-upload-view', () => ({ PhotoUploadView: () => null }));
+
+jest.mock('../components/photo-upload-view', () => ({
+  PhotoUploadView: ({ onLater, onCancel }: { onLater: () => void; onCancel: () => void }) => {
+    const { Button, View } = jest.requireActual<typeof import('react-native')>('react-native');
+    return (
+      <View>
+        <Button title="나중에" onPress={onLater} />
+        <Button title="올리기 취소" onPress={onCancel} />
+      </View>
+    );
+  },
+}));
 jest.mock('../hooks/use-photo-upload', () => ({
   usePhotoUpload: () => ({ phase: 'idle', items: [], cancel: jest.fn() }),
 }));
@@ -78,6 +92,32 @@ describe('사진첩 자동 열기', () => {
     await view.unmount();
     await render(<PhotoUploadScreen />);
     expect(ImagePicker.launchImageLibraryAsync).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('업로드 중단 복귀', () => {
+  it('나중에는 목록으로 바꾸지 않고 이전 화면으로 돌아간다', async () => {
+    pendingPicker();
+    await render(<PhotoUploadScreen />);
+    await fireEvent.press(screen.getByText('나중에'));
+    expect(router.back).toHaveBeenCalledTimes(1);
+    expect(router.dismissTo).not.toHaveBeenCalled();
+  });
+  it('취소 확인 후에도 이전 화면으로 돌아간다', async () => {
+    pendingPicker();
+    await render(<PhotoUploadScreen />);
+    await fireEvent.press(screen.getByText('올리기 취소'));
+    await fireEvent.press(screen.getByText('취소 확인'));
+    expect(router.back).toHaveBeenCalledTimes(1);
+    expect(router.dismissTo).not.toHaveBeenCalled();
+  });
+  it('직접 진입해 이전 화면이 없으면 사진 목록으로 간다', async () => {
+    pendingPicker();
+    jest.mocked(router.canGoBack).mockReturnValueOnce(false);
+    await render(<PhotoUploadScreen />);
+    await fireEvent.press(screen.getByText('나중에'));
+    expect(router.back).not.toHaveBeenCalled();
+    expect(router.dismissTo).toHaveBeenCalledWith('/trips/trip-1/photos');
   });
 });
 

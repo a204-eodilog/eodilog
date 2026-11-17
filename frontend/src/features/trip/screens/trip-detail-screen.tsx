@@ -17,7 +17,7 @@ import { TripMenuGrid } from '../components/trip-menu-grid';
 import { useRegionNames } from '../hooks/use-region-names';
 import { useTodayPlaces } from '../hooks/use-today-places';
 import { useTrip } from '../hooks/use-trip';
-import { useTripProgress } from '../hooks/use-trip-progress';
+import { useAfterTripProgress, useTripProgress } from '../hooks/use-trip-progress';
 import { publishHref, todoHref } from '../trip-routes';
 import { companionsLabel, dayIndex, tripDetailView, tripStatus } from '../trip-rules';
 
@@ -34,7 +34,13 @@ export function TripDetailScreen() {
   // 여행 중일 때만 코스를 받아 오늘 갈 곳을 한 줄로 보인다
   const todayPlaces = useTodayPlaces(tripId, trip ? dayIndex(trip, today) : null);
   // 계획 중일 때만 모은 장소와 코스를 받아 단계를 실제 진행에 맞춘다
-  const progress = useTripProgress(tripId, trip ? tripStatus(trip, today) === 'PLANNING' : false);
+  const planning = useTripProgress(tripId, trip ? tripStatus(trip, today) === 'PLANNING' : false);
+  // 다녀온 여행은 사진·정산을 받아 단계를 넘긴다
+  const afterTrip = useAfterTripProgress(
+    tripId,
+    trip ? tripStatus(trip, today) === 'COMPLETED' : false,
+  );
+  const progress = { ...planning, ...afterTrip };
   const insets = useSafeAreaInsets();
 
   // 링크·알림으로 처음 열어 받아 둔 여행이 없는데 연결이 끊겼다. 로딩만 돌지 않게 안내한다
