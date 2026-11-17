@@ -29,7 +29,7 @@ export type PlaceInfo = {
   name: string;
   /** "강릉 명주동". 주소가 없으면 null */
   address: string | null;
-  /** 장소 사진. 명세에 장소 사진이 없어 지금은 비어 있다 */
+  /** 장소 대표 사진. 서버에 사진이 없는 장소는 null */
   photoUrl: string | null;
   /** 들어온 곳이 알려 준 이유. 홈 추천이면 "좋아요한 여행과 비슷해요" */
   reason: string | null;
@@ -84,7 +84,7 @@ export function toPlaceInfo(input: {
     placeId: input.place.id,
     name: input.place.name,
     address: input.place.address,
-    photoUrl: null,
+    photoUrl: input.place.imageUrl ?? null,
     reason: input.reason ?? null,
     visitorsLine:
       count === 0
