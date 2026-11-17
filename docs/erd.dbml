@@ -153,6 +153,23 @@ Table trip_invitations {
   Note: '토큰 원문은 생성 응답에서만 반환. 초대 코드 없음. 친구/팔로우 관계 없이 유효 링크로 참여. 현재 ACTIVE 초대자·만료·정원 검사. 만료 7일, 정원은 여행당 ACTIVE 멤버 20명(Q-4, 2026-10-30).'
 }
 
+Table trip_friend_invitations {
+  id uuid [pk]
+  trip_id uuid [not null, ref: > trips.id]
+  inviter_member_id uuid [not null, ref: > trip_members.id]
+  invitee_user_id uuid [not null, ref: > users.id]
+  status varchar(16) [not null, note: 'PENDING|ACCEPTED|DECLINED|CANCELED. 기간 지난 PENDING은 응답에서 EXPIRED로 계산']
+  expires_at timestamp [not null]
+  created_at timestamp [not null]
+  responded_at timestamp [note: 'PENDING이 아니면 채움']
+  indexes {
+    (trip_id, invitee_user_id) [unique, note: 'status=PENDING 부분 유니크. 여행·사람마다 대기 초대 하나']
+    (invitee_user_id, status, created_at)
+    inviter_member_id
+  }
+  Note: '맞팔 친구 앱 내 초대(2026-11-17). 두 방향 팔로우가 모두 ACCEPTED일 때만 보낸다(수락 시 재확인 없음). 받은 사람이 수락하면 링크 수락과 같은 참여 처리. 만료 7일, 초대한 멤버가 나가면 수락 불가. 링크 초대와 서로 영향 없음.'
+}
+
 Table regions {
   id uuid [pk]
   code varchar(100) [not null, unique]

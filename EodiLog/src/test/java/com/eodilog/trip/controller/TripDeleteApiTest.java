@@ -106,7 +106,8 @@ class TripDeleteApiTest {
 
 		// 하위 자료는 모두 지워지고 여행 행만 tombstone으로 남는다
 		for (String table : List.of("trip_members", "trip_destinations", "chat_rooms", "itineraries",
-				"checklist_items", "expenses", "trip_invitations", "settlements", "polls", "visits")) {
+				"checklist_items", "expenses", "trip_invitations", "trip_friend_invitations", "settlements", "polls",
+				"visits")) {
 			assertThat(count("select count(*) from " + table + " where trip_id = ?", tripId)).as(table).isZero();
 		}
 		assertThat(count("select count(*) from messages m join chat_rooms r on r.id = m.room_id where r.trip_id = ?",
@@ -206,6 +207,15 @@ class TripDeleteApiTest {
 				"select id from trip_members where trip_id = ? and user_id = ?", UUID.class, tripId, ownerId);
 		UUID friendMemberId = jdbcTemplate.queryForObject(
 				"select id from trip_members where trip_id = ? and user_id = ?", UUID.class, tripId, friendId);
+		// 앱 내 친구 초대는 초대한 멤버십을 가리키므로(FK) 작업이 멤버십보다 먼저 지워야 한다
+		UUID inviteeId = UUID.randomUUID();
+		jdbcTemplate.update("""
+				insert into users (id, nickname, profile_completed, created_at, updated_at)
+				values (?, '초대받은 사람', true, now(), now())""", inviteeId);
+		jdbcTemplate.update("""
+				insert into trip_friend_invitations (id, trip_id, inviter_member_id, invitee_user_id, status, expires_at, created_at)
+				values (?, ?, ?, ?, 'PENDING', now() + interval '7 days', now())""",
+				UUID.randomUUID(), tripId, friendMemberId, inviteeId);
 		mockMvc.perform(post("/api/v1/trips/{tripId}/expenses", tripId).with(authUser(ownerId))
 						.header(IdempotencyService.HEADER_NAME, UUID.randomUUID().toString())
 						.contentType(MediaType.APPLICATION_JSON)
