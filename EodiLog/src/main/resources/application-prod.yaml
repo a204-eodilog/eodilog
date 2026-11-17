@@ -1,3 +1,8 @@
+spring:
+  flyway:
+    # 운영 DB에만 홈 지도 시연용 데모 계정을 넣는다(db/demo). 로컬·테스트 DB는 db/migration만 쓴다
+    locations: classpath:db/migration,classpath:db/demo
+
 springdoc:
   api-docs:
     enabled: false
