@@ -12,6 +12,7 @@ import {
   ConfirmSheet,
   ErrorState,
   Header,
+  Avatar,
   Icon,
   type IconName,
   OfflineNotice,
@@ -24,6 +25,8 @@ import { colors, layout, radius, spacing, typography } from '@/theme';
 import { canInvite, memberActionFailure, memberLabel, TRIP_CAPACITY } from '../companion-rules';
 import { MemberRow } from '../components/member-row';
 import { TripGoneState } from '../components/trip-gone-state';
+import { FriendInviteSheet } from '../components/friend-invite-sheet';
+import { useFriendInviteActions, useInvitableFriends } from '../hooks/use-invitable-friends';
 import { useInviteLink } from '../hooks/use-invite-link';
 import { useTrip } from '../hooks/use-trip';
 import { inviteExpiryLabel } from '../invite-storage';
@@ -44,6 +47,9 @@ export function TripInviteScreen() {
   // 링크 취소는 화면에서 뺐다(2026-11-05 사용자 요청). 새로 만들면 전 링크가 무효가 되어 같은 일을 한다
   const { link, isLoading: linkLoading, create } = useInviteLink(tripId);
   const [confirm, setConfirm] = useState(false);
+  const [friendSheet, setFriendSheet] = useState(false);
+  const friends = useInvitableFriends(tripId);
+  const { cancel: cancelFriend } = useFriendInviteActions(tripId);
 
   if (isWaitingOffline({ data: trip, fetchStatus })) {
     return (
@@ -87,6 +93,7 @@ export function TripInviteScreen() {
   const members = [...trip.members].sort((a, b) => a.joinOrder - b.joinOrder);
   const busy = create.isPending;
   const canShare = !!link && !full && !busy;
+  const invited = (friends.data?.friends ?? []).filter((f) => f.state === 'INVITED');
 
   const share = async () => {
     if (!link) return;
@@ -150,6 +157,15 @@ export function TripInviteScreen() {
             disabled={!canShare}
             onPress={copy}
           />
+          {/* 앱 안 맞팔 친구 초대. 링크와 상관없이 정원만 본다 */}
+          <ShareButton
+            label="친구"
+            icon="person-plus"
+            background={colors.brand.primary}
+            iconColor={colors.surface.white}
+            disabled={full}
+            onPress={() => setFriendSheet(true)}
+          />
         </View>
 
         {full ? (
@@ -202,6 +218,34 @@ export function TripInviteScreen() {
           </View>
         </View>
 
+        {invited.length > 0 ? (
+          <View style={styles.members}>
+            <View style={styles.membersHead}>
+              <Text style={[typography.title3, styles.membersTitle]}>초대 보낸 사람</Text>
+              <Text style={[typography.caption, styles.subText]}>{invited.length}명</Text>
+            </View>
+            {invited.map((f) => (
+              <View key={f.user.id} style={styles.invitedRow}>
+                <Avatar name={f.user.nickname} imageUrl={f.user.profileImageUrl} size="lg" />
+                <Text style={[typography.body, styles.invitedName]} numberOfLines={1}>
+                  {f.user.nickname}
+                </Text>
+                <Text style={[typography.caption, styles.subText]}>초대함</Text>
+                <PressableScale
+                  accessibilityRole="button"
+                  accessibilityLabel={`${f.user.nickname} 초대 취소`}
+                  disabled={cancelFriend.isPending}
+                  onPress={() => f.invitationId && cancelFriend.mutate(f.invitationId)}
+                  hitSlop={spacing[8]}
+                  style={({ pressed }) => [styles.cancelInvite, pressed && styles.dim]}
+                >
+                  <Text style={[typography.captionMedium, styles.cancelInviteText]}>취소</Text>
+                </PressableScale>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
         <View style={styles.members}>
           <View style={styles.membersHead}>
             <Text style={[typography.title3, styles.membersTitle]}>함께하는 사람</Text>
@@ -216,6 +260,12 @@ export function TripInviteScreen() {
           ))}
         </View>
       </ScrollView>
+
+      <FriendInviteSheet
+        visible={friendSheet}
+        onClose={() => setFriendSheet(false)}
+        tripId={tripId}
+      />
 
       <ConfirmSheet
         visible={confirm}
@@ -338,4 +388,13 @@ const styles = StyleSheet.create({
   },
   membersHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   membersTitle: { color: colors.text.default },
+  invitedRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[12], minHeight: 56 },
+  invitedName: { flex: 1, color: colors.text.default },
+  cancelInvite: {
+    paddingHorizontal: spacing[12],
+    paddingVertical: spacing[6],
+    borderRadius: radius.full,
+    backgroundColor: colors.surface.default,
+  },
+  cancelInviteText: { color: colors.text.icon },
 });

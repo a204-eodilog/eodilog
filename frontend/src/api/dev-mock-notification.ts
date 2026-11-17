@@ -29,6 +29,14 @@ type Seed = Omit<Item, 'id' | 'eventId' | 'readAt' | 'createdAt'> & { ago: numbe
 
 /** 겨울 여행은 가짜 서버의 trip-5 */
 const SEEDS: Seed[] = [
+  // 앱 내 친구 초대(dev-mock-friend-invite의 받은 초대). 받는 사람은 아직 동행이 아니라 tripId가 없다
+  {
+    kind: 'TRIP_INVITED',
+    message: "가람님이 '제주 3박 4일' 여행에 초대했어요.",
+    target: { type: 'TRIP_INVITATION', id: 'friend-invite-1' },
+    tripId: null,
+    ago: 10 * MINUTE,
+  },
   {
     kind: 'POLL_OPENED',
     message: '겨울 여행 투표가 시작됐어요.',

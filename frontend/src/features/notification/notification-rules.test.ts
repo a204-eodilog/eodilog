@@ -110,6 +110,13 @@ describe('알림을 누르면 갈 곳', () => {
     });
   });
 
+  it('앱 내 여행 초대는 받은 초대 화면으로, 여행은 미리 받지 않는다', () => {
+    expect(of('TRIP_INVITATION', 'inv-1', { kind: 'TRIP_INVITED', tripId: null })).toEqual({
+      href: '/trip-invitations/inv-1',
+      tripId: null,
+    });
+  });
+
   it('여행 번호가 필요한데 없으면 여행 탭, 모르는 대상은 없음', () => {
     expect(of('POLL', 'poll-1')).toEqual({ href: '/trips', tripId: null });
     expect(of('PROPOSAL', 'job-1')).toEqual({ href: '/trips', tripId: null });

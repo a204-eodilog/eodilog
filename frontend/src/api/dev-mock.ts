@@ -14,6 +14,7 @@ import { createChatMock } from './dev-mock-chat';
 import { createChecklistMock } from './dev-mock-checklist';
 import { createCourseMock } from './dev-mock-course';
 import { createGroupMock } from './dev-mock-group';
+import { createFriendInviteMock } from './dev-mock-friend-invite';
 import { createNotificationMock } from './dev-mock-notification';
 import { createPollMock } from './dev-mock-poll';
 import { createRecommendMock } from './dev-mock-recommend';
@@ -572,6 +573,26 @@ const groupMock = createGroupMock({
 
 /** 알림 가짜 서버. 홈 종 숫자(notification-summary)도 여기서 센다 */
 const notificationMock = createNotificationMock({ ok, fail });
+/** 앱 내 맞팔 친구 초대 가짜 서버. 받은 초대를 수락하면 새 여행이 목록 맨 앞에 생긴다 */
+const friendInviteMock = createFriendInviteMock({
+  ok,
+  fail,
+  getTrips: () => trips,
+  joinTrip: (title) => {
+    const trip = makeTrip({
+      title,
+      start: 10,
+      days: 3,
+      regions: ['region-jeju'],
+      friends: 2,
+      meAsMember: true,
+    });
+    trips = [trip, ...trips];
+    return trip;
+  },
+  friends: FRIENDS,
+  meId: ME.id,
+});
 /** 투표 가짜 서버. 장소 조회와 그룹 즐겨찾기 목록도 함께 답한다 */
 const pollMock = createPollMock({ getTrips: () => trips, ok, fail });
 
@@ -958,6 +979,8 @@ function handle(config: InternalAxiosRequestConfig): AxiosResponse {
   // 말로 경비 입력은 다른 가짜 서버보다 먼저 답한다(그쪽 /jobs 처리가 모르는 작업을 404로 끝낸다)
   const voice = voiceExpenseMock.handle(config, method, url);
   if (voice) return voice;
+  const friendInvite = friendInviteMock.handle(config, method, url);
+  if (friendInvite) return friendInvite;
   const chat = chatMock.handle(config, method, url, params);
   if (chat) return chat;
   // 그룹 즐겨찾기 GET /trips/{id}/saved-places는 그룹 가짜 서버가 먼저 답한다. 다른 가짜 서버의 같은 주소 처리보다 앞선다

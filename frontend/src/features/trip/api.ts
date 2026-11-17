@@ -1,5 +1,6 @@
 import { apiClient } from '@/api/client';
 import type { DataResponse, PageResponse } from '@/api/types';
+import type { InvitableFriends, SendFriendInvitationsResponse } from '@/features/invitation/types';
 
 import type {
   CreateTripBody,
@@ -128,4 +129,33 @@ export async function getSavedPlaceCount(tripId: string, signal?: AbortSignal): 
     { params: { filter: 'ALL', limit: 1 }, signal },
   );
   return data.totals.allPlaceCount;
+}
+
+/** 이 여행에 초대할 수 있는 맞팔 친구. 여행의 ACTIVE 멤버만 */
+export async function getInvitableFriends(
+  tripId: string,
+  signal?: AbortSignal,
+): Promise<InvitableFriends> {
+  const { data } = await apiClient.get<DataResponse<InvitableFriends>>(
+    `/trips/${tripId}/invitable-friends`,
+    { signal },
+  );
+  return data.data;
+}
+
+/** 맞팔 친구에게 앱 안에서 초대를 보낸다. 사람마다 결과가 따로 온다. 정원이 차면 409 TRIP_FULL */
+export async function sendFriendInvitations(
+  tripId: string,
+  inviteeUserIds: string[],
+): Promise<SendFriendInvitationsResponse> {
+  const { data } = await apiClient.post<DataResponse<SendFriendInvitationsResponse>>(
+    `/trips/${tripId}/friend-invitations`,
+    { inviteeUserIds },
+  );
+  return data.data;
+}
+
+/** 보낸 앱 내 초대 취소. 이미 처리된 초대여도 204 */
+export async function cancelFriendInvitation(tripId: string, invitationId: string): Promise<void> {
+  await apiClient.delete(`/trips/${tripId}/friend-invitations/${invitationId}`);
 }
