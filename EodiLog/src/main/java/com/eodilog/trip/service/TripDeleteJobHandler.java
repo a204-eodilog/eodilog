@@ -128,6 +128,8 @@ public class TripDeleteJobHandler implements JobHandler {
 		jdbcTemplate.update("delete from reviews where visit_id in (select id from visits where trip_id = ?)", tripId);
 		jdbcTemplate.update("delete from visits where trip_id = ?", tripId);
 		jdbcTemplate.update("delete from checklist_items where trip_id = ?", tripId);
+		// 앱 내 친구 초대는 초대한 멤버십을 가리키므로 멤버십보다 먼저 지운다
+		jdbcTemplate.update("delete from trip_friend_invitations where trip_id = ?", tripId);
 		jdbcTemplate.update("delete from trip_invitations where trip_id = ?", tripId);
 		jdbcTemplate.update("delete from messages where room_id in (select id from chat_rooms where trip_id = ?)", tripId);
 		jdbcTemplate.update("delete from chat_participants where room_id in (select id from chat_rooms where trip_id = ?)", tripId);
