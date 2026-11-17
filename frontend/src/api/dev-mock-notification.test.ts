@@ -28,9 +28,9 @@ describe('테스트 모드 가짜 알림 서버', () => {
   it('목록, 안 읽은 것만, 쪽 나누기', () => {
     const { call } = setup();
     const all = call('get', '/me/notifications', { limit: '20' }) as Page;
-    expect(all.data).toHaveLength(9);
+    expect(all.data).toHaveLength(10);
     const unread = call('get', '/me/notifications', { unreadOnly: 'true' }) as Page;
-    expect(unread.data).toHaveLength(3);
+    expect(unread.data).toHaveLength(4);
     const first = call('get', '/me/notifications', { limit: '5' }) as Page;
     expect(first.page.hasNext).toBe(true);
   });
@@ -41,11 +41,11 @@ describe('테스트 모드 가짜 알림 서버', () => {
       (call('get', '/me/notification-summary') as { data: { unreadCount: number } }).data
         .unreadCount;
     const [first, second] = (call('get', '/me/notifications', { unreadOnly: 'true' }) as Page).data;
-    expect(count()).toBe(3);
+    expect(count()).toBe(4);
     call('patch', `/me/notifications/${first.id}`, {}, { read: true });
-    expect(count()).toBe(2);
+    expect(count()).toBe(3);
     call('delete', `/me/notifications/${second.id}`);
-    expect((call('get', '/me/notifications') as Page).data).toHaveLength(8);
+    expect((call('get', '/me/notifications') as Page).data).toHaveLength(9);
     call('post', '/me/notifications/read-all', {}, { through: new Date().toISOString() });
     expect(count()).toBe(0);
   });
@@ -82,6 +82,6 @@ describe('테스트 모드 가짜 알림 서버', () => {
     const { call, mock } = setup();
     mock.controls.failNext();
     expect(() => call('get', '/me/notifications')).toThrow('SERVICE_UNAVAILABLE');
-    expect((call('get', '/me/notifications') as Page).data).toHaveLength(9);
+    expect((call('get', '/me/notifications') as Page).data).toHaveLength(10);
   });
 });

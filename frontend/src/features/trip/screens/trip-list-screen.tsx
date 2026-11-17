@@ -9,6 +9,7 @@ import { EmptyState, ErrorState, Icon, OfflineNotice } from '@/components/ui';
 import { FadeIn } from '@/components/ui/fade-in';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { SkeletonList } from '@/components/ui/skeleton';
+import { ReceivedInvitationsBanner } from '@/features/invitation/components/received-invitations-banner';
 import { voiceTripAvailable } from '@/features/voice-trip/api';
 import { NewTripChoiceSheet } from '@/features/voice-trip/components/new-trip-choice-sheet';
 import { VoiceTripBanner } from '@/features/voice-trip/components/voice-trip-banner';
@@ -113,6 +114,7 @@ export function TripListScreen() {
       <View style={[styles.screen, { paddingTop: insets.top }]}>
         {header}
         <VoiceTripBanner />
+        <ReceivedInvitationsBanner />
         <View style={styles.flex}>{body}</View>
         <NewTripChoiceSheet visible={choosing} onClose={() => setChoosing(false)} />
       </View>
@@ -125,6 +127,7 @@ export function TripListScreen() {
     <View style={[styles.screen, { paddingTop: insets.top }]}>
       {header}
       <VoiceTripBanner />
+      <ReceivedInvitationsBanner />
       <ScrollView
         decelerationRate={SCROLL_DECELERATION}
         style={styles.flex}

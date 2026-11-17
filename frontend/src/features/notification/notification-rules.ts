@@ -22,6 +22,7 @@ const KINDS: Record<string, KindInfo> = {
   COURSE_CHANGED: { label: '코스 변경', icon: 'route' },
   TRIP_INFO_CHANGED: { label: '여행 정보', icon: 'trip' },
   TRIP_MEMBER_JOINED: { label: '동행 참여', icon: 'person-plus' },
+  TRIP_INVITED: { label: '여행 초대', icon: 'trip' },
   FOLLOW_REQUESTED: { label: '팔로우 요청', icon: 'person-plus' },
   FOLLOW_ACCEPTED: { label: '팔로우 수락', icon: 'check' },
   AI_PROPOSAL_READY: { label: 'AI 변경안', icon: 'people' },
@@ -38,6 +39,7 @@ export const ACTION_KINDS: ReadonlySet<string> = new Set([
   'POLL_OPENED',
   'POLL_REMINDER',
   'FOLLOW_REQUESTED',
+  'TRIP_INVITED',
   'AI_PROPOSAL_READY',
 ]);
 
@@ -175,6 +177,9 @@ export function destinationOf(n: NotificationView): Destination | null {
       return n.kind === 'FOLLOW_REQUESTED'
         ? { href: '/friends', tripId: null }
         : { href: `/users/${target.id}`, tripId: null };
+    // 받는 사람은 아직 동행이 아니다. 여행을 미리 받으면 404라 tripId를 두지 않는다
+    case 'TRIP_INVITATION':
+      return { href: `/trip-invitations/${target.id}`, tripId: null };
     default:
       return null;
   }
