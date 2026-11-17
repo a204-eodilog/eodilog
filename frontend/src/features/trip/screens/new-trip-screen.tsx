@@ -6,6 +6,8 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, Header, Icon, Stagger, TextField } from '@/components/ui';
+import { FadeIn } from '@/components/ui/fade-in';
+import { MascotTraveler } from '@/components/ui/mascot';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { formatRange } from '@/lib/seoul-date';
 import { colors, layout, radius, spacing, typography } from '@/theme';
@@ -21,6 +23,7 @@ import { KeyboardLift } from '@/components/ui/keyboard-lift';
 
 const TITLE_MAX = 200;
 const LATER = '나중에 정할게요';
+const TRAVELER_SIZE = 168;
 
 /** S16 새 여행 만들기. 이름만 있으면 만들 수 있고 기간·여행지는 나중에 정해도 된다(결정 F-11) */
 export function NewTripScreen() {
@@ -128,6 +131,11 @@ export function NewTripScreen() {
               </Text>
             </View>
           ) : null}
+
+          {/* 줄과 버튼 사이 빈 자리에서 여행자가 걷는다. 질문·입력 칸이 다 나타난 뒤에 올라온다 */}
+          <FadeIn index={6} style={styles.traveler}>
+            <MascotTraveler size={TRAVELER_SIZE} />
+          </FadeIn>
         </ScrollView>
 
         {/* 안드로이드 하단 버튼 줄(내비게이션 바) 높이에 16을 더 띄운다. 바 높이만 주면 버튼이 바에 붙는다 */}
@@ -193,7 +201,14 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.surface.white },
   flex: { flex: 1 },
   // 피그마 S16: 위 16, 묶음 사이 24
-  body: { paddingHorizontal: layout.screenPaddingX, paddingTop: spacing[16], gap: spacing[24] },
+  body: {
+    flexGrow: 1,
+    paddingHorizontal: layout.screenPaddingX,
+    paddingTop: spacing[16],
+    gap: spacing[24],
+  },
+  // 줄과 버튼 사이 남은 자리의 한가운데. 키보드가 올라오면 아래로 밀려 입력을 가리지 않는다
+  traveler: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   questionBlock: { gap: spacing[8] },
   question: { color: colors.text.default },
   hint: { color: colors.text.sub2 },
