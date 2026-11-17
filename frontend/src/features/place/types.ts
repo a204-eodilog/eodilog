@@ -15,4 +15,6 @@ export type Place = {
    * 실리면 카드의 종류 아이콘이 이 값으로 정해진다(place-kind)
    */
   category?: string | null;
+  /** 장소 대표 사진의 원본 주소(한국관광공사). 사진이 없는 장소는 null이거나 빠져 있다 */
+  imageUrl?: string | null;
 };
