@@ -9,6 +9,9 @@ import { EmptyState, ErrorState, Icon, OfflineNotice } from '@/components/ui';
 import { FadeIn } from '@/components/ui/fade-in';
 import { PressableScale } from '@/components/ui/pressable-scale';
 import { SkeletonList } from '@/components/ui/skeleton';
+import { voiceTripAvailable } from '@/features/voice-trip/api';
+import { NewTripChoiceSheet } from '@/features/voice-trip/components/new-trip-choice-sheet';
+import { VoiceTripBanner } from '@/features/voice-trip/components/voice-trip-banner';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { colors, layout, radius, spacing, typography } from '@/theme';
 
@@ -20,7 +23,7 @@ import type { Trip } from '../types';
 
 const openTrip = (trip: Trip) =>
   router.push({ pathname: '/trips/[tripId]', params: { tripId: trip.id } });
-const openNew = () => router.push('/trips/new');
+const openNewDirect = () => router.push('/trips/new');
 
 /**
  * S15 여행 목록(B안 "지금 여행 집중", 2026-11-05 사용자 선택).
@@ -37,6 +40,9 @@ export function TripListScreen() {
   // 당겨서 새로고침 표시는 사람이 당겼을 때만 켠다. 탭 복귀·앱 복귀 때 조용히 다시 받는 동안에는
   // 화면 위 동그라미(RefreshControl)를 띄우지 않는다
   const { refreshing: pulling, onRefresh: onPullRefresh } = usePullRefresh(refetch);
+  // [+ 새 여행]에서 말로 만들지, 직접 입력할지 고른다(테스트 모드에는 말로 만들기 API가 없어 바로 입력 화면)
+  const [choosing, setChoosing] = useState(false);
+  const openNew = () => (voiceTripAvailable() ? setChoosing(true) : openNewDirect());
   // 다음 계획이 3개를 넘으면 접어 둔다. 펼친 것은 이 탭을 보는 동안만 기억한다
 
   const sections = listState.kind === 'ready' ? listState.sections : null;
@@ -106,7 +112,9 @@ export function TripListScreen() {
     return (
       <View style={[styles.screen, { paddingTop: insets.top }]}>
         {header}
+        <VoiceTripBanner />
         <View style={styles.flex}>{body}</View>
+        <NewTripChoiceSheet visible={choosing} onClose={() => setChoosing(false)} />
       </View>
     );
   }
@@ -116,6 +124,7 @@ export function TripListScreen() {
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
       {header}
+      <VoiceTripBanner />
       <ScrollView
         decelerationRate={SCROLL_DECELERATION}
         style={styles.flex}
@@ -157,6 +166,7 @@ export function TripListScreen() {
           onOpen={openTrip}
         />
       </ScrollView>
+      <NewTripChoiceSheet visible={choosing} onClose={() => setChoosing(false)} />
     </View>
   );
 }

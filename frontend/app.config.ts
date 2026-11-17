@@ -22,6 +22,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         isAccessMediaLocationEnabled: false,
       },
     ],
+    // 실험(말로 새 여행 만들기): 말하는 대로 글자를 보여 주는 폰 음성인식. 구글 음성인식 앱을 찾을 수 있게 한다
+    [
+      'expo-speech-recognition',
+      {
+        microphonePermission: '말한 내용을 글로 받아쓰려고 마이크를 써요',
+        speechRecognitionPermission: '말한 내용을 글로 받아쓰려고 음성 인식을 써요',
+      },
+    ],
     './plugins/with-short-object-paths',
     [
       '@mj-studio/react-native-naver-map',
