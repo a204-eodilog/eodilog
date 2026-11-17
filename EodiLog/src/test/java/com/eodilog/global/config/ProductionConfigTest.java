@@ -12,7 +12,8 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
-@SpringBootTest
+// 테스트 DB 컨테이너는 모든 테스트가 함께 쓴다. 운영 전용 데모 마이그레이션(db/demo)이 들어가면 다른 컨텍스트의 Flyway 검증이 깨지므로 뺀다
+@SpringBootTest(properties = "spring.flyway.locations=classpath:db/migration")
 @AutoConfigureMockMvc
 @ActiveProfiles({"test", "prod"})
 @Import(TestcontainersConfiguration.class)
