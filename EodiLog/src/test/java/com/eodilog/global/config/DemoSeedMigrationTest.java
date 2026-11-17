@@ -50,11 +50,12 @@ class DemoSeedMigrationTest {
 	}
 
 	@Test
-	void seedsFivePublicAccounts() {
+	void seedsTenPublicAccountsWithPersonNames() {
 		var nicknames = jdbc.queryForList("""
-				select nickname from users where id in (select md5('eodilog-demo-u'||g)::uuid from generate_series(1,5) g)
+				select nickname from users where id in (select md5('eodilog-demo-u'||g)::uuid from generate_series(1,10) g)
 				 and status='ACTIVE' and profile_completed and account_visibility='PUBLIC' order by nickname""", String.class);
-		assertThat(nicknames).containsExactlyInAnyOrder("바다마중", "솔솔바람", "산책하는곰", "길위의펭귄", "노을수집가");
+		assertThat(nicknames).containsExactlyInAnyOrder("김민준", "이서연", "박지훈", "최유나", "정재원",
+				"강하은", "윤서진", "장도윤", "임채원", "신예준");
 	}
 
 	@Test
@@ -62,10 +63,10 @@ class DemoSeedMigrationTest {
 		assertThat(jdbc.queryForObject("""
 				select count(*) from trips t join trip_members m on m.trip_id=t.id and m.user_id=t.owner_user_id and m.status='ACTIVE'
 				 join feeds f on f.trip_id=t.id and f.deleted_at is null
-				where t.owner_user_id in (select md5('eodilog-demo-u'||g)::uuid from generate_series(1,5) g)
+				where t.owner_user_id in (select md5('eodilog-demo-u'||g)::uuid from generate_series(1,10) g)
 				 and exists (select 1 from feed_regions fr where fr.feed_id=f.id)
 				 and jsonb_array_length(f.snapshot_json->'regions')=(select count(*) from feed_regions fr where fr.feed_id=f.id)""",
-				Long.class)).isEqualTo(21);
+				Long.class)).isEqualTo(43);
 	}
 
 	@Test
@@ -73,13 +74,14 @@ class DemoSeedMigrationTest {
 		Map<String, Long> counts = jdbc.queryForList("""
 				select r.code, count(distinct t.owner_user_id) as n from feed_regions fr join feeds f on f.id=fr.feed_id
 				 join trips t on t.id=f.trip_id join regions r on r.id=fr.region_id
-				where t.owner_user_id in (select md5('eodilog-demo-u'||g)::uuid from generate_series(1,5) g)
+				where t.owner_user_id in (select md5('eodilog-demo-u'||g)::uuid from generate_series(1,10) g)
 				group by r.code""").stream()
 				.collect(Collectors.toMap(row -> (String) row.get("code"), row -> ((Number) row.get("n")).longValue()));
-		assertThat(counts).hasSize(14)
-				.containsEntry("5115000000", 5L).containsEntry("5011000000", 4L)
-				.containsEntry("2635000000", 3L).containsEntry("4713000000", 3L)
-				.containsEntry("1213000000", 2L).containsEntry("5211000000", 2L).containsEntry("5121000000", 2L);
+		assertThat(counts).hasSize(28)
+				.containsEntry("5115000000", 7L).containsEntry("5011000000", 6L)
+				.containsEntry("2635000000", 5L).containsEntry("4713000000", 5L)
+				.containsEntry("1213000000", 3L).containsEntry("5211000000", 3L).containsEntry("5121000000", 3L)
+				.containsEntry("5013000000", 2L).containsEntry("4711000000", 2L).containsEntry("5219000000", 1L);
 	}
 
 }
