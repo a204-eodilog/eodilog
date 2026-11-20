@@ -14,6 +14,28 @@
 
 ---
 
+## 화면
+
+<table>
+  <tr>
+    <td align="center" width="33%"><img src="docs/images/screens/home.png" width="220" alt="홈"><br><b>홈</b><br><sub>친구들이 다녀온 여행을 지역별로 모은 지도</sub></td>
+    <td align="center" width="33%"><img src="docs/images/screens/trips.png" width="220" alt="여행"><br><b>여행</b><br><sub>진행 중인 여행과 다음 계획</sub></td>
+    <td align="center" width="33%"><img src="docs/images/screens/trip-detail.png" width="220" alt="여행 상세"><br><b>여행 상세</b><br><sub>오늘 할 일과 여행 메뉴</sub></td>
+  </tr>
+  <tr>
+    <td align="center" width="33%"><img src="docs/images/screens/preferences.png" width="220" alt="여행 취향"><br><b>여행 취향</b><br><sub>추천에 쓸 취향 고르기</sub></td>
+    <td align="center" width="33%"><img src="docs/images/screens/recommend.png" width="220" alt="여행지 추천"><br><b>여행지 추천</b><br><sub>동행이 담은 곳과 취향으로 추천</sub></td>
+    <td align="center" width="33%"><img src="docs/images/screens/poll.png" width="220" alt="투표"><br><b>투표</b><br><sub>여러 곳에 투표, 마감되면 자동 확정</sub></td>
+  </tr>
+  <tr>
+    <td align="center" width="33%"><img src="docs/images/screens/course.png" width="220" alt="코스"><br><b>코스</b><br><sub>날짜별 코스와 구간 이동 수단</sub></td>
+    <td align="center" width="33%"><img src="docs/images/screens/chat.png" width="220" alt="그룹 채팅"><br><b>그룹 채팅</b><br><sub>투표·코스 소식이 카드로</sub></td>
+    <td align="center" width="33%"><img src="docs/images/screens/on-trip.png" width="220" alt="여행 중"><br><b>여행 중</b><br><sub>날씨, 날씨 대안, 준비물, 오늘 코스</sub></td>
+  </tr>
+</table>
+
+> 서버 없이 도는 앱 안의 테스트 데이터로 찍은 화면입니다. 웹 미리보기라 지도 타일은 앱에서만 보입니다.
+
 ## 1. Introduction
 
 친구들과 여행을 준비하면 늘 같은 곳에서 막힙니다. 단톡방에 올린 맛집 링크는 대화에 묻히고, 다 좋다고 하는데 아무도 여행지를 정하지 않고, 일정표는 한 사람만 적고, 여행이 끝나면 사진은 흩어지고 정산은 몇 주째 미뤄집니다.
