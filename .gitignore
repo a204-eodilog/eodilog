@@ -5,3 +5,28 @@
 
 # Local environment secrets
 /.env
+
+# 공개 저장소에 올리지 않는 것
+# DB 덤프와 백업 (사용자 정보가 들어 있다)
+*.dump
+*.dump.part*
+*.sql.gz
+*dump*.sql
+db-backup-*/
+
+# 운영 비밀 값이 든 포팅 문서 (제출용, GitLab에만 둔다)
+exec/
+
+# AI 도구 설정과 작업 기록
+.agents/
+.claude/
+.omc/
+.specify/
+_bmad/
+_bmad-output/
+.playwright-mcp/
+
+# 실제 환경 값 (견본 .env*.example 만 올린다)
+.env
+.env.*
+!.env*.example
